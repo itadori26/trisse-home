@@ -1,5 +1,7 @@
 # trisse-home
 
+[![CI](https://github.com/itadori26/trisse-home/actions/workflows/ci.yml/badge.svg)](https://github.com/itadori26/trisse-home/actions/workflows/ci.yml)
+
 A self-hosted personal start page in the spirit of iGoogle: freely arranged
 widgets on multiple tabs plus small modules for everyday life and the home
 server — as lean as possible, as much as necessary, built on a strict Clean
@@ -63,7 +65,7 @@ api/openapi.yaml         API description
 Requirements: Docker with the Compose plugin.
 
 ```sh
-git clone https://github.com/<you>/trisse-home.git
+git clone https://github.com/itadori26/trisse-home.git
 cd trisse-home
 cp .env.example .env
 sed -i "s|^SECRET_KEY=.*|SECRET_KEY=$(openssl rand -base64 32)|" .env
