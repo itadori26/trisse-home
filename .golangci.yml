@@ -1,0 +1,110 @@
+# golangci-lint v2 configuration.
+# depguard enforces the dependency rule of the clean architecture by ring;
+# internal/archtest adds the finer rules that cannot be expressed with package
+# prefixes (e.g. "a module must not import another module").
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - depguard
+    - errorlint
+    - gocritic
+    - gosec
+    - misspell
+    - nolintlint
+    - noctx
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - usestdlibvars
+  settings:
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: var-naming
+        - name: error-strings
+        - name: error-naming
+        - name: receiver-naming
+        - name: indent-error-flow
+    gosec:
+      excludes:
+        - G104 # covered by errcheck
+    depguard:
+      rules:
+        domain-ring:
+          list-mode: strict
+          files:
+            - "**/internal/modules/*/domain/**"
+            - "**/internal/shared/kernel/**"
+          allow:
+            - $gostd
+            - trisse-home/internal/shared/kernel
+            - trisse-home/internal/modules
+          deny:
+            - pkg: net/http
+              desc: "entities must not know about HTTP"
+            - pkg: database/sql
+              desc: "entities must not know about persistence"
+            - pkg: encoding/json
+              desc: "entities must not know about serialisation"
+            - pkg: log/slog
+              desc: "entities do not log"
+        usecase-ring:
+          list-mode: strict
+          files:
+            - "**/internal/modules/*/usecase/**"
+          allow:
+            - $gostd
+            - trisse-home/internal/shared/kernel
+            - trisse-home/internal/modules
+          deny:
+            - pkg: net/http
+              desc: "use cases must not know about HTTP"
+            - pkg: database/sql
+              desc: "use cases talk to repositories through output ports"
+            - pkg: encoding/json
+              desc: "serialisation belongs to the adapters"
+            - pkg: trisse-home/internal/platform
+              desc: "use cases must not depend on frameworks & drivers"
+            - pkg: trisse-home/internal/shared/httpapi
+              desc: "HTTP helpers belong to the adapter ring"
+            - pkg: trisse-home/internal/shared/sqlutil
+              desc: "SQL helpers belong to the adapter ring"
+        adapter-ring:
+          files:
+            - "**/internal/modules/*/adapter/**"
+            - "!$test"
+          deny:
+            - pkg: trisse-home/internal/platform
+              desc: "adapters must not depend on frameworks & drivers; inject them in module.go"
+            - pkg: modernc.org/sqlite
+              desc: "only internal/platform/database may import the SQLite driver"
+        platform-ring:
+          files:
+            - "**/internal/platform/**"
+          deny:
+            - pkg: trisse-home/internal/modules/
+              desc: "the platform must not know concrete modules"
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters: [gosec, noctx, bodyclose]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - trisse-home

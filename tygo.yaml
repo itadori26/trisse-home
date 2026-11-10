@@ -1,0 +1,17 @@
+# Generates TypeScript types from the Go DTOs (presenters and request DTOs).
+# Run `make generate` after changing a DTO; the output is committed so the
+# frontend can be built without a Go toolchain.
+type_mappings:
+  time.Time: "string /* RFC 3339 */"
+packages:
+  - path: "trisse-home/internal/modules"
+    output_path: "web/src/shared/api-client/generated/modules.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/shared/httpapi"
+    output_path: "web/src/shared/api-client/generated/httpapi.ts"
+    include_files: ["errors.go"]
+  - path: "trisse-home/internal/modules/auth/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/auth.ts"
+  - path: "trisse-home/internal/modules/auth/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/auth-requests.ts"
+    include_files: ["dto.go"]

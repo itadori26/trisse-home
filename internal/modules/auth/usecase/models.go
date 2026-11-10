@@ -1,0 +1,62 @@
+package usecase
+
+import "time"
+
+// StatusRequest carries the (possibly empty) session token of the caller.
+type StatusRequest struct {
+	SessionToken string
+}
+
+// StatusResponse describes the authentication state of the caller.
+type StatusResponse struct {
+	SetupRequired bool
+	Authenticated bool
+	CSRFToken     string
+}
+
+// SetupRequest is the input of SetupAccount.
+type SetupRequest struct {
+	SetupToken string
+	Password   string
+	ClientKey  string
+}
+
+// LoginRequest is the input of Login. ClientKey identifies the client for
+// rate limiting (usually its IP address).
+type LoginRequest struct {
+	Password  string
+	ClientKey string
+}
+
+// LogoutRequest is the input of Logout.
+type LogoutRequest struct {
+	SessionToken string
+}
+
+// AuthenticateRequest is the input of Authenticate.
+type AuthenticateRequest struct {
+	SessionToken string
+}
+
+// AuthenticateResponse describes a valid session. Refreshed is true when the
+// expiry was extended and the cookie should be re-issued.
+type AuthenticateResponse struct {
+	CSRFToken string
+	ExpiresAt time.Time
+	Refreshed bool
+}
+
+// ChangePasswordRequest is the input of ChangePassword.
+type ChangePasswordRequest struct {
+	CurrentPassword string
+	NewPassword     string
+	ClientKey       string
+}
+
+// SessionResponse describes a newly created session. SessionToken is the raw
+// token for the cookie; it is never stored.
+type SessionResponse struct {
+	SessionToken string
+	CSRFToken    string
+	ExpiresAt    time.Time
+}

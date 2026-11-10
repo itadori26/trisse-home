@@ -1,0 +1,35 @@
+# trisse-home - self-hosted personal start page.
+# Configuration lives in .env (see .env.example). Update with:
+#   sudo docker compose build && sudo docker compose up -d
+name: trisse-home
+
+services:
+  trisse-home:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+    image: trisse-home:local
+    container_name: trisse-home
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: ${TZ:-UTC}
+    ports:
+      # Bind to a specific LAN address via BIND_ADDRESS to avoid exposing the
+      # port on every interface of the host.
+      - "${BIND_ADDRESS:-0.0.0.0}:${HOST_PORT:-8090}:8090"
+    volumes:
+      - data:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [default]
+
+networks:
+  default:
+    name: trisse-home
+
+volumes:
+  data:
+    name: trisse-home-data

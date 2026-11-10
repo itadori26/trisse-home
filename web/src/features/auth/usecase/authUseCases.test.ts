@@ -1,0 +1,52 @@
+import { describe, expect, it, vi } from 'vitest';
+import type { AuthStatus, Session } from '../domain/auth';
+import { AuthUseCases, ValidationError } from './authUseCases';
+import type { AuthGateway } from './ports';
+
+const session: Session = { csrfToken: 'csrf-1', expiresAt: new Date() };
+
+function setup(status: Partial<AuthStatus> = {}) {
+  const gateway: AuthGateway = {
+    status: vi
+      .fn()
+      .mockResolvedValue({ setupRequired: false, authenticated: true, csrfToken: 'csrf-0', ...status }),
+    setup: vi.fn().mockResolvedValue(session),
+    login: vi.fn().mockResolvedValue(session),
+    logout: vi.fn().mockResolvedValue(undefined),
+    changePassword: vi.fn().mockResolvedValue(session),
+  };
+  const csrf = { setCsrfToken: vi.fn() };
+  return { uc: new AuthUseCases(gateway, csrf), gateway, csrf };
+}
+
+describe('AuthUseCases', () => {
+  it('stores the csrf token from the status', async () => {
+    const { uc, csrf } = setup();
+    expect(await uc.currentView()).toBe('app');
+    expect(csrf.setCsrfToken).toHaveBeenCalledWith('csrf-0');
+  });
+
+  it('validates the password before calling the backend', async () => {
+    const { uc, gateway } = setup();
+    await expect(uc.setup('token', 'short', 'short')).rejects.toBeInstanceOf(ValidationError);
+    expect(gateway.setup).not.toHaveBeenCalled();
+  });
+
+  it('trims the setup token and stores the new csrf token', async () => {
+    const { uc, gateway, csrf } = setup();
+    await uc.setup('  token  ', 'long-enough-password', 'long-enough-password');
+    expect(gateway.setup).toHaveBeenCalledWith('token', 'long-enough-password');
+    expect(csrf.setCsrfToken).toHaveBeenCalledWith('csrf-1');
+  });
+
+  it('rejects an empty login password', async () => {
+    const { uc } = setup();
+    await expect(uc.login('')).rejects.toThrow(/password/);
+  });
+
+  it('clears the csrf token on logout', async () => {
+    const { uc, csrf } = setup();
+    await uc.logout();
+    expect(csrf.setCsrfToken).toHaveBeenLastCalledWith('');
+  });
+});

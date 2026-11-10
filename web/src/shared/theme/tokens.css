@@ -1,0 +1,46 @@
+/*
+ * Design tokens. Every component uses these variables only, so themes and
+ * user CSS can restyle the whole app by overriding them.
+ */
+:root {
+  --color-bg: #eef1f6;
+  --color-surface: #ffffff;
+  --color-surface-2: #f5f7fb;
+  --color-border: #dde2ec;
+  --color-text: #1b2130;
+  --color-text-muted: #5d6679;
+  --color-accent: #3b6ef5;
+  --color-accent-contrast: #ffffff;
+  --color-danger: #d33a3a;
+  --color-success: #23a26d;
+  --color-warning: #d99a1e;
+  --radius: 12px;
+  --radius-small: 8px;
+  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 4px 12px rgb(16 24 40 / 6%);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --background-image: none;
+  --widget-opacity: 1;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #10141c;
+  --color-surface: #1a202b;
+  --color-surface-2: #222937;
+  --color-border: #2e3646;
+  --color-text: #e6e9f0;
+  --color-text-muted: #9aa3b5;
+  --color-accent: #6c93ff;
+  --color-accent-contrast: #0b1020;
+  --color-danger: #ff6b6b;
+  --color-success: #3dd68c;
+  --color-warning: #f5c04e;
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
+  color-scheme: dark;
+}
