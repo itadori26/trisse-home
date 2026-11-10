@@ -8,9 +8,13 @@ import (
 	"trisse-home/internal/modules"
 	"trisse-home/internal/modules/appearance"
 	"trisse-home/internal/modules/auth"
+	"trisse-home/internal/modules/bookmarks"
 	"trisse-home/internal/modules/dashboard"
+	"trisse-home/internal/modules/notes"
+	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
+	"trisse-home/internal/modules/todos"
 	"trisse-home/internal/modules/weather"
 	"trisse-home/internal/platform/clock"
 	"trisse-home/internal/platform/config"
@@ -58,6 +62,10 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 				InsecureClient: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
 			})
 		}},
+		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids) }},
+		{"notes", func() modules.Module { return notes.New(db, clk, ids) }},
+		{"todos", func() modules.Module { return todos.New(db, clk, ids) }},
+		{"rss", func() modules.Module { return rss.New(db, client, clk, ids) }},
 	}
 	for _, m := range optional {
 		if cfg.ModuleEnabled(m.name) {

@@ -1,0 +1,22 @@
+<script lang="ts">
+  import { parseTodosConfig } from '../domain/todo';
+
+  /** Props of the to-do widget settings. */
+  interface Props {
+    config: Record<string, unknown>;
+    onsave: (config: Record<string, unknown>) => Promise<void>;
+  }
+  let { config, onsave }: Props = $props();
+  // svelte-ignore state_referenced_locally
+  let showDone = $state(parseTodosConfig(config).showDone);
+</script>
+
+<form
+  onsubmit={(e) => {
+    e.preventDefault();
+    onsave({ showDone });
+  }}
+>
+  <label><input type="checkbox" bind:checked={showDone} /> Show completed to-dos</label>
+  <p><button class="btn btn-primary" type="submit">Save</button></p>
+</form>

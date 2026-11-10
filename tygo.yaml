@@ -34,3 +34,23 @@ packages:
   - path: "trisse-home/internal/modules/services/adapter/controller"
     output_path: "web/src/shared/api-client/generated/services-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/bookmarks/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/bookmarks.ts"
+  - path: "trisse-home/internal/modules/bookmarks/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/bookmarks-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/notes/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/notes.ts"
+  - path: "trisse-home/internal/modules/notes/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/notes-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/todos/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/todos.ts"
+  - path: "trisse-home/internal/modules/todos/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/todos-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/rss/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/rss.ts"
+  - path: "trisse-home/internal/modules/rss/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/rss-requests.ts"
+    include_files: ["dto.go"]

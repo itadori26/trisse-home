@@ -1,6 +1,8 @@
 <script lang="ts">
   import { type Appearance, AppearanceSettings } from '../features/appearance';
   import { ChangePasswordForm } from '../features/auth';
+  import { FoldersManager } from '../features/bookmarks';
+  import { FeedsManager } from '../features/rss';
   import { SearchSettings } from '../features/search';
   import { ServicesManager } from '../features/services';
   import Modal from '../shared/ui/Modal.svelte';
@@ -21,6 +23,8 @@
     { id: 'appearance', label: 'Appearance', module: 'appearance' },
     { id: 'search', label: 'Search', module: 'search' },
     { id: 'services', label: 'Services', module: 'services' },
+    { id: 'feeds', label: 'Feeds', module: 'rss' },
+    { id: 'folders', label: 'Bookmark folders', module: 'bookmarks' },
     { id: 'account', label: 'Account' },
   ];
   const visible = $derived(sections.filter((s) => !s.module || modules.has(s.module)));
@@ -42,6 +46,10 @@
     <SearchSettings search={container.search} />
   {:else if current === 'services'}
     <ServicesManager services={container.services} />
+  {:else if current === 'feeds'}
+    <FeedsManager rss={container.rss} />
+  {:else if current === 'folders'}
+    <FoldersManager bookmarks={container.bookmarks} />
   {:else}
     <h3>Change password</h3>
     <ChangePasswordForm auth={container.auth} />

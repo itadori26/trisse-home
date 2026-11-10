@@ -1,0 +1,47 @@
+/** A subscribed feed. */
+export interface Feed {
+  id: string;
+  url: string;
+  title: string;
+  siteUrl: string;
+  lastError: string;
+  lastFetchedAt: Date | null;
+  unread: number;
+}
+
+/** A feed entry. */
+export interface FeedItem {
+  id: string;
+  feedId: string;
+  feedTitle: string;
+  title: string;
+  link: string;
+  publishedAt: Date;
+  read: boolean;
+}
+
+/** Configuration of the RSS widget. */
+export interface RssConfig {
+  feedId: string;
+  unreadOnly: boolean;
+  limit: number;
+}
+
+/** Reads a stored widget configuration. */
+export function parseRssConfig(raw: Record<string, unknown>): RssConfig {
+  const limit = typeof raw['limit'] === 'number' ? Math.round(raw['limit']) : 20;
+  return {
+    feedId: typeof raw['feedId'] === 'string' ? raw['feedId'] : '',
+    unreadOnly: raw['unreadOnly'] !== false,
+    limit: Math.min(Math.max(limit, 5), 100),
+  };
+}
+
+/** Formats an age such as "5 min", "3 h" or "2 d". */
+export function age(date: Date, now: Date): string {
+  const minutes = Math.max(0, Math.round((now.getTime() - date.getTime()) / 60_000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} h`;
+  return `${Math.round(hours / 24)} d`;
+}

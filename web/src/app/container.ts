@@ -5,9 +5,13 @@
  */
 import { AppearanceApi, AppearanceUseCases } from '../features/appearance';
 import { AuthApi, AuthUseCases } from '../features/auth';
+import { BookmarksApi, BookmarksUseCases } from '../features/bookmarks';
 import { DashboardApi, DashboardUseCases } from '../features/dashboard';
+import { NotesApi, NotesUseCases } from '../features/notes';
+import { RssApi, RssUseCases } from '../features/rss';
 import { SearchApi, SearchUseCases } from '../features/search';
 import { ServicesApi, ServicesUseCases } from '../features/services';
+import { TodosApi, TodosUseCases } from '../features/todos';
 import { WeatherApi, WeatherUseCases } from '../features/weather';
 import type { InfoResponse } from '../shared/api-client/generated/modules';
 import { FetchHttpClient } from '../shared/api-client/http';
@@ -21,6 +25,10 @@ export interface Container {
   search: SearchUseCases;
   weather: WeatherUseCases;
   services: ServicesUseCases;
+  bookmarks: BookmarksUseCases;
+  notes: NotesUseCases;
+  todos: TodosUseCases;
+  rss: RssUseCases;
   /** Loads which backend modules and widget kinds are enabled. */
   enabledModules(): Promise<{ modules: Set<string>; widgetKinds: Set<string> }>;
 }
@@ -36,6 +44,10 @@ export function createContainer(onUnauthorized: () => void): Container {
     search: new SearchUseCases(new SearchApi(http)),
     weather: new WeatherUseCases(new WeatherApi(http)),
     services: new ServicesUseCases(new ServicesApi(http)),
+    bookmarks: new BookmarksUseCases(new BookmarksApi(http)),
+    notes: new NotesUseCases(new NotesApi(http)),
+    todos: new TodosUseCases(new TodosApi(http)),
+    rss: new RssUseCases(new RssApi(http)),
     async enabledModules() {
       const info = await http.get<InfoResponse>('/api/modules');
       return { modules: new Set(info.modules), widgetKinds: new Set(info.widgetKinds) };
