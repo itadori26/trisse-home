@@ -54,3 +54,17 @@ packages:
   - path: "trisse-home/internal/modules/rss/adapter/controller"
     output_path: "web/src/shared/api-client/generated/rss-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/system/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/system.ts"
+  - path: "trisse-home/internal/modules/docker/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/docker.ts"
+  - path: "trisse-home/internal/modules/adguard/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/adguard.ts"
+  - path: "trisse-home/internal/modules/adguard/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/adguard-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/calendar/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/calendar.ts"
+  - path: "trisse-home/internal/modules/calendar/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/calendar-requests.ts"
+    include_files: ["dto.go"]

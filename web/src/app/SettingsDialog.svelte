@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { AdGuardSettings } from '../features/adguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
   import { ChangePasswordForm } from '../features/auth';
   import { FoldersManager } from '../features/bookmarks';
+  import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
   import { SearchSettings } from '../features/search';
   import { ServicesManager } from '../features/services';
@@ -25,6 +27,8 @@
     { id: 'services', label: 'Services', module: 'services' },
     { id: 'feeds', label: 'Feeds', module: 'rss' },
     { id: 'folders', label: 'Bookmark folders', module: 'bookmarks' },
+    { id: 'calendar', label: 'Calendar', module: 'calendar' },
+    { id: 'adguard', label: 'AdGuard', module: 'adguard' },
     { id: 'account', label: 'Account' },
   ];
   const visible = $derived(sections.filter((s) => !s.module || modules.has(s.module)));
@@ -50,6 +54,10 @@
     <FeedsManager rss={container.rss} />
   {:else if current === 'folders'}
     <FoldersManager bookmarks={container.bookmarks} />
+  {:else if current === 'calendar'}
+    <CalendarSettings calendar={container.calendar} />
+  {:else if current === 'adguard'}
+    <AdGuardSettings adguard={container.adguard} />
   {:else}
     <h3>Change password</h3>
     <ChangePasswordForm auth={container.auth} />

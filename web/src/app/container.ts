@@ -3,14 +3,18 @@
  * and the use cases, and hands them to the UI. Nothing else instantiates
  * adapters, so features stay independent of each other.
  */
+import { AdGuardApi, AdGuardUseCases } from '../features/adguard';
 import { AppearanceApi, AppearanceUseCases } from '../features/appearance';
 import { AuthApi, AuthUseCases } from '../features/auth';
 import { BookmarksApi, BookmarksUseCases } from '../features/bookmarks';
+import { CalendarApi, CalendarUseCases } from '../features/calendar';
 import { DashboardApi, DashboardUseCases } from '../features/dashboard';
+import { DockerApi, DockerUseCases } from '../features/docker';
 import { NotesApi, NotesUseCases } from '../features/notes';
 import { RssApi, RssUseCases } from '../features/rss';
 import { SearchApi, SearchUseCases } from '../features/search';
 import { ServicesApi, ServicesUseCases } from '../features/services';
+import { SystemApi, SystemUseCases } from '../features/system';
 import { TodosApi, TodosUseCases } from '../features/todos';
 import { WeatherApi, WeatherUseCases } from '../features/weather';
 import type { InfoResponse } from '../shared/api-client/generated/modules';
@@ -29,6 +33,10 @@ export interface Container {
   notes: NotesUseCases;
   todos: TodosUseCases;
   rss: RssUseCases;
+  system: SystemUseCases;
+  docker: DockerUseCases;
+  adguard: AdGuardUseCases;
+  calendar: CalendarUseCases;
   /** Loads which backend modules and widget kinds are enabled. */
   enabledModules(): Promise<{ modules: Set<string>; widgetKinds: Set<string> }>;
 }
@@ -48,6 +56,10 @@ export function createContainer(onUnauthorized: () => void): Container {
     notes: new NotesUseCases(new NotesApi(http)),
     todos: new TodosUseCases(new TodosApi(http)),
     rss: new RssUseCases(new RssApi(http)),
+    system: new SystemUseCases(new SystemApi(http)),
+    docker: new DockerUseCases(new DockerApi(http)),
+    adguard: new AdGuardUseCases(new AdGuardApi(http)),
+    calendar: new CalendarUseCases(new CalendarApi(http)),
     async enabledModules() {
       const info = await http.get<InfoResponse>('/api/modules');
       return { modules: new Set(info.modules), widgetKinds: new Set(info.widgetKinds) };

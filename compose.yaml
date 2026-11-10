@@ -15,20 +15,56 @@ services:
     env_file: .env
     environment:
       TZ: ${TZ:-UTC}
+      # Host metrics (system module): the host's /proc, /sys and root file
+      # system are mounted read-only below /host.
+      HOST_PROC: /host/proc
+      HOST_SYS: /host/sys
+      SYSTEM_DISK_PATHS: ${SYSTEM_DISK_PATHS:-System=/host/rootfs}
+      # Docker module: only the read-only socket proxy, never the raw socket.
+      DOCKER_PROXY_URL: http://docker-socket-proxy:2375
     ports:
       # Bind to a specific LAN address via BIND_ADDRESS to avoid exposing the
       # port on every interface of the host.
       - "${BIND_ADDRESS:-0.0.0.0}:${HOST_PORT:-8090}:8090"
     volumes:
       - data:/data
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/rootfs:ro
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    networks: [default]
+    depends_on: [docker-socket-proxy]
+    networks: [default, docker-api]
+
+  # Exposes a read-only subset of the Docker API (container list only) on an
+  # internal network without a published port.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    container_name: trisse-home-docker-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      POST: 0
+      INFO: 0
+      IMAGES: 0
+      NETWORKS: 0
+      VOLUMES: 0
+      EXEC: 0
+      LOG_LEVEL: warning
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs: [/run, /tmp]
+    security_opt: ["no-new-privileges:true"]
+    networks: [docker-api]
 
 networks:
   default:
     name: trisse-home
+  docker-api:
+    name: trisse-home-docker-api
+    internal: true
 
 volumes:
   data:

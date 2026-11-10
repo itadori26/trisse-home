@@ -4,13 +4,17 @@
  * other; this file is the only place that combines them.
  */
 import type { Component } from 'svelte';
+import { AdGuardWidget } from '../features/adguard';
 import { BookmarksWidget, BookmarksWidgetSettings } from '../features/bookmarks';
+import { CalendarWidget, CalendarWidgetSettings } from '../features/calendar';
 import { ClockSettings, ClockWidget } from '../features/clock';
 import type { WidgetType } from '../features/dashboard';
+import { DockerWidget, DockerWidgetSettings } from '../features/docker';
 import { NotesWidget, NotesWidgetSettings } from '../features/notes';
 import { RssWidget, RssWidgetSettings } from '../features/rss';
 import { SearchWidget, SearchWidgetSettings } from '../features/search';
 import { ServicesWidget } from '../features/services';
+import { SystemWidget } from '../features/system';
 import { TodosWidget, TodosWidgetSettings } from '../features/todos';
 import { WeatherSettings, WeatherWidget } from '../features/weather';
 import type { Container } from './container';
@@ -123,6 +127,44 @@ export const widgetDefinitions: WidgetDefinition[] = [
     },
     view: renderer(RssWidget, (config, c) => ({ config, rss: c.rss })),
     settings: renderer(RssWidgetSettings, (config, c) => ({ config, rss: c.rss })),
+  },
+  {
+    type: {
+      kind: 'calendar',
+      title: 'Calendar',
+      description: 'Upcoming events from CalDAV (e.g. Nextcloud).',
+      defaultSize: { w: 4, h: 5 },
+    },
+    view: renderer(CalendarWidget, (config, c) => ({ config, calendar: c.calendar })),
+    settings: renderer(CalendarWidgetSettings, (config) => ({ config })),
+  },
+  {
+    type: {
+      kind: 'system',
+      title: 'System',
+      description: 'CPU, memory, disks, load and uptime of the host.',
+      defaultSize: { w: 4, h: 5 },
+    },
+    view: renderer(SystemWidget, (_config, c) => ({ system: c.system })),
+  },
+  {
+    type: {
+      kind: 'docker',
+      title: 'Docker',
+      description: 'Container status via the read-only socket proxy.',
+      defaultSize: { w: 4, h: 6 },
+    },
+    view: renderer(DockerWidget, (config, c) => ({ config, docker: c.docker })),
+    settings: renderer(DockerWidgetSettings, (config, c) => ({ config, docker: c.docker })),
+  },
+  {
+    type: {
+      kind: 'adguard',
+      title: 'AdGuard Home',
+      description: 'DNS queries and blocking statistics.',
+      defaultSize: { w: 4, h: 4 },
+    },
+    view: renderer(AdGuardWidget, (_config, c) => ({ adguard: c.adguard })),
   },
 ];
 

@@ -6,14 +6,18 @@ import (
 	"time"
 
 	"trisse-home/internal/modules"
+	"trisse-home/internal/modules/adguard"
 	"trisse-home/internal/modules/appearance"
 	"trisse-home/internal/modules/auth"
 	"trisse-home/internal/modules/bookmarks"
+	"trisse-home/internal/modules/calendar"
 	"trisse-home/internal/modules/dashboard"
+	"trisse-home/internal/modules/docker"
 	"trisse-home/internal/modules/notes"
 	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
+	"trisse-home/internal/modules/system"
 	"trisse-home/internal/modules/todos"
 	"trisse-home/internal/modules/weather"
 	"trisse-home/internal/platform/clock"
@@ -33,7 +37,6 @@ const healthCheckTimeout = 5 * time.Second
 // always enabled: everything else depends on the session guard, and the
 // dashboard is the page that hosts all widgets.
 func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *crypto.AESGCM) (*auth.Module, *modules.Registry, error) {
-	_ = secrets
 	clk := clock.System{}
 	ids := idgen.Random{}
 	client := httpclient.New()
@@ -66,6 +69,12 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"notes", func() modules.Module { return notes.New(db, clk, ids) }},
 		{"todos", func() modules.Module { return todos.New(db, clk, ids) }},
 		{"rss", func() modules.Module { return rss.New(db, client, clk, ids) }},
+		{"system", func() modules.Module {
+			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths}, clk)
+		}},
+		{"docker", func() modules.Module { return docker.New(client, cfg.DockerProxyURL, clk) }},
+		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
+		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, time.Local) }},
 	}
 	for _, m := range optional {
 		if cfg.ModuleEnabled(m.name) {

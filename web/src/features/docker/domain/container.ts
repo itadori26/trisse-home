@@ -1,0 +1,57 @@
+/** Health check state of a container. */
+export type Health = 'none' | 'healthy' | 'unhealthy' | 'starting';
+
+/** A Docker container. */
+export interface Container {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  health: Health;
+  project: string;
+}
+
+/** The container list with counts. */
+export interface ContainerList {
+  containers: Container[];
+  total: number;
+  running: number;
+  stopped: number;
+  unhealthy: number;
+  error: string;
+}
+
+/** Visual status of a container. */
+export type Indicator = 'ok' | 'warning' | 'error' | 'off';
+
+/** Maps state and health to a traffic light. */
+export function indicator(c: Container): Indicator {
+  if (c.state !== 'running') return c.state === 'restarting' || c.state === 'dead' ? 'error' : 'off';
+  if (c.health === 'unhealthy') return 'error';
+  if (c.health === 'starting') return 'warning';
+  return 'ok';
+}
+
+/** Configuration of the docker widget. */
+export interface DockerConfig {
+  /** Show only containers that need attention. */
+  problemsOnly: boolean;
+  /** Only containers of this compose project ('' = all). */
+  project: string;
+}
+
+/** Reads a stored widget configuration. */
+export function parseDockerConfig(raw: Record<string, unknown>): DockerConfig {
+  return {
+    problemsOnly: raw['problemsOnly'] === true,
+    project: typeof raw['project'] === 'string' ? raw['project'] : '',
+  };
+}
+
+/** Applies the widget configuration to a list. */
+export function filterContainers(list: Container[], cfg: DockerConfig): Container[] {
+  return list.filter(
+    (c) => (!cfg.project || c.project === cfg.project) && (!cfg.problemsOnly || indicator(c) !== 'ok'),
+  );
+}

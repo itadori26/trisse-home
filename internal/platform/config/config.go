@@ -68,7 +68,7 @@ func Load(getenv func(string) string) (Config, error) {
 		DockerProxyURL:  l.str("DOCKER_PROXY_URL", "http://docker-socket-proxy:2375"),
 		HostProcPath:    l.str("HOST_PROC", "/proc"),
 		HostSysPath:     l.str("HOST_SYS", "/sys"),
-		DiskPaths:       l.list("SYSTEM_DISK_PATHS", "/"),
+		DiskPaths:       l.rawList("SYSTEM_DISK_PATHS", "/"),
 	}
 	if len(cfg.AllowedCIDRs) == 0 && l.getenv("ALLOWED_CIDRS") != "" {
 		l.fail("ALLOWED_CIDRS", "must contain at least one CIDR")
@@ -95,11 +95,21 @@ func (l *loader) str(key, def string) string {
 	return def
 }
 
+// list returns a lower-cased, comma-separated list (for identifiers).
 func (l *loader) list(key, def string) []string {
+	out := l.rawList(key, def)
+	for i := range out {
+		out[i] = strings.ToLower(out[i])
+	}
+	return out
+}
+
+// rawList returns a comma-separated list preserving case (for paths).
+func (l *loader) rawList(key, def string) []string {
 	var out []string
 	for part := range strings.SplitSeq(l.str(key, def), ",") {
 		if p := strings.TrimSpace(part); p != "" {
-			out = append(out, strings.ToLower(p))
+			out = append(out, p)
 		}
 	}
 	return out

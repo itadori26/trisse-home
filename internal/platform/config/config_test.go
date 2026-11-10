@@ -44,6 +44,13 @@ func TestLoadCollectsAllErrors(t *testing.T) {
 	}
 }
 
+func TestDiskPathsKeepCase(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "SYSTEM_DISK_PATHS": "Root=/host/rootfs, Data=/mnt/Data"}))
+	if err != nil || cfg.DiskPaths[1] != "Data=/mnt/Data" {
+		t.Fatalf("unexpected %v %v", cfg.DiskPaths, err)
+	}
+}
+
 func TestDisabledModules(t *testing.T) {
 	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "MODULES_DISABLED": "Docker, adguard"}))
 	if err != nil {
