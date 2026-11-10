@@ -1,7 +1,3 @@
-// Command server is the composition root of trisse-home. It reads the
-// configuration, builds the platform services, wires every enabled module via
-// constructor injection and starts the HTTP server and background jobs. It
-// contains no business logic.
 package main
 
 import (
@@ -9,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"net"
 	"net/http"
@@ -71,13 +66,19 @@ type app struct {
 	registry *modules.Registry
 }
 
-func build(ctx context.Context) (*app, error) {
+// loadConfig reads the configuration and sets up the default logger.
+func loadConfig() (config.Config, *slog.Logger, error) {
 	cfg, err := config.Load(os.Getenv)
 	if err != nil {
-		return nil, fmt.Errorf("invalid configuration:\n%w", err)
+		return config.Config{}, nil, fmt.Errorf("invalid configuration:\n%w", err)
 	}
 	log := logging.New(os.Stdout, cfg.LogLevel, cfg.LogFormat)
 	slog.SetDefault(log)
+	return cfg, log, nil
+}
+
+// build opens the database, constructs all enabled modules and applies their migrations.
+func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*app, error) {
 	db, err := database.Open(ctx, cfg.DatabasePath)
 	if err != nil {
 		return nil, err
@@ -101,7 +102,11 @@ func build(ctx context.Context) (*app, error) {
 func serve() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	a, err := build(ctx)
+	cfg, log, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	a, err := build(ctx, cfg, log)
 	if err != nil {
 		return err
 	}
@@ -110,7 +115,14 @@ func serve() error {
 	if err := a.auth.AnnounceSetup(ctx); err != nil {
 		return err
 	}
+	sched := newScheduler(a)
+	sched.Start(ctx)
+	defer sched.Wait()
+	return httpserver.Run(ctx, a.cfg.ListenAddr, newHandler(a), a.cfg.ShutdownTimeout, a.log)
+}
 
+// newHandler builds the router with all module routes and the middleware chain.
+func newHandler(a *app) http.Handler {
 	r := router.New(a.auth.Guard)
 	for _, m := range a.registry.All() {
 		m.RegisterRoutes(r)
@@ -119,7 +131,7 @@ func serve() error {
 	r.Handle("GET /healthz", router.HealthCheck(a.db.PingContext))
 	r.Handle("/", spa.Handler(webui.Dist()))
 
-	handler := middleware.Chain(r,
+	return middleware.Chain(r,
 		middleware.Recover(a.log),
 		middleware.ClientIP(a.cfg.TrustedProxies),
 		middleware.RequestLog(a.log),
@@ -127,21 +139,26 @@ func serve() error {
 		middleware.SecurityHeaders,
 		http.NewCrossOriginProtection().Handler,
 	)
+}
 
+// newScheduler registers the background jobs of all modules.
+func newScheduler(a *app) *scheduler.Scheduler {
 	sched := scheduler.New(a.log)
 	for _, m := range a.registry.All() {
 		for _, j := range m.Jobs() {
 			sched.Add(scheduler.Task{Name: j.Name, Interval: j.Interval, Run: j.Run})
 		}
 	}
-	sched.Start(ctx)
-	defer sched.Wait()
-	return httpserver.Run(ctx, a.cfg.ListenAddr, handler, a.cfg.ShutdownTimeout, a.log)
+	return sched
 }
 
 func resetAccount() error {
 	ctx := context.Background()
-	a, err := build(ctx)
+	cfg, log, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	a, err := build(ctx, cfg, log)
 	if err != nil {
 		return err
 	}
@@ -175,6 +192,3 @@ func healthcheck() error {
 	}
 	return nil
 }
-
-// ensure the embedded frontend satisfies fs.FS at compile time.
-var _ fs.FS = webui.Dist()

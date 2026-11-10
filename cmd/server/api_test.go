@@ -1,0 +1,346 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/cookiejar"
+	"net/http/httptest"
+	"net/netip"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"trisse-home/internal/platform/config"
+)
+
+// fakeUpstream emulates every external system the modules talk to.
+func fakeUpstream(t *testing.T) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("GET /feed", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `<?xml version="1.0"?><rss version="2.0"><channel><title>Fake News</title><link>https://news.example/</link>
+			<item><guid>1</guid><title>Hello</title><link>https://news.example/1</link><pubDate>Mon, 09 Nov 2026 10:00:00 GMT</pubDate></item>
+			<item><guid>2</guid><title>World</title><link>https://news.example/2</link><pubDate>Tue, 10 Nov 2026 10:00:00 GMT</pubDate></item>
+			</channel></rss>`)
+	})
+	mux.HandleFunc("GET /containers/json", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `[{"Id":"abcdef1234567890","Names":["/web"],"Image":"nginx","State":"running","Status":"Up 1 hour (healthy)","Created":1700000000}]`)
+	})
+	mux.HandleFunc("GET /control/stats", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"num_dns_queries":100,"num_blocked_filtering":25,"avg_processing_time":0.002,"top_blocked_domains":[{"ads.example":7}]}`)
+	})
+	mux.HandleFunc("GET /control/status", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
+	})
+	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "REPORT" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		start := time.Now().Add(2 * time.Hour).UTC().Format("20060102T150405Z")
+		end := time.Now().Add(3 * time.Hour).UTC().Format("20060102T150405Z")
+		w.WriteHeader(http.StatusMultiStatus)
+		_, _ = io.WriteString(w, `<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:response><d:propstat><d:prop><c:calendar-data>`+
+			"BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:e1\nSUMMARY:Dentist\nDTSTART:"+start+"\nDTEND:"+end+"\nEND:VEVENT\nEND:VCALENDAR\n"+
+			`</c:calendar-data></d:prop></d:propstat></d:response></d:multistatus>`)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// fakeProc writes a minimal procfs so the system module is deterministic.
+func fakeProc(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	files := map[string]string{
+		"stat":    "cpu  100 0 100 700 100 0 0 0 0 0\ncpu0 100 0 100 700 100 0 0 0 0 0\n",
+		"loadavg": "0.10 0.20 0.30 1/100 1\n",
+		"meminfo": "MemTotal: 1000 kB\nMemAvailable: 500 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\n",
+		"uptime":  "120.0 100.0\n",
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+type client struct {
+	t    *testing.T
+	base string
+	http *http.Client
+	csrf string
+}
+
+func (c *client) do(method, path string, body any, wantStatus int) []byte {
+	c.t.Helper()
+	var r io.Reader
+	if body != nil {
+		b, _ := json.Marshal(body)
+		r = bytes.NewReader(b)
+	}
+	req, _ := http.NewRequestWithContext(context.Background(), method, c.base+path, r)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if c.csrf != "" {
+		req.Header.Set("X-CSRF-Token", c.csrf)
+	}
+	res, err := c.http.Do(req)
+	if err != nil {
+		c.t.Fatalf("%s %s: %v", method, path, err)
+	}
+	defer res.Body.Close()
+	out, _ := io.ReadAll(res.Body)
+	if res.StatusCode != wantStatus {
+		c.t.Fatalf("%s %s: status %d, want %d: %s", method, path, res.StatusCode, wantStatus, out)
+	}
+	return out
+}
+
+func (c *client) json(method, path string, body any, wantStatus int, dst any) {
+	c.t.Helper()
+	out := c.do(method, path, body, wantStatus)
+	if dst != nil {
+		if err := json.Unmarshal(out, dst); err != nil {
+			c.t.Fatalf("%s %s: decode %q: %v", method, path, out, err)
+		}
+	}
+}
+
+type obj = map[string]any
+
+func newTestServer(t *testing.T, upstream string) *httptest.Server {
+	t.Helper()
+	key := make([]byte, config.SecretKeyBytes)
+	_, _ = rand.Read(key)
+	cfg := config.Config{
+		ListenAddr: ":0", DatabasePath: filepath.Join(t.TempDir(), "e2e.db"),
+		AllowedCIDRs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}, SessionTTL: time.Hour,
+		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
+		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
+		ShutdownTimeout: time.Second,
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	a, err := build(context.Background(), cfg, log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = a.db.Close() })
+	srv := httptest.NewServer(newHandler(a))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func newClient(t *testing.T, base string) *client {
+	jar, _ := cookiejar.New(nil)
+	return &client{t: t, base: base, http: &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}}
+}
+
+func TestAPIEndToEnd(t *testing.T) {
+	up := fakeUpstream(t)
+	srv := newTestServer(t, up.URL)
+	c := newClient(t, srv.URL)
+
+	// --- platform and auth ---
+	c.do(http.MethodGet, "/healthz", nil, http.StatusOK)
+	c.do(http.MethodGet, "/api/nope", nil, http.StatusNotFound)
+	var status obj
+	c.json(http.MethodGet, "/api/auth/status", nil, http.StatusOK, &status)
+	if status["setupRequired"] != true {
+		t.Fatalf("expected setup required: %v", status)
+	}
+	c.do(http.MethodGet, "/api/dashboard", nil, http.StatusUnauthorized)
+	c.do(http.MethodPost, "/api/auth/setup", obj{"setupToken": "wrong", "password": "e2e-password-123"}, http.StatusUnauthorized)
+	var session obj
+	c.json(http.MethodPost, "/api/auth/setup", obj{"setupToken": "e2e-setup-token-0123", "password": "e2e-password-123"}, http.StatusOK, &session)
+	c.do(http.MethodPost, "/api/dashboard/tabs", obj{"name": "x"}, http.StatusForbidden) // no CSRF token yet
+	c.csrf = session["csrfToken"].(string)
+
+	var info obj
+	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
+	if n := len(info["modules"].([]any)); n != 14 {
+		t.Fatalf("expected 14 modules, got %d: %v", n, info)
+	}
+
+	// --- dashboard ---
+	var dash struct {
+		Tabs []struct {
+			ID      string `json:"id"`
+			Widgets []obj  `json:"widgets"`
+		} `json:"tabs"`
+	}
+	c.json(http.MethodGet, "/api/dashboard", nil, http.StatusOK, &dash)
+	if len(dash.Tabs) != 1 || len(dash.Tabs[0].Widgets) != 2 {
+		t.Fatalf("default dashboard wrong: %+v", dash)
+	}
+	home := dash.Tabs[0].ID
+	var tab, widget obj
+	c.json(http.MethodPost, "/api/dashboard/tabs", obj{"name": "Server"}, http.StatusCreated, &tab)
+	tabID := tab["id"].(string)
+	c.json(http.MethodPatch, "/api/dashboard/tabs/"+tabID, obj{"name": "Servers"}, http.StatusOK, nil)
+	c.do(http.MethodPut, "/api/dashboard/tabs/order", obj{"tabIds": []string{tabID, home}}, http.StatusNoContent)
+	c.do(http.MethodPost, "/api/dashboard/tabs/"+tabID+"/widgets", obj{"kind": "unknown", "w": 2, "h": 2}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPost, "/api/dashboard/tabs/"+tabID+"/widgets", obj{"kind": "system", "x": 0, "y": 0, "w": 4, "h": 4}, http.StatusCreated, &widget)
+	wID := widget["id"].(string)
+	c.do(http.MethodPut, "/api/dashboard/tabs/"+tabID+"/layout", obj{"items": []obj{{"id": wID, "x": 2, "y": 0, "w": 5, "h": 4}}}, http.StatusNoContent)
+	c.json(http.MethodPatch, "/api/dashboard/widgets/"+wID, obj{"config": obj{"a": 1}}, http.StatusOK, nil)
+	c.do(http.MethodDelete, "/api/dashboard/widgets/"+wID, nil, http.StatusNoContent)
+	c.do(http.MethodDelete, "/api/dashboard/tabs/"+tabID, nil, http.StatusNoContent)
+	c.do(http.MethodDelete, "/api/dashboard/tabs/"+home, nil, http.StatusConflict) // last tab
+
+	// --- appearance ---
+	c.do(http.MethodPut, "/api/appearance", obj{"theme": "neon", "accentColor": "", "backgroundImage": "", "customCss": ""}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/appearance", obj{"theme": "dark", "accentColor": "#112233", "backgroundImage": "", "customCss": ""}, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/appearance", nil, http.StatusOK, nil)
+
+	// --- search ---
+	c.do(http.MethodGet, "/api/search?q=hello", nil, http.StatusFound)
+	c.json(http.MethodPut, "/api/search/settings", obj{"defaultProvider": "brave"}, http.StatusOK, nil)
+	c.json(http.MethodPost, "/api/search/shortcuts", obj{"keyword": "gh", "name": "GitHub", "urlTemplate": "https://github.com/search?q={query}"}, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/search/settings", nil, http.StatusOK, nil)
+	c.json(http.MethodDelete, "/api/search/shortcuts/gh", nil, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/search/opensearch.xml", nil, http.StatusOK)); !strings.Contains(body, "OpenSearchDescription") {
+		t.Fatal("opensearch document missing")
+	}
+
+	// --- weather (validation only; no outbound calls in tests) ---
+	c.do(http.MethodGet, "/api/weather?lat=999&lon=1", nil, http.StatusUnprocessableEntity)
+	c.do(http.MethodGet, "/api/weather/places?q=x", nil, http.StatusUnprocessableEntity)
+
+	// --- services ---
+	var svc obj
+	c.json(http.MethodPost, "/api/services", obj{"name": "Fake", "url": up.URL + "/health"}, http.StatusCreated, &svc)
+	if svc["state"] != "online" {
+		t.Fatalf("service not online: %v", svc)
+	}
+	sID := svc["id"].(string)
+	c.json(http.MethodPut, "/api/services/"+sID, obj{"name": "Fake2", "url": up.URL + "/health"}, http.StatusOK, nil)
+	c.do(http.MethodPut, "/api/services/order", obj{"ids": []string{sID}}, http.StatusNoContent)
+	c.json(http.MethodPost, "/api/services/check", nil, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/services", nil, http.StatusOK, nil)
+	c.do(http.MethodDelete, "/api/services/"+sID, nil, http.StatusNoContent)
+
+	// --- bookmarks ---
+	var folder, bm obj
+	c.json(http.MethodPost, "/api/bookmarks/folders", obj{"name": "Dev"}, http.StatusCreated, &folder)
+	fID := folder["id"].(string)
+	c.json(http.MethodPost, "/api/bookmarks", obj{"url": "https://go.dev", "folderId": fID, "tags": []string{"go"}}, http.StatusCreated, &bm)
+	var list struct {
+		Bookmarks []obj `json:"bookmarks"`
+	}
+	c.json(http.MethodGet, "/api/bookmarks?tag=go", nil, http.StatusOK, &list)
+	if len(list.Bookmarks) != 1 {
+		t.Fatalf("bookmark filter wrong: %+v", list)
+	}
+	c.json(http.MethodPut, "/api/bookmarks/"+bm["id"].(string), obj{"url": "https://go.dev/doc", "title": "Docs"}, http.StatusOK, nil)
+	c.json(http.MethodPatch, "/api/bookmarks/folders/"+fID, obj{"name": "Development"}, http.StatusOK, nil)
+	c.do(http.MethodDelete, "/api/bookmarks/folders/"+fID, nil, http.StatusNoContent)
+	c.do(http.MethodDelete, "/api/bookmarks/"+bm["id"].(string), nil, http.StatusNoContent)
+
+	// --- notes ---
+	var note obj
+	c.json(http.MethodPost, "/api/notes", obj{"title": "", "body": "# Hello", "pinned": true}, http.StatusCreated, &note)
+	nID := note["id"].(string)
+	c.json(http.MethodPut, "/api/notes/"+nID, obj{"title": "Hi", "body": "x", "pinned": false}, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/notes/"+nID, nil, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/notes?pinned=true", nil, http.StatusOK, nil)
+	c.do(http.MethodDelete, "/api/notes/"+nID, nil, http.StatusNoContent)
+
+	// --- to-dos ---
+	var todo obj
+	c.json(http.MethodPost, "/api/todos", obj{"title": "Test", "due": "2026-12-24"}, http.StatusCreated, &todo)
+	c.json(http.MethodPut, "/api/todos/"+todo["id"].(string), obj{"title": "Test", "due": "", "done": true}, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/todos?done=true", nil, http.StatusOK, nil)
+	var cleared obj
+	c.json(http.MethodPost, "/api/todos/clear-completed", nil, http.StatusOK, &cleared)
+	if cleared["removed"] != float64(1) {
+		t.Fatalf("clear completed: %v", cleared)
+	}
+
+	// --- rss ---
+	var feed obj
+	c.json(http.MethodPost, "/api/rss/feeds", obj{"url": up.URL + "/feed"}, http.StatusCreated, &feed)
+	if feed["title"] != "Fake News" || feed["unread"] != float64(2) {
+		t.Fatalf("feed: %v", feed)
+	}
+	var items []obj
+	c.json(http.MethodGet, "/api/rss/items?unread=true", nil, http.StatusOK, &items)
+	c.do(http.MethodPut, "/api/rss/items/"+items[0]["id"].(string)+"/read", obj{"read": true}, http.StatusNoContent)
+	c.do(http.MethodPost, "/api/rss/read-all", obj{"feedId": ""}, http.StatusNoContent)
+	c.json(http.MethodPost, "/api/rss/refresh", nil, http.StatusOK, nil)
+	c.do(http.MethodDelete, "/api/rss/feeds/"+feed["id"].(string), nil, http.StatusNoContent)
+
+	// --- system, docker ---
+	var sys obj
+	c.json(http.MethodGet, "/api/system", nil, http.StatusOK, &sys)
+	if sys["cpuCount"] != float64(1) || sys["memory"].(obj)["percent"] != float64(50) {
+		t.Fatalf("system: %v", sys)
+	}
+	var containers obj
+	c.json(http.MethodGet, "/api/docker/containers", nil, http.StatusOK, &containers)
+	if containers["running"] != float64(1) {
+		t.Fatalf("docker: %v", containers)
+	}
+
+	// --- adguard ---
+	c.do(http.MethodGet, "/api/adguard/stats", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/adguard/settings", obj{"url": up.URL, "username": "admin", "password": "pw"}, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/adguard/settings", nil, http.StatusOK)); strings.Contains(body, `"pw"`) {
+		t.Fatal("password leaked")
+	}
+	var stats obj
+	c.json(http.MethodGet, "/api/adguard/stats", nil, http.StatusOK, &stats)
+	if stats["blockedPercent"] != float64(25) {
+		t.Fatalf("adguard: %v", stats)
+	}
+
+	// --- calendar ---
+	c.do(http.MethodGet, "/api/calendar/events", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/calendar/settings", obj{"calendarUrls": []string{up.URL + "/dav/calendars/me/personal/"}, "username": "me", "password": "pw"}, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/calendar/settings", nil, http.StatusOK, nil)
+	var agenda struct {
+		Events []obj `json:"events"`
+	}
+	c.json(http.MethodGet, "/api/calendar/events?days=7", nil, http.StatusOK, &agenda)
+	if len(agenda.Events) != 1 || agenda.Events[0]["summary"] != "Dentist" {
+		t.Fatalf("calendar: %+v", agenda)
+	}
+
+	// --- password change, logout, login ---
+	var changed obj
+	c.json(http.MethodPut, "/api/auth/password", obj{"currentPassword": "e2e-password-123", "newPassword": "e2e-password-456"}, http.StatusOK, &changed)
+	c.csrf = changed["csrfToken"].(string)
+	c.do(http.MethodPost, "/api/auth/logout", nil, http.StatusNoContent)
+	c.do(http.MethodGet, "/api/dashboard", nil, http.StatusUnauthorized)
+	c.csrf = ""
+	c.do(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-123"}, http.StatusUnauthorized)
+	c.json(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-456"}, http.StatusOK, nil)
+	c.do(http.MethodGet, "/api/dashboard", nil, http.StatusOK)
+}
+
+func TestCrossSiteRequestsAreRejected(t *testing.T) {
+	srv := newTestServer(t, "http://127.0.0.1:1")
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, srv.URL+"/api/auth/login", strings.NewReader(`{"password":"x"}`))
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = res.Body.Close()
+	if res.StatusCode != http.StatusForbidden {
+		t.Fatalf("cross-site login not rejected: %d", res.StatusCode)
+	}
+}
