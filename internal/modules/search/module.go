@@ -1,6 +1,7 @@
 package search
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 
@@ -14,12 +15,17 @@ import (
 type Module struct {
 	modules.Base
 	handlers *controller.Handlers
+	seed     usecase.SeedSampleData
 }
 
 // New builds the search module.
 func New(db *sql.DB) *Module {
-	return &Module{handlers: controller.NewHandlers(usecase.NewSearcher(gateway.NewRepository(db)))}
+	repo := gateway.NewRepository(db)
+	return &Module{handlers: controller.NewHandlers(usecase.NewSearcher(repo)), seed: usecase.NewSeedSampleData(repo)}
 }
+
+// SeedSampleData implements modules.Seeder.
+func (m *Module) SeedSampleData(ctx context.Context) error { return m.seed.Execute(ctx) }
 
 // Name implements modules.Module.
 func (m *Module) Name() string { return "search" }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log/slog"
 	"time"
@@ -43,7 +44,10 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 	registry := &modules.Registry{}
 
 	authModule, err := auth.New(
-		auth.Config{CookieSecure: cfg.CookieSecure, SessionTTL: cfg.SessionTTL, SetupToken: cfg.SetupToken},
+		auth.Config{
+			CookieSecure: cfg.CookieSecure, SessionTTL: cfg.SessionTTL, SetupToken: cfg.SetupToken,
+			OnAccountCreated: func(ctx context.Context) { seedSampleData(ctx, cfg, log, registry) },
+		},
 		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, Log: log},
 	)
 	if err != nil {
@@ -68,7 +72,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids) }},
 		{"notes", func() modules.Module { return notes.New(db, clk, ids) }},
 		{"todos", func() modules.Module { return todos.New(db, clk, ids) }},
-		{"rss", func() modules.Module { return rss.New(db, client, clk, ids) }},
+		{"rss", func() modules.Module { return rss.New(db, client, clk, ids, cfg.SampleFeeds) }},
 		{"system", func() modules.Module {
 			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths}, clk)
 		}},
@@ -83,6 +87,22 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 	}
 
 	kinds := append(append([]string{}, frontendOnlyWidgetKinds...), registry.WidgetKinds()...)
-	registry.Register(dashboard.New(db, ids, kinds))
+	sample := dashboard.SampleWeather{Label: cfg.SampleWeather.Name, Lat: cfg.SampleWeather.Lat, Lon: cfg.SampleWeather.Lon}
+	registry.Register(dashboard.New(db, ids, kinds, sample))
 	return authModule, registry, nil
+}
+
+// seedSampleData fills a fresh installation with example data so new users
+// immediately see what every module can do. Failures are logged and never
+// block the setup.
+func seedSampleData(ctx context.Context, cfg config.Config, log *slog.Logger, registry *modules.Registry) {
+	if !cfg.SampleData {
+		return
+	}
+	for name, s := range registry.Seeders() {
+		if err := s.SeedSampleData(ctx); err != nil {
+			log.WarnContext(ctx, "could not create sample data", "module", name, "err", err)
+		}
+	}
+	log.InfoContext(ctx, "sample data created", "modules", len(registry.Seeders()))
 }

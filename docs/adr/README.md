@@ -13,3 +13,4 @@ that supersedes the old one.
 | [0005](0005-single-user-auth.md)            | Single-user auth with setup token and sessions| Accepted |
 | [0006](0006-background-jobs-cache-aside.md) | Background jobs and cache-aside for integrations | Accepted |
 | [0007](0007-own-dashboard-grid.md)          | Own grid implementation for the dashboard     | Accepted |
+| [0008](0008-sample-data-on-setup.md)        | Sample data after the first setup             | Accepted |

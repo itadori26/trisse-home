@@ -29,6 +29,18 @@ type Config struct {
 	// SetupToken authorises the first setup. If empty, a random token is
 	// generated at start and written to the log.
 	SetupToken string
+	// OnAccountCreated runs after the first-run setup; may be nil.
+	OnAccountCreated func(ctx context.Context)
+}
+
+// observerFunc adapts a function to usecase.SetupObserver.
+type observerFunc func(ctx context.Context)
+
+// AccountCreated implements usecase.SetupObserver.
+func (f observerFunc) AccountCreated(ctx context.Context) {
+	if f != nil {
+		f(ctx)
+	}
 }
 
 // Deps are the infrastructure services the module needs.
@@ -71,7 +83,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 	status := usecase.NewGetStatus(accounts, sessions, d.Clock)
 	uc := controller.UseCases{
 		Status:         status,
-		Setup:          usecase.NewSetupAccount(deps, gateway.NewSetupToken(token)),
+		Setup:          usecase.NewSetupAccount(deps, gateway.NewSetupToken(token), observerFunc(cfg.OnAccountCreated)),
 		Login:          usecase.NewLogin(deps),
 		Logout:         usecase.NewLogout(sessions),
 		Authenticate:   usecase.NewAuthenticate(sessions, d.Clock, ttl),

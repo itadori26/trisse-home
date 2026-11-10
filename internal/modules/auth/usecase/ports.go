@@ -88,6 +88,12 @@ type SetupTokenVerifier interface {
 	Verify(token string) bool
 }
 
+// SetupObserver is notified once the account has been created, e.g. to fill
+// the installation with sample data. It must not fail the setup.
+type SetupObserver interface {
+	AccountCreated(ctx context.Context)
+}
+
 // AttemptLimiter throttles repeated failed attempts per key (client IP).
 type AttemptLimiter interface {
 	Allow(key string, now time.Time) bool

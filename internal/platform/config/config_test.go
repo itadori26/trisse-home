@@ -51,6 +51,16 @@ func TestDiskPathsKeepCase(t *testing.T) {
 	}
 }
 
+func TestSampleSettings(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "SAMPLE_WEATHER_LOCATION": "Oldenburg, 53.14, 8.21"}))
+	if err != nil || !cfg.SampleData || cfg.SampleWeather != (SampleLocation{Name: "Oldenburg", Lat: 53.14, Lon: 8.21}) || len(cfg.SampleFeeds) != 2 {
+		t.Fatalf("unexpected %+v %v", cfg, err)
+	}
+	if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "SAMPLE_WEATHER_LOCATION": "Nowhere,100,0"})); err == nil {
+		t.Fatal("expected error for invalid coordinates")
+	}
+}
+
 func TestDisabledModules(t *testing.T) {
 	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "MODULES_DISABLED": "Docker, adguard"}))
 	if err != nil {

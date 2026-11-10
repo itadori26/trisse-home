@@ -11,6 +11,8 @@
   let { rss, config }: Props = $props();
 
   const POLL_MS = 5 * 60 * 1000;
+  /** Poll faster while the list is empty, e.g. right after feeds were added. */
+  const EMPTY_POLL_MS = 15_000;
   const cfg = $derived(parseRssConfig(config));
   let items = $state<FeedItem[]>([]);
   let error = $state('');
@@ -28,9 +30,13 @@
 
   $effect(() => {
     void cfg;
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      await load();
+      timer = setTimeout(tick, items.length === 0 ? EMPTY_POLL_MS : POLL_MS);
+    };
+    tick();
+    return () => clearTimeout(timer);
   });
 
   async function open(item: FeedItem) {

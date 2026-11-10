@@ -37,6 +37,18 @@ type Config struct {
 	HostProcPath    string
 	HostSysPath     string
 	DiskPaths       []string
+	// SampleData fills a fresh installation with example widgets and data.
+	SampleData bool
+	// SampleWeather is the location of the example weather widget.
+	SampleWeather SampleLocation
+	// SampleFeeds are subscribed as example RSS feeds.
+	SampleFeeds []string
+}
+
+// SampleLocation is a named coordinate.
+type SampleLocation struct {
+	Name     string
+	Lat, Lon float64
 }
 
 // ModuleEnabled reports whether the module with the given name is enabled.
@@ -65,6 +77,9 @@ func Load(getenv func(string) string) (Config, error) {
 		HostProcPath:    l.str("HOST_PROC", "/proc"),
 		HostSysPath:     l.str("HOST_SYS", "/sys"),
 		DiskPaths:       l.rawList("SYSTEM_DISK_PATHS", "/"),
+		SampleData:      l.boolean("SAMPLE_DATA", true),
+		SampleWeather:   l.location("SAMPLE_WEATHER_LOCATION", "Berlin,52.52,13.41"),
+		SampleFeeds:     l.rawList("SAMPLE_FEEDS", "https://go.dev/blog/feed.atom,https://hnrss.org/frontpage"),
 	}
 	if len(cfg.AllowedCIDRs) == 0 && l.getenv("ALLOWED_CIDRS") != "" {
 		l.fail("ALLOWED_CIDRS", "must contain at least one CIDR")
@@ -157,6 +172,22 @@ func (l *loader) prefixes(key, def string) []netip.Prefix {
 		out = append(out, p.Masked())
 	}
 	return out
+}
+
+// location parses "Name,lat,lon".
+func (l *loader) location(key, def string) SampleLocation {
+	parts := strings.Split(l.str(key, def), ",")
+	if len(parts) != 3 {
+		l.fail(key, `must look like "Berlin,52.52,13.41"`)
+		return SampleLocation{}
+	}
+	lat, errLat := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+	lon, errLon := strconv.ParseFloat(strings.TrimSpace(parts[2]), 64)
+	if errLat != nil || errLon != nil || lat < -90 || lat > 90 || lon < -180 || lon > 180 {
+		l.fail(key, "contains invalid coordinates")
+		return SampleLocation{}
+	}
+	return SampleLocation{Name: strings.TrimSpace(parts[0]), Lat: lat, Lon: lon}
 }
 
 func (l *loader) secretKey(key string) []byte {

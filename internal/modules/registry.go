@@ -41,6 +41,13 @@ type Module interface {
 	WidgetKinds() []string
 }
 
+// Seeder is implemented by modules that can fill a fresh installation with
+// sample data. SeedSampleData must be idempotent: it only adds data when the
+// module has none yet, so a reset and a second setup create no duplicates.
+type Seeder interface {
+	SeedSampleData(ctx context.Context) error
+}
+
 // Base provides no-op defaults so modules only implement what they need.
 type Base struct{}
 
@@ -74,6 +81,17 @@ func (r *Registry) Names() []string {
 		names = append(names, m.Name())
 	}
 	return names
+}
+
+// Seeders returns all registered modules that provide sample data.
+func (r *Registry) Seeders() map[string]Seeder {
+	out := map[string]Seeder{}
+	for _, m := range r.modules {
+		if s, ok := m.(Seeder); ok {
+			out[m.Name()] = s
+		}
+	}
+	return out
 }
 
 // WidgetKinds returns every widget kind backed by a registered module.

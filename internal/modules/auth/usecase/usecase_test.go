@@ -27,13 +27,17 @@ func TestSetupAccount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uc := NewSetupAccount(tt.env.deps, staticSetupToken("setup-secret"))
+			obs := &countingObserver{}
+			uc := NewSetupAccount(tt.env.deps, staticSetupToken("setup-secret"), obs)
 			res, err := uc.Execute(ctx, SetupRequest{SetupToken: tt.token, Password: tt.pw, ClientKey: "ip"})
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("err = %v, want %v", err, tt.wantErr)
 			}
 			if tt.wantErr == nil && (res.SessionToken == "" || len(tt.env.sessions.byHash) != 1) {
 				t.Fatal("expected a session to be issued")
+			}
+			if wantCalls := map[bool]int{true: 1, false: 0}[tt.wantErr == nil]; obs.calls != wantCalls {
+				t.Fatalf("observer called %d times, want %d", obs.calls, wantCalls)
 			}
 		})
 	}

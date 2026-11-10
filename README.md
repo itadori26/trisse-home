@@ -76,6 +76,12 @@ Open `http://<server-ip>:8090`, enter the setup token from the log and choose
 a password (at least 12 characters). The token is only valid until the
 account exists.
 
+After the setup the start page is filled with **sample data**: a *Home* tab
+with search, clock, weather, to-dos, a welcome note, bookmarks, news and
+calendar, and a *Server* tab with service tiles, host metrics, Docker and
+AdGuard Home. Delete or change whatever you like; set `SAMPLE_DATA=false` to
+start with an almost empty page instead.
+
 **Updating:** `git pull && sudo docker compose build && sudo docker compose up -d`
 
 **Backup:** the data lives in the Docker volume `trisse-home-data`
@@ -119,6 +125,9 @@ service tiles are configured in the web interface.
 | `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
 | `DATABASE_PATH`     | `/data/trisse-home.db`            | SQLite file.                                                                  |
 | `SHUTDOWN_TIMEOUT`  | `15s`                             | Grace period for in-flight requests.                                          |
+| `SAMPLE_DATA`       | `true`                            | Fill a fresh installation with example widgets and data after setup.         |
+| `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
+| `SAMPLE_FEEDS`      | Go Blog, Hacker News              | Example feeds, comma separated.                                              |
 
 ### Security model
 
@@ -208,7 +217,9 @@ Example: a `quotes` module that shows a random quote.
 6. **Module** – `internal/modules/quotes/module.go`: embed `modules.Base`,
    build gateway → use cases → handlers in `New(...)` and implement `Name`,
    `Migrations`, `RegisterRoutes` (use `r.Protected` for everything that
-   needs a session), `Jobs` and `WidgetKinds` as needed.
+   needs a session), `Jobs` and `WidgetKinds` as needed. Optionally
+   implement `modules.Seeder` with an idempotent sample-data use case and
+   add the widget to `SampleLayout` in the dashboard module.
 7. **Composition root** – add the module to the `optional` list in
    `cmd/server/modules.go` and to the module list in `.env.example`.
 8. **Types** – add the presenter (and controller `dto.go`) packages to

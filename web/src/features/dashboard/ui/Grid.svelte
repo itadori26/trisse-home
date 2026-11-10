@@ -127,12 +127,21 @@
     border-radius: 0 0 var(--radius) 0;
     cursor: nwse-resize;
   }
+  /* On phones widgets are stacked and sized by their content: the desktop
+     height is the minimum, long lists are capped and scroll. */
   @media (max-width: 720px) {
     .grid {
       grid-template-columns: 1fr;
+      grid-auto-rows: auto;
     }
     .cell {
-      grid-area: auto / 1 / span var(--span, 4) / -1 !important;
+      grid-area: auto !important;
+      min-height: calc(var(--span, 4) * (var(--row-height) + var(--gap)) - var(--gap));
+      max-height: 70vh;
+      display: flex;
+    }
+    .cell > :global(*) {
+      flex: 1;
     }
   }
 </style>

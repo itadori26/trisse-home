@@ -111,6 +111,10 @@ func (l *fakeLimiter) Allow(k string, _ time.Time) bool    { return l.failures[k
 func (l *fakeLimiter) RecordFailure(k string, _ time.Time) { l.failures[k]++ }
 func (l *fakeLimiter) Reset(k string)                      { delete(l.failures, k) }
 
+type countingObserver struct{ calls int }
+
+func (o *countingObserver) AccountCreated(context.Context) { o.calls++ }
+
 type env struct {
 	deps     Deps
 	accounts *fakeAccounts

@@ -1,7 +1,9 @@
 package dashboard
 
 import (
+	"context"
 	"database/sql"
+	"encoding/json"
 	"io/fs"
 
 	"trisse-home/internal/modules"
@@ -15,17 +17,29 @@ import (
 type Module struct {
 	modules.Base
 	handlers *controller.Handlers
+	seed     usecase.SeedSampleData
+}
+
+// SampleWeather is the location of the example weather widget.
+type SampleWeather struct {
+	Label    string
+	Lat, Lon float64
 }
 
 // New builds the dashboard module. widgetKinds lists the widget kinds of all
 // enabled modules.
-func New(db *sql.DB, ids kernel.IDGenerator, widgetKinds []string) *Module {
+func New(db *sql.DB, ids kernel.IDGenerator, widgetKinds []string, weather SampleWeather) *Module {
 	repo := gateway.NewRepository(db)
 	deps := usecase.Deps{Tabs: repo, Widgets: repo, Kinds: gateway.NewKindCatalog(widgetKinds), IDs: ids}
-	return &Module{handlers: controller.NewHandlers(
-		usecase.NewGetDashboard(deps), usecase.NewManageTabs(deps), usecase.NewManageWidgets(deps),
-	)}
+	weatherConfig, _ := json.Marshal(map[string]any{"lat": weather.Lat, "lon": weather.Lon, "label": weather.Label, "days": 4}) // plain map, cannot fail
+	return &Module{
+		handlers: controller.NewHandlers(usecase.NewGetDashboard(deps), usecase.NewManageTabs(deps), usecase.NewManageWidgets(deps)),
+		seed:     usecase.NewSeedSampleData(deps, usecase.SampleLayout(string(weatherConfig))),
+	}
 }
+
+// SeedSampleData implements modules.Seeder.
+func (m *Module) SeedSampleData(ctx context.Context) error { return m.seed.Execute(ctx) }
 
 // Name implements modules.Module.
 func (m *Module) Name() string { return "dashboard" }

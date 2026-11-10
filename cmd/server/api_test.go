@@ -120,7 +120,7 @@ func (c *client) json(method, path string, body any, wantStatus int, dst any) {
 
 type obj = map[string]any
 
-func newTestServer(t *testing.T, upstream string) *httptest.Server {
+func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) *httptest.Server {
 	t.Helper()
 	key := make([]byte, config.SecretKeyBytes)
 	_, _ = rand.Read(key)
@@ -130,6 +130,9 @@ func newTestServer(t *testing.T, upstream string) *httptest.Server {
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
+	}
+	for _, o := range opts {
+		o(&cfg)
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	a, err := build(context.Background(), cfg, log)
@@ -342,5 +345,88 @@ func TestCrossSiteRequestsAreRejected(t *testing.T) {
 	_ = res.Body.Close()
 	if res.StatusCode != http.StatusForbidden {
 		t.Fatalf("cross-site login not rejected: %d", res.StatusCode)
+	}
+}
+
+func TestSampleDataAfterSetup(t *testing.T) {
+	up := fakeUpstream(t)
+	srv := newTestServer(t, up.URL, func(c *config.Config) {
+		c.SampleData = true
+		c.SampleFeeds = []string{up.URL + "/feed"}
+		c.SampleWeather = config.SampleLocation{Name: "Oldenburg", Lat: 53.14, Lon: 8.21}
+	})
+	c := newClient(t, srv.URL)
+	var session obj
+	c.json(http.MethodPost, "/api/auth/setup", obj{"setupToken": "e2e-setup-token-0123", "password": "e2e-password-123"}, http.StatusOK, &session)
+	c.csrf = session["csrfToken"].(string)
+
+	var dash struct {
+		Tabs []struct {
+			Name    string `json:"name"`
+			Widgets []struct {
+				Kind   string `json:"kind"`
+				Config obj    `json:"config"`
+			} `json:"widgets"`
+		} `json:"tabs"`
+	}
+	c.json(http.MethodGet, "/api/dashboard", nil, http.StatusOK, &dash)
+	if len(dash.Tabs) != 2 || dash.Tabs[0].Name != "Home" || dash.Tabs[1].Name != "Server" {
+		t.Fatalf("unexpected tabs %+v", dash.Tabs)
+	}
+	kinds := map[string]obj{}
+	for _, tab := range dash.Tabs {
+		for _, w := range tab.Widgets {
+			kinds[w.Kind] = w.Config
+		}
+	}
+	for _, k := range []string{"search", "clock", "weather", "todos", "notes", "bookmarks", "rss", "calendar", "services", "system", "docker", "adguard"} {
+		if _, ok := kinds[k]; !ok {
+			t.Errorf("sample dashboard lacks widget %q", k)
+		}
+	}
+	if kinds["weather"]["label"] != "Oldenburg" {
+		t.Errorf("weather widget not configured: %v", kinds["weather"])
+	}
+
+	var notes []obj
+	c.json(http.MethodGet, "/api/notes?pinned=true", nil, http.StatusOK, &notes)
+	var todos []obj
+	c.json(http.MethodGet, "/api/todos", nil, http.StatusOK, &todos)
+	var bookmarks struct {
+		Bookmarks []obj `json:"bookmarks"`
+		Folders   []obj `json:"folders"`
+	}
+	c.json(http.MethodGet, "/api/bookmarks", nil, http.StatusOK, &bookmarks)
+	var services []obj
+	c.json(http.MethodGet, "/api/services", nil, http.StatusOK, &services)
+	if len(notes) != 1 || len(todos) != 4 || len(bookmarks.Bookmarks) != 6 || len(bookmarks.Folders) != 2 || len(services) != 3 {
+		t.Fatalf("sample data incomplete: notes=%d todos=%d bookmarks=%d folders=%d services=%d",
+			len(notes), len(todos), len(bookmarks.Bookmarks), len(bookmarks.Folders), len(services))
+	}
+	c.do(http.MethodGet, "/api/search?q=!maps+Berlin", nil, http.StatusFound)
+
+	// The example feed is fetched in the background right after setup.
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		var items []obj
+		c.json(http.MethodGet, "/api/rss/items", nil, http.StatusOK, &items)
+		if len(items) == 2 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("sample feed not fetched, %d items", len(items))
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+func TestSampleDataCanBeDisabled(t *testing.T) {
+	srv := newTestServer(t, "http://127.0.0.1:1") // SampleData is false in the base config
+	c := newClient(t, srv.URL)
+	c.json(http.MethodPost, "/api/auth/setup", obj{"setupToken": "e2e-setup-token-0123", "password": "e2e-password-123"}, http.StatusOK, nil)
+	var notes []obj
+	c.json(http.MethodGet, "/api/notes", nil, http.StatusOK, &notes)
+	if len(notes) != 0 {
+		t.Fatalf("expected no sample data, got %d notes", len(notes))
 	}
 }

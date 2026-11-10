@@ -1,6 +1,7 @@
 package bookmarks
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 
@@ -15,12 +16,16 @@ import (
 type Module struct {
 	modules.Base
 	handlers *controller.Handlers
+	seed     usecase.SeedSampleData
 }
+
+// SeedSampleData implements modules.Seeder.
+func (m *Module) SeedSampleData(ctx context.Context) error { return m.seed.Execute(ctx) }
 
 // New builds the bookmarks module.
 func New(db *sql.DB, clock kernel.Clock, ids kernel.IDGenerator) *Module {
 	d := usecase.Deps{Repo: gateway.NewRepository(db), Clock: clock, IDs: ids}
-	return &Module{handlers: controller.NewHandlers(controller.UseCases{
+	return &Module{seed: usecase.NewSeedSampleData(d), handlers: controller.NewHandlers(controller.UseCases{
 		List: usecase.NewListBookmarks(d), Create: usecase.NewCreateBookmark(d), Update: usecase.NewUpdateBookmark(d),
 		Delete: usecase.NewDeleteBookmark(d), CreateFolder: usecase.NewCreateFolder(d),
 		RenameFolder: usecase.NewRenameFolder(d), DeleteFolder: usecase.NewDeleteFolder(d),

@@ -31,7 +31,7 @@ export default defineConfig({
       SETUP_TOKEN: setupToken,
       ALLOWED_CIDRS: '127.0.0.0/8',
       LOG_LEVEL: 'warn',
-      MODULES_DISABLED: 'docker,system,adguard,calendar,rss,weather',
+      MODULES_DISABLED: 'docker,adguard,calendar,rss,weather',
     },
   },
 });

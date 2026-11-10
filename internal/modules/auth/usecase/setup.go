@@ -23,13 +23,15 @@ func (d Deps) issuer() sessionIssuer {
 }
 
 type setupAccount struct {
-	deps  Deps
-	setup SetupTokenVerifier
+	deps     Deps
+	setup    SetupTokenVerifier
+	observer SetupObserver
 }
 
-// NewSetupAccount returns the SetupAccount use case.
-func NewSetupAccount(deps Deps, setup SetupTokenVerifier) SetupAccount {
-	return &setupAccount{deps: deps, setup: setup}
+// NewSetupAccount returns the SetupAccount use case; observer is notified
+// after the account was created.
+func NewSetupAccount(deps Deps, setup SetupTokenVerifier, observer SetupObserver) SetupAccount {
+	return &setupAccount{deps: deps, setup: setup, observer: observer}
 }
 
 // Execute implements SetupAccount. The setup token prevents anyone else in
@@ -66,5 +68,6 @@ func (uc *setupAccount) Execute(ctx context.Context, req SetupRequest) (SessionR
 		return SessionResponse{}, err
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
+	uc.observer.AccountCreated(ctx)
 	return uc.deps.issuer().issue(ctx)
 }

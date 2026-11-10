@@ -29,16 +29,33 @@ type Deps struct {
 type Module struct {
 	modules.Base
 	uc       usecase.Services
+	seed     usecase.SeedSampleData
 	handlers *controller.Handlers
 }
 
 // New builds the services module.
 func New(d Deps) *Module {
-	uc := usecase.NewServices(usecase.Deps{
+	deps := usecase.Deps{
 		Repo: gateway.NewRepository(d.DB), Status: gateway.NewStatusStore(),
 		Checker: gateway.NewHTTPChecker(d.Client, d.InsecureClient), Clock: d.Clock, IDs: d.IDs,
-	})
-	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
+	}
+	uc := usecase.NewServices(deps)
+	return &Module{uc: uc, seed: usecase.NewSeedSampleData(deps), handlers: controller.NewHandlers(uc)}
+}
+
+// SeedSampleData implements modules.Seeder. The example tiles are checked in
+// the background so they show their status right away without delaying setup.
+func (m *Module) SeedSampleData(ctx context.Context) error {
+	created, err := m.seed.Execute(ctx)
+	if err != nil || !created {
+		return err
+	}
+	go func() {
+		bg, cancel := context.WithTimeout(context.WithoutCancel(ctx), checkInterval)
+		defer cancel()
+		_ = m.uc.CheckAll(bg) // failures show up as offline tiles and are retried by the job
+	}()
+	return nil
 }
 
 // Name implements modules.Module.
