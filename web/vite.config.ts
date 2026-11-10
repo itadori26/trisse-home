@@ -7,7 +7,8 @@ const backend = process.env.BACKEND_URL ?? 'http://127.0.0.1:8090';
 export default defineConfig({
   plugins: [svelte()],
   build: {
-    outDir: 'dist',
+    // The Go binary embeds the build output via internal/platform/webui.
+    outDir: '../internal/platform/webui/dist',
     emptyOutDir: true,
     sourcemap: false,
   },

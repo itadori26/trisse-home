@@ -94,6 +94,8 @@ linters:
             - pkg: trisse-home/internal/modules/
               desc: "the platform must not know concrete modules"
   exclusions:
+    paths:
+      - web/
     presets:
       - std-error-handling
     rules:

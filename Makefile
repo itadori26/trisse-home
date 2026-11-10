@@ -48,7 +48,7 @@ cover: ## Go test coverage report
 	go tool cover -func=coverage.out | tail -1
 
 .PHONY: build-web
-build-web: ## Build the frontend into web/dist
+build-web: ## Build the frontend into internal/platform/webui/dist
 	cd $(WEB) && npm run build
 
 .PHONY: build
@@ -85,4 +85,4 @@ logs: ## Follow the application logs
 
 .PHONY: clean
 clean: ## Remove build output
-	rm -rf bin coverage.out $(WEB)/dist/assets $(WEB)/dist/index.html
+	rm -rf bin coverage.out internal/platform/webui/dist/assets internal/platform/webui/dist/index.html

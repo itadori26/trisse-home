@@ -7,8 +7,8 @@ data/
 
 # Build output
 /bin/
-web/dist/*
-!web/dist/.gitkeep
+internal/platform/webui/dist/*
+!internal/platform/webui/dist/.gitkeep
 coverage.out
 
 # Frontend tooling

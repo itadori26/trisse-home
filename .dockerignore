@@ -4,7 +4,7 @@
 data
 docs
 **/node_modules
-web/dist
+internal/platform/webui/dist
 web/test-results
 web/playwright-report
 *.md

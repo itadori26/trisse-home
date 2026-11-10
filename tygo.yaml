@@ -15,3 +15,22 @@ packages:
   - path: "trisse-home/internal/modules/auth/adapter/controller"
     output_path: "web/src/shared/api-client/generated/auth-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/dashboard/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/dashboard.ts"
+  - path: "trisse-home/internal/modules/dashboard/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/dashboard-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/appearance/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/appearance.ts"
+  - path: "trisse-home/internal/modules/search/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/search.ts"
+  - path: "trisse-home/internal/modules/search/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/search-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/weather/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/weather.ts"
+  - path: "trisse-home/internal/modules/services/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/services.ts"
+  - path: "trisse-home/internal/modules/services/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/services-requests.ts"
+    include_files: ["dto.go"]

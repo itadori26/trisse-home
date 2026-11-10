@@ -1,0 +1,49 @@
+package weather
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"trisse-home/internal/modules"
+	"trisse-home/internal/modules/weather/adapter/controller"
+	"trisse-home/internal/modules/weather/adapter/gateway"
+	"trisse-home/internal/modules/weather/usecase"
+	"trisse-home/internal/shared/kernel"
+)
+
+// refreshInterval keeps cached forecasts fresh; Open-Meteo updates hourly.
+const refreshInterval = 15 * time.Minute
+
+// Module wires the weather rings and implements modules.Module.
+type Module struct {
+	modules.Base
+	uc       usecase.Weather
+	handlers *controller.Handlers
+}
+
+// New builds the weather module. client is used for Open-Meteo requests.
+func New(client *http.Client, clock kernel.Clock) *Module {
+	provider := gateway.NewOpenMeteo(client, gateway.DefaultForecastURL, gateway.DefaultGeocodingURL, "en")
+	uc := usecase.NewWeather(provider, gateway.NewMemoryCache(), clock)
+	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
+}
+
+// Name implements modules.Module.
+func (m *Module) Name() string { return "weather" }
+
+// WidgetKinds implements modules.Module.
+func (m *Module) WidgetKinds() []string { return []string{"weather"} }
+
+// RegisterRoutes implements modules.Module.
+func (m *Module) RegisterRoutes(r modules.Router) {
+	r.Protected("GET /api/weather", m.handlers.Forecast)
+	r.Protected("GET /api/weather/places", m.handlers.Places)
+}
+
+// Jobs implements modules.Module.
+func (m *Module) Jobs() []modules.Job {
+	return []modules.Job{{Name: "weather.refresh", Interval: refreshInterval, Run: func(ctx context.Context) error {
+		return m.uc.RefreshAll(ctx)
+	}}}
+}

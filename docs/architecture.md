@@ -27,7 +27,7 @@ flowchart LR
 | Entities             | `internal/modules/<m>/domain`, `internal/shared/kernel`          | standard library (no I/O), kernel        |
 | Use Cases            | `internal/modules/<m>/usecase`                                   | own domain, kernel                       |
 | Interface Adapters   | `internal/modules/<m>/adapter/{controller,presenter,gateway}`, `internal/shared/{httpapi,sqlutil}`, `internal/modules` (registry) | own usecase/domain, shared adapter helpers, third-party clients |
-| Frameworks & Drivers | `internal/platform/*`, `cmd/server`, `web`                       | everything                               |
+| Frameworks & Drivers | `internal/platform/*` (incl. `webui` with the embedded SPA), `cmd/server`                       | everything                               |
 
 **Dependency rule:** source code dependencies point inwards only. No inner
 ring knows names, types or functions of an outer ring. Additional rules:

@@ -15,6 +15,8 @@ export default defineConfig({
   testDir: 'e2e',
   timeout: 30_000,
   retries: 0,
+  workers: 1,
+  fullyParallel: false,
   reporter: 'list',
   use: { baseURL: `http://127.0.0.1:${port}`, trace: 'retain-on-failure' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
@@ -29,7 +31,7 @@ export default defineConfig({
       SETUP_TOKEN: setupToken,
       ALLOWED_CIDRS: '127.0.0.0/8',
       LOG_LEVEL: 'warn',
-      MODULES_DISABLED: 'docker,system,adguard,calendar,rss,weather,services',
+      MODULES_DISABLED: 'docker,system,adguard,calendar,rss,weather',
     },
   },
 });

@@ -3,6 +3,7 @@
 # Stage 1: build the Svelte single-page application.
 FROM node:26.13.0-alpine AS web
 WORKDIR /src/web
+RUN mkdir -p ../internal/platform/webui
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY web/ ./
@@ -15,8 +16,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
-COPY web/embed.go ./web/embed.go
-COPY --from=web /src/web/dist ./web/dist
+COPY --from=web /src/internal/platform/webui/dist ./internal/platform/webui/dist
 ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/trisse-home ./cmd/server \
     && mkdir -p /out/data

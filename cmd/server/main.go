@@ -30,7 +30,7 @@ import (
 	"trisse-home/internal/platform/router"
 	"trisse-home/internal/platform/scheduler"
 	"trisse-home/internal/platform/spa"
-	"trisse-home/web"
+	"trisse-home/internal/platform/webui"
 )
 
 // version is set at build time via -ldflags "-X main.version=...".
@@ -117,7 +117,7 @@ func serve() error {
 	}
 	r.Protected("GET /api/modules", a.registry.Handler(frontendOnlyWidgetKinds))
 	r.Handle("GET /healthz", router.HealthCheck(a.db.PingContext))
-	r.Handle("/", spa.Handler(web.Dist()))
+	r.Handle("/", spa.Handler(webui.Dist()))
 
 	handler := middleware.Chain(r,
 		middleware.Recover(a.log),
@@ -177,4 +177,4 @@ func healthcheck() error {
 }
 
 // ensure the embedded frontend satisfies fs.FS at compile time.
-var _ fs.FS = web.Dist()
+var _ fs.FS = webui.Dist()

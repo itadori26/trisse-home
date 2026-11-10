@@ -1,8 +1,9 @@
-// Package web embeds the compiled single-page application (web/dist) into the
-// Go binary.
+// Package webui embeds the compiled single-page application into the Go
+// binary. Vite writes the build output (from web/) into the dist directory
+// next to this file.
 //
 // Ring: Frameworks & Drivers.
-package web
+package webui
 
 import (
 	"embed"

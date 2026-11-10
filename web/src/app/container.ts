@@ -3,13 +3,26 @@
  * and the use cases, and hands them to the UI. Nothing else instantiates
  * adapters, so features stay independent of each other.
  */
+import { AppearanceApi, AppearanceUseCases } from '../features/appearance';
 import { AuthApi, AuthUseCases } from '../features/auth';
+import { DashboardApi, DashboardUseCases } from '../features/dashboard';
+import { SearchApi, SearchUseCases } from '../features/search';
+import { ServicesApi, ServicesUseCases } from '../features/services';
+import { WeatherApi, WeatherUseCases } from '../features/weather';
+import type { InfoResponse } from '../shared/api-client/generated/modules';
 import { FetchHttpClient } from '../shared/api-client/http';
 
 /** All use cases available to the UI. */
 export interface Container {
   http: FetchHttpClient;
   auth: AuthUseCases;
+  dashboard: DashboardUseCases;
+  appearance: AppearanceUseCases;
+  search: SearchUseCases;
+  weather: WeatherUseCases;
+  services: ServicesUseCases;
+  /** Loads which backend modules and widget kinds are enabled. */
+  enabledModules(): Promise<{ modules: Set<string>; widgetKinds: Set<string> }>;
 }
 
 /** Builds the container. `onUnauthorized` fires when the session expired. */
@@ -18,5 +31,14 @@ export function createContainer(onUnauthorized: () => void): Container {
   return {
     http,
     auth: new AuthUseCases(new AuthApi(http), http),
+    dashboard: new DashboardUseCases(new DashboardApi(http)),
+    appearance: new AppearanceUseCases(new AppearanceApi(http)),
+    search: new SearchUseCases(new SearchApi(http)),
+    weather: new WeatherUseCases(new WeatherApi(http)),
+    services: new ServicesUseCases(new ServicesApi(http)),
+    async enabledModules() {
+      const info = await http.get<InfoResponse>('/api/modules');
+      return { modules: new Set(info.modules), widgetKinds: new Set(info.widgetKinds) };
+    },
   };
 }
