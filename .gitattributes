@@ -1,0 +1,3 @@
+# Exclude generated files from the language statistics and diffs.
+web/src/shared/api-client/generated/** linguist-generated=true
+web/package-lock.json linguist-generated=true
