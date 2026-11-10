@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps AdGuard responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * SettingsDTO is returned by GET/PUT /api/adguard/settings. The password is

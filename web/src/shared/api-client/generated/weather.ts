@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps weather responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * DayDTO is one forecast day.

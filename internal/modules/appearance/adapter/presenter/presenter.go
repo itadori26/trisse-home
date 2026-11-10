@@ -1,6 +1,3 @@
-// Package presenter maps appearance responses to JSON DTOs.
-//
-// Ring: Interface Adapters.
 package presenter
 
 import "trisse-home/internal/modules/appearance/usecase"

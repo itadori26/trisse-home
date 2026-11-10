@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps appearance responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * AppearanceDTO is returned by GET/PUT /api/appearance and is also the body

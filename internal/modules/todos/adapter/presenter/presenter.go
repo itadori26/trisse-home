@@ -1,6 +1,3 @@
-// Package presenter maps to-do responses to JSON DTOs.
-//
-// Ring: Interface Adapters.
 package presenter
 
 import "trisse-home/internal/modules/todos/usecase"

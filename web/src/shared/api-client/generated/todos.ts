@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps to-do responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * TodoDTO is a to-do in API responses. Due is a date (YYYY-MM-DD) or "".

@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps notes responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * NoteDTO is a note in API responses.

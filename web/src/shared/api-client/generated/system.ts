@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps system snapshots to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * UsageDTO is a used/total pair in bytes with the percentage.

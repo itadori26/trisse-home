@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps calendar responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * SettingsDTO is returned by GET/PUT /api/calendar/settings; the password is never returned.

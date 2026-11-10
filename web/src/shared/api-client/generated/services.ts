@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps services responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * ServiceDTO is a service tile with its status.

@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps dashboard use case responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * DashboardDTO is returned by GET /api/dashboard.

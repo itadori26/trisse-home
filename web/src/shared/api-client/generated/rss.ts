@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps feed reader responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * FeedDTO is a subscribed feed.

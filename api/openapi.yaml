@@ -1,0 +1,938 @@
+openapi: 3.1.0
+info:
+  title: trisse-home API
+  version: 1.0.0
+  summary: JSON API of trisse-home, a self-hosted personal start page.
+  description: |
+    All endpoints below `/api/` except the ones marked as public require a
+    session cookie (`trisse_session`, or `__Host-trisse_session` when
+    `COOKIE_SECURE=true`). State-changing requests (POST, PUT, PATCH, DELETE)
+    additionally require the session's CSRF token in the `X-CSRF-Token`
+    header; it is returned by login, setup and `GET /api/auth/status`.
+    Cross-site requests are rejected (Sec-Fetch-Site / Origin checks).
+
+    Errors use a common envelope (`ErrorBody`). Validation errors are
+    returned as 422 with the offending `field`.
+
+    Endpoints of modules disabled via `MODULES_DISABLED` return 404.
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8090
+security:
+  - session: []
+tags:
+  - name: auth
+  - name: dashboard
+  - name: appearance
+  - name: search
+  - name: weather
+  - name: services
+  - name: bookmarks
+  - name: notes
+  - name: todos
+  - name: rss
+  - name: system
+  - name: docker
+  - name: adguard
+  - name: calendar
+  - name: platform
+
+paths:
+  /healthz:
+    get:
+      tags: [platform]
+      summary: Health check (database reachable)
+      security: []
+      responses:
+        "200": { description: Healthy, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: Database unavailable }
+  /api/modules:
+    get:
+      tags: [platform]
+      summary: Enabled modules and widget kinds
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ModulesInfo" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ---------------------------------------------------------------- auth
+  /api/auth/status:
+    get:
+      tags: [auth]
+      summary: Setup and login state of the caller (public)
+      security: []
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AuthStatus" } } } }
+  /api/auth/setup:
+    post:
+      tags: [auth]
+      summary: Create the account with the setup token from the server log (public)
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SetupRequest" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { description: Invalid setup token, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "409": { description: Already set up, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Log in (public, rate limited per client IP)
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LoginRequest" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { description: Setup required, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: End the current session
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Logged out }
+  /api/auth/password:
+    put:
+      tags: [auth]
+      summary: Change the password and sign out all other sessions
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ChangePasswordRequest" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  # ---------------------------------------------------------------- dashboard
+  /api/dashboard:
+    get:
+      tags: [dashboard]
+      summary: All tabs with their widgets (creates a default tab on first use)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Dashboard" } } } }
+  /api/dashboard/tabs:
+    post:
+      tags: [dashboard]
+      summary: Create a tab
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TabName" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/order:
+    put:
+      tags: [dashboard]
+      summary: Reorder tabs (must list every tab once)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TabOrder" } } } }
+      responses:
+        "204": { description: Saved }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    patch:
+      tags: [dashboard]
+      summary: Rename a tab
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TabName" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [dashboard]
+      summary: Delete a tab and its widgets
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: The last tab cannot be deleted, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/dashboard/tabs/{id}/widgets:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [dashboard]
+      summary: Add a widget to a tab
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AddWidget" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Widget" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}/layout:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Store widget positions of a tab
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Layout" } } } }
+      responses:
+        "204": { description: Saved }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/widgets/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    patch:
+      tags: [dashboard]
+      summary: Replace a widget's configuration
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WidgetConfig" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Widget" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [dashboard]
+      summary: Remove a widget
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------------------------------------------------------------- appearance
+  /api/appearance:
+    get:
+      tags: [appearance]
+      summary: Visual preferences
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Appearance" } } } }
+    put:
+      tags: [appearance]
+      summary: Save visual preferences
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Appearance" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Appearance" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  # ---------------------------------------------------------------- search
+  /api/search:
+    get:
+      tags: [search]
+      summary: Redirect to the search result page (custom shortcuts, URLs, default provider)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, maxLength: 1000 } }
+      responses:
+        "302": { description: Redirect to the provider, headers: { Location: { schema: { type: string, format: uri } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/search/opensearch.xml:
+    get:
+      tags: [search]
+      summary: OpenSearch description for browsers (public)
+      security: []
+      responses:
+        "200": { description: OK, content: { application/opensearchdescription+xml: { schema: { type: string } } } }
+  /api/search/settings:
+    get:
+      tags: [search]
+      summary: Default provider, available providers and custom shortcuts
+      responses:
+        "200": { $ref: "#/components/responses/SearchSettings" }
+    put:
+      tags: [search]
+      summary: Choose the default provider
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DefaultProvider" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/SearchSettings" }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/search/shortcuts:
+    post:
+      tags: [search]
+      summary: Add a custom shortcut such as !gh
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Shortcut" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/SearchSettings" }
+        "409": { description: Keyword already used, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/search/shortcuts/{keyword}:
+    delete:
+      tags: [search]
+      summary: Delete a custom shortcut
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ name: keyword, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { $ref: "#/components/responses/SearchSettings" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------------------------------------------------------------- weather
+  /api/weather:
+    get:
+      tags: [weather]
+      summary: Current weather and forecast (cached, refreshed every 15 minutes)
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number, minimum: -90, maximum: 90 } }
+        - { name: lon, in: query, required: true, schema: { type: number, minimum: -180, maximum: 180 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Forecast" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+        "502": { $ref: "#/components/responses/Unavailable" }
+  /api/weather/places:
+    get:
+      tags: [weather]
+      summary: Search places by name (geocoding)
+      parameters: [{ name: q, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 100 } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Place" } } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+  # ---------------------------------------------------------------- services
+  /api/services:
+    get:
+      tags: [services]
+      summary: Service tiles with their latest health check
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Service" } } } } }
+    post:
+      tags: [services]
+      summary: Add a service (checked immediately)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ServiceInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Service" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/services/check:
+    post:
+      tags: [services]
+      summary: Check all services now
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Service" } } } } }
+  /api/services/order:
+    put:
+      tags: [services]
+      summary: Reorder services (must list every service once)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/IdList" } } } }
+      responses:
+        "204": { description: Saved }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/services/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [services]
+      summary: Update a service
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ServiceInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Service" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [services]
+      summary: Delete a service
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------------------------------------------------------------- bookmarks
+  /api/bookmarks:
+    get:
+      tags: [bookmarks]
+      summary: Bookmarks matching a filter, plus all folders and tags
+      parameters:
+        - { name: folder, in: query, schema: { type: string }, description: 'Folder ID, or "none" for bookmarks without folder' }
+        - { name: tag, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string }, description: Text search in title, URL and description }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkList" } } } }
+    post:
+      tags: [bookmarks]
+      summary: Create a bookmark
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/bookmarks/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [bookmarks]
+      summary: Update a bookmark
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [bookmarks]
+      summary: Delete a bookmark
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/bookmarks/folders:
+    post:
+      tags: [bookmarks]
+      summary: Create a folder
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Name" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Folder" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/bookmarks/folders/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    patch:
+      tags: [bookmarks]
+      summary: Rename a folder
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Name" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Folder" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [bookmarks]
+      summary: Delete a folder (its bookmarks are kept without folder)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------------------------------------------------------------- notes
+  /api/notes:
+    get:
+      tags: [notes]
+      summary: Notes, pinned first
+      parameters: [{ name: pinned, in: query, schema: { type: boolean } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Note" } } } } }
+    post:
+      tags: [notes]
+      summary: Create a note
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NoteInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Note" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/notes/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [notes]
+      summary: One note
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Note" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [notes]
+      summary: Update a note
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NoteInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Note" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [notes]
+      summary: Delete a note
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------------------------------------------------------------- todos
+  /api/todos:
+    get:
+      tags: [todos]
+      summary: Open to-dos (and completed ones with done=true)
+      parameters: [{ name: done, in: query, schema: { type: boolean } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Todo" } } } } }
+    post:
+      tags: [todos]
+      summary: Create a to-do
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TodoInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Todo" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/todos/clear-completed:
+    post:
+      tags: [todos]
+      summary: Delete all completed to-dos
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { removed: { type: integer } }, required: [removed] } } } }
+  /api/todos/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [todos]
+      summary: Update text, due date and completion
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TodoInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Todo" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [todos]
+      summary: Delete a to-do
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------------------------------------------------------------- rss
+  /api/rss/feeds:
+    get:
+      tags: [rss]
+      summary: Subscribed feeds with unread counts
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Feed" } } } } }
+    post:
+      tags: [rss]
+      summary: Subscribe to a feed (fetched immediately)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string, format: uri } }, required: [url] } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Feed" } } } }
+        "409": { description: Already subscribed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/rss/feeds/{id}:
+    delete:
+      tags: [rss]
+      summary: Unsubscribe and delete the feed's items
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/rss/items:
+    get:
+      tags: [rss]
+      summary: Items, newest first
+      parameters:
+        - { name: feed, in: query, schema: { type: string } }
+        - { name: unread, in: query, schema: { type: boolean } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/FeedItem" } } } } }
+  /api/rss/items/{id}/read:
+    put:
+      tags: [rss]
+      summary: Set the read state of an item
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { read: { type: boolean } }, required: [read] } } } }
+      responses:
+        "204": { description: Saved }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/rss/read-all:
+    post:
+      tags: [rss]
+      summary: Mark all items (of one feed) as read
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { feedId: { type: string, description: Empty for all feeds } }, required: [feedId] } } } }
+      responses:
+        "204": { description: Saved }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/rss/refresh:
+    post:
+      tags: [rss]
+      summary: Fetch all feeds now
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Feed" } } } } }
+
+  # ---------------------------------------------------------------- system, docker
+  /api/system:
+    get:
+      tags: [system]
+      summary: Host metrics (sampled every 5 seconds)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SystemSnapshot" } } } }
+        "502": { $ref: "#/components/responses/Unavailable" }
+  /api/docker/containers:
+    get:
+      tags: [docker]
+      summary: Containers via the read-only socket proxy (refreshed every 20 seconds)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContainerList" } } } }
+
+  # ---------------------------------------------------------------- adguard
+  /api/adguard/settings:
+    get:
+      tags: [adguard]
+      summary: Connection settings (the password is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardSettings" } } } }
+    put:
+      tags: [adguard]
+      summary: Test and save the connection (empty password keeps the stored one)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardSettingsInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/adguard/stats:
+    get:
+      tags: [adguard]
+      summary: Cached statistics (refreshed every minute)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardStats" } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+
+  # ---------------------------------------------------------------- calendar
+  /api/calendar/settings:
+    get:
+      tags: [calendar]
+      summary: CalDAV settings (the password is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSettings" } } } }
+    put:
+      tags: [calendar]
+      summary: Test and save the CalDAV connection (empty password keeps the stored one)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSettingsInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/calendar/events:
+    get:
+      tags: [calendar]
+      summary: Upcoming events (cached, refreshed every 15 minutes)
+      parameters: [{ name: days, in: query, schema: { type: integer, minimum: 1, maximum: 31, default: 7 } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Agenda" } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: trisse_session
+      description: HttpOnly, SameSite=Strict session cookie (`__Host-trisse_session` with COOKIE_SECURE=true).
+    csrf:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Per-session CSRF token, required for state-changing requests.
+  parameters:
+    id: { name: id, in: path, required: true, schema: { type: string } }
+  responses:
+    Session: { description: Session started; the cookie is set, content: { application/json: { schema: { $ref: "#/components/schemas/Session" } } } }
+    SearchSettings: { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SearchSettings" } } } }
+    Unauthorized: { description: Missing or invalid session or credentials, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    NotFound: { description: Not found, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    Invalid: { description: Validation failed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    TooManyRequests: { description: Too many failed attempts, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    Unavailable: { description: Upstream service unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  schemas:
+    ErrorBody:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [bad_request, invalid, not_found, conflict, unauthorized, forbidden, too_many_requests, unavailable, internal] }
+            message: { type: string }
+            field: { type: string }
+    Health: { type: object, properties: { status: { type: string, enum: [ok, unavailable] } } }
+    ModulesInfo:
+      type: object
+      required: [modules, widgetKinds]
+      properties:
+        modules: { type: array, items: { type: string } }
+        widgetKinds: { type: array, items: { type: string } }
+    AuthStatus:
+      type: object
+      required: [setupRequired, authenticated]
+      properties:
+        setupRequired: { type: boolean }
+        authenticated: { type: boolean }
+        csrfToken: { type: string }
+    Session:
+      type: object
+      required: [csrfToken, expiresAt]
+      properties:
+        csrfToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+    SetupRequest:
+      type: object
+      required: [setupToken, password]
+      properties:
+        setupToken: { type: string }
+        password: { type: string, minLength: 12, maxLength: 256 }
+    LoginRequest: { type: object, required: [password], properties: { password: { type: string } } }
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string }
+        newPassword: { type: string, minLength: 12, maxLength: 256 }
+    Name: { type: object, required: [name], properties: { name: { type: string } } }
+    IdList: { type: object, required: [ids], properties: { ids: { type: array, items: { type: string } } } }
+    TabName: { type: object, required: [name], properties: { name: { type: string, maxLength: 40 } } }
+    TabOrder: { type: object, required: [tabIds], properties: { tabIds: { type: array, items: { type: string } } } }
+    Dashboard: { type: object, required: [tabs], properties: { tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } } } }
+    Tab:
+      type: object
+      required: [id, name, position, widgets]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        position: { type: integer }
+        widgets: { type: array, items: { $ref: "#/components/schemas/Widget" } }
+    Rect:
+      type: object
+      required: [x, y, w, h]
+      properties:
+        x: { type: integer, minimum: 0, maximum: 11 }
+        y: { type: integer, minimum: 0, maximum: 500 }
+        w: { type: integer, minimum: 1, maximum: 12 }
+        h: { type: integer, minimum: 1, maximum: 24 }
+    Widget:
+      allOf:
+        - $ref: "#/components/schemas/Rect"
+        - type: object
+          required: [id, tabId, kind, config]
+          properties:
+            id: { type: string }
+            tabId: { type: string }
+            kind: { type: string, examples: [clock, search, weather, services, bookmarks, notes, todos, rss, calendar, system, docker, adguard] }
+            config: { type: object, additionalProperties: true }
+    AddWidget:
+      allOf:
+        - $ref: "#/components/schemas/Rect"
+        - type: object
+          required: [kind]
+          properties:
+            kind: { type: string }
+            config: { type: object, additionalProperties: true }
+    WidgetConfig: { type: object, required: [config], properties: { config: { type: object, additionalProperties: true } } }
+    Layout:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { allOf: [{ $ref: "#/components/schemas/Rect" }, { type: object, required: [id], properties: { id: { type: string } } }] }
+    Appearance:
+      type: object
+      required: [theme, accentColor, backgroundImage, customCss]
+      properties:
+        theme: { type: string, enum: [system, light, dark] }
+        accentColor: { type: string, description: '#rrggbb or empty', pattern: '^(#[0-9a-fA-F]{6})?$' }
+        backgroundImage: { type: string, description: http(s) URL or empty }
+        customCss: { type: string, maxLength: 65536 }
+    SearchSettings:
+      type: object
+      required: [defaultProvider, providers, shortcuts]
+      properties:
+        defaultProvider: { type: string, examples: [duckduckgo] }
+        providers: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string } } } }
+        shortcuts: { type: array, items: { $ref: "#/components/schemas/Shortcut" } }
+    DefaultProvider: { type: object, required: [defaultProvider], properties: { defaultProvider: { type: string } } }
+    Shortcut:
+      type: object
+      required: [keyword, name, urlTemplate]
+      properties:
+        keyword: { type: string, pattern: '^!?[a-z0-9]{1,16}$' }
+        name: { type: string }
+        urlTemplate: { type: string, description: 'http(s) URL containing {query}' }
+    Forecast:
+      type: object
+      properties:
+        lat: { type: number }
+        lon: { type: number }
+        timezone: { type: string }
+        temperature: { type: number }
+        apparentTemperature: { type: number }
+        humidity: { type: number }
+        windSpeed: { type: number }
+        weatherCode: { type: integer, description: WMO weather code }
+        isDay: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+        days:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              temperatureMin: { type: number }
+              temperatureMax: { type: number }
+              weatherCode: { type: integer }
+              precipitationProbability: { type: number }
+    Place:
+      type: object
+      properties: { name: { type: string }, region: { type: string }, country: { type: string }, lat: { type: number }, lon: { type: number } }
+    ServiceInput:
+      type: object
+      required: [name, url]
+      properties:
+        name: { type: string, maxLength: 60 }
+        url: { type: string, format: uri }
+        checkUrl: { type: string, description: Defaults to url }
+        icon: { type: string, description: Emoji, text or http(s) image URL }
+        description: { type: string, maxLength: 200 }
+        skipTlsVerify: { type: boolean }
+    Service:
+      allOf:
+        - $ref: "#/components/schemas/ServiceInput"
+        - type: object
+          properties:
+            id: { type: string }
+            position: { type: integer }
+            state: { type: string, enum: [online, offline, unknown] }
+            httpStatus: { type: integer }
+            latencyMs: { type: integer }
+            checkedAt: { type: string, format: date-time }
+            error: { type: string }
+    BookmarkInput:
+      type: object
+      required: [url]
+      properties:
+        folderId: { type: string }
+        title: { type: string, maxLength: 200 }
+        url: { type: string, format: uri }
+        description: { type: string, maxLength: 1000 }
+        tags: { type: array, maxItems: 10, items: { type: string, maxLength: 30 } }
+    Bookmark:
+      allOf:
+        - $ref: "#/components/schemas/BookmarkInput"
+        - type: object
+          properties: { id: { type: string }, createdAt: { type: string, format: date-time } }
+    Folder: { type: object, properties: { id: { type: string }, name: { type: string }, position: { type: integer }, count: { type: integer } } }
+    BookmarkList:
+      type: object
+      properties:
+        bookmarks: { type: array, items: { $ref: "#/components/schemas/Bookmark" } }
+        folders: { type: array, items: { $ref: "#/components/schemas/Folder" } }
+        tags: { type: array, items: { type: object, properties: { name: { type: string }, count: { type: integer } } } }
+    NoteInput:
+      type: object
+      required: [title, body, pinned]
+      properties:
+        title: { type: string, maxLength: 200 }
+        body: { type: string, description: Markdown, maxLength: 102400 }
+        pinned: { type: boolean }
+    Note:
+      allOf:
+        - $ref: "#/components/schemas/NoteInput"
+        - type: object
+          properties: { id: { type: string }, createdAt: { type: string, format: date-time }, updatedAt: { type: string, format: date-time } }
+    TodoInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, maxLength: 300 }
+        due: { type: string, description: YYYY-MM-DD or empty }
+        done: { type: boolean }
+    Todo:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        due: { type: string }
+        done: { type: boolean }
+        overdue: { type: boolean }
+        position: { type: integer }
+        completedAt: { type: string }
+    Feed:
+      type: object
+      properties:
+        id: { type: string }
+        url: { type: string }
+        title: { type: string }
+        siteUrl: { type: string }
+        lastError: { type: string }
+        lastFetchedAt: { type: [string, "null"], format: date-time }
+        unread: { type: integer }
+    FeedItem:
+      type: object
+      properties:
+        id: { type: string }
+        feedId: { type: string }
+        feedTitle: { type: string }
+        title: { type: string }
+        link: { type: string, description: http(s) link or empty }
+        publishedAt: { type: string, format: date-time }
+        read: { type: boolean }
+    Usage: { type: object, properties: { total: { type: integer }, used: { type: integer }, percent: { type: number } } }
+    SystemSnapshot:
+      type: object
+      properties:
+        cpuPercent: { type: number }
+        cpuCount: { type: integer }
+        load: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
+        memory: { $ref: "#/components/schemas/Usage" }
+        swap: { $ref: "#/components/schemas/Usage" }
+        disks: { type: array, items: { type: object, properties: { label: { type: string }, usage: { $ref: "#/components/schemas/Usage" } } } }
+        uptimeSeconds: { type: integer }
+        temperature: { type: number, description: °C, 0 if unknown }
+        takenAt: { type: string, format: date-time }
+    ContainerList:
+      type: object
+      properties:
+        containers:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              image: { type: string }
+              state: { type: string }
+              status: { type: string }
+              health: { type: string, enum: [none, healthy, unhealthy, starting] }
+              project: { type: string }
+              created: { type: string, format: date-time }
+        total: { type: integer }
+        running: { type: integer }
+        stopped: { type: integer }
+        unhealthy: { type: integer }
+        updatedAt: { type: string, format: date-time }
+        error: { type: string }
+    AdGuardSettings:
+      type: object
+      properties: { configured: { type: boolean }, url: { type: string }, username: { type: string }, hasPassword: { type: boolean } }
+    AdGuardSettingsInput:
+      type: object
+      required: [url, username, password]
+      properties: { url: { type: string }, username: { type: string }, password: { type: string, description: Empty keeps the stored password } }
+    AdGuardStats:
+      type: object
+      properties:
+        queries: { type: integer }
+        blocked: { type: integer }
+        blockedPercent: { type: number }
+        avgProcessingMs: { type: number }
+        protectionEnabled: { type: boolean }
+        topBlocked: { type: array, items: { type: object, properties: { domain: { type: string }, count: { type: integer } } } }
+        updatedAt: { type: string, format: date-time }
+        error: { type: string }
+    CalendarSettings:
+      type: object
+      properties:
+        configured: { type: boolean }
+        calendarUrls: { type: array, items: { type: string } }
+        username: { type: string }
+        hasPassword: { type: boolean }
+    CalendarSettingsInput:
+      type: object
+      required: [calendarUrls, username, password]
+      properties:
+        calendarUrls: { type: array, maxItems: 10, items: { type: string, format: uri } }
+        username: { type: string }
+        password: { type: string, description: App password; empty keeps the stored one }
+    Agenda:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              uid: { type: string }
+              summary: { type: string }
+              location: { type: string }
+              calendar: { type: string }
+              start: { type: string, description: RFC 3339, or YYYY-MM-DD for all-day events }
+              end: { type: string, description: RFC 3339, or YYYY-MM-DD (exclusive) for all-day events }
+              allDay: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+        error: { type: string }

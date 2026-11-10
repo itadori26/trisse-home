@@ -1,0 +1,18 @@
+# Optional override for running behind nginx-proxy + acme-companion with HTTPS.
+# Not active by default. Usage:
+#   cp compose.proxy.example.yaml compose.override.yaml   # adjust the values
+#   sudo docker compose up -d
+# See docs/reverse-proxy.md for the matching .env settings.
+services:
+  trisse-home:
+    environment:
+      VIRTUAL_HOST: home.example.com
+      VIRTUAL_PORT: "8090"
+      LETSENCRYPT_HOST: home.example.com
+    networks: [proxy]
+
+networks:
+  proxy:
+    # The (existing) network shared with the nginx-proxy container.
+    external: true
+    name: your-proxy-network

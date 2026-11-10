@@ -27,6 +27,7 @@ flowchart LR
 | Entities             | `internal/modules/<m>/domain`, `internal/shared/kernel`          | standard library (no I/O), kernel        |
 | Use Cases            | `internal/modules/<m>/usecase`                                   | own domain, kernel                       |
 | Interface Adapters   | `internal/modules/<m>/adapter/{controller,presenter,gateway}`, `internal/shared/{httpapi,sqlutil}`, `internal/modules` (registry) | own usecase/domain, shared adapter helpers, third-party clients |
+| Module wiring        | `internal/modules/<m>` (`module.go`)                             | everything of its own module, the registry, platform services passed in |
 | Frameworks & Drivers | `internal/platform/*` (incl. `webui` with the embedded SPA), `cmd/server`                       | everything                               |
 
 **Dependency rule:** source code dependencies point inwards only. No inner
@@ -129,6 +130,12 @@ web/src/
 Widgets are a Strategy: `src/app/widgets.ts` maps a widget kind to its
 component, default size and settings editor. Features never import each
 other; `src/app` wires them.
+
+## API
+
+The HTTP API is described in [`api/openapi.yaml`](../api/openapi.yaml)
+(OpenAPI 3.1). TypeScript types for all DTOs are generated from the Go
+presenter and request DTOs with tygo (`make generate`).
 
 ## Security layers
 

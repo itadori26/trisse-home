@@ -1,3 +1,7 @@
 // Package docker lists the containers of the host. It talks to a read-only
 // docker-socket-proxy, never to the raw Docker socket.
+//
+// Ring: module wiring. module.go is a small composition root that connects
+// the domain, use case and adapter packages below and implements
+// modules.Module; it contains no business logic.
 package docker

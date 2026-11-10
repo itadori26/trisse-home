@@ -2,11 +2,6 @@
 
 //////////
 // source: presenter.go
-/*
-Package presenter maps bookmarks responses to JSON DTOs.
-
-Ring: Interface Adapters.
-*/
 
 /**
  * BookmarkDTO is a bookmark in API responses.
