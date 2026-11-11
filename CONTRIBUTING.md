@@ -121,6 +121,9 @@ maintainer by pushing a tag on `main`:
 git tag -a v1.2.0 -m v1.2.0 && git push origin v1.2.0
 ```
 
+Before a minor release (x.**y**.0): review [docs/comparison.md](docs/comparison.md)
+against the current versions of the compared projects and update its date.
+
 The release workflow builds `linux/amd64` and `linux/arm64` images, pushes
 `ghcr.io/itadori26/trisse-home:1.2.0`, `:1.2` and `:latest`, smoke-tests both
 architectures, attaches an SPDX SBOM and publishes release notes generated
