@@ -1,0 +1,25 @@
+import type { HttpClient } from '../../../../shared/api-client/http';
+import type { ItemDTO } from '../../../../shared/api-client/generated/{{.Name}}';
+import type { NewItemDTO } from '../../../../shared/api-client/generated/{{.Name}}-requests';
+import type { {{.Pascal}}Item } from '../../domain/{{.Name}}';
+import type { {{.Pascal}}Gateway } from '../../usecase/{{.Name}}UseCases';
+
+const toItem = (d: ItemDTO): {{.Pascal}}Item => ({ id: d.id, title: d.title, createdAt: new Date(d.createdAt) });
+
+/** {{.Pascal}}Gateway backed by the REST API. */
+export class {{.Pascal}}Api implements {{.Pascal}}Gateway {
+  constructor(private readonly http: HttpClient) {}
+
+  async list(): Promise<{{.Pascal}}Item[]> {
+    return (await this.http.get<ItemDTO[]>('/api/{{.Name}}/items')).map(toItem);
+  }
+
+  async add(title: string): Promise<{{.Pascal}}Item> {
+    const body: NewItemDTO = { title };
+    return toItem(await this.http.post<ItemDTO>('/api/{{.Name}}/items', body));
+  }
+
+  remove(id: string): Promise<void> {
+    return this.http.delete(`/api/{{.Name}}/items/${encodeURIComponent(id)}`);
+  }
+}

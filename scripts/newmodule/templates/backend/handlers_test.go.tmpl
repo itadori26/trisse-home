@@ -1,0 +1,28 @@
+package controller
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"trisse-home/internal/modules/{{.Name}}/domain"
+	"trisse-home/internal/modules/{{.Name}}/usecase"
+)
+
+type fakeUC struct{ usecase.{{.Pascal}} }
+
+func (fakeUC) Add(_ context.Context, title string) (domain.Item, error) {
+	return domain.NewItem("1", title, domain.Item{}.CreatedAt)
+}
+
+func TestAdd(t *testing.T) {
+	for body, want := range map[string]int{`{"title":"First"}`: http.StatusCreated, `{"title":""}`: http.StatusUnprocessableEntity} {
+		rec := httptest.NewRecorder()
+		NewHandlers(fakeUC{}).Add(rec, httptest.NewRequest(http.MethodPost, "/api/{{.Name}}/items", strings.NewReader(body)))
+		if rec.Code != want {
+			t.Errorf("%s: got %d, want %d", body, rec.Code, want)
+		}
+	}
+}

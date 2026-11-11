@@ -346,6 +346,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
     },
     view: renderer(BackupStatusWidget, (_config, c) => ({ backupMonitor: c.backupMonitor })),
   },
+  // scaffold:widgets - make new-module inserts new widgets above this line.
 ];
 
 /** Looks up the definition of a widget kind. */

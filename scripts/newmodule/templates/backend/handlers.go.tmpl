@@ -1,0 +1,52 @@
+// Package controller contains the {{.Title}} HTTP handlers.
+//
+// Ring: Interface Adapters.
+package controller
+
+import (
+	"net/http"
+
+	"trisse-home/internal/modules/{{.Name}}/adapter/presenter"
+	"trisse-home/internal/modules/{{.Name}}/usecase"
+	"trisse-home/internal/shared/httpapi"
+)
+
+// Handlers serves the {{.Title}} endpoints.
+type Handlers struct{ uc usecase.{{.Pascal}} }
+
+// NewHandlers returns {{.Title}} handlers.
+func NewHandlers(uc usecase.{{.Pascal}}) *Handlers { return &Handlers{uc: uc} }
+
+// List handles GET /api/{{.Name}}/items.
+func (h *Handlers) List(w http.ResponseWriter, r *http.Request) {
+	items, err := h.uc.List(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Items(items))
+}
+
+// Add handles POST /api/{{.Name}}/items.
+func (h *Handlers) Add(w http.ResponseWriter, r *http.Request) {
+	var dto NewItemDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	it, err := h.uc.Add(r.Context(), dto.Title)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.Item(it))
+}
+
+// Delete handles DELETE /api/{{.Name}}/items/{id}.
+func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.Delete(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

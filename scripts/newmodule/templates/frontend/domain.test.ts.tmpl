@@ -1,0 +1,10 @@
+import { describe, expect, it } from 'vitest';
+import { validateTitle } from './{{.Name}}';
+
+describe('{{.Name}} domain', () => {
+  it('validates titles', () => {
+    expect(validateTitle('First')).toBeNull();
+    expect(validateTitle('  ')).toBe('empty');
+    expect(validateTitle('x'.repeat(201))).toBe('too_long');
+  });
+});

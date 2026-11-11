@@ -1,0 +1,61 @@
+package usecase
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"trisse-home/internal/modules/{{.Name}}/domain"
+	"trisse-home/internal/shared/kernel"
+)
+
+type memRepo struct{ items map[string]domain.Item }
+
+func (m *memRepo) List(context.Context) ([]domain.Item, error) {
+	out := make([]domain.Item, 0, len(m.items))
+	for _, it := range m.items {
+		out = append(out, it)
+	}
+	return out, nil
+}
+
+func (m *memRepo) Get(_ context.Context, id string) (domain.Item, error) {
+	it, ok := m.items[id]
+	if !ok {
+		return domain.Item{}, domain.ErrItemNotFound
+	}
+	return it, nil
+}
+
+func (m *memRepo) Save(_ context.Context, it domain.Item) error { m.items[it.ID] = it; return nil }
+func (m *memRepo) Delete(_ context.Context, id string) error    { delete(m.items, id); return nil }
+
+type clk struct{}
+
+func (clk) Now() time.Time { return time.Unix(0, 0) }
+
+type ids struct{}
+
+func (ids) NewID() string { return "id1" }
+
+func Test{{.Pascal}}(t *testing.T) {
+	ctx := context.Background()
+	u := New{{.Pascal}}(Deps{Repo: &memRepo{items: map[string]domain.Item{}}, Clock: clk{}, IDs: ids{}})
+	if _, err := u.Add(ctx, " "); !errors.Is(err, kernel.ErrInvalid) {
+		t.Fatalf("empty title accepted: %v", err)
+	}
+	it, err := u.Add(ctx, "First")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list, _ := u.List(ctx); len(list) != 1 {
+		t.Fatalf("list %v", list)
+	}
+	if err := u.Delete(ctx, it.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := u.Delete(ctx, it.ID); !errors.Is(err, kernel.ErrNotFound) {
+		t.Fatalf("second delete: %v", err)
+	}
+}

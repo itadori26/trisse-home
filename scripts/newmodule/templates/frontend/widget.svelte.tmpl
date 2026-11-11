@@ -1,0 +1,76 @@
+<script lang="ts">
+  import { errorMessage } from '../../../shared/api-client/http';
+  import { t } from '../../../shared/i18n';
+  import type { {{.Pascal}}Item } from '../domain/{{.Name}}';
+  import type { {{.Pascal}}UseCases } from '../usecase/{{.Name}}UseCases';
+
+  /** Props of the {{.Title}} widget. */
+  interface Props {
+    {{.Name}}: {{.Pascal}}UseCases;
+  }
+  let { {{.Name}} }: Props = $props();
+
+  let items = $state<{{.Pascal}}Item[]>([]);
+  let draft = $state('');
+  let error = $state('');
+
+  const load = () =>
+    {{.Name}}
+      .list()
+      .then((l) => ((items = l), (error = '')))
+      .catch((err) => (error = errorMessage(err)));
+
+  $effect(() => {
+    load();
+  });
+
+  async function add(e: SubmitEvent) {
+    e.preventDefault();
+    try {
+      if (await {{.Name}}.add(draft)) draft = '';
+      await load();
+    } catch (err) {
+      error = errorMessage(err);
+    }
+  }
+</script>
+
+<form class="add" onsubmit={add}>
+  <input class="input" bind:value={draft} placeholder={t('{{.Name}}.add_placeholder')} aria-label={t('{{.Name}}.add_placeholder')} />
+  <button class="btn" type="submit">{t('common.add')}</button>
+</form>
+{#if error}<p class="error">{error}</p>{/if}
+<ul>
+  {#each items as it (it.id)}
+    <li>
+      <span>{it.title}</span>
+      <button class="btn btn-icon" type="button" aria-label={t('{{.Name}}.remove', { title: it.title })} onclick={() => {{.Name}}.remove(it.id).then(load)}
+        >✕</button
+      >
+    </li>
+  {:else}
+    <li class="muted">{t('{{.Name}}.empty')}</li>
+  {/each}
+</ul>
+
+<style>
+  .add {
+    display: flex;
+    gap: var(--space-1);
+    margin-bottom: var(--space-2);
+  }
+  .add .input {
+    flex: 1;
+    min-width: 0;
+  }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+</style>

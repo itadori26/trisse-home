@@ -1,0 +1,41 @@
+package {{.Name}}
+
+import (
+	"database/sql"
+	"io/fs"
+
+	"trisse-home/internal/modules"
+	"trisse-home/internal/modules/{{.Name}}/adapter/controller"
+	"trisse-home/internal/modules/{{.Name}}/adapter/gateway"
+	"trisse-home/internal/modules/{{.Name}}/usecase"
+	"trisse-home/internal/shared/kernel"
+)
+
+// Module wires the {{.Title}} rings and implements modules.Module.
+type Module struct {
+	modules.Base
+	modules.Transferable
+	handlers *controller.Handlers
+}
+
+// New builds the {{.Title}} module.
+func New(db *sql.DB, clock kernel.Clock, ids kernel.IDGenerator) *Module {
+	uc := usecase.New{{.Pascal}}(usecase.Deps{Repo: gateway.NewRepository(db), Clock: clock, IDs: ids})
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, handlers: controller.NewHandlers(uc)}
+}
+
+// Name implements modules.Module.
+func (m *Module) Name() string { return "{{.Name}}" }
+
+// Migrations implements modules.Module.
+func (m *Module) Migrations() fs.FS { return gateway.Migrations() }
+
+// WidgetKinds implements modules.Module.
+func (m *Module) WidgetKinds() []string { return []string{"{{.Name}}"} }
+
+// RegisterRoutes implements modules.Module.
+func (m *Module) RegisterRoutes(r modules.Router) {
+	r.Protected("GET /api/{{.Name}}/items", m.handlers.List)
+	r.Protected("POST /api/{{.Name}}/items", m.handlers.Add)
+	r.Protected("DELETE /api/{{.Name}}/items/{id}", m.handlers.Delete)
+}

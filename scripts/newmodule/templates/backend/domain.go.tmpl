@@ -1,0 +1,32 @@
+package domain
+
+import (
+	"strings"
+	"time"
+	"unicode/utf8"
+
+	"trisse-home/internal/shared/kernel"
+)
+
+// MaxTitleLength limits the title of an item.
+const MaxTitleLength = 200
+
+// ErrItemNotFound is returned for unknown items.
+var ErrItemNotFound = kernel.NewPublicError(kernel.ErrNotFound, "The item does not exist.")
+
+// Item is the example entity of the {{.Title}} module. Replace it with your
+// own entities; keep them free of HTTP, SQL and JSON.
+type Item struct {
+	ID        string
+	Title     string
+	CreatedAt time.Time
+}
+
+// NewItem validates and creates an item.
+func NewItem(id, title string, now time.Time) (Item, error) {
+	title = strings.TrimSpace(title)
+	if title == "" || utf8.RuneCountInString(title) > MaxTitleLength {
+		return Item{}, kernel.NewValidationError("title", "The title must be between 1 and 200 characters long.")
+	}
+	return Item{ID: id, Title: title, CreatedAt: now}, nil
+}

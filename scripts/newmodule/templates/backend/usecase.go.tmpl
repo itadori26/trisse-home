@@ -1,0 +1,65 @@
+package usecase
+
+import (
+	"context"
+	"fmt"
+
+	"trisse-home/internal/modules/{{.Name}}/domain"
+	"trisse-home/internal/shared/kernel"
+)
+
+// {{.Pascal}} is the input port of the module; every method is one use case.
+type {{.Pascal}} interface {
+	List(ctx context.Context) ([]domain.Item, error)
+	Add(ctx context.Context, title string) (domain.Item, error)
+	Delete(ctx context.Context, id string) error
+}
+
+// Repository persists items (output port, implemented in adapter/gateway).
+type Repository interface {
+	List(ctx context.Context) ([]domain.Item, error)
+	Get(ctx context.Context, id string) (domain.Item, error)
+	Save(ctx context.Context, it domain.Item) error
+	Delete(ctx context.Context, id string) error
+}
+
+// Deps bundles the output ports.
+type Deps struct {
+	Repo  Repository
+	Clock kernel.Clock
+	IDs   kernel.IDGenerator
+}
+
+type uc struct{ d Deps }
+
+// New{{.Pascal}} returns the {{.Title}} use cases.
+func New{{.Pascal}}(d Deps) {{.Pascal}} { return &uc{d: d} }
+
+// List implements {{.Pascal}}.
+func (u *uc) List(ctx context.Context) ([]domain.Item, error) {
+	items, err := u.d.Repo.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list items: %w", err)
+	}
+	return items, nil
+}
+
+// Add implements {{.Pascal}}.
+func (u *uc) Add(ctx context.Context, title string) (domain.Item, error) {
+	it, err := domain.NewItem(u.d.IDs.NewID(), title, u.d.Clock.Now())
+	if err != nil {
+		return domain.Item{}, err
+	}
+	if err := u.d.Repo.Save(ctx, it); err != nil {
+		return domain.Item{}, fmt.Errorf("save item: %w", err)
+	}
+	return it, nil
+}
+
+// Delete implements {{.Pascal}}.
+func (u *uc) Delete(ctx context.Context, id string) error {
+	if _, err := u.d.Repo.Get(ctx, id); err != nil {
+		return err
+	}
+	return u.d.Repo.Delete(ctx, id)
+}

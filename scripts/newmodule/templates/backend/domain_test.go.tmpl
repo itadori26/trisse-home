@@ -1,0 +1,19 @@
+package domain
+
+import (
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestNewItem(t *testing.T) {
+	it, err := NewItem("1", "  First  ", time.Unix(0, 0))
+	if err != nil || it.Title != "First" {
+		t.Fatalf("%+v %v", it, err)
+	}
+	for _, bad := range []string{"", "   ", strings.Repeat("x", MaxTitleLength+1)} {
+		if _, err := NewItem("1", bad, time.Unix(0, 0)); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+}

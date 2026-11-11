@@ -279,8 +279,16 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 26 {
-		t.Fatalf("expected 26 modules, got %d: %v", n, info)
+	// Every module is enabled by default; spot-check core and optional ones
+	// instead of a count, so adding a module does not break this test.
+	enabled := map[string]bool{}
+	for _, m := range info["modules"].([]any) {
+		enabled[m.(string)] = true
+	}
+	for _, name := range []string{"auth", "dashboard", "system", "backup", "transfer", "calendar", "wireguard"} {
+		if !enabled[name] {
+			t.Fatalf("module %s missing: %v", name, info)
+		}
 	}
 
 	// --- backups ---
