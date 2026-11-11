@@ -160,7 +160,7 @@
 
   {#if active}
     {@const visible = active.widgets.filter((w) => available.has(w.kind))}
-    <Grid items={visible} {editing} {onlayout}>
+    <Grid items={visible} {editing} {onlayout} label={(w) => titles.get(w.kind) ?? w.kind}>
       {#snippet item(widget: Widget, handle: { onpointerdown: (e: PointerEvent) => void })}
         <WidgetFrame
           title={titles.get(widget.kind) ?? widget.kind}

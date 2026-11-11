@@ -76,6 +76,28 @@ test('edit mode adds a tab and a widget', async ({ page }) => {
   await expect(page.locator('time')).toBeVisible();
 });
 
+test('widgets can be moved and resized with the keyboard', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Study' }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+
+  const clock = page.getByRole('group', { name: /^Clock, column 1, row 1/ });
+  await clock.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByText(/^Clock moved: column 2, row 1/)).toBeAttached();
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(page.getByText(/^Clock resized: column 2, row 1, \d+ × \d+ cells/)).toBeAttached();
+  await expect(page.getByRole('group', { name: /^Clock, column 2, row 1/ })).toBeFocused();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Study' }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('group', { name: /^Clock, column 2, row 1/ })).toBeVisible();
+});
+
 /** RFC 6238 TOTP for the test (SHA1, 6 digits, 30 s). */
 function totp(base32Secret: string, now = Date.now()): string {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
