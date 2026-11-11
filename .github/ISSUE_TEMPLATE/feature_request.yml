@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest a new feature or an improvement
+labels: ["type: feature"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the idea! Please describe the problem first — the solution can still change.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What is missing or annoying today? Who benefits?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How could trisse-home solve it?
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: Checklist that tells when the issue is done.
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [widgets, dashboard, integrations, ux, auth, ops, other]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Architecture, security or privacy notes
+      description: Affected modules/rings, new output ports, secrets, outbound requests …
