@@ -22,3 +22,11 @@ export function loadPercent(s: SystemSnapshot): number {
   if (s.cpuCount <= 0) return 0;
   return Math.min(100, (s.load[0] / s.cpuCount) * 100);
 }
+
+/** One point of the 24 h metric history (percentages). */
+export interface HistoryPoint {
+  at: Date;
+  cpu: number;
+  memory: number;
+  disk: number;
+}

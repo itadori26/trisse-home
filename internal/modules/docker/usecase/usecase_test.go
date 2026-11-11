@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/docker/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 type fakeSource struct {
@@ -23,7 +24,7 @@ func (clk) Now() time.Time { return time.Unix(0, 0) }
 func TestContainers(t *testing.T) {
 	ctx := context.Background()
 	src := &fakeSource{list: []domain.Container{{Name: "b", State: "running"}, {Name: "a", State: "exited"}}}
-	uc := NewContainers(src, clk{})
+	uc := NewContainers(src, kernel.DiscardObservations{}, clk{})
 	res, err := uc.List(ctx)
 	if err != nil || res.Total != 2 || res.Stopped != 1 || res.Containers[0].Name != "a" || res.Error != "" {
 		t.Fatalf("unexpected %+v %v", res, err)
@@ -39,7 +40,7 @@ func TestContainers(t *testing.T) {
 }
 
 func TestContainersUnavailableFromStart(t *testing.T) {
-	uc := NewContainers(&fakeSource{err: errors.New("down")}, clk{})
+	uc := NewContainers(&fakeSource{err: errors.New("down")}, kernel.DiscardObservations{}, clk{})
 	res, err := uc.List(context.Background())
 	if err != nil || res.Error == "" || len(res.Containers) != 0 {
 		t.Fatalf("unexpected %+v %v", res, err)

@@ -32,3 +32,12 @@ export interface SnapshotDTO {
   temperature: number /* float64 */;
   takenAt: string /* RFC 3339 */;
 }
+/**
+ * PointDTO is one history point (percentages).
+ */
+export interface PointDTO {
+  at: string /* RFC 3339 */;
+  cpu: number /* float64 */;
+  memory: number /* float64 */;
+  disk: number /* float64 */;
+}

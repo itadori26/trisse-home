@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { emptyServiceInput, isImageIcon, statusText, validateServiceInput, type Service } from './service';
+import {
+  certificateDaysLeft,
+  emptyServiceInput,
+  isImageIcon,
+  statusText,
+  validateServiceInput,
+  type Service,
+} from './service';
 
 const base: Service = {
   ...emptyServiceInput(),
@@ -12,6 +19,8 @@ const base: Service = {
   latencyMs: 12,
   checkedAt: null,
   error: '',
+  certExpiresAt: null,
+  certExpiresSoon: false,
 };
 
 describe('services domain', () => {
@@ -27,5 +36,10 @@ describe('services domain', () => {
   it('describes the status', () => {
     expect(statusText(base)).toContain('12 ms');
     expect(statusText({ ...base, state: 'offline', error: 'timeout' })).toBe('Offline: timeout');
+  });
+  it('computes days until certificate expiry', () => {
+    const now = new Date('2026-11-11T00:00:00Z');
+    expect(certificateDaysLeft({ certExpiresAt: new Date('2026-11-21T12:00:00Z') }, now)).toBe(10);
+    expect(certificateDaysLeft({ certExpiresAt: null }, now)).toBeNull();
   });
 });

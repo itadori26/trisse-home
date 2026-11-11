@@ -1,6 +1,8 @@
 package system
 
 import (
+	"database/sql"
+	"io/fs"
 	"time"
 
 	"trisse-home/internal/modules"
@@ -28,9 +30,9 @@ type Module struct {
 }
 
 // New builds the system module.
-func New(cfg Config, clock kernel.Clock) *Module {
+func New(cfg Config, db *sql.DB, sink kernel.ObservationSink, clock kernel.Clock) *Module {
 	host := gateway.NewHost(cfg.ProcPath, cfg.SysPath, gateway.ParseDiskMounts(cfg.DiskPaths))
-	uc := usecase.NewMonitor(host, clock)
+	uc := usecase.NewMonitor(host, gateway.NewHistoryStore(db), sink, clock)
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
 }
 
@@ -43,7 +45,11 @@ func (m *Module) WidgetKinds() []string { return []string{"system"} }
 // RegisterRoutes implements modules.Module.
 func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/system", m.handlers.Snapshot)
+	r.Protected("GET /api/system/history", m.handlers.History)
 }
+
+// Migrations implements modules.Module.
+func (m *Module) Migrations() fs.FS { return gateway.Migrations() }
 
 // Jobs implements modules.Module.
 func (m *Module) Jobs() []modules.Job {

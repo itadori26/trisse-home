@@ -1,4 +1,4 @@
-import { type Service, type ServiceInput, validateServiceInput } from '../domain/service';
+import { type LatencyPoint, type Service, type ServiceInput, validateServiceInput } from '../domain/service';
 
 /** Output port: services backend. */
 export interface ServicesGateway {
@@ -8,6 +8,7 @@ export interface ServicesGateway {
   delete(id: string): Promise<void>;
   reorder(ids: string[]): Promise<void>;
   checkNow(): Promise<Service[]>;
+  history(hours: number): Promise<Record<string, LatencyPoint[]>>;
 }
 
 /** Error for input rejected before it reaches the backend. */
@@ -48,5 +49,10 @@ export class ServicesUseCases {
 
   checkNow(): Promise<Service[]> {
     return this.gateway.checkNow();
+  }
+
+  /** Response time history of the last 24 hours per service ID. */
+  history(): Promise<Record<string, LatencyPoint[]>> {
+    return this.gateway.history(24);
   }
 }

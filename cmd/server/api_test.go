@@ -13,7 +13,10 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -21,10 +24,33 @@ import (
 	"trisse-home/internal/platform/crypto"
 )
 
+// flakyDown switches the /flaky endpoint of the fake upstream to 503.
+var flakyDown atomic.Bool
+
+// ntfyMessages records messages published to the fake ntfy endpoint.
+var ntfyMessages = struct {
+	sync.Mutex
+	titles []string
+}{}
+
 // fakeUpstream emulates every external system the modules talk to.
 func fakeUpstream(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /flaky", func(w http.ResponseWriter, _ *http.Request) {
+		if flakyDown.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	})
+	mux.HandleFunc("POST /ntfy", func(w http.ResponseWriter, r *http.Request) {
+		var m struct {
+			Title string `json:"title"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&m)
+		ntfyMessages.Lock()
+		ntfyMessages.titles = append(ntfyMessages.titles, m.Title)
+		ntfyMessages.Unlock()
+	})
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("GET /feed", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `<?xml version="1.0"?><rss version="2.0"><channel><title>Fake News</title><link>https://news.example/</link>
@@ -176,8 +202,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 16 {
-		t.Fatalf("expected 16 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 18 {
+		t.Fatalf("expected 18 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -261,6 +287,38 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodPost, "/api/services/check", nil, http.StatusOK, nil)
 	c.json(http.MethodGet, "/api/services", nil, http.StatusOK, nil)
 	c.do(http.MethodDelete, "/api/services/"+sID, nil, http.StatusNoContent)
+
+	// --- notifications: a service going offline is pushed via ntfy ---
+	rules := obj{"services": true, "containers": true, "disk": true, "diskThreshold": 90, "tls": true, "tlsDays": 14, "backups": true}
+	c.json(http.MethodPut, "/api/notifications/settings", obj{"enabled": true, "serverUrl": up.URL + "/ntfy", "topic": "home", "token": "", "rules": rules}, http.StatusOK, nil)
+	c.do(http.MethodPost, "/api/notifications/test", nil, http.StatusNoContent)
+	var flaky obj
+	c.json(http.MethodPost, "/api/services", obj{"name": "Flaky", "url": up.URL + "/flaky"}, http.StatusCreated, &flaky)
+	flakyDown.Store(true)
+	c.json(http.MethodPost, "/api/services/check", nil, http.StatusOK, nil)
+	c.json(http.MethodPost, "/api/services/check", nil, http.StatusOK, nil)
+	waitFor(t, func() bool {
+		ntfyMessages.Lock()
+		defer ntfyMessages.Unlock()
+		return slices.Contains(ntfyMessages.titles, "Flaky is offline")
+	})
+	c.do(http.MethodDelete, "/api/services/"+flaky["id"].(string), nil, http.StatusNoContent)
+
+	// --- backup monitor: external scripts report via a public ping URL ---
+	var created struct {
+		Source  obj    `json:"source"`
+		PingURL string `json:"pingUrl"`
+	}
+	c.json(http.MethodPost, "/api/backup-status/sources", obj{"name": "NAS", "maxAgeHours": 26}, http.StatusCreated, &created)
+	anonymous := newClient(t, srv.URL)
+	pingPath := strings.TrimPrefix(created.PingURL, srv.URL)
+	anonymous.do(http.MethodPost, pingPath, nil, http.StatusNoContent)
+	anonymous.do(http.MethodPost, "/api/backup-status/ping/wrong-token", nil, http.StatusNotFound)
+	var sources []obj
+	c.json(http.MethodGet, "/api/backup-status/sources", nil, http.StatusOK, &sources)
+	if len(sources) != 1 || sources[0]["state"] != "ok" {
+		t.Fatalf("backup source: %v", sources)
+	}
 
 	// --- bookmarks ---
 	var folder, bm obj
@@ -498,4 +556,15 @@ func TestSampleDataCanBeDisabled(t *testing.T) {
 	if len(notes) != 0 {
 		t.Fatalf("expected no sample data, got %d notes", len(notes))
 	}
+}
+
+// waitFor polls cond for up to five seconds.
+func waitFor(t *testing.T, cond func() bool) {
+	t.Helper()
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		if cond() {
+			return
+		}
+	}
+	t.Fatal("condition not met within 5 seconds")
 }

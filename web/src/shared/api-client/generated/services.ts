@@ -20,4 +20,17 @@ export interface ServiceDTO {
   latencyMs: number /* int64 */;
   checkedAt: string /* RFC 3339 */;
   error: string;
+  /**
+   * CertExpiresAt is the TLS certificate expiry (null for plain HTTP).
+   */
+  certExpiresAt?: string /* RFC 3339 */;
+  certExpiresSoon: boolean;
+}
+/**
+ * LatencyPointDTO is one point of a response time history.
+ */
+export interface LatencyPointDTO {
+  at: string /* RFC 3339 */;
+  latencyMs: number /* float64 */;
+  online: boolean;
 }

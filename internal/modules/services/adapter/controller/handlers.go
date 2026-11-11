@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strconv"
 
 	"trisse-home/internal/modules/services/adapter/presenter"
 	"trisse-home/internal/modules/services/usecase"
@@ -84,4 +85,15 @@ func (h *Handlers) Check(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.List(w, r)
+}
+
+// History handles GET /api/services/history?hours=….
+func (h *Handlers) History(w http.ResponseWriter, r *http.Request) {
+	hours, _ := strconv.Atoi(r.URL.Query().Get("hours")) // invalid or missing means the full range
+	res, err := h.uc.History(r.Context(), hours)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.History(res))
 }
