@@ -25,27 +25,56 @@ func HashToken(raw string) TokenHash {
 // Session is an authenticated browser session with a sliding expiry.
 type Session struct {
 	tokenHash   TokenHash
+	publicID    string
 	csrfToken   string
+	client      Client
 	createdAt   time.Time
 	expiresAt   time.Time
 	refreshedAt time.Time
 }
 
-// NewSession starts a session that expires after ttl.
-func NewSession(tokenHash TokenHash, csrfToken string, now time.Time, ttl time.Duration) (Session, error) {
-	if tokenHash == "" || csrfToken == "" {
-		return Session{}, kernel.NewValidationError("session", "token and csrf token are required")
+// maxUserAgentLength bounds the stored user agent.
+const maxUserAgentLength = 300
+
+// Client describes the browser a session was created from. It is shown in
+// the session overview so the user can recognise their devices.
+type Client struct {
+	UserAgent string
+	IP        string
+}
+
+// NewClient normalises client metadata.
+func NewClient(userAgent, ip string) Client {
+	if len(userAgent) > maxUserAgentLength {
+		userAgent = userAgent[:maxUserAgentLength]
+	}
+	return Client{UserAgent: userAgent, IP: ip}
+}
+
+// NewSession starts a session that expires after ttl. publicID identifies
+// the session in the session overview; unlike the token hash it may be shown.
+func NewSession(tokenHash TokenHash, publicID, csrfToken string, client Client, now time.Time, ttl time.Duration) (Session, error) {
+	if tokenHash == "" || csrfToken == "" || publicID == "" {
+		return Session{}, kernel.NewValidationError("session", "token, public id and csrf token are required")
 	}
 	if ttl <= 0 {
 		return Session{}, kernel.NewValidationError("ttl", "must be positive")
 	}
-	return Session{tokenHash: tokenHash, csrfToken: csrfToken, createdAt: now, expiresAt: now.Add(ttl), refreshedAt: now}, nil
+	return Session{tokenHash: tokenHash, publicID: publicID, csrfToken: csrfToken, client: client,
+		createdAt: now, expiresAt: now.Add(ttl), refreshedAt: now}, nil
 }
 
 // RestoreSession rebuilds a session from persisted state.
-func RestoreSession(tokenHash TokenHash, csrfToken string, createdAt, expiresAt, refreshedAt time.Time) Session {
-	return Session{tokenHash: tokenHash, csrfToken: csrfToken, createdAt: createdAt, expiresAt: expiresAt, refreshedAt: refreshedAt}
+func RestoreSession(tokenHash TokenHash, publicID, csrfToken string, client Client, createdAt, expiresAt, refreshedAt time.Time) Session {
+	return Session{tokenHash: tokenHash, publicID: publicID, csrfToken: csrfToken, client: client,
+		createdAt: createdAt, expiresAt: expiresAt, refreshedAt: refreshedAt}
 }
+
+// PublicID returns the identifier shown in the session overview.
+func (s Session) PublicID() string { return s.publicID }
+
+// Client returns the browser metadata.
+func (s Session) Client() Client { return s.client }
 
 // TokenHash returns the session identifier.
 func (s Session) TokenHash() TokenHash { return s.tokenHash }

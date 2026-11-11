@@ -52,3 +52,20 @@ func Snapshot(s usecase.SnapshotView) SnapshotDTO {
 	}
 	return dto
 }
+
+// PointDTO is one history point (percentages).
+type PointDTO struct {
+	At     time.Time `json:"at"`
+	CPU    float64   `json:"cpu"`
+	Memory float64   `json:"memory"`
+	Disk   float64   `json:"disk"`
+}
+
+// History maps history points.
+func History(ps []usecase.PointView) []PointDTO {
+	out := make([]PointDTO, 0, len(ps))
+	for _, p := range ps {
+		out = append(out, PointDTO{At: p.At, CPU: round1(p.CPU), Memory: round1(p.Memory), Disk: round1(p.Disk)})
+	}
+	return out
+}

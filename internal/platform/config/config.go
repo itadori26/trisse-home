@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/netip"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -43,6 +44,11 @@ type Config struct {
 	SampleWeather SampleLocation
 	// SampleFeeds are subscribed as example RSS feeds.
 	SampleFeeds []string
+	// BackupDir, BackupInterval and BackupRetention configure automatic
+	// database backups.
+	BackupDir       string
+	BackupInterval  time.Duration
+	BackupRetention int
 }
 
 // SampleLocation is a named coordinate.
@@ -80,7 +86,10 @@ func Load(getenv func(string) string) (Config, error) {
 		SampleData:      l.boolean("SAMPLE_DATA", true),
 		SampleWeather:   l.location("SAMPLE_WEATHER_LOCATION", "Berlin,52.52,13.41"),
 		SampleFeeds:     l.rawList("SAMPLE_FEEDS", "https://go.dev/blog/feed.atom,https://hnrss.org/frontpage"),
+		BackupInterval:  l.duration("BACKUP_INTERVAL", 24*time.Hour),
+		BackupRetention: l.integer("BACKUP_RETENTION", 7),
 	}
+	cfg.BackupDir = l.str("BACKUP_DIR", filepath.Join(filepath.Dir(cfg.DatabasePath), "backups"))
 	if len(cfg.AllowedCIDRs) == 0 && l.getenv("ALLOWED_CIDRS") != "" {
 		l.fail("ALLOWED_CIDRS", "must contain at least one CIDR")
 	}
@@ -124,6 +133,15 @@ func (l *loader) rawList(key, def string) []string {
 		}
 	}
 	return out
+}
+
+func (l *loader) integer(key string, def int) int {
+	v, err := strconv.Atoi(l.str(key, strconv.Itoa(def)))
+	if err != nil {
+		l.fail(key, "must be a whole number")
+		return def
+	}
+	return v
 }
 
 func (l *loader) oneOf(key, def string, allowed ...string) string {

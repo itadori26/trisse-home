@@ -19,3 +19,41 @@ export interface SessionDTO {
   csrfToken: string;
   expiresAt: string /* RFC 3339 */;
 }
+/**
+ * SessionInfoDTO describes an active session in the session overview.
+ */
+export interface SessionInfoDTO {
+  id: string;
+  userAgent: string;
+  clientIp: string;
+  createdAt: string /* RFC 3339 */;
+  lastSeenAt: string /* RFC 3339 */;
+  expiresAt: string /* RFC 3339 */;
+  current: boolean;
+}
+/**
+ * RevokedDTO is returned by POST /api/auth/sessions/revoke-others.
+ */
+export interface RevokedDTO {
+  revoked: number /* int64 */;
+}
+/**
+ * TwoFactorStatusDTO is returned by GET /api/auth/totp.
+ */
+export interface TwoFactorStatusDTO {
+  enabled: boolean;
+  recoveryCodesLeft: number /* int */;
+}
+/**
+ * EnrollmentDTO is returned by POST /api/auth/totp/setup; uri is encoded as QR code.
+ */
+export interface EnrollmentDTO {
+  secret: string;
+  uri: string;
+}
+/**
+ * RecoveryCodesDTO is returned once by POST /api/auth/totp/confirm.
+ */
+export interface RecoveryCodesDTO {
+  codes: string[];
+}

@@ -6,11 +6,14 @@
 import { AdGuardApi, AdGuardUseCases } from '../features/adguard';
 import { AppearanceApi, AppearanceUseCases } from '../features/appearance';
 import { AuthApi, AuthUseCases } from '../features/auth';
+import { BackupApi, BackupUseCases } from '../features/backup';
+import { BackupMonitorApi, BackupMonitorUseCases } from '../features/backupmonitor';
 import { BookmarksApi, BookmarksUseCases } from '../features/bookmarks';
 import { CalendarApi, CalendarUseCases } from '../features/calendar';
 import { DashboardApi, DashboardUseCases } from '../features/dashboard';
 import { DockerApi, DockerUseCases } from '../features/docker';
 import { NotesApi, NotesUseCases } from '../features/notes';
+import { NotificationsApi, NotificationsUseCases } from '../features/notifications';
 import { OnboardingApi, OnboardingUseCases } from '../features/onboarding';
 import { RssApi, RssUseCases } from '../features/rss';
 import { SearchApi, SearchUseCases } from '../features/search';
@@ -39,6 +42,9 @@ export interface Container {
   adguard: AdGuardUseCases;
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
+  backup: BackupUseCases;
+  backupMonitor: BackupMonitorUseCases;
+  notifications: NotificationsUseCases;
   /** Loads which backend modules and widget kinds are enabled. */
   enabledModules(): Promise<{ modules: Set<string>; widgetKinds: Set<string> }>;
 }
@@ -63,6 +69,9 @@ export function createContainer(onUnauthorized: () => void): Container {
     adguard: new AdGuardUseCases(new AdGuardApi(http)),
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),
+    backup: new BackupUseCases(new BackupApi(http)),
+    backupMonitor: new BackupMonitorUseCases(new BackupMonitorApi(http)),
+    notifications: new NotificationsUseCases(new NotificationsApi(http)),
     async enabledModules() {
       const info = await http.get<InfoResponse>('/api/modules');
       return { modules: new Set(info.modules), widgetKinds: new Set(info.widgetKinds) };

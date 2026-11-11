@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"trisse-home/internal/modules/auth/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 // Deps bundles the output ports shared by the auth use cases.
@@ -16,10 +17,12 @@ type Deps struct {
 	Limiter  AttemptLimiter
 	Clock    Clock
 	TTL      SessionTTL
+	IDs      kernel.IDGenerator
+	OTP      OneTimePasswords
 }
 
 func (d Deps) issuer() sessionIssuer {
-	return sessionIssuer{sessions: d.Sessions, tokens: d.Tokens, clock: d.Clock, ttl: d.TTL.Duration()}
+	return sessionIssuer{sessions: d.Sessions, tokens: d.Tokens, ids: d.IDs, clock: d.Clock, ttl: d.TTL.Duration()}
 }
 
 type setupAccount struct {
@@ -69,5 +72,5 @@ func (uc *setupAccount) Execute(ctx context.Context, req SetupRequest) (SessionR
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
 	uc.observer.AccountCreated(ctx)
-	return uc.deps.issuer().issue(ctx)
+	return uc.deps.issuer().issue(ctx, domain.NewClient(req.UserAgent, req.ClientKey))
 }

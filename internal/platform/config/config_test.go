@@ -61,6 +61,16 @@ func TestSampleSettings(t *testing.T) {
 	}
 }
 
+func TestBackupDefaults(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "DATABASE_PATH": "/data/trisse-home.db"}))
+	if err != nil || cfg.BackupDir != "/data/backups" || cfg.BackupInterval != 24*time.Hour || cfg.BackupRetention != 7 {
+		t.Fatalf("unexpected %q %v %d %v", cfg.BackupDir, cfg.BackupInterval, cfg.BackupRetention, err)
+	}
+	if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "BACKUP_RETENTION": "many"})); err == nil {
+		t.Fatal("expected error for non-numeric retention")
+	}
+}
+
 func TestDisabledModules(t *testing.T) {
 	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "MODULES_DISABLED": "Docker, adguard"}))
 	if err != nil {

@@ -1,7 +1,10 @@
 <script lang="ts">
   import { AdGuardSettings } from '../features/adguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
-  import { ChangePasswordForm } from '../features/auth';
+  import { ChangePasswordForm, SessionsList, TwoFactorSettings } from '../features/auth';
+  import { BackupSettings } from '../features/backup';
+  import { BackupSourcesManager } from '../features/backupmonitor';
+  import { NotificationSettings } from '../features/notifications';
   import { FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
@@ -31,6 +34,9 @@
     { id: 'folders', label: 'Bookmark folders', module: 'bookmarks' },
     { id: 'calendar', label: 'Calendar', module: 'calendar' },
     { id: 'adguard', label: 'AdGuard', module: 'adguard' },
+    { id: 'notifications', label: 'Notifications', module: 'notifications' },
+    { id: 'backups', label: 'Backups', module: 'backup' },
+    { id: 'backupmonitor', label: 'Backup monitoring', module: 'backupmonitor' },
     { id: 'account', label: 'Account' },
   ];
   const visible = $derived(sections.filter((s) => !s.module || modules.has(s.module)));
@@ -60,12 +66,22 @@
     <CalendarSettings calendar={container.calendar} />
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
+  {:else if current === 'notifications'}
+    <NotificationSettings notifications={container.notifications} />
+  {:else if current === 'backupmonitor'}
+    <BackupSourcesManager backupMonitor={container.backupMonitor} />
+  {:else if current === 'backups'}
+    <BackupSettings backups={container.backup} />
   {:else}
     {#if onrestarttour}
       <h3>Guided tour</h3>
       <p class="muted">Shows the most important features of trisse-home step by step.</p>
       <button class="btn" type="button" onclick={onrestarttour}>Restart the tour</button>
     {/if}
+    <h3>Two-factor authentication</h3>
+    <TwoFactorSettings auth={container.auth} />
+    <h3>Active sessions</h3>
+    <SessionsList auth={container.auth} />
     <h3>Change password</h3>
     <ChangePasswordForm auth={container.auth} />
   {/if}

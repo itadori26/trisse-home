@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/services/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 type memRepo struct{ items []domain.Service }
@@ -60,12 +61,30 @@ func (s *memStatus) Delete(id string)     { s.mu.Lock(); delete(s.m, id); s.mu.U
 
 type fakeChecker struct{ down map[string]bool }
 
-func (f fakeChecker) Check(_ context.Context, url string, _ bool) (int, time.Duration, error) {
+func (f fakeChecker) Check(_ context.Context, url string, _ bool) domain.CheckResult {
 	if f.down[url] {
-		return 0, 0, errors.New("connection refused")
+		return domain.CheckResult{Err: errors.New("connection refused")}
 	}
-	return 200, 12 * time.Millisecond, nil
+	return domain.CheckResult{HTTPStatus: 200, Latency: 12 * time.Millisecond, CertExpiresAt: time.Unix(0, 0).Add(5 * 24 * time.Hour)}
 }
+
+type memHistory struct {
+	mu     sync.Mutex
+	points []domain.LatencyPoint
+}
+
+func (m *memHistory) Add(_ context.Context, p domain.LatencyPoint) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.points = append(m.points, p)
+	return nil
+}
+func (m *memHistory) Since(_ context.Context, _ time.Time) ([]domain.LatencyPoint, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]domain.LatencyPoint(nil), m.points...), nil
+}
+func (m *memHistory) PruneBefore(context.Context, time.Time) error { return nil }
 
 type ids struct{ n int }
 
@@ -79,10 +98,10 @@ func TestServices(t *testing.T) {
 	ctx := context.Background()
 	repo := &memRepo{}
 	uc := NewServices(Deps{Repo: repo, Status: &memStatus{m: map[string]domain.Status{}},
-		Checker: fakeChecker{down: map[string]bool{"https://down.example": true}}, Clock: clk{}, IDs: &ids{}})
+		Checker: fakeChecker{down: map[string]bool{"https://down.example": true}}, History: &memHistory{}, Observations: kernel.DiscardObservations{}, Clock: clk{}, IDs: &ids{}})
 
 	up, err := uc.Create(ctx, ServiceInput{Name: "Up", URL: "https://up.example"})
-	if err != nil || up.State != "online" || up.LatencyMs != 12 {
+	if err != nil || up.State != "online" || up.LatencyMs != 12 || !up.CertExpiresSoon {
 		t.Fatalf("create: %+v %v", up, err)
 	}
 	down, _ := uc.Create(ctx, ServiceInput{Name: "Down", URL: "https://down.example"})
@@ -107,6 +126,10 @@ func TestServices(t *testing.T) {
 	}
 	if err := uc.Delete(ctx, "missing"); !errors.Is(err, domain.ErrServiceNotFound) {
 		t.Fatalf("expected not found, got %v", err)
+	}
+	hist, err := uc.History(ctx, 24)
+	if err != nil || len(hist[up.ID]) < 2 || len(hist[down.ID]) < 2 || hist[down.ID][0].Online {
+		t.Fatalf("history: %+v %v", hist, err)
 	}
 	if err := uc.Delete(ctx, up.ID); err != nil {
 		t.Fatal(err)

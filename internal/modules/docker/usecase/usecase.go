@@ -40,14 +40,16 @@ type Containers interface {
 
 type containers struct {
 	source ContainerSource
+	sink   kernel.ObservationSink
 	clock  kernel.Clock
 	mu     sync.RWMutex
 	cached *ListResponse
 }
 
-// NewContainers returns the container use cases.
-func NewContainers(source ContainerSource, clock kernel.Clock) Containers {
-	return &containers{source: source, clock: clock}
+// NewContainers returns the container use cases; every refresh reports the
+// state of each container to sink.
+func NewContainers(source ContainerSource, sink kernel.ObservationSink, clock kernel.Clock) Containers {
+	return &containers{source: source, sink: sink, clock: clock}
 }
 
 // Refresh implements Containers; it is run by the background job.
@@ -63,6 +65,10 @@ func (uc *containers) Refresh(ctx context.Context) error {
 		}
 		uc.cached = &res
 		return fmt.Errorf("list containers: %w", err)
+	}
+	for _, c := range list {
+		uc.sink.Observe(ctx, kernel.Observation{Kind: "container", Key: c.Name, Label: c.Name,
+			Healthy: c.State == "running" && c.Health() != domain.HealthUnhealthy, Detail: c.Status})
 	}
 	domain.SortForDisplay(list)
 	s := domain.Summarise(list)

@@ -10,11 +10,14 @@ import (
 	"trisse-home/internal/modules/adguard"
 	"trisse-home/internal/modules/appearance"
 	"trisse-home/internal/modules/auth"
+	"trisse-home/internal/modules/backup"
+	"trisse-home/internal/modules/backupmonitor"
 	"trisse-home/internal/modules/bookmarks"
 	"trisse-home/internal/modules/calendar"
 	"trisse-home/internal/modules/dashboard"
 	"trisse-home/internal/modules/docker"
 	"trisse-home/internal/modules/notes"
+	"trisse-home/internal/modules/notifications"
 	"trisse-home/internal/modules/onboarding"
 	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
@@ -27,6 +30,7 @@ import (
 	"trisse-home/internal/platform/crypto"
 	"trisse-home/internal/platform/httpclient"
 	"trisse-home/internal/platform/idgen"
+	"trisse-home/internal/shared/kernel"
 )
 
 // frontendOnlyWidgetKinds are widgets that need no backend module.
@@ -49,12 +53,21 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 			CookieSecure: cfg.CookieSecure, SessionTTL: cfg.SessionTTL, SetupToken: cfg.SetupToken,
 			OnAccountCreated: func(ctx context.Context) { onAccountCreated(ctx, cfg, log, registry) },
 		},
-		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, Log: log},
+		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log},
 	)
 	if err != nil {
 		return nil, nil, err
 	}
 	registry.Register(authModule)
+
+	// Notifications are built first: monitoring modules report observations
+	// to them, or to a sink that discards them when the module is disabled.
+	var sink kernel.ObservationSink = kernel.DiscardObservations{}
+	if cfg.ModuleEnabled("notifications") {
+		n := notifications.New(db, secrets, client, clk)
+		registry.Register(n)
+		sink = n
+	}
 
 	optional := []struct {
 		name  string
@@ -66,7 +79,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"weather", func() modules.Module { return weather.New(client, clk) }},
 		{"services", func() modules.Module {
 			return services.New(services.Deps{
-				DB: db, Clock: clk, IDs: ids,
+				DB: db, Clock: clk, IDs: ids, Observations: sink,
 				Client:         httpclient.New(httpclient.WithTimeout(healthCheckTimeout)),
 				InsecureClient: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
 			})
@@ -76,16 +89,26 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"todos", func() modules.Module { return todos.New(db, clk, ids) }},
 		{"rss", func() modules.Module { return rss.New(db, client, clk, ids, cfg.SampleFeeds) }},
 		{"system", func() modules.Module {
-			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths}, clk)
+			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths}, db, sink, clk)
 		}},
-		{"docker", func() modules.Module { return docker.New(client, cfg.DockerProxyURL, clk) }},
+		{"docker", func() modules.Module { return docker.New(client, cfg.DockerProxyURL, sink, clk) }},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
+		{"backupmonitor", func() modules.Module {
+			return backupmonitor.New(backupmonitor.Deps{DB: db, Tokens: crypto.RandomTokens{}, Clock: clk, IDs: ids, Observations: sink})
+		}},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, time.Local) }},
 	}
 	for _, m := range optional {
 		if cfg.ModuleEnabled(m.name) {
 			registry.Register(m.build())
 		}
+	}
+	if cfg.ModuleEnabled("backup") {
+		b, err := backup.New(backup.Config{Dir: cfg.BackupDir, Interval: cfg.BackupInterval, Retention: cfg.BackupRetention}, db, clk)
+		if err != nil {
+			return nil, nil, err
+		}
+		registry.Register(b)
 	}
 
 	kinds := append(append([]string{}, frontendOnlyWidgetKinds...), registry.WidgetKinds()...)

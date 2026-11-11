@@ -21,18 +21,21 @@ Architecture.
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Current weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), place search      |
 | **clock**      | Time and date, optionally in another time zone                                                        |
-| **services**   | Tiles for your services with online status (periodic health checks)                                  |
+| **services**   | Tiles for your services with online status, response time history and TLS certificate expiry warning  |
 | **bookmarks**  | Links in folders with tags, filterable                                                                |
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Upcoming events from CalDAV calendars, e.g. Nextcloud (recurring events supported)                    |
-| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host                                    |
+| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
 | **docker**     | Container status and health via a read-only Docker socket proxy                                       |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
+| **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
+| **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
+| **notifications** | Push messages via [ntfy](https://ntfy.sh) for offline services, containers, full disks, expiring certificates and failed backups |
 | **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
-| **auth**       | First-run setup, login, sessions, password change (always enabled)                                    |
+| **auth**       | First-run setup, login, session overview with sign-out per device, password change (always enabled)   |
 
 ## Architecture in brief
 
@@ -87,19 +90,43 @@ start with an almost empty page instead.
 
 **Updating:** `git pull && sudo docker compose build && sudo docker compose up -d`
 
-**Backup:** the data lives in the Docker volume `trisse-home-data`
-(`/data/trisse-home.db`). Keep `SECRET_KEY` together with the backup; without
-it stored integration passwords cannot be decrypted.
+**Backup:** the app creates consistent database backups automatically
+(daily, 7 kept; see `BACKUP_*`) in `/data/backups` and offers them for
+download under Settings → Backups. Keep `SECRET_KEY` separately; without it
+stored integration passwords cannot be decrypted. To copy the backups off the
+volume:
 
 ```sh
 sudo docker run --rm -v trisse-home-data:/data -v "$PWD":/backup alpine \
-  tar czf /backup/trisse-home-$(date +%F).tgz -C /data .
+  cp -r /data/backups /backup/
 ```
+
+**Restore:** stop the stack, replace `/data/trisse-home.db` in the volume
+with a backup file (and remove `trisse-home.db-wal`/`-shm` if present), then
+start it again.
 
 **Forgot the password?**
 `sudo docker compose exec trisse-home /trisse-home reset-account`, then
 `sudo docker compose restart trisse-home` and use the new setup token from
 the log.
+
+## Notifications and backup monitoring
+
+**Notifications** (Settings → Notifications) publish to an [ntfy](https://ntfy.sh) topic. A state change is only
+reported after two consecutive checks (no flapping) and the first observation after a restart only sets the
+baseline. Topics on public servers are readable by anyone who knows the name — use a long random topic (one is
+suggested) or your own ntfy server with an access token; the token is stored encrypted with `SECRET_KEY`.
+
+**Backup monitoring** (Settings → Backup monitoring) gives every backup job a secret ping URL, shown once. Call it
+at the end of your backup script:
+
+```sh
+restic backup /data && curl -fsS -X POST "$PING_URL" || curl -fsS -X POST --data "restic failed" "$PING_URL?status=fail"
+```
+
+A source is *overdue* when no successful run arrives within its maximum age. The ping endpoint needs no login but
+is still subject to `ALLOWED_CIDRS`; only a SHA-256 hash of the token is stored, and a new URL can be generated at
+any time.
 
 ## Configuration
 
@@ -127,6 +154,9 @@ service tiles are configured in the web interface.
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
 | `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
 | `DATABASE_PATH`     | `/data/trisse-home.db`            | SQLite file.                                                                  |
+| `BACKUP_DIR`        | `backups` next to the database    | Directory for automatic backups.                                              |
+| `BACKUP_INTERVAL`   | `24h`                             | How often a backup is created (≥ 1h).                                         |
+| `BACKUP_RETENTION`  | `7`                               | Number of backups kept.                                                       |
 | `SHUTDOWN_TIMEOUT`  | `15s`                             | Grace period for in-flight requests.                                          |
 | `SAMPLE_DATA`       | `true`                            | Fill a fresh installation with example widgets and data after setup.         |
 | `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
@@ -138,7 +168,10 @@ service tiles are configured in the web interface.
   IPs are logged so the list can be tuned. Do **not** forward the port on
   your router — use a VPN (e.g. WireGuard) for remote access.
 - Single user, Argon2id password hash, login rate limiting (5 attempts per
-  15 minutes per IP).
+  15 minutes per IP), optional two-factor authentication (TOTP, RFC 6238)
+  with ten one-time recovery codes; the TOTP secret is encrypted at rest,
+  recovery codes are stored hashed and reused codes are rejected.
+- Session overview under Settings → Account to sign out other devices.
 - Session cookie `HttpOnly` + `SameSite=Strict`; CSRF protection via a
   per-session token **and** `Sec-Fetch-Site`/`Origin` checks.
 - Strict Content-Security-Policy (`script-src 'self'`), Markdown sanitised
@@ -148,6 +181,18 @@ service tiles are configured in the web interface.
   capabilities. Docker access only through `tecnativa/docker-socket-proxy`
   with container listing enabled and everything else (including all POST
   requests) denied, on an internal network without published port.
+
+### Outbound requests
+
+Several modules fetch URLs that you configure yourself: service health checks,
+RSS feeds, CalDAV calendars and AdGuard Home. This is intended behaviour, so
+static analysis reports these as "server-side request forgery" — only the
+single, authenticated user can configure them (session + CSRF protection,
+IP allowlist). Weather data comes from Open-Meteo. Nothing else leaves the
+server. The search endpoint redirects to the search engine (or to a URL typed
+into the search bar); it requires a session, and the `SameSite=Strict` cookie
+is never sent with cross-site requests, so it cannot be abused as an open
+redirect.
 
 ### Behind a reverse proxy (optional)
 

@@ -23,11 +23,12 @@ func (t SessionTTL) Duration() time.Duration { return time.Duration(t) }
 type sessionIssuer struct {
 	sessions SessionRepository
 	tokens   TokenGenerator
+	ids      kernel.IDGenerator
 	clock    kernel.Clock
 	ttl      time.Duration
 }
 
-func (i sessionIssuer) issue(ctx context.Context) (SessionResponse, error) {
+func (i sessionIssuer) issue(ctx context.Context, client domain.Client) (SessionResponse, error) {
 	raw, err := i.tokens.NewToken()
 	if err != nil {
 		return SessionResponse{}, fmt.Errorf("generate session token: %w", err)
@@ -36,7 +37,7 @@ func (i sessionIssuer) issue(ctx context.Context) (SessionResponse, error) {
 	if err != nil {
 		return SessionResponse{}, fmt.Errorf("generate csrf token: %w", err)
 	}
-	s, err := domain.NewSession(domain.HashToken(raw), csrf, i.clock.Now(), i.ttl)
+	s, err := domain.NewSession(domain.HashToken(raw), i.ids.NewID(), csrf, client, i.clock.Now(), i.ttl)
 	if err != nil {
 		return SessionResponse{}, err
 	}

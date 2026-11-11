@@ -19,12 +19,34 @@ type SetupRequest struct {
 	SetupToken string
 	Password   string
 	ClientKey  string
+	UserAgent  string
 }
 
 // LoginRequest is the input of Login. ClientKey identifies the client for
 // rate limiting (usually its IP address).
 type LoginRequest struct {
 	Password  string
+	TOTPCode  string
+	ClientKey string
+	UserAgent string
+}
+
+// TwoFactorStatus describes the second factor.
+type TwoFactorStatus struct {
+	Enabled           bool
+	RecoveryCodesLeft int
+}
+
+// TwoFactorEnrollment is shown while setting up the authenticator app.
+type TwoFactorEnrollment struct {
+	Secret string
+	URI    string
+}
+
+// DisableTwoFactorRequest requires the password and a current code.
+type DisableTwoFactorRequest struct {
+	Password  string
+	Code      string
 	ClientKey string
 }
 
@@ -51,6 +73,18 @@ type ChangePasswordRequest struct {
 	CurrentPassword string
 	NewPassword     string
 	ClientKey       string
+	UserAgent       string
+}
+
+// SessionView describes an active session in the session overview.
+type SessionView struct {
+	ID         string
+	UserAgent  string
+	ClientIP   string
+	CreatedAt  time.Time
+	LastSeenAt time.Time
+	ExpiresAt  time.Time
+	Current    bool
 }
 
 // SessionResponse describes a newly created session. SessionToken is the raw

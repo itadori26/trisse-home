@@ -12,6 +12,7 @@ type Account struct {
 	passwordHash string
 	createdAt    time.Time
 	updatedAt    time.Time
+	totp         TOTP
 }
 
 // NewAccount creates an account from an already computed password hash.

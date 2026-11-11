@@ -13,17 +13,44 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"trisse-home/internal/platform/config"
+	"trisse-home/internal/platform/crypto"
 )
+
+// flakyDown switches the /flaky endpoint of the fake upstream to 503.
+var flakyDown atomic.Bool
+
+// ntfyMessages records messages published to the fake ntfy endpoint.
+var ntfyMessages = struct {
+	sync.Mutex
+	titles []string
+}{}
 
 // fakeUpstream emulates every external system the modules talk to.
 func fakeUpstream(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /flaky", func(w http.ResponseWriter, _ *http.Request) {
+		if flakyDown.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+	})
+	mux.HandleFunc("POST /ntfy", func(w http.ResponseWriter, r *http.Request) {
+		var m struct {
+			Title string `json:"title"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&m)
+		ntfyMessages.Lock()
+		ntfyMessages.titles = append(ntfyMessages.titles, m.Title)
+		ntfyMessages.Unlock()
+	})
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("GET /feed", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `<?xml version="1.0"?><rss version="2.0"><channel><title>Fake News</title><link>https://news.example/</link>
@@ -130,6 +157,7 @@ func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) 
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
+		BackupDir:       filepath.Join(t.TempDir(), "backups"), BackupInterval: 24 * time.Hour, BackupRetention: 3,
 	}
 	for _, o := range opts {
 		o(&cfg)
@@ -174,9 +202,22 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 15 {
-		t.Fatalf("expected 15 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 18 {
+		t.Fatalf("expected 18 modules, got %d: %v", n, info)
 	}
+
+	// --- backups ---
+	var backupFile obj
+	c.json(http.MethodPost, "/api/backups", nil, http.StatusCreated, &backupFile)
+	var backups []obj
+	c.json(http.MethodGet, "/api/backups", nil, http.StatusOK, &backups)
+	if len(backups) != 1 {
+		t.Fatalf("expected one backup, got %v", backups)
+	}
+	if body := c.do(http.MethodGet, "/api/backups/"+backupFile["name"].(string), nil, http.StatusOK); !strings.HasPrefix(string(body), "SQLite format 3") {
+		t.Fatal("backup download is not an SQLite database")
+	}
+	c.do(http.MethodGet, "/api/backups/..%2F..%2Fetc%2Fpasswd", nil, http.StatusNotFound)
 
 	// --- onboarding ---
 	var tour obj
@@ -246,6 +287,38 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodPost, "/api/services/check", nil, http.StatusOK, nil)
 	c.json(http.MethodGet, "/api/services", nil, http.StatusOK, nil)
 	c.do(http.MethodDelete, "/api/services/"+sID, nil, http.StatusNoContent)
+
+	// --- notifications: a service going offline is pushed via ntfy ---
+	rules := obj{"services": true, "containers": true, "disk": true, "diskThreshold": 90, "tls": true, "tlsDays": 14, "backups": true}
+	c.json(http.MethodPut, "/api/notifications/settings", obj{"enabled": true, "serverUrl": up.URL + "/ntfy", "topic": "home", "token": "", "rules": rules}, http.StatusOK, nil)
+	c.do(http.MethodPost, "/api/notifications/test", nil, http.StatusNoContent)
+	var flaky obj
+	c.json(http.MethodPost, "/api/services", obj{"name": "Flaky", "url": up.URL + "/flaky"}, http.StatusCreated, &flaky)
+	flakyDown.Store(true)
+	c.json(http.MethodPost, "/api/services/check", nil, http.StatusOK, nil)
+	c.json(http.MethodPost, "/api/services/check", nil, http.StatusOK, nil)
+	waitFor(t, func() bool {
+		ntfyMessages.Lock()
+		defer ntfyMessages.Unlock()
+		return slices.Contains(ntfyMessages.titles, "Flaky is offline")
+	})
+	c.do(http.MethodDelete, "/api/services/"+flaky["id"].(string), nil, http.StatusNoContent)
+
+	// --- backup monitor: external scripts report via a public ping URL ---
+	var created struct {
+		Source  obj    `json:"source"`
+		PingURL string `json:"pingUrl"`
+	}
+	c.json(http.MethodPost, "/api/backup-status/sources", obj{"name": "NAS", "maxAgeHours": 26}, http.StatusCreated, &created)
+	anonymous := newClient(t, srv.URL)
+	pingPath := strings.TrimPrefix(created.PingURL, srv.URL)
+	anonymous.do(http.MethodPost, pingPath, nil, http.StatusNoContent)
+	anonymous.do(http.MethodPost, "/api/backup-status/ping/wrong-token", nil, http.StatusNotFound)
+	var sources []obj
+	c.json(http.MethodGet, "/api/backup-status/sources", nil, http.StatusOK, &sources)
+	if len(sources) != 1 || sources[0]["state"] != "ok" {
+		t.Fatalf("backup source: %v", sources)
+	}
 
 	// --- bookmarks ---
 	var folder, bm obj
@@ -332,6 +405,49 @@ func TestAPIEndToEnd(t *testing.T) {
 	if len(agenda.Events) != 1 || agenda.Events[0]["summary"] != "Dentist" {
 		t.Fatalf("calendar: %+v", agenda)
 	}
+
+	// --- sessions ---
+	other := newClient(t, srv.URL)
+	other.json(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-123"}, http.StatusOK, nil)
+	var sessions []obj
+	c.json(http.MethodGet, "/api/auth/sessions", nil, http.StatusOK, &sessions)
+	if len(sessions) != 2 {
+		t.Fatalf("expected 2 sessions, got %v", sessions)
+	}
+	var revoked obj
+	c.json(http.MethodPost, "/api/auth/sessions/revoke-others", nil, http.StatusOK, &revoked)
+	if revoked["revoked"] != float64(1) {
+		t.Fatalf("revoke others: %v", revoked)
+	}
+	other.do(http.MethodGet, "/api/dashboard", nil, http.StatusUnauthorized)
+	c.do(http.MethodDelete, "/api/auth/sessions/unknown", nil, http.StatusNotFound)
+
+	// --- two-factor authentication ---
+	var enrollment obj
+	c.json(http.MethodPost, "/api/auth/totp/setup", nil, http.StatusOK, &enrollment)
+	code, err := crypto.TOTP{}.Code(enrollment["secret"].(string), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var recovery struct {
+		Codes []string `json:"codes"`
+	}
+	c.json(http.MethodPost, "/api/auth/totp/confirm", obj{"code": code}, http.StatusOK, &recovery)
+	if len(recovery.Codes) != 10 {
+		t.Fatalf("expected 10 recovery codes, got %v", recovery.Codes)
+	}
+	second := newClient(t, srv.URL)
+	if body := string(second.do(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-123"}, http.StatusUnprocessableEntity)); !strings.Contains(body, `"field":"totpCode"`) {
+		t.Fatalf("login without second factor: %s", body)
+	}
+	second.do(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-123", "code": "000000"}, http.StatusUnauthorized)
+	second.json(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-123", "code": recovery.Codes[0]}, http.StatusOK, nil)
+	var tfStatus obj
+	c.json(http.MethodGet, "/api/auth/totp", nil, http.StatusOK, &tfStatus)
+	if tfStatus["enabled"] != true || tfStatus["recoveryCodesLeft"] != float64(9) {
+		t.Fatalf("totp status: %v", tfStatus)
+	}
+	c.do(http.MethodPost, "/api/auth/totp/disable", obj{"password": "e2e-password-123", "code": recovery.Codes[1]}, http.StatusNoContent)
 
 	// --- password change, logout, login ---
 	var changed obj
@@ -440,4 +556,15 @@ func TestSampleDataCanBeDisabled(t *testing.T) {
 	if len(notes) != 0 {
 		t.Fatalf("expected no sample data, got %d notes", len(notes))
 	}
+}
+
+// waitFor polls cond for up to five seconds.
+func waitFor(t *testing.T, cond func() bool) {
+	t.Helper()
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		if cond() {
+			return
+		}
+	}
+	t.Fatal("condition not met within 5 seconds")
 }

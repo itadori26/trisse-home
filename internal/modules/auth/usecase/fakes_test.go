@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -70,6 +71,41 @@ func (f *fakeSessions) DeleteAll(context.Context) error {
 	return nil
 }
 
+func (f *fakeSessions) ListActive(_ context.Context, now time.Time) ([]domain.Session, error) {
+	var out []domain.Session
+	for _, s := range f.byHash {
+		if !s.IsExpired(now) {
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeSessions) DeleteByPublicID(_ context.Context, id string) error {
+	for h, s := range f.byHash {
+		if s.PublicID() == id {
+			delete(f.byHash, h)
+			return nil
+		}
+	}
+	return domain.ErrSessionNotListed
+}
+
+func (f *fakeSessions) DeleteAllExcept(_ context.Context, keep domain.TokenHash) (int64, error) {
+	var n int64
+	for h := range f.byHash {
+		if h != keep {
+			delete(f.byHash, h)
+			n++
+		}
+	}
+	return n, nil
+}
+
+type seqIDs struct{ n int }
+
+func (s *seqIDs) NewID() string { s.n++; return fmt.Sprintf("sid%d", s.n) }
+
 func (f *fakeSessions) DeleteExpired(_ context.Context, now time.Time) (int64, error) {
 	var n int64
 	for h, s := range f.byHash {
@@ -132,7 +168,7 @@ func newEnv() *env {
 	}
 	e.deps = Deps{
 		Accounts: e.accounts, Sessions: e.sessions, Hasher: fakeHasher{}, Tokens: &seqTokens{},
-		Limiter: e.limiter, Clock: e.clock, TTL: SessionTTL(24 * time.Hour),
+		Limiter: e.limiter, Clock: e.clock, TTL: SessionTTL(24 * time.Hour), IDs: &seqIDs{}, OTP: &fakeOTP{},
 	}
 	return e
 }
