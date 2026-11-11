@@ -29,6 +29,8 @@ type ServiceView struct {
 	LatencyMs                                  int64
 	CheckedAt                                  time.Time
 	Error                                      string
+	CertExpiresAt                              time.Time
+	CertExpiresSoon                            bool
 }
 
 // Services is the input port of the services module.
@@ -39,6 +41,8 @@ type Services interface {
 	Delete(ctx context.Context, id string) error
 	Reorder(ctx context.Context, ids []string) error
 	CheckAll(ctx context.Context) error
+	// History returns the response time history per service ID.
+	History(ctx context.Context, hours int) (map[string][]LatencyPointView, error)
 }
 
 // Repository persists services (output port).
@@ -59,7 +63,21 @@ type StatusStore interface {
 
 // HealthChecker performs one HTTP health check (output port).
 type HealthChecker interface {
-	Check(ctx context.Context, url string, skipTLSVerify bool) (httpStatus int, latency time.Duration, err error)
+	Check(ctx context.Context, url string, skipTLSVerify bool) domain.CheckResult
+}
+
+// HistoryStore keeps the health check history (output port).
+type HistoryStore interface {
+	Add(ctx context.Context, p domain.LatencyPoint) error
+	Since(ctx context.Context, t time.Time) ([]domain.LatencyPoint, error)
+	PruneBefore(ctx context.Context, t time.Time) error
+}
+
+// LatencyPointView is one point of a service's response time history.
+type LatencyPointView struct {
+	At        time.Time
+	LatencyMs float64
+	Online    bool
 }
 
 // Deps bundles the output ports.
@@ -67,6 +85,7 @@ type Deps struct {
 	Repo    Repository
 	Status  StatusStore
 	Checker HealthChecker
+	History HistoryStore
 	Clock   kernel.Clock
 	IDs     kernel.IDGenerator
 }
@@ -168,6 +187,9 @@ func (uc *services) CheckAll(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("list services: %w", err)
 	}
+	if err := uc.d.History.PruneBefore(ctx, uc.d.Clock.Now().Add(-domain.HistoryRetention)); err != nil {
+		return fmt.Errorf("prune history: %w", err)
+	}
 	sem := make(chan struct{}, maxParallelChecks)
 	var wg sync.WaitGroup
 	for _, s := range list {
@@ -183,8 +205,34 @@ func (uc *services) CheckAll(ctx context.Context) error {
 }
 
 func (uc *services) check(ctx context.Context, s domain.Service) {
-	code, latency, err := uc.d.Checker.Check(ctx, s.CheckURL, s.SkipTLSVerify)
-	uc.d.Status.Put(domain.StatusFromResponse(s.ID, code, latency, err, uc.d.Clock.Now()))
+	now := uc.d.Clock.Now()
+	st := domain.StatusFromCheck(s.ID, uc.d.Checker.Check(ctx, s.CheckURL, s.SkipTLSVerify), now)
+	uc.d.Status.Put(st)
+	// History is best effort: a failed write must not hide the live status.
+	_ = uc.d.History.Add(ctx, domain.LatencyPoint{ServiceID: s.ID, At: now, LatencyMs: float64(st.Latency.Milliseconds()), Online: st.State == domain.StateOnline})
+}
+
+// History implements Services.
+func (uc *services) History(ctx context.Context, hours int) (map[string][]LatencyPointView, error) {
+	maxHours := int(domain.HistoryRetention / time.Hour)
+	if hours <= 0 || hours > maxHours {
+		hours = maxHours
+	}
+	points, err := uc.d.History.Since(ctx, uc.d.Clock.Now().Add(-time.Duration(hours)*time.Hour))
+	if err != nil {
+		return nil, fmt.Errorf("load history: %w", err)
+	}
+	byService := map[string][]domain.LatencyPoint{}
+	for _, p := range points {
+		byService[p.ServiceID] = append(byService[p.ServiceID], p)
+	}
+	out := make(map[string][]LatencyPointView, len(byService))
+	for id, ps := range byService {
+		for _, p := range domain.DownsampleLatency(ps, domain.MaxChartPoints) {
+			out[id] = append(out[id], LatencyPointView{At: p.At, LatencyMs: p.LatencyMs, Online: p.Online})
+		}
+	}
+	return out, nil
 }
 
 func (uc *services) view(s domain.Service) ServiceView {
@@ -194,6 +242,7 @@ func (uc *services) view(s domain.Service) ServiceView {
 	}
 	if st, ok := uc.d.Status.Get(s.ID); ok {
 		v.State, v.HTTPStatus, v.LatencyMs, v.CheckedAt, v.Error = string(st.State), st.HTTPStatus, st.Latency.Milliseconds(), st.CheckedAt, st.Error
+		v.CertExpiresAt, v.CertExpiresSoon = st.CertExpiresAt, st.CertificateExpiresWithin(domain.DefaultCertWarning, uc.d.Clock.Now())
 	}
 	return v
 }

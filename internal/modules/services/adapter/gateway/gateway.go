@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/services/domain"
+	"trisse-home/internal/shared/sqlutil"
 )
 
 //go:embed migrations/*.sql
@@ -152,23 +153,75 @@ func NewHTTPChecker(verifying, insecure *http.Client) *HTTPChecker {
 // maxDrainBytes limits how much of a response body is read before closing.
 const maxDrainBytes = 4096
 
-// Check issues a GET request and reports status code and latency.
-func (c *HTTPChecker) Check(ctx context.Context, url string, skipTLSVerify bool) (int, time.Duration, error) {
+// Check issues a GET request and reports status code, latency and the
+// expiry of the server's TLS certificate.
+func (c *HTTPChecker) Check(ctx context.Context, url string, skipTLSVerify bool) domain.CheckResult {
 	client := c.verifying
 	if skipTLSVerify {
 		client = c.insecure
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return 0, 0, fmt.Errorf("build request: %w", err)
+		return domain.CheckResult{Err: fmt.Errorf("build request: %w", err)}
 	}
 	start := time.Now()
 	res, err := client.Do(req)
 	if err != nil {
-		return 0, 0, err
+		return domain.CheckResult{Err: err}
 	}
-	latency := time.Since(start)
+	result := domain.CheckResult{HTTPStatus: res.StatusCode, Latency: time.Since(start)}
+	if res.TLS != nil && len(res.TLS.PeerCertificates) > 0 {
+		result.CertExpiresAt = res.TLS.PeerCertificates[0].NotAfter
+	}
 	_, _ = io.CopyN(io.Discard, res.Body, maxDrainBytes)
 	_ = res.Body.Close()
-	return res.StatusCode, latency, nil
+	return result
+}
+
+// HistoryStore keeps health check results in SQLite.
+type HistoryStore struct{ db *sql.DB }
+
+// NewHistoryStore returns a store backed by db.
+func NewHistoryStore(db *sql.DB) *HistoryStore { return &HistoryStore{db: db} }
+
+// Add implements usecase.HistoryStore.
+func (h *HistoryStore) Add(ctx context.Context, p domain.LatencyPoint) error {
+	_, err := h.db.ExecContext(ctx, `INSERT OR REPLACE INTO services_history (service_id, at, latency_ms, online) VALUES (?, ?, ?, ?)`,
+		p.ServiceID, sqlutil.FormatTime(p.At), p.LatencyMs, sqlutil.BoolToInt(p.Online))
+	if err != nil {
+		return fmt.Errorf("insert history: %w", err)
+	}
+	return nil
+}
+
+// Since implements usecase.HistoryStore; points are ordered by time.
+func (h *HistoryStore) Since(ctx context.Context, t time.Time) ([]domain.LatencyPoint, error) {
+	rows, err := h.db.QueryContext(ctx, `SELECT service_id, at, latency_ms, online FROM services_history WHERE at >= ? ORDER BY at`, sqlutil.FormatTime(t))
+	if err != nil {
+		return nil, fmt.Errorf("query history: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.LatencyPoint
+	for rows.Next() {
+		var p domain.LatencyPoint
+		var at string
+		var online int
+		if err := rows.Scan(&p.ServiceID, &at, &p.LatencyMs, &online); err != nil {
+			return nil, fmt.Errorf("scan history: %w", err)
+		}
+		if p.At, err = sqlutil.ParseTime(at); err != nil {
+			return nil, err
+		}
+		p.Online = online == 1
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// PruneBefore implements usecase.HistoryStore.
+func (h *HistoryStore) PruneBefore(ctx context.Context, t time.Time) error {
+	if _, err := h.db.ExecContext(ctx, `DELETE FROM services_history WHERE at < ?`, sqlutil.FormatTime(t)); err != nil {
+		return fmt.Errorf("prune history: %w", err)
+	}
+	return nil
 }

@@ -1,6 +1,6 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { SnapshotDTO } from '../../../../shared/api-client/generated/system';
-import type { SystemSnapshot } from '../../domain/system';
+import type { PointDTO, SnapshotDTO } from '../../../../shared/api-client/generated/system';
+import type { HistoryPoint, SystemSnapshot } from '../../domain/system';
 import type { SystemGateway } from '../../usecase/systemUseCases';
 
 /** SystemGateway backed by the REST API. */
@@ -19,5 +19,10 @@ export class SystemApi implements SystemGateway {
       uptimeSeconds: d.uptimeSeconds,
       temperature: d.temperature,
     };
+  }
+
+  async history(hours: number): Promise<HistoryPoint[]> {
+    const dtos = await this.http.get<PointDTO[]>(`/api/system/history?hours=${hours}`);
+    return dtos.map((d) => ({ at: new Date(d.at), cpu: d.cpu, memory: d.memory, disk: d.disk }));
   }
 }

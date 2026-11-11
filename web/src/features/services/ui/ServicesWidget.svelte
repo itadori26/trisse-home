@@ -1,6 +1,7 @@
 <script lang="ts">
   import { errorMessage } from '../../../shared/api-client/http';
-  import { type Service, statusText } from '../domain/service';
+  import Sparkline from '../../../shared/ui/Sparkline.svelte';
+  import { certificateDaysLeft, type LatencyPoint, type Service, statusText } from '../domain/service';
   import type { ServicesUseCases } from '../usecase/servicesUseCases';
   import ServiceIcon from './ServiceIcon.svelte';
 
@@ -13,15 +14,21 @@
 
   const POLL_MS = 30_000;
   let list = $state<Service[]>([]);
+  let history = $state<Record<string, LatencyPoint[]>>({});
   let error = $state('');
   const compact = $derived(config['compact'] === true);
 
   $effect(() => {
-    const load = () =>
+    const load = () => {
       services
+        .history()
+        .then((h) => (history = h))
+        .catch(() => {});
+      return services
         .list()
         .then((l) => ((list = l), (error = '')))
         .catch((err) => (error = errorMessage(err)));
+    };
     load();
     const timer = setInterval(load, POLL_MS);
     return () => clearInterval(timer);
@@ -40,7 +47,19 @@
         <span class="text">
           <span class="name">{s.name}</span>
           {#if s.description && !compact}<span class="muted desc">{s.description}</span>{/if}
+          {#if history[s.id]?.length}
+            <Sparkline
+              values={(history[s.id] ?? []).map((p) => p.latencyMs)}
+              label="Response time of {s.name} over 24 hours"
+            />
+          {/if}
         </span>
+        {#if s.certExpiresSoon}
+          {@const days = certificateDaysLeft(s, new Date())}
+          <span class="cert" title="TLS certificate expires {s.certExpiresAt?.toLocaleDateString()}"
+            >🔒 {days}d</span
+          >
+        {/if}
         <span class="dot {s.state}" aria-label={s.state}></span>
       </a>
     </li>
@@ -86,6 +105,11 @@
   }
   .desc {
     font-size: 0.8em;
+  }
+  .cert {
+    font-size: 0.75em;
+    color: var(--color-warning);
+    white-space: nowrap;
   }
   .dot {
     width: 10px;

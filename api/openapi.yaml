@@ -392,6 +392,13 @@ paths:
       security: [{ session: [], csrf: [] }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Service" } } } } }
+  /api/services/history:
+    get:
+      tags: [services]
+      summary: Response time history per service ID (kept 24 h)
+      parameters: [{ name: hours, in: query, schema: { type: integer, minimum: 1, maximum: 24, default: 24 } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, additionalProperties: { type: array, items: { type: object, properties: { at: { type: string, format: date-time }, latencyMs: { type: number }, online: { type: boolean } } } } } } } }
   /api/services/order:
     put:
       tags: [services]
@@ -638,6 +645,13 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SystemSnapshot" } } } }
         "502": { $ref: "#/components/responses/Unavailable" }
+  /api/system/history:
+    get:
+      tags: [system]
+      summary: Metric history (one point per minute, kept 24 h, downsampled to max. 288 points)
+      parameters: [{ name: hours, in: query, schema: { type: integer, minimum: 1, maximum: 24, default: 24 } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, properties: { at: { type: string, format: date-time }, cpu: { type: number }, memory: { type: number }, disk: { type: number } } } } } } }
   /api/docker/containers:
     get:
       tags: [docker]
@@ -894,6 +908,8 @@ components:
             latencyMs: { type: integer }
             checkedAt: { type: string, format: date-time }
             error: { type: string }
+            certExpiresAt: { type: [string, "null"], format: date-time }
+            certExpiresSoon: { type: boolean, description: TLS certificate expires within 14 days }
     BookmarkInput:
       type: object
       required: [url]

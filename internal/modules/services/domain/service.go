@@ -82,10 +82,35 @@ type Status struct {
 	Latency    time.Duration
 	CheckedAt  time.Time
 	Error      string
+	// CertExpiresAt is the expiry of the TLS certificate (zero for HTTP).
+	CertExpiresAt time.Time
 }
 
-// StatusFromResponse classifies a check: any HTTP answer below 500 means the
+// CheckResult is the raw outcome of one HTTP health check.
+type CheckResult struct {
+	HTTPStatus    int
+	Latency       time.Duration
+	CertExpiresAt time.Time
+	Err           error
+}
+
+// DefaultCertWarning is how long before expiry a certificate is flagged.
+const DefaultCertWarning = 14 * 24 * time.Hour
+
+// CertificateExpiresWithin reports whether the TLS certificate expires within d of now.
+func (s Status) CertificateExpiresWithin(d time.Duration, now time.Time) bool {
+	return !s.CertExpiresAt.IsZero() && s.CertExpiresAt.Sub(now) < d
+}
+
+// StatusFromCheck classifies a check: any HTTP answer below 500 means the
 // service is up (401/403 are typical for protected services).
+func StatusFromCheck(serviceID string, r CheckResult, at time.Time) Status {
+	s := StatusFromResponse(serviceID, r.HTTPStatus, r.Latency, r.Err, at)
+	s.CertExpiresAt = r.CertExpiresAt
+	return s
+}
+
+// StatusFromResponse classifies a check without TLS information.
 func StatusFromResponse(serviceID string, httpStatus int, latency time.Duration, checkErr error, at time.Time) Status {
 	s := Status{ServiceID: serviceID, HTTPStatus: httpStatus, Latency: latency, CheckedAt: at, State: StateOnline}
 	switch {

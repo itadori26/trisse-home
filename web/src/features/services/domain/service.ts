@@ -20,6 +20,21 @@ export interface Service extends ServiceInput {
   latencyMs: number;
   checkedAt: Date | null;
   error: string;
+  certExpiresAt: Date | null;
+  certExpiresSoon: boolean;
+}
+
+/** One point of a service's response time history. */
+export interface LatencyPoint {
+  at: Date;
+  latencyMs: number;
+  online: boolean;
+}
+
+/** Whole days until the TLS certificate expires, or null without certificate. */
+export function certificateDaysLeft(s: Pick<Service, 'certExpiresAt'>, now: Date): number | null {
+  if (!s.certExpiresAt) return null;
+  return Math.floor((s.certExpiresAt.getTime() - now.getTime()) / 86_400_000);
 }
 
 /** An empty form. */

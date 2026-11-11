@@ -22,8 +22,23 @@ type HostReader interface {
 	Temperature(ctx context.Context) (float64, error)
 }
 
+// HistoryStore persists metric points (output port).
+type HistoryStore interface {
+	Add(ctx context.Context, p domain.Point) error
+	Since(ctx context.Context, t time.Time) ([]domain.Point, error)
+	PruneBefore(ctx context.Context, t time.Time) error
+}
+
+// PointView is a history point at the use case boundary.
+type PointView struct {
+	At                time.Time
+	CPU, Memory, Disk float64
+}
+
 // Monitor is the input port of the system module.
 type Monitor interface {
+	// History returns the metric history of the last hours, downsampled.
+	History(ctx context.Context, hours int) ([]PointView, error)
 	// Sample takes a new snapshot; it is run by the background job.
 	Sample(ctx context.Context) error
 	// Current returns the latest snapshot, sampling once if none exists.
@@ -72,16 +87,18 @@ func toView(s domain.Snapshot) SnapshotView {
 }
 
 type monitor struct {
-	host  HostReader
-	clock kernel.Clock
-	mu    sync.RWMutex
-	prev  *domain.CPUTimes
-	last  *domain.Snapshot
+	host     HostReader
+	history  HistoryStore
+	clock    kernel.Clock
+	recorded time.Time
+	mu       sync.RWMutex
+	prev     *domain.CPUTimes
+	last     *domain.Snapshot
 }
 
 // NewMonitor returns the system monitor.
-func NewMonitor(host HostReader, clock kernel.Clock) Monitor {
-	return &monitor{host: host, clock: clock}
+func NewMonitor(host HostReader, history HistoryStore, clock kernel.Clock) Monitor {
+	return &monitor{host: host, history: history, clock: clock}
 }
 
 // Sample implements Monitor. CPU usage needs two counter readings, so the
@@ -116,9 +133,40 @@ func (m *monitor) Sample(ctx context.Context) error {
 	snap.Temperature, _ = m.host.Temperature(ctx)
 
 	m.mu.Lock()
-	defer m.mu.Unlock()
+	// The first sample has no CPU delta yet and is not worth storing.
+	record := m.prev != nil && domain.ShouldRecord(m.recorded, snap.TakenAt)
 	m.prev, m.last = &cpu, &snap
+	if record {
+		m.recorded = snap.TakenAt
+	}
+	m.mu.Unlock()
+	if record {
+		if err := m.history.Add(ctx, domain.PointFrom(snap)); err != nil {
+			return fmt.Errorf("store history: %w", err)
+		}
+		if err := m.history.PruneBefore(ctx, snap.TakenAt.Add(-domain.HistoryRetention)); err != nil {
+			return fmt.Errorf("prune history: %w", err)
+		}
+	}
 	return nil
+}
+
+// History implements Monitor.
+func (m *monitor) History(ctx context.Context, hours int) ([]PointView, error) {
+	maxHours := int(domain.HistoryRetention / time.Hour)
+	if hours <= 0 || hours > maxHours {
+		hours = maxHours
+	}
+	points, err := m.history.Since(ctx, m.clock.Now().Add(-time.Duration(hours)*time.Hour))
+	if err != nil {
+		return nil, fmt.Errorf("load history: %w", err)
+	}
+	points = domain.Downsample(points, domain.MaxChartPoints)
+	out := make([]PointView, 0, len(points))
+	for _, p := range points {
+		out = append(out, PointView{At: p.At, CPU: p.CPU, Memory: p.Memory, Disk: p.Disk})
+	}
+	return out, nil
 }
 
 // Current implements Monitor.

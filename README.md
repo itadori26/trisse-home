@@ -21,13 +21,13 @@ Architecture.
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Current weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), place search      |
 | **clock**      | Time and date, optionally in another time zone                                                        |
-| **services**   | Tiles for your services with online status (periodic health checks)                                  |
+| **services**   | Tiles for your services with online status, response time history and TLS certificate expiry warning  |
 | **bookmarks**  | Links in folders with tags, filterable                                                                |
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Upcoming events from CalDAV calendars, e.g. Nextcloud (recurring events supported)                    |
-| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host                                    |
+| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
 | **docker**     | Container status and health via a read-only Docker socket proxy                                       |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |

@@ -77,7 +77,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"todos", func() modules.Module { return todos.New(db, clk, ids) }},
 		{"rss", func() modules.Module { return rss.New(db, client, clk, ids, cfg.SampleFeeds) }},
 		{"system", func() modules.Module {
-			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths}, clk)
+			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths}, db, clk)
 		}},
 		{"docker", func() modules.Module { return docker.New(client, cfg.DockerProxyURL, clk) }},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
