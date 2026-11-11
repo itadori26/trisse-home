@@ -32,6 +32,9 @@ The screenshots are generated from a demo instance (`npm run screenshots`,
 see [docs/demo.md](docs/demo.md)) and refreshed with every release.
 </details>
 
+Not sure whether trisse-home is the right fit? See the
+[honest comparison with Homarr, Homepage, Glance and Dashy](docs/comparison.md).
+
 ## Features
 
 | Module         | What it does                                                                                          |
