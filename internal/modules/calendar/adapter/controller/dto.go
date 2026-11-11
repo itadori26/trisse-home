@@ -7,3 +7,15 @@ type SettingsInputDTO struct {
 	Username     string   `json:"username"`
 	Password     string   `json:"password"`
 }
+
+// NewEventDTO is the body of POST /api/calendar/events. Timed events use
+// RFC 3339 instants; all-day events use dates (YYYY-MM-DD) with an
+// inclusive end date.
+type NewEventDTO struct {
+	CalendarURL string `json:"calendarUrl"`
+	Summary     string `json:"summary"`
+	Location    string `json:"location"`
+	AllDay      bool   `json:"allDay"`
+	Start       string `json:"start"`
+	End         string `json:"end"`
+}

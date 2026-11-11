@@ -5,7 +5,12 @@ import type {
   FolderInputDTO,
 } from '../../../../shared/api-client/generated/bookmarks-requests';
 import type { Bookmark, BookmarkInput, Folder } from '../../domain/bookmark';
-import type { BookmarkFilter, BookmarkList, BookmarksGateway } from '../../usecase/bookmarksUseCases';
+import type {
+  BookmarkFilter,
+  BookmarkImportResult,
+  BookmarkList,
+  BookmarksGateway,
+} from '../../usecase/bookmarksUseCases';
 
 const toBookmark = (d: BookmarkDTO): Bookmark => ({
   id: d.id,
@@ -51,5 +56,13 @@ export class BookmarksApi implements BookmarksGateway {
   }
   deleteFolder(id: string): Promise<void> {
     return this.http.delete(folderPath(id));
+  }
+
+  importHtml(html: string): Promise<BookmarkImportResult> {
+    return this.http.postText<BookmarkImportResult>(
+      '/api/bookmarks/import',
+      html,
+      'text/html; charset=utf-8',
+    );
   }
 }

@@ -1,8 +1,10 @@
+import type { MessageKey } from '../../../shared/i18n';
+
 /** One step of the guided tour. */
 export interface TourStep {
   id: string;
-  title: string;
-  body: string;
+  title: MessageKey;
+  body: MessageKey;
   /** Value of the data-tour attribute of the element to highlight; none = centered. */
   target?: string;
 }
@@ -11,43 +13,43 @@ export interface TourStep {
 export const tourSteps: TourStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to trisse-home 👋',
-    body: 'Your personal start page: widgets for everyday life and your home server. This short tour shows you around — it takes less than a minute.',
+    title: 'tour.welcome.title',
+    body: 'tour.welcome.body',
   },
   {
     id: 'tabs',
     target: 'tabs',
-    title: 'Tabs',
-    body: 'Group widgets on tabs, e.g. "Home" for every day and "Server" for your homelab. The selected tab is remembered.',
+    title: 'tour.tabs.title',
+    body: 'tour.tabs.body',
   },
   {
     id: 'search',
     target: 'search',
-    title: 'Search',
-    body: 'Searches with DuckDuckGo by default. Bangs like !w or !g work, and you can define your own shortcuts in the settings.',
+    title: 'tour.search.title',
+    body: 'tour.search.body',
   },
   {
     id: 'edit',
     target: 'edit',
-    title: 'Edit mode',
-    body: 'Switch to edit mode to drag widgets by their title bar, resize them at the bottom-right corner, add new widgets and tabs, and configure a widget with ⚙.',
+    title: 'tour.edit.title',
+    body: 'tour.edit.body',
   },
   {
     id: 'settings',
     target: 'settings',
-    title: 'Settings',
-    body: 'Theme and background, search engine, service tiles, RSS feeds, bookmark folders, your CalDAV calendar and AdGuard Home — and your password.',
+    title: 'tour.settings.title',
+    body: 'tour.settings.body',
   },
   {
     id: 'server',
     target: 'tab-Server',
-    title: 'Server overview',
-    body: 'The "Server" tab shows host metrics, Docker containers and the status of your services.',
+    title: 'tour.server.title',
+    body: 'tour.server.body',
   },
   {
     id: 'done',
-    title: "You're all set!",
-    body: 'The sample data is just a starting point — change or delete whatever you like. You can restart this tour any time under Settings → Account.',
+    title: 'tour.done.title',
+    body: 'tour.done.body',
   },
 ];
 

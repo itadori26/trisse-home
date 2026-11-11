@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** A to-do item. `due` is a date string (YYYY-MM-DD) or ''. */
 export interface Todo {
   id: string;
@@ -28,9 +29,9 @@ export function formatDue(due: string, today: Date, locale?: string): string {
   const date = new Date(y, m - 1, d);
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const days = Math.round((date.getTime() - start.getTime()) / 86_400_000);
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  if (days === -1) return 'Yesterday';
+  if (days === 0) return t('time.today');
+  if (days === 1) return t('time.tomorrow');
+  if (days === -1) return t('time.yesterday');
   if (days > 1 && days < 7) return date.toLocaleDateString(locale, { weekday: 'long' });
   return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }

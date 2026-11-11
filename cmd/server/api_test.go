@@ -71,6 +71,46 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /containers/web/logs", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "started\nlistening on :80\n")
 	})
+	tasks := map[string]string{}
+	var tasksMu sync.Mutex
+	mux.HandleFunc("/dav/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		tasksMu.Lock()
+		defer tasksMu.Unlock()
+		name := strings.TrimPrefix(r.URL.Path, "/dav/tasks/")
+		switch r.Method {
+		case "REPORT":
+			w.WriteHeader(http.StatusMultiStatus)
+			var b strings.Builder
+			b.WriteString(`<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">`)
+			for n, data := range tasks {
+				b.WriteString(`<d:response><d:href>/dav/tasks/` + n + `</d:href><d:propstat><d:prop><c:calendar-data>` + data + `</c:calendar-data></d:prop></d:propstat></d:response>`)
+			}
+			b.WriteString(`</d:multistatus>`)
+			_, _ = io.WriteString(w, b.String())
+		case http.MethodGet:
+			_, _ = io.WriteString(w, tasks[name])
+		case http.MethodPut:
+			body, _ := io.ReadAll(r.Body)
+			tasks[name] = string(body)
+			w.WriteHeader(http.StatusCreated)
+		case http.MethodDelete:
+			delete(tasks, name)
+			w.WriteHeader(http.StatusNoContent)
+		}
+	})
+	mux.HandleFunc("GET /api/v1/geocode", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `[{"type":"STOP","id":"de:03403:16750","name":"Oldenburg Hbf","lat":53.14,"lon":8.22}]`)
+	})
+	mux.HandleFunc("GET /api/v1/stoptimes", func(w http.ResponseWriter, _ *http.Request) {
+		planned := time.Now().Add(5 * time.Minute).UTC().Format(time.RFC3339)
+		expected := time.Now().Add(8 * time.Minute).UTC().Format(time.RFC3339)
+		_, _ = io.WriteString(w, `{"stopTimes":[{"place":{"departure":"`+expected+`","scheduledDeparture":"`+planned+`","track":"A"},"mode":"BUS","realTime":true,"headsign":"Bümmerstede","routeShortName":"304"}]}`)
+	})
+	mux.HandleFunc("GET /abfall.ics", func(w http.ResponseWriter, _ *http.Request) {
+		tomorrow := time.Now().AddDate(0, 0, 1).Format("20060102")
+		_, _ = io.WriteString(w, "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:w1\r\nSUMMARY:Biotonne\r\nDTSTART;VALUE=DATE:"+tomorrow+
+			"\r\nRRULE:FREQ=WEEKLY;INTERVAL=2\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")
+	})
 	mux.HandleFunc("GET /status.php", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"installed":true,"maintenance":false,"versionstring":"30.0.2"}`)
 	})
@@ -88,6 +128,15 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
 	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut && r.Header.Get("If-None-Match") == "*" && strings.HasSuffix(r.URL.Path, ".ics") {
+			body, _ := io.ReadAll(r.Body)
+			if !strings.Contains(string(body), "SUMMARY:Haircut") {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			w.WriteHeader(http.StatusCreated)
+			return
+		}
 		if r.Method != "REPORT" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
@@ -182,7 +231,7 @@ func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) 
 		AllowedCIDRs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}, SessionTTL: time.Hour,
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
 		DockerActions: true, DockerActionsContainers: []string{"web"}, DockerActionsProxyURL: upstream,
-		WolBroadcast: wolTarget.LocalAddr().String(),
+		WolBroadcast: wolTarget.LocalAddr().String(), TransitAPIURL: upstream,
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
 		BackupDir:       filepath.Join(t.TempDir(), "backups"), BackupInterval: 24 * time.Hour, BackupRetention: 3,
@@ -230,8 +279,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 21 {
-		t.Fatalf("expected 21 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 26 {
+		t.Fatalf("expected 26 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -280,6 +329,18 @@ func TestAPIEndToEnd(t *testing.T) {
 	wID := widget["id"].(string)
 	c.do(http.MethodPut, "/api/dashboard/tabs/"+tabID+"/layout", obj{"items": []obj{{"id": wID, "x": 2, "y": 0, "w": 5, "h": 4}}}, http.StatusNoContent)
 	c.json(http.MethodPatch, "/api/dashboard/widgets/"+wID, obj{"config": obj{"a": 1}}, http.StatusOK, nil)
+	// templates and per-tab background
+	var tpl obj
+	c.json(http.MethodPost, "/api/dashboard/templates", obj{"tabId": tabID, "name": "Server set"}, http.StatusCreated, &tpl)
+	var fromTpl obj
+	c.json(http.MethodPost, "/api/dashboard/templates/"+tpl["id"].(string)+"/tabs", obj{"name": ""}, http.StatusCreated, &fromTpl)
+	if fromTpl["name"] != "Server set" || len(fromTpl["widgets"].([]any)) != 1 {
+		t.Fatalf("tab from template: %v", fromTpl)
+	}
+	c.do(http.MethodPut, "/api/dashboard/tabs/"+fromTpl["id"].(string)+"/background", obj{"background": "javascript:x"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/dashboard/tabs/"+fromTpl["id"].(string)+"/background", obj{"background": "https://img.example/a.jpg"}, http.StatusOK, nil)
+	c.do(http.MethodDelete, "/api/dashboard/templates/"+tpl["id"].(string), nil, http.StatusNoContent)
+	c.do(http.MethodDelete, "/api/dashboard/tabs/"+fromTpl["id"].(string), nil, http.StatusNoContent)
 	c.do(http.MethodDelete, "/api/dashboard/widgets/"+wID, nil, http.StatusNoContent)
 	c.do(http.MethodDelete, "/api/dashboard/tabs/"+tabID, nil, http.StatusNoContent)
 	c.do(http.MethodDelete, "/api/dashboard/tabs/"+home, nil, http.StatusConflict) // last tab
@@ -431,6 +492,54 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("docker logs: %v", logs)
 	}
 
+	// --- weather alerts outside Germany need no DWD request ---
+	var noWarnings []obj
+	c.json(http.MethodGet, "/api/weather/warnings?lat=48.86&lon=2.35", nil, http.StatusOK, &noWarnings)
+	if len(noWarnings) != 0 {
+		t.Fatalf("warnings outside Germany: %v", noWarnings)
+	}
+	c.do(http.MethodGet, "/api/weather/radar?lat=48.86&lon=2.35", nil, http.StatusUnprocessableEntity)
+
+	// --- parcels: stored with a hint until a DHL key is configured ---
+	var parcel obj
+	c.json(http.MethodPost, "/api/parcels", obj{"trackingNumber": "0034 0434 1234 5678", "carrier": "dhl", "label": "Shoes"}, http.StatusCreated, &parcel)
+	if parcel["trackingNumber"] != "0034043412345678" || parcel["error"] == "" {
+		t.Fatalf("parcel: %v", parcel)
+	}
+	c.do(http.MethodPost, "/api/parcels", obj{"trackingNumber": "0034043412345678", "carrier": "hermes"}, http.StatusUnprocessableEntity)
+	c.do(http.MethodDelete, "/api/parcels/"+parcel["id"].(string), nil, http.StatusNoContent)
+
+	// --- transit departures ---
+	var stops []obj
+	c.json(http.MethodGet, "/api/transit/stops?q=Oldenburg", nil, http.StatusOK, &stops)
+	var deps []obj
+	c.json(http.MethodGet, "/api/transit/departures?stop="+stops[0]["id"].(string)+"&n=5", nil, http.StatusOK, &deps)
+	if len(deps) != 1 || deps[0]["delayMinutes"] != float64(3) {
+		t.Fatalf("transit: %v", deps)
+	}
+
+	// --- waste: ICS subscription with a recurring rule ---
+	c.do(http.MethodGet, "/api/waste/upcoming", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/waste/settings", obj{"url": up.URL + "/abfall.ics", "rules": []obj{}}, http.StatusOK, nil)
+	var waste struct{ Types []obj }
+	c.json(http.MethodGet, "/api/waste/upcoming", nil, http.StatusOK, &waste)
+	if len(waste.Types) != 1 || waste.Types[0]["daysUntil"] != float64(1) || waste.Types[0]["icon"] != "🍂" || len(waste.Types[0]["dates"].([]any)) != 3 {
+		t.Fatalf("waste: %+v", waste)
+	}
+
+	// --- shopping list on a CalDAV task list ---
+	c.json(http.MethodPut, "/api/shopping/settings", obj{"listUrl": up.URL + "/dav/tasks/", "username": "me", "password": "pw"}, http.StatusOK, nil)
+	var milk obj
+	c.json(http.MethodPost, "/api/shopping/items", obj{"summary": "Milk"}, http.StatusCreated, &milk)
+	c.do(http.MethodPut, "/api/shopping/items/"+milk["id"].(string), obj{"done": true}, http.StatusNoContent)
+	var shoppingItems []obj
+	c.json(http.MethodGet, "/api/shopping/items", nil, http.StatusOK, &shoppingItems)
+	if len(shoppingItems) != 1 || shoppingItems[0]["done"] != true {
+		t.Fatalf("shopping: %v", shoppingItems)
+	}
+	c.do(http.MethodPut, "/api/shopping/items/..%2Fsecret.ics", obj{"done": true}, http.StatusNotFound)
+	c.json(http.MethodPost, "/api/shopping/clear-completed", nil, http.StatusOK, nil)
+
 	// --- fritzbox: not configured until saved ---
 	c.do(http.MethodGet, "/api/fritzbox/status", nil, http.StatusNotFound)
 	var fb obj
@@ -472,6 +581,66 @@ func TestAPIEndToEnd(t *testing.T) {
 	if len(agenda.Events) != 1 || agenda.Events[0]["summary"] != "Dentist" {
 		t.Fatalf("calendar: %+v", agenda)
 	}
+	from := time.Now().Add(-48 * time.Hour).UTC().Format(time.RFC3339)
+	to := time.Now().Add(30 * 24 * time.Hour).UTC().Format(time.RFC3339)
+	c.json(http.MethodGet, "/api/calendar/events?from="+from+"&to="+to, nil, http.StatusOK, &agenda)
+	if len(agenda.Events) != 1 {
+		t.Fatalf("calendar range: %+v", agenda)
+	}
+	c.do(http.MethodGet, "/api/calendar/events?from="+from+"&to="+time.Now().AddDate(0, 3, 0).UTC().Format(time.RFC3339), nil, http.StatusUnprocessableEntity)
+	newEvent := obj{"calendarUrl": up.URL + "/dav/calendars/me/personal/", "summary": "Haircut", "allDay": false,
+		"start": time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339), "end": time.Now().Add(25 * time.Hour).UTC().Format(time.RFC3339)}
+	c.json(http.MethodPost, "/api/calendar/events", newEvent, http.StatusCreated, nil)
+	newEvent["calendarUrl"] = "https://elsewhere.example/cal/"
+	c.do(http.MethodPost, "/api/calendar/events", newEvent, http.StatusUnprocessableEntity)
+
+	// --- browser bookmark import (Netscape HTML) ---
+	html := `<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p><DT><H3>Imported</H3><DL><p>` +
+		`<DT><A HREF="https://imported.example/" TAGS="a,b">Imported link</A></DL><p><DT><A HREF="javascript:x">No</A></DL>`
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/bookmarks/import", strings.NewReader(html))
+	req.Header.Set("Content-Type", "text/html")
+	req.Header.Set("X-CSRF-Token", c.csrf)
+	res, err := c.http.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var imported obj
+	_ = json.NewDecoder(res.Body).Decode(&imported)
+	_ = res.Body.Close()
+	if res.StatusCode != http.StatusOK || imported["created"] != float64(1) || imported["skippedInvalid"] != float64(1) || imported["foldersCreated"] != float64(1) {
+		t.Fatalf("bookmark import: %d %v", res.StatusCode, imported)
+	}
+
+	// --- export / import ---
+	var export struct {
+		Format   string                     `json:"format"`
+		Version  int                        `json:"version"`
+		Sections map[string]json.RawMessage `json:"sections"`
+	}
+	c.json(http.MethodGet, "/api/transfer/export", nil, http.StatusOK, &export)
+	if export.Format != "trisse-home-export" || export.Sections["notes"] == nil || export.Sections["dashboard"] == nil {
+		t.Fatalf("export: %v", export)
+	}
+	if strings.Contains(string(c.do(http.MethodGet, "/api/transfer/export", nil, http.StatusOK)), "e2e-password") {
+		t.Fatal("export contains a secret")
+	}
+	var notesBefore []obj
+	c.json(http.MethodGet, "/api/notes", nil, http.StatusOK, &notesBefore)
+	c.json(http.MethodPost, "/api/notes", obj{"title": "added after export", "body": "x"}, http.StatusCreated, nil)
+	var result struct {
+		Imported []string          `json:"imported"`
+		Failed   map[string]string `json:"failed"`
+	}
+	c.json(http.MethodPost, "/api/transfer/import", export, http.StatusOK, &result)
+	if len(result.Failed) != 0 || len(result.Imported) != len(export.Sections) {
+		t.Fatalf("import: %+v", result)
+	}
+	var notesAfter []obj
+	c.json(http.MethodGet, "/api/notes", nil, http.StatusOK, &notesAfter)
+	if len(notesAfter) != len(notesBefore) {
+		t.Fatalf("import did not restore notes: %d vs %d", len(notesAfter), len(notesBefore))
+	}
+	c.do(http.MethodPost, "/api/transfer/import", obj{"format": "other", "version": 1}, http.StatusUnprocessableEntity)
 
 	// --- sessions ---
 	other := newClient(t, srv.URL)

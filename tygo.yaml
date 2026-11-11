@@ -100,3 +100,23 @@ packages:
   - path: "trisse-home/internal/modules/wireguard/adapter/controller"
     output_path: "web/src/shared/api-client/generated/wireguard-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/waste/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/waste.ts"
+  - path: "trisse-home/internal/modules/waste/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/waste-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/shopping/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/shopping.ts"
+  - path: "trisse-home/internal/modules/shopping/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/shopping-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/transit/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/transit.ts"
+  - path: "trisse-home/internal/modules/parcels/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/parcels.ts"
+  - path: "trisse-home/internal/modules/parcels/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/parcels-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/transfer/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/transfer.ts"
+    include_files: ["dto.go"]

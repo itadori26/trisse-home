@@ -40,3 +40,15 @@ type PlacementDTO struct {
 type LayoutDTO struct {
 	Items []PlacementDTO `json:"items"`
 }
+
+// TabBackgroundDTO is the body of PUT /api/dashboard/tabs/{id}/background;
+// an empty background uses the global one.
+type TabBackgroundDTO struct {
+	Background string `json:"background"`
+}
+
+// SaveTemplateDTO is the body of POST /api/dashboard/templates.
+type SaveTemplateDTO struct {
+	TabID string `json:"tabId"`
+	Name  string `json:"name"`
+}

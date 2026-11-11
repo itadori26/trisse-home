@@ -53,7 +53,24 @@ type Calendar interface {
 	Settings(ctx context.Context) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
 	Upcoming(ctx context.Context, days int) (AgendaResponse, error)
+	// Range returns the events overlapping [from, to) (at most 42 days).
+	Range(ctx context.Context, from, to time.Time) (AgendaResponse, error)
+	// CreateEvent writes a new event to one of the configured calendars.
+	CreateEvent(ctx context.Context, in NewEventInput) (EventView, error)
 	Refresh(ctx context.Context) error
+}
+
+// NewEventInput describes an event to create. For all-day events Start and
+// End are dates and End is inclusive (a one-day event has End == Start).
+type NewEventInput struct {
+	CalendarURL, Summary, Location string
+	AllDay                         bool
+	Start, End                     time.Time
+}
+
+// EventWriter creates events in a calendar (output port).
+type EventWriter interface {
+	Create(ctx context.Context, s domain.Settings, calendarURL string, e domain.Event) error
 }
 
 // SettingsRepository persists the settings (output port); Load returns
@@ -71,14 +88,18 @@ type EventSource interface {
 type calendar struct {
 	repo   SettingsRepository
 	source EventSource
+	writer EventWriter
+	ids    kernel.IDGenerator
 	clock  kernel.Clock
 	mu     sync.RWMutex
 	cached *AgendaResponse
+	// window is the period covered by cached.
+	windowFrom, windowTo time.Time
 }
 
 // NewCalendar returns the calendar use cases.
-func NewCalendar(repo SettingsRepository, source EventSource, clock kernel.Clock) Calendar {
-	return &calendar{repo: repo, source: source, clock: clock}
+func NewCalendar(repo SettingsRepository, source EventSource, writer EventWriter, ids kernel.IDGenerator, clock kernel.Clock) Calendar {
+	return &calendar{repo: repo, source: source, writer: writer, ids: ids, clock: clock}
 }
 
 // Settings implements Calendar.
@@ -149,6 +170,61 @@ func (uc *calendar) Upcoming(ctx context.Context, days int) (AgendaResponse, err
 	return res, nil
 }
 
+// Range implements Calendar. Periods inside the cached window are answered
+// from the cache, others are loaded directly (and not cached).
+func (uc *calendar) Range(ctx context.Context, from, to time.Time) (AgendaResponse, error) {
+	if err := domain.CheckRange(from, to); err != nil {
+		return AgendaResponse{}, err
+	}
+	s, err := uc.repo.Load(ctx)
+	if err != nil {
+		return AgendaResponse{}, err
+	}
+	uc.mu.RLock()
+	cached, wFrom, wTo := uc.cached, uc.windowFrom, uc.windowTo
+	uc.mu.RUnlock()
+	src := cached
+	if cached == nil || from.Before(wFrom) || to.After(wTo) {
+		live, err := uc.fetchRange(ctx, s, from, to)
+		if err != nil {
+			return AgendaResponse{}, err
+		}
+		src = &live
+	}
+	res := AgendaResponse{UpdatedAt: src.UpdatedAt, Error: src.Error, Events: []EventView{}}
+	for _, e := range src.Events {
+		if e.Start.Before(to) && e.End.After(from) {
+			res.Events = append(res.Events, e)
+		}
+	}
+	return res, nil
+}
+
+// CreateEvent implements Calendar.
+func (uc *calendar) CreateEvent(ctx context.Context, in NewEventInput) (EventView, error) {
+	s, err := uc.repo.Load(ctx)
+	if err != nil {
+		return EventView{}, err
+	}
+	if !s.Contains(in.CalendarURL) {
+		return EventView{}, domain.ErrUnknownCalendar
+	}
+	end := in.End
+	if in.AllDay {
+		end = end.AddDate(0, 0, 1) // inclusive date → exclusive end
+	}
+	e, err := domain.NewEvent(uc.ids.NewID()+"@trisse-home", in.Summary, in.Location, in.Start, end, in.AllDay)
+	if err != nil {
+		return EventView{}, err
+	}
+	if err := uc.writer.Create(ctx, s, in.CalendarURL, e); err != nil {
+		return EventView{}, kernel.NewPublicError(kernel.ErrUnavailable, "The calendar server rejected the event: "+err.Error())
+	}
+	_ = uc.Refresh(ctx) // the new event shows up in the agenda right away
+	return EventView{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: domain.CalendarName(in.CalendarURL),
+		Start: e.Start, End: e.End, AllDay: e.AllDay}, nil
+}
+
 // Refresh implements Calendar; it is run by the background job.
 func (uc *calendar) Refresh(ctx context.Context) error {
 	s, err := uc.repo.Load(ctx)
@@ -177,7 +253,17 @@ func (uc *calendar) Refresh(ctx context.Context) error {
 func (uc *calendar) fetch(ctx context.Context, s domain.Settings) (AgendaResponse, error) {
 	now := uc.clock.Now()
 	from := now.Add(-24 * time.Hour) // include today's all-day events in every time zone
-	to := now.Add(domain.Horizon)
+	res, err := uc.fetchRange(ctx, s, from, now.Add(domain.Horizon))
+	if err == nil {
+		uc.mu.Lock()
+		uc.windowFrom, uc.windowTo = from, now.Add(domain.Horizon)
+		uc.mu.Unlock()
+	}
+	return res, err
+}
+
+func (uc *calendar) fetchRange(ctx context.Context, s domain.Settings, from, to time.Time) (AgendaResponse, error) {
+	now := uc.clock.Now()
 	var all []domain.Event
 	var failed []string
 	for _, u := range s.CalendarURLs {

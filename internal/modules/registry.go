@@ -94,6 +94,18 @@ func (r *Registry) Seeders() map[string]Seeder {
 	return out
 }
 
+// Portables returns all registered modules whose data can be exported,
+// keyed by module name.
+func (r *Registry) Portables() map[string]Portable {
+	out := map[string]Portable{}
+	for _, m := range r.modules {
+		if p, ok := m.(Portable); ok {
+			out[m.Name()] = p
+		}
+	}
+	return out
+}
+
 // WidgetKinds returns every widget kind backed by a registered module.
 func (r *Registry) WidgetKinds() []string {
 	var kinds []string

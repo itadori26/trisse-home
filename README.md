@@ -17,23 +17,29 @@ Architecture.
 
 | Module         | What it does                                                                                          |
 | -------------- | ----------------------------------------------------------------------------------------------------- |
-| **dashboard**  | Tabs (e.g. Home / Server / Study) with a 12-column drag & drop grid; layout stored in the database    |
+| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates and per-tab backgrounds |
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
-| **weather**    | Current weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), place search      |
+| **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
 | **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN |
 | **bookmarks**  | Links in folders with tags, filterable                                                                |
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
-| **calendar**   | Upcoming events from CalDAV calendars, e.g. Nextcloud (recurring events supported)                    |
+| **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
+| **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
+| **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
+| **transit**    | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org)) |
+| **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
 | **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
 | **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
-| **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
+| **transfer**   | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)     |
+| **quick search** | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web |
+| **appearance** | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
 | **notifications** | Push messages via [ntfy](https://ntfy.sh) for offline services, containers, full disks, expiring certificates and failed backups |
@@ -129,6 +135,19 @@ only the peer lines — the interface line with the **private key is dropped and
 reads the peer names of `linuxserver/wireguard` from the public keys in its `peer_<name>` folders. Names can be
 changed in Settings → WireGuard. A peer counts as online when its last handshake is less than 3 minutes old.
 
+## Progressive Web App
+
+trisse-home can be installed as an app (Android, iOS, desktop) and shows the
+last loaded data when you are offline. Browsers only allow this in a **secure
+context**, so run it behind HTTPS (see *Behind a reverse proxy*) or open it
+via `localhost`; on plain `http://<lan-ip>` the app still works, just without
+installation and offline mode.
+
+The service worker caches the app shell and a fixed allow-list of read-only
+widget data (network first, cache only as fallback). Login, settings,
+exports, backups, logs and every non-GET request are never cached, and the
+cached data is deleted on logout.
+
 ## Wake-on-LAN (optional)
 
 Service tiles with a MAC address get a ⏻ button while the service is not online. Magic packets are broadcasts, and
@@ -209,6 +228,7 @@ service tiles are configured in the web interface.
 | `HOST_PROC`         | `/proc` (`/host/proc` in compose) | Host procfs for the system module.                                            |
 | `HOST_SYS`          | `/sys` (`/host/sys` in compose)   | Host sysfs (temperatures).                                                    |
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
+| `TRANSIT_API_URL`   | `https://api.transitous.org`      | MOTIS API for departures; point it to your own MOTIS instance if you like.    |
 | `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
 | `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |
 | `WOL_BROADCAST`     | `255.255.255.255:9`               | Broadcast address the magic packet is sent to (by the relay or directly).     |
@@ -254,7 +274,13 @@ RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, the FRITZ!Box and your
 ntfy server. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can
 configure them (session + CSRF protection, IP allowlist). Weather data comes
-from Open-Meteo. Nothing else leaves the server.
+from Open-Meteo, weather warnings and the rain radar from the open data
+services of the Deutscher Wetterdienst (only for locations in Germany; the
+radar image is proxied, so the browser never contacts DWD) and departures
+from the community-run [Transitous](https://transitous.org) API (cached one
+minute per stop; please respect its fair-use policy or run your own MOTIS)
+and, with your API key, the DHL tracking API (hourly, undelivered parcels only).
+Nothing else leaves the server.
 
 The FRITZ!Box login uses HTTP digest authentication, which TR-064 defines with
 MD5. Static analysis flags this as weak password hashing; the password is not

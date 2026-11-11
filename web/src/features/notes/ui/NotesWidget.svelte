@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Markdown from '../../../shared/ui/Markdown.svelte';
   import Modal from '../../../shared/ui/Modal.svelte';
@@ -37,14 +38,19 @@
 </script>
 
 <div class="head">
-  <button class="btn btn-icon" type="button" aria-label="New note" onclick={() => (open = 'new')}
-    >＋ Note</button
+  <button class="btn btn-icon" type="button" aria-label={t('notes.new_note')} onclick={() => (open = 'new')}
+    >{t('notes.note')}</button
   >
 </div>
 {#if error}<p class="error">{error}</p>{/if}
 {#if single}
   {@const only = single}
-  <button class="single" type="button" onclick={() => (open = only)} aria-label="Edit {only.title}">
+  <button
+    class="single"
+    type="button"
+    onclick={() => (open = only)}
+    aria-label={t('notes.edit_2', { title: only.title })}
+  >
     {#if !/^\s*#/.test(only.body)}<strong>{only.title}</strong>{/if}
     <Markdown source={only.body} />
   </button>
@@ -58,7 +64,7 @@
         </button>
       </li>
     {:else}
-      <li class="muted">{cfg.scope === 'pinned' ? 'No pinned notes.' : 'No notes yet.'}</li>
+      <li class="muted">{cfg.scope === 'pinned' ? t('notes.no_pinned') : t('notes.none_yet')}</li>
     {/each}
   </ul>
 {/if}
@@ -67,11 +73,15 @@
   {@const v = viewing}
   <Modal title={v.title} onclose={() => (viewing = null)}>
     <Markdown source={v.body} />
-    <p><button class="btn" type="button" onclick={() => ((open = v), (viewing = null))}>Edit</button></p>
+    <p>
+      <button class="btn" type="button" onclick={() => ((open = v), (viewing = null))}
+        >{t('notes.edit')}</button
+      >
+    </p>
   </Modal>
 {/if}
 {#if open}
-  <Modal title={open === 'new' ? 'New note' : 'Edit note'} onclose={() => (open = null)}>
+  <Modal title={open === 'new' ? t('notes.new_note') : t('notes.edit_note')} onclose={() => (open = null)}>
     <NoteEditor
       {notes}
       note={open === 'new' ? undefined : open}

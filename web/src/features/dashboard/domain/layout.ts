@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /**
  * Pure layout algorithm of the dashboard grid (see ADR 0007). Items live on
  * a 12-column grid with unbounded rows; gravity pulls every item up as far
@@ -89,4 +90,40 @@ export function sameLayout(a: readonly LayoutItem[], b: readonly LayoutItem[]): 
     const o = byId.get(i.id);
     return !!o && o.x === i.x && o.y === i.y && o.w === i.w && o.h === i.h;
   });
+}
+
+/** Arrow keys understood by keyboardStep. */
+export type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
+
+/**
+ * Moves (or with resize=true resizes) item `id` by one cell in the direction
+ * of the arrow key. Returns the new layout, or null when nothing changes
+ * (e.g. at the grid edge or blocked by gravity).
+ */
+export function keyboardStep(
+  items: readonly LayoutItem[],
+  id: string,
+  key: ArrowKey,
+  resize: boolean,
+): LayoutItem[] | null {
+  const it = items.find((i) => i.id === id);
+  if (!it) return null;
+  const dx = key === 'ArrowLeft' ? -1 : key === 'ArrowRight' ? 1 : 0;
+  const dy = key === 'ArrowUp' ? -1 : key === 'ArrowDown' ? 1 : 0;
+  // Moving down past the next item needs a bigger jump because gravity would
+  // pull it straight back: jump below the item underneath.
+  let ty = it.y + dy;
+  if (!resize && dy > 0) {
+    const below = items.filter(
+      (o) => o.id !== id && o.y >= it.y + it.h && o.x < it.x + it.w && it.x < o.x + o.w,
+    );
+    if (below.length) ty = Math.min(...below.map((o) => o.y)) + 1;
+  }
+  const next = resize ? resizeItem(items, id, it.w + dx, it.h + dy) : moveItem(items, id, it.x + dx, ty);
+  return sameLayout(items, next) ? null : next;
+}
+
+/** Human-readable position and size for screen readers. */
+export function describeRect(r: Rect): string {
+  return t('dashboard.describe_rect', { column: r.x + 1, row: r.y + 1, w: r.w, h: r.h });
 }

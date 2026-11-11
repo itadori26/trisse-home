@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { formatUptime } from '../../../shared/ui/format';
   import Meter from '../../../shared/ui/Meter.svelte';
@@ -32,23 +33,24 @@
 
   const when = (d: Date) =>
     d.toDateString() === new Date().toDateString()
-      ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : d.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+      ? d.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleDateString(intlLocale(), { day: '2-digit', month: '2-digit' });
 </script>
 
 {#if unconfigured}
-  <p class="muted">Connect your FRITZ!Box under Settings → FRITZ!Box.</p>
+  <p class="muted">{t('fritzbox.connect_your_fritz_box_under_settings')}</p>
 {:else if error && !status}
   <p class="error">{error}</p>
 {:else if status}
   {@const wan = status.wan}
   <p class="head">
     <span class="dot" class:on={wan.connected} aria-hidden="true"></span>
-    <strong>{wan.connected ? 'Online' : 'Offline'}</strong>
+    <strong>{wan.connected ? t('fritzbox.online') : t('fritzbox.offline')}</strong>
     {#if wan.connected && wan.uptimeSeconds}<span class="muted small"
-        >for {formatUptime(wan.uptimeSeconds)}</span
+        >{t('fritzbox.for', { value: formatUptime(wan.uptimeSeconds) })}</span
       >{/if}
-    {#if wan.externalIp}<span class="muted small ip" title="External IP">{wan.externalIp}</span>{/if}
+    {#if wan.externalIp}<span class="muted small ip" title={t('fritzbox.external_ip')}>{wan.externalIp}</span
+      >{/if}
   </p>
   {#if wan.throughputKnown}
     {#if wan.downstreamMaxBits > 0}
@@ -66,7 +68,7 @@
       {#each status.calls as c, i (i)}
         <li
           class:missed={c.type === 'missed'}
-          title="{c.number}{c.durationMinutes ? ` · ${c.durationMinutes} min` : ''}"
+          title="{c.number}{c.durationMinutes ? ` · ${t('time.minutes', { n: c.durationMinutes })}` : ''}"
         >
           <span class="icon" aria-label={c.type}>{callIcons[c.type]}</span>
           <span class="party">{callParty(c)}</span>
@@ -78,7 +80,7 @@
   {#if status.hint}<p class="muted small">{status.hint}</p>{/if}
   {#if status.error}<p class="error small">{status.error}</p>{/if}
 {:else}
-  <p class="muted">Loading…</p>
+  <p class="muted">{t('fritzbox.loading')}</p>
 {/if}
 
 <style>

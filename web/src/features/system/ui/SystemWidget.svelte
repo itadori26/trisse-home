@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { formatBytes, formatUptime } from '../../../shared/ui/format';
   import Meter from '../../../shared/ui/Meter.svelte';
@@ -48,25 +49,31 @@
   <p class="error">{error}</p>
 {:else if snap}
   <div class="system">
-    <Meter label="CPU ({snap.cpuCount} cores)" percent={snap.cpuPercent} />
-    <Sparkline values={history.map((p) => p.cpu)} max={100} label="CPU over 24 hours" />
-    <Meter label="Memory" percent={snap.memory.percent} detail={usage(snap.memory)} />
-    <Sparkline values={history.map((p) => p.memory)} max={100} label="Memory over 24 hours" />
-    {#if snap.swap.total > 0}<Meter label="Swap" percent={snap.swap.percent} detail={usage(snap.swap)} />{/if}
+    <Meter label={t('system.cpu_cores', { cpuCount: snap.cpuCount })} percent={snap.cpuPercent} />
+    <Sparkline values={history.map((p) => p.cpu)} max={100} label={t('system.cpu_over_24_hours')} />
+    <Meter label={t('system.memory')} percent={snap.memory.percent} detail={usage(snap.memory)} />
+    <Sparkline values={history.map((p) => p.memory)} max={100} label={t('system.memory_over_24_hours')} />
+    {#if snap.swap.total > 0}<Meter
+        label={t('system.swap')}
+        percent={snap.swap.percent}
+        detail={usage(snap.swap)}
+      />{/if}
     {#each snap.disks as d (d.label)}
       <Meter label={d.label} percent={d.usage.percent} detail={usage(d.usage)} />
     {/each}
     {#if snap.disks.length}
-      <Sparkline values={history.map((p) => p.disk)} max={100} label="Disk usage over 24 hours" />
+      <Sparkline values={history.map((p) => p.disk)} max={100} label={t('system.disk_usage_over_24_hours')} />
     {/if}
     <p class="facts muted">
-      <span title="Load average 1/5/15 min">Load {snap.load.map((l) => l.toFixed(2)).join(' · ')}</span>
-      <span>Up {formatUptime(snap.uptimeSeconds)}</span>
+      <span title={t('system.load_average_1_5_15_min')}
+        >{t('system.load', { value: snap.load.map((l) => l.toFixed(2)).join(' · ') })}</span
+      >
+      <span>{t('system.up', { value: formatUptime(snap.uptimeSeconds) })}</span>
       {#if snap.temperature > 0}<span>{snap.temperature.toFixed(0)} °C</span>{/if}
     </p>
   </div>
 {:else}
-  <p class="muted">Loading…</p>
+  <p class="muted">{t('system.loading')}</p>
 {/if}
 
 <style>

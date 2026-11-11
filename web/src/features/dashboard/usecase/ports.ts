@@ -1,4 +1,4 @@
-import type { Tab, Widget, WidgetConfig } from '../domain/dashboard';
+import type { Tab, TabTemplate, Widget, WidgetConfig } from '../domain/dashboard';
 import type { LayoutItem, Rect } from '../domain/layout';
 
 /** Output port: persistence of tabs and widgets. */
@@ -12,4 +12,9 @@ export interface DashboardGateway {
   configureWidget(id: string, config: WidgetConfig): Promise<Widget>;
   saveLayout(tabId: string, items: LayoutItem[]): Promise<void>;
   deleteWidget(id: string): Promise<void>;
+  setBackground(tabId: string, background: string): Promise<Tab>;
+  listTemplates(): Promise<TabTemplate[]>;
+  saveTemplate(tabId: string, name: string): Promise<TabTemplate>;
+  deleteTemplate(id: string): Promise<void>;
+  createTabFromTemplate(templateId: string, name: string): Promise<Tab>;
 }

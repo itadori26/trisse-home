@@ -13,13 +13,14 @@ import (
 // Module wires the appearance rings and implements modules.Module.
 type Module struct {
 	modules.Base
+	modules.Transferable
 	handlers *controller.Handlers
 }
 
 // New builds the appearance module.
 func New(db *sql.DB) *Module {
 	repo := gateway.NewRepository(db)
-	return &Module{handlers: controller.NewHandlers(usecase.NewGetAppearance(repo), usecase.NewUpdateAppearance(repo))}
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, handlers: controller.NewHandlers(usecase.NewGetAppearance(repo), usecase.NewUpdateAppearance(repo))}
 }
 
 // Name implements modules.Module.

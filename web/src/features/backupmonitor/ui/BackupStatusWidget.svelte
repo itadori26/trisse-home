@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { ago, type BackupSource } from '../domain/source';
   import type { BackupMonitorUseCases } from '../usecase/backupMonitorUseCases';
@@ -26,10 +27,10 @@
   });
 
   const labels = {
-    ok: 'OK',
-    overdue: 'Overdue',
-    failed: 'Failed',
-    waiting: 'Waiting for first run',
+    ok: 'backupmonitor.state.ok',
+    overdue: 'backupmonitor.state.overdue',
+    failed: 'backupmonitor.state.failed',
+    waiting: 'backupmonitor.state.waiting',
   } as const;
 </script>
 
@@ -37,14 +38,16 @@
 <ul class="list">
   {#each sources as s (s.id)}
     <li title={s.lastMessage}>
-      <span class="dot {s.state}" aria-label={labels[s.state]}></span>
+      <span class="dot {s.state}" aria-label={t(labels[s.state])}></span>
       <span class="name">{s.name}</span>
       <span class="muted small"
-        >{s.state === 'failed' ? `failed ${ago(s.lastFailureAt, now)}` : ago(s.lastSuccessAt, now)}</span
+        >{s.state === 'failed'
+          ? t('backupmonitor.failed_ago', { time: ago(s.lastFailureAt, now) })
+          : ago(s.lastSuccessAt, now)}</span
       >
     </li>
   {:else}
-    <li class="muted">No backups monitored yet. Add them under Settings → Backup monitoring.</li>
+    <li class="muted">{t('backupmonitor.no_backups_monitored_yet_add_them')}</li>
   {/each}
 </ul>
 

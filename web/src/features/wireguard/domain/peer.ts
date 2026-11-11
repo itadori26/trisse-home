@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** A WireGuard peer. */
 export interface Peer {
   publicKey: string;
@@ -21,10 +22,10 @@ export interface PeerList {
 
 /** "just now", "5 min ago", "3 h ago", "2 d ago" or "never". */
 export function handshakeAgo(d: Date | null, now: Date): string {
-  if (!d) return 'never';
+  if (!d) return t('time.never');
   const s = Math.max(0, (now.getTime() - d.getTime()) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 172_800) return `${Math.floor(s / 3600)} h ago`;
-  return `${Math.floor(s / 86_400)} d ago`;
+  if (s < 60) return t('time.just_now');
+  if (s < 3600) return t('time.minutes_ago', { n: Math.floor(s / 60) });
+  if (s < 172_800) return t('time.hours_ago', { n: Math.floor(s / 3600) });
+  return t('time.days_ago', { n: Math.floor(s / 86_400) });
 }

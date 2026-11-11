@@ -15,3 +15,4 @@ that supersedes the old one.
 | [0007](0007-own-dashboard-grid.md)          | Own grid implementation for the dashboard     | Accepted |
 | [0009](0009-two-factor-authentication.md)   | Two-factor authentication with TOTP           | Accepted |
 | [0008](0008-sample-data-on-setup.md)        | Sample data after the first setup             | Accepted |
+| [0010](0010-internationalisation.md)        | Internationalisation without a framework      | Accepted |

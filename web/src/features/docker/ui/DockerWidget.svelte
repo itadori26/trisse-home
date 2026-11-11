@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
   import {
@@ -35,7 +36,7 @@
   });
 
   async function restart(name: string) {
-    if (!confirm(`Restart the container "${name}"?`)) return;
+    if (!confirm(t('docker.confirm_restart', { name }))) return;
     busy = name;
     try {
       await docker.restart(name);
@@ -73,9 +74,10 @@
 {#if error}<p class="error">{error}</p>{/if}
 {#if data}
   <p class="summary">
-    <span><strong>{data.running}</strong> running</span>
-    <span class:alert={data.stopped > 0}><strong>{data.stopped}</strong> stopped</span>
-    {#if data.unhealthy}<span class="alert"><strong>{data.unhealthy}</strong> unhealthy</span>{/if}
+    <span><strong>{data.running}</strong> {t('docker.running')}</span>
+    <span class:alert={data.stopped > 0}><strong>{data.stopped}</strong> {t('docker.stopped')}</span>
+    {#if data.unhealthy}<span class="alert"><strong>{data.unhealthy}</strong> {t('docker.unhealthy')}</span
+      >{/if}
   </p>
   {#if data.error}<p class="error small">{data.error}</p>{/if}
   <ul class="list">
@@ -88,33 +90,33 @@
           <button
             class="btn btn-icon act"
             type="button"
-            title="Show logs"
-            aria-label="Logs of {c.name}"
+            title={t('docker.show_logs')}
+            aria-label={t('docker.logs_of', { name: c.name })}
             onclick={() => showLogs(c.name)}>≡</button
           >
           <button
             class="btn btn-icon act"
             type="button"
-            title="Restart"
-            aria-label="Restart {c.name}"
+            title={t('docker.restart')}
+            aria-label={t('docker.restart_2', { name: c.name })}
             disabled={busy === c.name}
             onclick={() => restart(c.name)}>↻</button
           >
         {/if}
       </li>
     {:else}
-      <li class="muted">{cfg.problemsOnly ? 'All containers are healthy. 👍' : 'No containers.'}</li>
+      <li class="muted">{cfg.problemsOnly ? t('docker.all_healthy') : t('docker.no_containers')}</li>
     {/each}
   </ul>
 {/if}
 
 {#if logs}
-  <Modal title="Logs: {logs.name}" onclose={() => (logs = null)}>
+  <Modal title={t('docker.logs', { name: logs.name })} onclose={() => (logs = null)}>
     {#if logs.error}<p class="error">{logs.error}</p>{/if}
     {#if logs.lines === null}
-      <p class="muted">Loading …</p>
+      <p class="muted">{t('docker.loading')}</p>
     {:else}
-      <pre class="logs">{logs.lines.join('\n') || '(no output)'}</pre>
+      <pre class="logs">{logs.lines.join('\n') || t('docker.no_output')}</pre>
     {/if}
   </Modal>
 {/if}

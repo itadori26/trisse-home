@@ -12,3 +12,16 @@ export interface SettingsInputDTO {
   username: string;
   password: string;
 }
+/**
+ * NewEventDTO is the body of POST /api/calendar/events. Timed events use
+ * RFC 3339 instants; all-day events use dates (YYYY-MM-DD) with an
+ * inclusive end date.
+ */
+export interface NewEventDTO {
+  calendarUrl: string;
+  summary: string;
+  location: string;
+  allDay: boolean;
+  start: string;
+  end: string;
+}

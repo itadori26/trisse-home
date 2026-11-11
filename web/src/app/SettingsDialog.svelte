@@ -1,14 +1,19 @@
 <script lang="ts">
+  import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
   import { FritzBoxSettings } from '../features/fritzbox';
   import { NextcloudSettings } from '../features/nextcloud';
+  import { ShoppingSettings, suggestListUrl } from '../features/shopping';
+  import { ParcelsSettings } from '../features/parcels';
+  import { TransferSettings } from '../features/transfer';
+  import { WasteSettings } from '../features/waste';
   import { WireGuardSettings } from '../features/wireguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
   import { ChangePasswordForm, SessionsList, TwoFactorSettings } from '../features/auth';
   import { BackupSettings } from '../features/backup';
   import { BackupSourcesManager } from '../features/backupmonitor';
   import { NotificationSettings } from '../features/notifications';
-  import { FoldersManager } from '../features/bookmarks';
+  import { BookmarkImport, FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
   import { SearchSettings } from '../features/search';
@@ -28,33 +33,37 @@
   }
   let { container, modules, appearance, onappearance, onrestarttour, onclose }: Props = $props();
 
-  type Section = { id: string; label: string; module?: string };
+  type Section = { id: string; label: MessageKey; module?: string };
   const sections: Section[] = [
-    { id: 'appearance', label: 'Appearance', module: 'appearance' },
-    { id: 'search', label: 'Search', module: 'search' },
-    { id: 'services', label: 'Services', module: 'services' },
-    { id: 'feeds', label: 'Feeds', module: 'rss' },
-    { id: 'folders', label: 'Bookmark folders', module: 'bookmarks' },
-    { id: 'calendar', label: 'Calendar', module: 'calendar' },
-    { id: 'adguard', label: 'AdGuard', module: 'adguard' },
-    { id: 'nextcloud', label: 'Nextcloud', module: 'nextcloud' },
-    { id: 'fritzbox', label: 'FRITZ!Box', module: 'fritzbox' },
-    { id: 'wireguard', label: 'WireGuard', module: 'wireguard' },
-    { id: 'notifications', label: 'Notifications', module: 'notifications' },
-    { id: 'backups', label: 'Backups', module: 'backup' },
-    { id: 'backupmonitor', label: 'Backup monitoring', module: 'backupmonitor' },
-    { id: 'account', label: 'Account' },
+    { id: 'appearance', label: 'settings.section.appearance', module: 'appearance' },
+    { id: 'search', label: 'settings.section.search', module: 'search' },
+    { id: 'services', label: 'settings.section.services', module: 'services' },
+    { id: 'feeds', label: 'settings.section.feeds', module: 'rss' },
+    { id: 'folders', label: 'settings.section.bookmark_folders', module: 'bookmarks' },
+    { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
+    { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
+    { id: 'nextcloud', label: 'settings.section.nextcloud', module: 'nextcloud' },
+    { id: 'fritzbox', label: 'settings.section.fritzbox', module: 'fritzbox' },
+    { id: 'wireguard', label: 'settings.section.wireguard', module: 'wireguard' },
+    { id: 'waste', label: 'settings.section.waste', module: 'waste' },
+    { id: 'shopping', label: 'settings.section.shopping', module: 'shopping' },
+    { id: 'parcels', label: 'settings.section.parcels', module: 'parcels' },
+    { id: 'transfer', label: 'settings.section.transfer', module: 'transfer' },
+    { id: 'notifications', label: 'settings.section.notifications', module: 'notifications' },
+    { id: 'backups', label: 'settings.section.backups', module: 'backup' },
+    { id: 'backupmonitor', label: 'settings.section.backupmonitor', module: 'backupmonitor' },
+    { id: 'account', label: 'settings.section.account' },
   ];
   const visible = $derived(sections.filter((s) => !s.module || modules.has(s.module)));
   let active = $state('');
   const current = $derived(active || visible[0]?.id || 'account');
 </script>
 
-<Modal title="Settings" {onclose}>
+<Modal title={t('app.settings')} {onclose}>
   <nav class="sections">
     {#each visible as s (s.id)}
       <button class="btn" class:btn-primary={current === s.id} type="button" onclick={() => (active = s.id)}
-        >{s.label}</button
+        >{t(s.label)}</button
       >
     {/each}
   </nav>
@@ -70,6 +79,23 @@
     <FoldersManager bookmarks={container.bookmarks} />
   {:else if current === 'calendar'}
     <CalendarSettings calendar={container.calendar} />
+  {:else if current === 'transfer'}
+    <TransferSettings transfer={container.transfer} />
+    {#if modules.has('bookmarks')}<BookmarkImport bookmarks={container.bookmarks} />{/if}
+  {:else if current === 'parcels'}
+    <ParcelsSettings parcels={container.parcels} />
+  {:else if current === 'shopping'}
+    <ShoppingSettings
+      shopping={container.shopping}
+      suggest={async () => {
+        const c = await container.calendar.settings();
+        return c.configured
+          ? { listUrl: suggestListUrl(c.calendarUrls[0] ?? ''), username: c.username }
+          : null;
+      }}
+    />
+  {:else if current === 'waste'}
+    <WasteSettings waste={container.waste} />
   {:else if current === 'wireguard'}
     <WireGuardSettings wireguard={container.wireguard} />
   {:else if current === 'fritzbox'}
@@ -86,15 +112,15 @@
     <BackupSettings backups={container.backup} />
   {:else}
     {#if onrestarttour}
-      <h3>Guided tour</h3>
-      <p class="muted">Shows the most important features of trisse-home step by step.</p>
-      <button class="btn" type="button" onclick={onrestarttour}>Restart the tour</button>
+      <h3>{t('app.guided_tour')}</h3>
+      <p class="muted">{t('app.shows_the_most_important_features_of')}</p>
+      <button class="btn" type="button" onclick={onrestarttour}>{t('app.restart_the_tour')}</button>
     {/if}
-    <h3>Two-factor authentication</h3>
+    <h3>{t('app.two_factor_authentication')}</h3>
     <TwoFactorSettings auth={container.auth} />
-    <h3>Active sessions</h3>
+    <h3>{t('app.active_sessions')}</h3>
     <SessionsList auth={container.auth} />
-    <h3>Change password</h3>
+    <h3>{t('app.change_password')}</h3>
     <ChangePasswordForm auth={container.auth} />
   {/if}
 </Modal>

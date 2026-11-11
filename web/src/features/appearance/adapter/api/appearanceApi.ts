@@ -8,6 +8,7 @@ const toAppearance = (d: AppearanceDTO): Appearance => ({
   accentColor: d.accentColor,
   backgroundImage: d.backgroundImage,
   customCss: d.customCss,
+  language: d.language ?? '',
 });
 
 /** AppearanceGateway backed by the REST API. */

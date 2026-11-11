@@ -32,3 +32,13 @@ func TestNewAppearance(t *testing.T) {
 		})
 	}
 }
+
+func TestLanguage(t *testing.T) {
+	a := Default()
+	if err := a.SetLanguage(" DE "); err != nil || a.Language() != "de" {
+		t.Fatalf("%q %v", a.Language(), err)
+	}
+	if err := a.SetLanguage("fr"); err == nil {
+		t.Fatal("unsupported language accepted")
+	}
+}

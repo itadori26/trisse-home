@@ -25,8 +25,15 @@ func Handler(fsys fs.FS) http.Handler {
 			serveIndex(w, r, fsys)
 			return
 		}
-		if strings.HasPrefix(name, "assets/") {
+		switch {
+		case strings.HasPrefix(name, "assets/"):
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		case name == "sw.js":
+			// The service worker must always be revalidated, or updates never arrive.
+			w.Header().Set("Cache-Control", "no-cache")
+		case strings.HasSuffix(name, ".webmanifest"):
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("Content-Type", "application/manifest+json")
 		}
 		files.ServeHTTP(w, r)
 	})

@@ -313,6 +313,41 @@ paths:
         "204": { description: Saved }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}/background:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Set the background image of a tab (http(s) URL; empty = global background)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { background: { type: string } } } } } }
+      responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" }, "422": { description: Invalid URL } }
+  /api/dashboard/templates:
+    get:
+      tags: [dashboard]
+      summary: Tab templates
+      security: [{ session: [] }]
+      responses: { "200": { description: "OK (id, name, widgets, kinds)" } }
+    post:
+      tags: [dashboard]
+      summary: Save the widgets of a tab as a template
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { tabId: { type: string }, name: { type: string, maxLength: 40 } } } } } }
+      responses: { "201": { description: Created }, "404": { $ref: "#/components/responses/NotFound" }, "409": { description: Too many templates } }
+  /api/dashboard/templates/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    delete:
+      tags: [dashboard]
+      summary: Delete a template
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { $ref: "#/components/responses/NotFound" } }
+  /api/dashboard/templates/{id}/tabs:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [dashboard]
+      summary: Create a tab from a template (empty name = template name); widgets of disabled modules are skipped
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+      responses: { "201": { description: Created }, "404": { $ref: "#/components/responses/NotFound" } }
   /api/dashboard/widgets/{id}:
     parameters: [{ $ref: "#/components/parameters/id" }]
     patch:
@@ -410,6 +445,20 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Forecast" } } } }
         "422": { $ref: "#/components/responses/Invalid" }
         "502": { $ref: "#/components/responses/Unavailable" }
+  /api/weather/warnings:
+    get:
+      tags: [weather]
+      summary: Official DWD warnings for the location (empty outside Germany), most severe first; cached 5 minutes
+      parameters: [{ name: lat, in: query, required: true, schema: { type: number } }, { name: lon, in: query, required: true, schema: { type: number } }]
+      responses: { "200": { description: OK }, "422": { description: Invalid coordinates }, "503": { description: DWD not reachable } }
+  /api/weather/radar:
+    get:
+      tags: [weather]
+      summary: PNG of the DWD precipitation radar (≈220 km around the location, Germany only); cached 5 minutes
+      parameters: [{ name: lat, in: query, required: true, schema: { type: number } }, { name: lon, in: query, required: true, schema: { type: number } }]
+      responses:
+        "200": { description: OK, content: { image/png: { schema: { type: string, format: binary } } } }
+        "422": { description: Outside Germany or invalid coordinates }
   /api/weather/places:
     get:
       tags: [weather]
@@ -523,6 +572,14 @@ paths:
       responses:
         "204": { description: Deleted }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/bookmarks/import:
+    post:
+      tags: [bookmarks]
+      summary: Import a browser bookmark export (Netscape HTML, max. 8 MB); folders are kept as "Parent / Child", existing URLs and non-http(s) links are skipped
+      requestBody: { required: true, content: { text/html: { schema: { type: string } } } }
+      responses:
+        "200": { description: "Counts (created, skippedInvalid, skippedExists, foldersCreated)" }
+        "422": { description: No bookmarks found or file too large }
   /api/bookmarks/folders:
     post:
       tags: [bookmarks]
@@ -737,6 +794,21 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { type: object, properties: { lines: { type: array, items: { type: string } } } } } } }
         "403": { description: Actions disabled or container not allowed }
 
+  # ---------------------------------------------------------------- transfer
+  /api/transfer/export:
+    get:
+      tags: [transfer]
+      summary: Download all user data (layout, bookmarks, notes, to-dos, feeds, services, settings) as a versioned JSON file; never contains secrets
+      responses: { "200": { description: "Export file (format trisse-home-export, version, exportedAt, sections)" } }
+  /api/transfer/import:
+    post:
+      tags: [transfer]
+      summary: Import an export file (max. 16 MB). Each contained section replaces the module's data atomically; sections of disabled modules are skipped
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { format: { type: string, enum: [trisse-home-export] }, version: { type: integer }, sections: { type: object } } } } } }
+      responses:
+        "200": { description: "Result (imported, skipped, failed with reasons)" }
+        "422": { description: Not an export file, unsupported version or too large }
+
   # ---------------------------------------------------------------- nextcloud
   /api/nextcloud/settings:
     get:
@@ -771,6 +843,105 @@ paths:
     get:
       tags: [fritzbox]
       summary: WAN state, external IP, throughput (bytes/s via UPnP), link speed and recent calls (via TR-064); refreshed every 15 s, calls every 2 min
+      responses: { "200": { description: OK }, "404": { description: Not configured } }
+
+  # ---------------------------------------------------------------- parcels
+  /api/parcels/settings:
+    get:
+      tags: [parcels]
+      summary: Tracking settings (the DHL API key is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [parcels]
+      summary: Save the DHL API key (encrypted; empty keeps the stored one) and how long delivered parcels stay visible
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { dhlApiKey: { type: string }, hideDeliveredDays: { type: integer, minimum: 0, maximum: 30 } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error } }
+  /api/parcels:
+    get:
+      tags: [parcels]
+      summary: Tracked parcels (undelivered first); refreshed hourly in the background
+      responses: { "200": { description: OK } }
+    post:
+      tags: [parcels]
+      summary: Track a parcel (carrier dhl); it is queried immediately when a key is configured
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { trackingNumber: { type: string }, carrier: { type: string, enum: [dhl] }, label: { type: string, maxLength: 60 } } } } } }
+      responses: { "201": { description: Created }, "409": { description: Too many parcels }, "422": { description: Validation error } }
+  /api/parcels/{id}:
+    delete:
+      tags: [parcels]
+      summary: Stop tracking a parcel
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted }, "404": { description: Not found } }
+
+  # ---------------------------------------------------------------- transit
+  /api/transit/stops:
+    get:
+      tags: [transit]
+      summary: Search stops (MOTIS geocoding, default Transitous)
+      parameters: [{ name: q, in: query, required: true, schema: { type: string, minLength: 2 } }]
+      responses: { "200": { description: OK }, "503": { description: Provider not reachable } }
+  /api/transit/departures:
+    get:
+      tags: [transit]
+      summary: Next departures of a stop with real-time delay; cached one minute per stop
+      parameters:
+        - { name: stop, in: query, required: true, schema: { type: string } }
+        - { name: n, in: query, schema: { type: integer, minimum: 1, maximum: 20, default: 1 } }
+      responses: { "200": { description: OK }, "422": { description: Invalid stop }, "503": { description: Provider not reachable } }
+
+  # ---------------------------------------------------------------- shopping
+  /api/shopping/settings:
+    get:
+      tags: [shopping]
+      summary: CalDAV task list settings (the password is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [shopping]
+      summary: Test and save the task list; an empty password keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { listUrl: { type: string }, username: { type: string }, password: { type: string } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error or list not readable } }
+  /api/shopping/items:
+    get:
+      tags: [shopping]
+      summary: Open items (oldest first) and the ten most recently completed ones, read live from the task list
+      responses: { "200": { description: OK }, "404": { description: Not configured }, "503": { description: Task list not reachable } }
+    post:
+      tags: [shopping]
+      summary: Add an item (VTODO via CalDAV PUT with If-None-Match)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { summary: { type: string, maxLength: 200 } } } } } }
+      responses: { "201": { description: Created }, "422": { description: Validation error } }
+  /api/shopping/items/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string }, description: CalDAV object name (….ics) }]
+    put:
+      tags: [shopping]
+      summary: Check or uncheck an item; only the completion properties change, written with If-Match
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { done: { type: boolean } } } } } }
+      responses: { "204": { description: Saved }, "404": { description: Not found }, "409": { description: Changed in another app meanwhile } }
+    delete:
+      tags: [shopping]
+      summary: Delete an item
+      responses: { "204": { description: Deleted }, "404": { description: Not found } }
+  /api/shopping/clear-completed:
+    post:
+      tags: [shopping]
+      summary: Delete all completed items
+      responses: { "200": { description: "Number of deleted items ({deleted})" } }
+
+  # ---------------------------------------------------------------- waste
+  /api/waste/settings:
+    get:
+      tags: [waste]
+      summary: ICS subscription and custom rules
+      responses: { "200": { description: OK } }
+    put:
+      tags: [waste]
+      summary: Load (test) and save the ICS subscription (https, http or webcal) and rules
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, rules: { type: array, maxItems: 20, items: { type: object, properties: { match: { type: string }, label: { type: string }, color: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }, icon: { type: string } } } } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error or calendar not loadable } }
+  /api/waste/upcoming:
+    get:
+      tags: [waste]
+      summary: Next three dates per waste type, ordered by the next collection (refreshed every 6 hours)
       responses: { "200": { description: OK }, "404": { description: Not configured } }
 
   # ---------------------------------------------------------------- wireguard
@@ -827,11 +998,36 @@ paths:
   /api/calendar/events:
     get:
       tags: [calendar]
-      summary: Upcoming events (cached, refreshed every 15 minutes)
-      parameters: [{ name: days, in: query, schema: { type: integer, minimum: 1, maximum: 31, default: 7 } }]
+      summary: Upcoming events (cached, refreshed every 15 minutes) or, with from/to, the events of a period of at most 42 days (month view)
+      parameters:
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 31, default: 7 } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Agenda" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { description: Invalid period, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    post:
+      tags: [calendar]
+      summary: Create an event in one of the configured calendars (CalDAV PUT with If-None-Match)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [calendarUrl, summary, start, end]
+              properties:
+                calendarUrl: { type: string, description: One of the configured calendar URLs }
+                summary: { type: string, maxLength: 200 }
+                location: { type: string, maxLength: 200 }
+                allDay: { type: boolean }
+                start: { type: string, description: "RFC 3339 instant, or YYYY-MM-DD for all-day events" }
+                end: { type: string, description: "RFC 3339 instant, or YYYY-MM-DD (inclusive) for all-day events" }
+      responses:
+        "201": { description: Created }
+        "422": { description: Validation error or unknown calendar, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "503": { description: The calendar server rejected the event, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
 
 components:
   securitySchemes:

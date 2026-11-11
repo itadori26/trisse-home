@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { AuthUseCases } from '../usecase/authUseCases';
 
@@ -20,7 +21,7 @@
     try {
       await auth.changePassword(current, next, confirmation);
       current = next = confirmation = '';
-      message = 'Password changed. All other sessions were signed out.';
+      message = t('auth.password_changed');
     } catch (err) {
       error = errorMessage(err);
     }
@@ -29,18 +30,18 @@
 
 <form onsubmit={submit}>
   <label class="field">
-    <span>Current password</span>
+    <span>{t('auth.current_password')}</span>
     <input class="input" type="password" autocomplete="current-password" bind:value={current} required />
   </label>
   <label class="field">
-    <span>New password</span>
+    <span>{t('auth.new_password')}</span>
     <input class="input" type="password" autocomplete="new-password" bind:value={next} required />
   </label>
   <label class="field">
-    <span>Repeat new password</span>
+    <span>{t('auth.repeat_new_password')}</span>
     <input class="input" type="password" autocomplete="new-password" bind:value={confirmation} required />
   </label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if message}<p class="muted">{message}</p>{/if}
-  <button class="btn btn-primary" type="submit">Change password</button>
+  <button class="btn btn-primary" type="submit">{t('auth.change_password')}</button>
 </form>

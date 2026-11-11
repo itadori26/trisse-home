@@ -9,7 +9,7 @@ Svelte single-page application. Both halves follow Clean Architecture
 ```mermaid
 flowchart LR
     subgraph R4["Frameworks & Drivers — internal/platform, cmd/server, web/"]
-        subgraph R3["Interface Adapters — modules/*/adapter, shared/httpapi"]
+        subgraph R3["Interface Adapters — modules/*/adapter, shared/httpapi, shared/sqlutil, shared/ical"]
             subgraph R2["Use Cases — modules/*/usecase"]
                 subgraph R1["Entities — modules/*/domain, shared/kernel"]
                     E[Entities, value objects,<br/>domain errors]

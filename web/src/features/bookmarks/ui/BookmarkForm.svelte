@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { type Bookmark, type Folder, parseTags } from '../domain/bookmark';
   import type { BookmarksUseCases } from '../usecase/bookmarksUseCases';
@@ -42,25 +43,33 @@
     ><span>URL</span><input class="input" bind:value={form.url} required placeholder="https://…" /></label
   >
   <label class="field"
-    ><span>Title (optional)</span><input class="input" bind:value={form.title} maxlength="200" /></label
+    ><span>{t('bookmarks.title_optional')}</span><input
+      class="input"
+      bind:value={form.title}
+      maxlength="200"
+    /></label
   >
   <label class="field">
-    <span>Folder</span>
+    <span>{t('bookmarks.folder')}</span>
     <select class="input" bind:value={form.folderId}>
-      <option value="">— none —</option>
+      <option value="">{t('bookmarks.none')}</option>
       {#each folders as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
     </select>
   </label>
   <label class="field"
-    ><span>Tags (comma separated)</span><input
+    ><span>{t('bookmarks.tags_comma_separated')}</span><input
       class="input"
       bind:value={form.tags}
-      placeholder="dev, docs"
+      placeholder={t('bookmarks.dev_docs')}
     /></label
   >
   <label class="field"
-    ><span>Description</span><input class="input" bind:value={form.description} maxlength="1000" /></label
+    ><span>{t('bookmarks.description')}</span><input
+      class="input"
+      bind:value={form.description}
+      maxlength="1000"
+    /></label
   >
   {#if error}<p class="error" role="alert">{error}</p>{/if}
-  <button class="btn btn-primary" type="submit">Save</button>
+  <button class="btn btn-primary" type="submit">{t('bookmarks.save')}</button>
 </form>

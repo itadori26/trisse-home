@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { NextcloudUseCases } from '../usecase/nextcloudUseCases';
 
@@ -28,7 +29,7 @@
       const s = await nextcloud.saveSettings(url, username, appPassword);
       hasPassword = s.hasPassword;
       appPassword = '';
-      message = 'Connected and saved.';
+      message = t('common.connected_saved');
     } catch (err) {
       error = errorMessage(err);
     } finally {
@@ -38,13 +39,11 @@
 </script>
 
 <p class="muted">
-  Create an app password in Nextcloud under Personal settings → Security → Devices &amp; sessions. Server
-  details (free space, users, app updates) need an admin account and the serverinfo app; without them the
-  widget shows the version and your quota.
+  {t('nextcloud.create_an_app_password_in_nextcloud')}
 </p>
 <form onsubmit={submit}>
   <label class="field"
-    ><span>Nextcloud URL</span><input
+    ><span>{t('nextcloud.nextcloud_url')}</span><input
       class="input"
       type="url"
       bind:value={url}
@@ -53,10 +52,19 @@
     /></label
   >
   <label class="field"
-    ><span>Username</span><input class="input" bind:value={username} autocomplete="off" required /></label
+    ><span>{t('nextcloud.username')}</span><input
+      class="input"
+      bind:value={username}
+      autocomplete="off"
+      required
+    /></label
   >
   <label class="field">
-    <span>App password {hasPassword ? '(leave empty to keep the stored one)' : ''}</span>
+    <span
+      >{t('nextcloud.app_password', {
+        value: hasPassword ? t('common.keep_stored') : '',
+      })}</span
+    >
     <input
       class="input"
       type="password"
@@ -65,8 +73,10 @@
       required={!hasPassword}
     />
   </label>
-  <p class="muted">The app password is stored encrypted and never shown again.</p>
+  <p class="muted">{t('nextcloud.the_app_password_is_stored_encrypted')}</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if message}<p class="muted">{message}</p>{/if}
-  <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Testing…' : 'Test & save'}</button>
+  <button class="btn btn-primary" type="submit" disabled={busy}
+    >{busy ? t('common.testing') : t('common.test_save')}</button
+  >
 </form>

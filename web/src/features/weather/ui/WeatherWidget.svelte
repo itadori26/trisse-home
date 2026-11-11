@@ -1,6 +1,14 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
-  import { describe, type Forecast, parseWeatherConfig } from '../domain/weather';
+  import {
+    describe,
+    type Forecast,
+    parseWeatherConfig,
+    severityColors,
+    validity,
+    type WeatherWarning,
+  } from '../domain/weather';
   import type { WeatherUseCases } from '../usecase/weatherUseCases';
 
   /** Props of the weather widget. */
@@ -15,30 +23,53 @@
   const cfg = $derived(parseWeatherConfig(config));
   let forecast = $state<Forecast | null>(null);
   let error = $state('');
+  let warnings = $state<WeatherWarning[]>([]);
+  let open = $state('');
 
   $effect(() => {
     const c = cfg;
     if (!c) return;
-    const load = () =>
+    const load = () => {
       weather
+        .warnings(c)
+        .then((w) => (warnings = w))
+        .catch(() => {}); // warnings are optional; the forecast stays usable
+      return weather
         .forecast(c)
         .then((f) => ((forecast = f), (error = '')))
         .catch((err) => (error = errorMessage(err)));
+    };
     load();
     const timer = setInterval(load, POLL_MS);
     return () => clearInterval(timer);
   });
 
-  const weekday = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short' });
+  const weekday = (d: Date) => d.toLocaleDateString(intlLocale(), { weekday: 'short' });
   const deg = (v: number) => `${Math.round(v)}°`;
 </script>
 
 {#if !cfg}
-  <p class="muted">Choose a location in the widget settings.</p>
+  <p class="muted">{t('weather.choose_a_location_in_the_widget')}</p>
 {:else if error && !forecast}
   <p class="error">{error}</p>
 {:else if forecast}
   {@const now = describe(forecast.code, forecast.isDay)}
+  {#each warnings as w (w.id)}
+    <button
+      type="button"
+      class="warning"
+      style="--sev: {severityColors[w.severity]}"
+      aria-expanded={open === w.id}
+      onclick={() => (open = open === w.id ? '' : w.id)}
+    >
+      <strong>⚠ {w.event || w.headline}</strong> <span class="small">{validity(w, new Date())}</span>
+      {#if open === w.id}
+        <span class="detail"
+          >{w.description}{w.instruction ? ` ${w.instruction}` : ''} <em>{t('weather.source_dwd')}</em></span
+        >
+      {/if}
+    </button>
+  {/each}
   <div class="weather">
     <div class="now">
       <span class="icon" aria-hidden="true">{now.icon}</span>
@@ -46,9 +77,11 @@
         <div class="temp">{deg(forecast.temperature)}</div>
         <div class="muted">{now.label}{cfg.label ? ` · ${cfg.label}` : ''}</div>
         <div class="muted small details">
-          Feels {deg(forecast.apparentTemperature)} · {Math.round(forecast.humidity)}% · {Math.round(
-            forecast.windSpeed,
-          )} km/h
+          {t('weather.feels_km_h', {
+            value: deg(forecast.apparentTemperature),
+            value2: Math.round(forecast.humidity),
+            value3: Math.round(forecast.windSpeed),
+          })}
         </div>
       </div>
     </div>
@@ -69,10 +102,30 @@
     {/if}
   </div>
 {:else}
-  <p class="muted">Loading…</p>
+  <p class="muted">{t('weather.loading')}</p>
 {/if}
 
 <style>
+  .warning {
+    display: block;
+    width: 100%;
+    text-align: left;
+    margin: 0 0 var(--space-1);
+    padding: 2px 6px;
+    border: 0;
+    border-left: 5px solid var(--sev);
+    border-radius: var(--radius-small);
+    background: color-mix(in srgb, var(--sev) 18%, transparent);
+    color: inherit;
+    font: inherit;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .detail {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.9em;
+  }
   .weather {
     height: 100%;
     display: flex;

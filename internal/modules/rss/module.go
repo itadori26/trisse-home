@@ -19,6 +19,7 @@ const refreshInterval = 30 * time.Minute
 // Module wires the feed reader rings and implements modules.Module.
 type Module struct {
 	modules.Base
+	modules.Transferable
 	uc          usecase.Reader
 	seed        usecase.SeedSampleData
 	sampleFeeds []string
@@ -33,7 +34,7 @@ const sampleRefreshTimeout = time.Minute
 func New(db *sql.DB, client *http.Client, clock kernel.Clock, ids kernel.IDGenerator, sampleFeeds []string) *Module {
 	deps := usecase.Deps{Repo: gateway.NewRepository(db), Fetcher: gateway.NewHTTPFetcher(client), Clock: clock, IDs: ids}
 	uc := usecase.NewReader(deps)
-	return &Module{uc: uc, seed: usecase.NewSeedSampleData(deps), sampleFeeds: sampleFeeds, handlers: controller.NewHandlers(uc)}
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, uc: uc, seed: usecase.NewSeedSampleData(deps), sampleFeeds: sampleFeeds, handlers: controller.NewHandlers(uc)}
 }
 
 // SeedSampleData implements modules.Seeder. The example feeds are fetched in

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { describeUserAgent, type SessionInfo } from '../domain/session';
   import type { AuthUseCases } from '../usecase/authUseCases';
@@ -33,17 +34,20 @@
     <li>
       <span class="who">
         <strong>{describeUserAgent(s.userAgent)}</strong>
-        {#if s.current}<span class="badge">this device</span>{/if}
+        {#if s.current}<span class="badge">{t('auth.this_device')}</span>{/if}
         <br /><span class="muted small"
-          >{s.clientIp || 'unknown IP'} · last active {s.lastSeenAt.toLocaleString()}</span
+          >{t('auth.last_active', {
+            value: s.clientIp || t('auth.unknown_ip'),
+            value2: s.lastSeenAt.toLocaleString(intlLocale()),
+          })}</span
         >
       </span>
       {#if !s.current}
         <button
           class="btn btn-icon"
           type="button"
-          aria-label="Sign out this session"
-          onclick={() => run(() => auth.revokeSession(s.id))}>Sign out</button
+          aria-label={t('auth.sign_out_this_session')}
+          onclick={() => run(() => auth.revokeSession(s.id))}>{t('auth.sign_out')}</button
         >
       {/if}
     </li>
@@ -57,7 +61,7 @@
       run(async () => {
         const n = await auth.revokeOtherSessions();
         message = `${n} other session(s) signed out.`;
-      })}>Sign out all other sessions</button
+      })}>{t('auth.sign_out_all_other_sessions')}</button
   >
 {/if}
 {#if error}<p class="error" role="alert">{error}</p>{/if}

@@ -16,6 +16,7 @@ export interface TabDTO {
   id: string;
   name: string;
   position: number /* int */;
+  background: string;
   widgets: WidgetDTO[];
 }
 /**
@@ -30,4 +31,13 @@ export interface WidgetDTO {
   w: number /* int */;
   h: number /* int */;
   config: { [key: string]: unknown };
+}
+/**
+ * TemplateDTO describes a tab template.
+ */
+export interface TemplateDTO {
+  id: string;
+  name: string;
+  widgets: number /* int */;
+  kinds: string[];
 }

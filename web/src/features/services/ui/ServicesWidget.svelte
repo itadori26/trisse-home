@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Sparkline from '../../../shared/ui/Sparkline.svelte';
   import {
@@ -24,10 +25,10 @@
   let notice = $state('');
 
   async function wake(s: Service) {
-    if (!confirm(`Send a Wake-on-LAN packet to "${s.name}"?`)) return;
+    if (!confirm(t('services.confirm_wake', { name: s.name }))) return;
     try {
       await services.wake(s.id);
-      notice = `Wake-up packet sent to ${s.name}.`;
+      notice = t('services.wake_sent', { name: s.name });
       error = '';
     } catch (err) {
       error = errorMessage(err);
@@ -56,7 +57,7 @@
 {#if error}<p class="error">{error}</p>{/if}
 {#if notice}<p class="muted small" role="status">{notice}</p>{/if}
 {#if list.length === 0 && !error}
-  <p class="muted">No services yet. Add them under Settings → Services.</p>
+  <p class="muted">{t('services.no_services_yet_add_them_under')}</p>
 {/if}
 <ul class="tiles" class:compact>
   {#each list as s (s.id)}
@@ -69,14 +70,17 @@
           {#if history[s.id]?.length}
             <Sparkline
               values={(history[s.id] ?? []).map((p) => p.latencyMs)}
-              label="Response time of {s.name} over 24 hours"
+              label={t('services.response_time_of_over_24_hours', { name: s.name })}
             />
           {/if}
         </span>
         {#if s.certExpiresSoon}
           {@const days = certificateDaysLeft(s, new Date())}
-          <span class="cert" title="TLS certificate expires {s.certExpiresAt?.toLocaleDateString()}"
-            >🔒 {days}d</span
+          <span
+            class="cert"
+            title={t('services.tls_certificate_expires', {
+              value: s.certExpiresAt?.toLocaleDateString(intlLocale()) ?? '',
+            })}>🔒 {days}d</span
           >
         {/if}
         <span class="dot {s.state}" aria-label={s.state}></span>
@@ -85,8 +89,8 @@
         <button
           class="btn btn-icon wake"
           type="button"
-          title="Wake up (Wake-on-LAN)"
-          aria-label="Wake up {s.name}"
+          title={t('services.wake_up_wake_on_lan')}
+          aria-label={t('services.wake_up', { name: s.name })}
           onclick={() => wake(s)}>⏻</button
         >
       {/if}

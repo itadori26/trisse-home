@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import type { Snippet } from 'svelte';
 
   /** Props of the card that wraps every widget. */
@@ -10,11 +11,22 @@
     /** Opens the widget settings; omitted for widgets without settings. */
     onsettings?: () => void;
     ondelete: () => void;
+    /** Copies the widget including its configuration. */
+    onduplicate?: () => void;
     /** Hides the title bar outside edit mode (e.g. for the search bar). */
     chromeless?: boolean;
     children: Snippet;
   }
-  let { title, editing, handle, onsettings, ondelete, chromeless = false, children }: Props = $props();
+  let {
+    title,
+    editing,
+    handle,
+    onsettings,
+    ondelete,
+    onduplicate,
+    chromeless = false,
+    children,
+  }: Props = $props();
 </script>
 
 <article class="widget card" class:chromeless={chromeless && !editing}>
@@ -29,15 +41,25 @@
             <button
               class="btn btn-icon"
               type="button"
-              aria-label="Widget settings"
+              aria-label={t('dashboard.widget_settings')}
               onpointerdown={(e) => e.stopPropagation()}
               onclick={onsettings}>⚙</button
+            >
+          {/if}
+          {#if onduplicate}
+            <button
+              class="btn btn-icon"
+              type="button"
+              aria-label={t('dashboard.duplicate_widget')}
+              title={t('dashboard.duplicate')}
+              onpointerdown={(e) => e.stopPropagation()}
+              onclick={onduplicate}>⧉</button
             >
           {/if}
           <button
             class="btn btn-icon"
             type="button"
-            aria-label="Remove widget"
+            aria-label={t('dashboard.remove_widget')}
             onpointerdown={(e) => e.stopPropagation()}
             onclick={ondelete}>✕</button
           >

@@ -23,8 +23,9 @@ type Module struct {
 }
 
 // New builds the calendar module. Floating event times are interpreted in loc.
-func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock, loc *time.Location) *Module {
-	uc := usecase.NewCalendar(gateway.NewSettingsRepository(db, cipher), gateway.NewCalDAV(client, loc), clock)
+func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock, ids kernel.IDGenerator, loc *time.Location) *Module {
+	caldav := gateway.NewCalDAV(client, loc)
+	uc := usecase.NewCalendar(gateway.NewSettingsRepository(db, cipher), caldav, caldav, ids, clock)
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
 }
 
@@ -42,6 +43,7 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/calendar/settings", m.handlers.Settings)
 	r.Protected("PUT /api/calendar/settings", m.handlers.SaveSettings)
 	r.Protected("GET /api/calendar/events", m.handlers.Events)
+	r.Protected("POST /api/calendar/events", m.handlers.CreateEvent)
 }
 
 // Jobs implements modules.Module.

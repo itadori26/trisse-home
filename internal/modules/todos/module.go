@@ -15,6 +15,7 @@ import (
 // Module wires the to-do rings and implements modules.Module.
 type Module struct {
 	modules.Base
+	modules.Transferable
 	handlers *controller.Handlers
 	seed     usecase.SeedSampleData
 }
@@ -25,7 +26,7 @@ func (m *Module) SeedSampleData(ctx context.Context) error { return m.seed.Execu
 // New builds the to-do module.
 func New(db *sql.DB, clock kernel.Clock, ids kernel.IDGenerator) *Module {
 	d := usecase.Deps{Repo: gateway.NewRepository(db), Clock: clock, IDs: ids}
-	return &Module{seed: usecase.NewSeedSampleData(d), handlers: controller.NewHandlers(controller.UseCases{
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, seed: usecase.NewSeedSampleData(d), handlers: controller.NewHandlers(controller.UseCases{
 		List: usecase.NewListTodos(d), Create: usecase.NewCreateTodo(d), Update: usecase.NewUpdateTodo(d),
 		Delete: usecase.NewDeleteTodo(d), ClearCompleted: usecase.NewClearCompleted(d),
 	})}

@@ -1,9 +1,11 @@
-import type { Forecast, Place, WeatherConfig } from '../domain/weather';
+import type { Forecast, Place, WeatherConfig, WeatherWarning } from '../domain/weather';
 
 /** Output port: weather backend. */
 export interface WeatherGateway {
   forecast(lat: number, lon: number): Promise<Forecast>;
   searchPlaces(query: string): Promise<Place[]>;
+  warnings(lat: number, lon: number): Promise<WeatherWarning[]>;
+  radarUrl(lat: number, lon: number, key: number): string;
 }
 
 /** Minimum length of a place search. */
@@ -24,5 +26,15 @@ export class WeatherUseCases {
     const q = query.trim();
     if (q.length < MIN_PLACE_QUERY) return Promise.resolve([]);
     return this.gateway.searchPlaces(q);
+  }
+
+  /** Official warnings for a configured widget (empty when disabled). */
+  warnings(cfg: WeatherConfig): Promise<WeatherWarning[]> {
+    return cfg.warnings ? this.gateway.warnings(cfg.lat, cfg.lon) : Promise.resolve([]);
+  }
+
+  /** URL of the radar image; key changes every five minutes. */
+  radarUrl(cfg: Pick<WeatherConfig, 'lat' | 'lon'>, key: number): string {
+    return this.gateway.radarUrl(cfg.lat, cfg.lon, key);
   }
 }

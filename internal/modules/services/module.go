@@ -30,6 +30,7 @@ type Deps struct {
 // Module wires the services rings and implements modules.Module.
 type Module struct {
 	modules.Base
+	modules.Transferable
 	uc       usecase.Services
 	seed     usecase.SeedSampleData
 	handlers *controller.Handlers
@@ -42,7 +43,7 @@ func New(d Deps) *Module {
 		Checker: gateway.NewHTTPChecker(d.Client, d.InsecureClient), History: gateway.NewHistoryStore(d.DB), Waker: d.Waker, Observations: d.Observations, Clock: d.Clock, IDs: d.IDs,
 	}
 	uc := usecase.NewServices(deps)
-	return &Module{uc: uc, seed: usecase.NewSeedSampleData(deps), handlers: controller.NewHandlers(uc)}
+	return &Module{Transferable: modules.Transferable{DB: d.DB, Tables: gateway.TransferTables}, uc: uc, seed: usecase.NewSeedSampleData(deps), handlers: controller.NewHandlers(uc)}
 }
 
 // SeedSampleData implements modules.Seeder. The example tiles are checked in

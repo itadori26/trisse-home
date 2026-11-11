@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/calendar/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 type memRepo struct{ s *domain.Settings }
@@ -46,7 +47,7 @@ func (clk) Now() time.Time { return now }
 func TestCalendar(t *testing.T) {
 	ctx := context.Background()
 	repo, src := &memRepo{}, &fakeSource{fail: map[string]bool{}}
-	uc := NewCalendar(repo, src, clk{})
+	uc := NewCalendar(repo, src, &fakeWriter{}, &seqIDs{}, clk{})
 	if _, err := uc.Upcoming(ctx, 7); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("expected not configured, got %v", err)
 	}
@@ -72,5 +73,54 @@ func TestCalendar(t *testing.T) {
 	partial, _ := uc.Upcoming(ctx, 31)
 	if len(partial.Events) != 2 || !strings.Contains(partial.Error, "work") {
 		t.Fatalf("partial failure not reported: %+v", partial)
+	}
+}
+
+type fakeWriter struct {
+	created []domain.Event
+	urls    []string
+	err     error
+}
+
+func (f *fakeWriter) Create(_ context.Context, _ domain.Settings, u string, e domain.Event) error {
+	f.created, f.urls = append(f.created, e), append(f.urls, u)
+	return f.err
+}
+
+type seqIDs struct{ n int }
+
+func (s *seqIDs) NewID() string { s.n++; return "id" + strings.Repeat("x", s.n) }
+
+func TestRangeAndCreate(t *testing.T) {
+	ctx := context.Background()
+	repo, src, w := &memRepo{}, &fakeSource{fail: map[string]bool{}}, &fakeWriter{}
+	uc := NewCalendar(repo, src, w, &seqIDs{}, clk{})
+	urls := []string{"https://c.example/cal/home/"}
+	if _, err := uc.SaveSettings(ctx, SettingsInput{CalendarURLs: urls, Username: "me", Password: "pw"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := uc.Range(ctx, now, now.AddDate(0, 0, 60)); !errors.Is(err, kernel.ErrInvalid) {
+		t.Fatalf("too long range accepted: %v", err)
+	}
+	inCache, err := uc.Range(ctx, now, now.AddDate(0, 0, 7))
+	if err != nil || len(inCache.Events) == 0 {
+		t.Fatalf("cached range: %+v %v", inCache, err)
+	}
+	past, err := uc.Range(ctx, now.AddDate(0, -2, 0), now.AddDate(0, -1, 0))
+	if err != nil {
+		t.Fatalf("live range: %v", err)
+	}
+	_ = past
+	if _, err := uc.CreateEvent(ctx, NewEventInput{CalendarURL: "https://evil.example/", Summary: "x", Start: now, End: now.Add(time.Hour)}); !errors.Is(err, kernel.ErrInvalid) {
+		t.Fatalf("unknown calendar accepted: %v", err)
+	}
+	day := time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC)
+	v, err := uc.CreateEvent(ctx, NewEventInput{CalendarURL: urls[0], Summary: "Holiday", AllDay: true, Start: day, End: day})
+	if err != nil || !v.End.Equal(day.AddDate(0, 0, 1)) || !strings.HasSuffix(w.created[0].UID, "@trisse-home") || v.Calendar != "home" {
+		t.Fatalf("all-day create: %+v %v %+v", v, err, w.created)
+	}
+	w.err = errors.New("403 Forbidden")
+	if _, err := uc.CreateEvent(ctx, NewEventInput{CalendarURL: urls[0], Summary: "x", Start: now, End: now.Add(time.Hour)}); !errors.Is(err, kernel.ErrUnavailable) {
+		t.Fatalf("server error not reported: %v", err)
 	}
 }

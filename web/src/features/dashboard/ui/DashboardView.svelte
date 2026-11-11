@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import type { Snippet } from 'svelte';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
@@ -6,6 +7,7 @@
   import type { LayoutItem } from '../domain/layout';
   import type { DashboardUseCases } from '../usecase/dashboardUseCases';
   import Grid from './Grid.svelte';
+  import NewTabDialog from './NewTabDialog.svelte';
   import TabBar from './TabBar.svelte';
   import TextPrompt from './TextPrompt.svelte';
   import WidgetFrame from './WidgetFrame.svelte';
@@ -38,6 +40,8 @@
     | { kind: 'add-widget' }
     | { kind: 'new-tab' }
     | { kind: 'rename-tab'; tab: Tab }
+    | { kind: 'background'; tab: Tab }
+    | { kind: 'template'; tab: Tab }
     | { kind: 'settings'; widget: Widget }
     | null
   >(null);
@@ -105,8 +109,27 @@
     });
   }
 
+  function duplicateWidget(widget: Widget) {
+    const tab = tabs.find((t) => t.id === widget.tabId);
+    if (!tab) return;
+    run(async () => {
+      const copy = await uc.duplicateWidget(tab, widget);
+      replaceTab({ ...tab, widgets: [...tab.widgets, copy] });
+    });
+  }
+
+  // A tab background overrides the global one (see base.css).
+  $effect(() => {
+    const bg = active?.background ?? '';
+    const root = document.documentElement.style;
+    if (bg) root.setProperty('--tab-background-image', `url("${bg.replace(/["\\]/g, '')}")`);
+    else root.removeProperty('--tab-background-image');
+    return () => root.removeProperty('--tab-background-image');
+  });
+
   function removeWidget(widget: Widget) {
-    if (!confirm(`Remove the widget "${titles.get(widget.kind) ?? widget.kind}"?`)) return;
+    if (!confirm(t('dashboard.confirm_remove_widget', { name: titles.get(widget.kind) ?? widget.kind })))
+      return;
     run(async () => {
       await uc.deleteWidget(widget.id);
       const tab = tabs.find((t) => t.id === widget.tabId);
@@ -126,7 +149,7 @@
   }
 
   function deleteTab(tab: Tab) {
-    if (!confirm(`Delete the tab "${tab.name}" and all its widgets?`)) return;
+    if (!confirm(t('dashboard.confirm_delete_tab', { name: tab.name }))) return;
     run(async () => {
       await uc.deleteTab(tab.id);
       tabs = tabs.filter((t) => t.id !== tab.id);
@@ -154,13 +177,15 @@
     onrename={(tab) => (dialog = { kind: 'rename-tab', tab })}
     ondelete={deleteTab}
     onmove={moveTab}
+    onbackground={(tab) => (dialog = { kind: 'background', tab })}
+    ontemplate={(tab) => (dialog = { kind: 'template', tab })}
   />
 
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
   {#if active}
     {@const visible = active.widgets.filter((w) => available.has(w.kind))}
-    <Grid items={visible} {editing} {onlayout}>
+    <Grid items={visible} {editing} {onlayout} label={(w) => titles.get(w.kind) ?? w.kind}>
       {#snippet item(widget: Widget, handle: { onpointerdown: (e: PointerEvent) => void })}
         <WidgetFrame
           title={titles.get(widget.kind) ?? widget.kind}
@@ -169,6 +194,7 @@
           chromeless={chromeless(widget.kind)}
           onsettings={hasSettings(widget.kind) ? () => (dialog = { kind: 'settings', widget }) : undefined}
           ondelete={() => removeWidget(widget)}
+          onduplicate={() => duplicateWidget(widget)}
         >
           {@render content(widget)}
         </WidgetFrame>
@@ -182,14 +208,14 @@
     {/if}
     {#if editing}
       <button class="btn btn-primary add" type="button" onclick={() => (dialog = { kind: 'add-widget' })}
-        >+ Add widget</button
+        >{t('dashboard.add_widget')}</button
       >
     {/if}
   {/if}
 </section>
 
 {#if dialog?.kind === 'add-widget'}
-  <Modal title="Add widget" onclose={() => (dialog = null)}>
+  <Modal title={t('dashboard.add_widget_2')} onclose={() => (dialog = null)}>
     <ul class="catalog">
       {#each widgetTypes as type (type.kind)}
         <li>
@@ -202,21 +228,46 @@
     </ul>
   </Modal>
 {:else if dialog?.kind === 'new-tab'}
-  <TextPrompt
-    title="New tab"
-    label="Name"
+  <NewTabDialog
+    {uc}
     onclose={() => (dialog = null)}
-    onsubmit={async (name) => {
-      const tab = await uc.createTab(name);
+    oncreated={(tab) => {
       tabs = [...tabs, tab];
       select(tab.id);
+    }}
+  />
+{:else if dialog?.kind === 'background'}
+  {@const tab = dialog.tab}
+  <TextPrompt
+    title={t('dashboard.background_of', { name: tab.name })}
+    label={t('dashboard.image_url_empty_global_background')}
+    type="url"
+    optional
+    maxlength={2048}
+    placeholder="https://…"
+    initial={tab.background}
+    onclose={() => (dialog = null)}
+    onsubmit={async (url) => {
+      const updated = await uc.setBackground(tab.id, url);
+      replaceTab({ ...tab, background: updated.background });
+    }}
+  />
+{:else if dialog?.kind === 'template'}
+  {@const tab = dialog.tab}
+  <TextPrompt
+    title={t('dashboard.save_as_template', { name: tab.name })}
+    label={t('dashboard.template_name')}
+    initial={tab.name}
+    onclose={() => (dialog = null)}
+    onsubmit={async (name) => {
+      await uc.saveTemplate(tab.id, name);
     }}
   />
 {:else if dialog?.kind === 'rename-tab'}
   {@const tab = dialog.tab}
   <TextPrompt
-    title="Rename tab"
-    label="Name"
+    title={t('dashboard.rename_tab')}
+    label={t('dashboard.name')}
     initial={tab.name}
     onclose={() => (dialog = null)}
     onsubmit={async (name) => {
@@ -226,7 +277,10 @@
   />
 {:else if dialog?.kind === 'settings'}
   {@const widget = dialog.widget}
-  <Modal title="{titles.get(widget.kind) ?? widget.kind} settings" onclose={() => (dialog = null)}>
+  <Modal
+    title={t('dashboard.settings', { value: titles.get(widget.kind) ?? widget.kind })}
+    onclose={() => (dialog = null)}
+  >
     {@render settings(widget, (config) => saveConfig(widget, config))}
   </Modal>
 {/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { formatBytes } from '../../../shared/ui/format';
   import { type BackupFile, downloadUrl } from '../domain/backup';
@@ -41,24 +42,23 @@
 </script>
 
 <p class="muted">
-  Backups are created automatically (interval and retention are configured with BACKUP_INTERVAL and
-  BACKUP_RETENTION). Stored passwords are encrypted with SECRET_KEY — keep that key safe separately.
+  {t('backup.backups_are_created_automatically_interv')}
 </p>
 <p>
   <button class="btn btn-primary" type="button" disabled={busy} onclick={backupNow}
-    >{busy ? 'Creating…' : 'Back up now'}</button
+    >{busy ? t('backup.creating') : t('backup.back_up_now')}</button
   >
 </p>
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 <ul class="list">
   {#each files as f (f.name)}
     <li>
-      <span>{f.createdAt.toLocaleString()}</span>
+      <span>{f.createdAt.toLocaleString(intlLocale())}</span>
       <span class="muted">{formatBytes(f.size)}</span>
-      <a href={downloadUrl(f)} download>Download</a>
+      <a href={downloadUrl(f)} download>{t('backup.download')}</a>
     </li>
   {:else}
-    <li class="muted">No backups yet.</li>
+    <li class="muted">{t('backup.no_backups_yet')}</li>
   {/each}
 </ul>
 

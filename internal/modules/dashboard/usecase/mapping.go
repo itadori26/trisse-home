@@ -1,6 +1,10 @@
 package usecase
 
-import "trisse-home/internal/modules/dashboard/domain"
+import (
+	"slices"
+
+	"trisse-home/internal/modules/dashboard/domain"
+)
 
 func toWidgetResponse(w domain.Widget) WidgetResponse {
 	r := w.Rect()
@@ -8,10 +12,20 @@ func toWidgetResponse(w domain.Widget) WidgetResponse {
 }
 
 func toTabResponse(t domain.Tab, widgets []domain.Widget) TabResponse {
-	res := TabResponse{ID: t.ID(), Name: t.Name(), Position: t.Position(), Widgets: []WidgetResponse{}}
+	res := TabResponse{ID: t.ID(), Name: t.Name(), Position: t.Position(), Background: t.Background(), Widgets: []WidgetResponse{}}
 	for _, w := range widgets {
 		if w.TabID() == t.ID() {
 			res.Widgets = append(res.Widgets, toWidgetResponse(w))
+		}
+	}
+	return res
+}
+
+func toTemplateResponse(t domain.Template) TemplateResponse {
+	res := TemplateResponse{ID: t.ID, Name: t.Name, Widgets: len(t.Widgets), Kinds: []string{}}
+	for _, w := range t.Widgets {
+		if !slices.Contains(res.Kinds, w.Kind) {
+			res.Kinds = append(res.Kinds, w.Kind)
 		}
 	}
 	return res

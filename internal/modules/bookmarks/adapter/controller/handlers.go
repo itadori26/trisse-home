@@ -6,6 +6,7 @@ import (
 	"trisse-home/internal/modules/bookmarks/adapter/presenter"
 	"trisse-home/internal/modules/bookmarks/usecase"
 	"trisse-home/internal/shared/httpapi"
+	"trisse-home/internal/shared/kernel"
 )
 
 // UseCases bundles the bookmarks input ports.
@@ -17,6 +18,7 @@ type UseCases struct {
 	CreateFolder usecase.CreateFolder
 	RenameFolder usecase.RenameFolder
 	DeleteFolder usecase.DeleteFolder
+	Import       usecase.ImportBookmarks
 }
 
 // Handlers serves the bookmarks endpoints.
@@ -116,4 +118,35 @@ func (h *Handlers) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// maxImportBytes limits uploaded bookmark files.
+const maxImportBytes = 8 << 20
+
+// ImportResultDTO is returned by POST /api/bookmarks/import.
+type ImportResultDTO struct {
+	Created        int `json:"created"`
+	SkippedInvalid int `json:"skippedInvalid"`
+	SkippedExists  int `json:"skippedExists"`
+	FoldersCreated int `json:"foldersCreated"`
+}
+
+// Import handles POST /api/bookmarks/import with a browser bookmark export
+// (Netscape HTML) as body.
+func (h *Handlers) Import(w http.ResponseWriter, r *http.Request) {
+	items, err := ParseNetscape(http.MaxBytesReader(w, r.Body, maxImportBytes))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, kernel.NewValidationError("file", "The file could not be read (max. 8 MB)."))
+		return
+	}
+	if len(items) == 0 {
+		httpapi.WriteDomainError(w, r, kernel.NewValidationError("file", "No bookmarks found. Please export your bookmarks as HTML from the browser."))
+		return
+	}
+	res, err := h.uc.Import.Execute(r.Context(), items)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, ImportResultDTO(res))
 }

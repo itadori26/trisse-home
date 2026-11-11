@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import type { AuthUseCases } from '../usecase/authUseCases';
   import AuthCard from './AuthCard.svelte';
@@ -38,13 +39,10 @@
   }
 </script>
 
-<AuthCard
-  title="trisse-home"
-  subtitle={needsCode ? 'Enter the code from your authenticator app.' : 'Please log in.'}
->
+<AuthCard title="trisse-home" subtitle={needsCode ? t('auth.enter_code_hint') : t('auth.please_log_in')}>
   <form onsubmit={submit}>
     <label class="field" class:hidden={needsCode}>
-      <span>Password</span>
+      <span>{t('auth.password')}</span>
       <!-- svelte-ignore a11y_autofocus -->
       <input
         class="input"
@@ -58,7 +56,7 @@
     </label>
     {#if needsCode}
       <label class="field">
-        <span>Authentication code (or recovery code)</span>
+        <span>{t('auth.authentication_code_or_recovery_code')}</span>
         <!-- svelte-ignore a11y_autofocus -->
         <input
           class="input code"
@@ -72,7 +70,9 @@
       </label>
     {/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <button class="btn btn-primary" type="submit" disabled={busy}>{needsCode ? 'Verify' : 'Log in'}</button>
+    <button class="btn btn-primary" type="submit" disabled={busy}
+      >{needsCode ? t('auth.verify') : t('auth.log_in')}</button
+    >
     {#if needsCode}
       <button
         class="btn btn-icon"
@@ -80,7 +80,7 @@
         onclick={() => {
           needsCode = false;
           code = error = '';
-        }}>Back</button
+        }}>{t('auth.back')}</button
       >
     {/if}
   </form>

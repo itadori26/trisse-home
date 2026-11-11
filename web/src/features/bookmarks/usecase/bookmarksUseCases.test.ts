@@ -10,6 +10,7 @@ describe('BookmarksUseCases', () => {
     createFolder: vi.fn(),
     renameFolder: vi.fn(),
     deleteFolder: vi.fn(),
+    importHtml: vi.fn(),
   } satisfies BookmarksGateway;
   const uc = new BookmarksUseCases(gateway);
   const input = { folderId: '', title: '', url: 'go.dev', description: '', tags: [] };
