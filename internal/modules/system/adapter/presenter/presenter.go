@@ -69,3 +69,27 @@ func History(ps []usecase.PointView) []PointDTO {
 	}
 	return out
 }
+
+// ReleaseDTO is the latest known release.
+type ReleaseDTO struct {
+	Version     string    `json:"version"`
+	URL         string    `json:"url"`
+	PublishedAt time.Time `json:"publishedAt"`
+}
+
+// VersionDTO is returned by GET /api/system/version.
+type VersionDTO struct {
+	Current         string      `json:"current"`
+	CheckEnabled    bool        `json:"checkEnabled"`
+	Latest          *ReleaseDTO `json:"latest"`
+	UpdateAvailable bool        `json:"updateAvailable"`
+}
+
+// Version maps a VersionInfo.
+func Version(v usecase.VersionInfo) VersionDTO {
+	dto := VersionDTO{Current: v.Current, CheckEnabled: v.CheckEnabled, UpdateAvailable: v.UpdateAvailable}
+	if v.Latest != nil {
+		dto.Latest = &ReleaseDTO{Version: v.Latest.Version, URL: v.Latest.URL, PublishedAt: v.Latest.PublishedAt}
+	}
+	return dto
+}

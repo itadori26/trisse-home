@@ -27,7 +27,7 @@ Architecture.
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
-| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
+| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; running version and an opt-in update check |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
@@ -295,6 +295,8 @@ radar image is proxied, so the browser never contacts DWD) and departures
 from the community-run [Transitous](https://transitous.org) API (cached one
 minute per stop; please respect its fair-use policy or run your own MOTIS)
 and, with your API key, the DHL tracking API (hourly, undelivered parcels only).
+If you enable the update check (Settings → About), the GitHub releases API is
+asked for the latest version at most once a day.
 Nothing else leaves the server.
 
 The FRITZ!Box login uses HTTP digest authentication, which TR-064 defines with

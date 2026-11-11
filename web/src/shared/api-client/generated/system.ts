@@ -41,3 +41,20 @@ export interface PointDTO {
   memory: number /* float64 */;
   disk: number /* float64 */;
 }
+/**
+ * ReleaseDTO is the latest known release.
+ */
+export interface ReleaseDTO {
+  version: string;
+  url: string;
+  publishedAt: string /* RFC 3339 */;
+}
+/**
+ * VersionDTO is returned by GET /api/system/version.
+ */
+export interface VersionDTO {
+  current: string;
+  checkEnabled: boolean;
+  latest?: ReleaseDTO;
+  updateAvailable: boolean;
+}

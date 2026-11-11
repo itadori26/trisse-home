@@ -611,6 +611,13 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("bookmark import: %d %v", res.StatusCode, imported)
 	}
 
+	// --- version and update check (off by default, no outbound request) ---
+	var ver obj
+	c.json(http.MethodGet, "/api/system/version", nil, http.StatusOK, &ver)
+	if ver["checkEnabled"] != false || ver["latest"] != nil || ver["current"] == "" {
+		t.Fatalf("version: %v", ver)
+	}
+
 	// --- export / import ---
 	var export struct {
 		Format   string                     `json:"format"`

@@ -683,4 +683,12 @@ export const de: Record<MessageKey, string> = {
   'notes.edit_note': 'Notiz bearbeiten',
   'common.save': 'Speichern',
   'common.add': 'Hinzufügen',
+  'system.version_running': 'Laufende Version: {version}',
+  'system.update_check': 'Täglich nach neuen Releases suchen (GitHub)',
+  'system.update_check_hint':
+    'Standardmäßig aus. Wenn aktiviert, fragt der Server höchstens einmal täglich bei der GitHub-API nach dem neuesten Release.',
+  'system.update_available': 'Version {version} ist verfügbar.',
+  'system.release_notes': 'Release Notes',
+  'system.up_to_date': 'Du nutzt das neueste Release.',
+  'settings.section.about': 'Über',
 };

@@ -1,6 +1,7 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { PointDTO, SnapshotDTO } from '../../../../shared/api-client/generated/system';
-import type { HistoryPoint, SystemSnapshot } from '../../domain/system';
+import type { PointDTO, SnapshotDTO, VersionDTO } from '../../../../shared/api-client/generated/system';
+import type { UpdateCheckDTO } from '../../../../shared/api-client/generated/system-requests';
+import type { HistoryPoint, SystemSnapshot, VersionInfo } from '../../domain/system';
 import type { SystemGateway } from '../../usecase/systemUseCases';
 
 /** SystemGateway backed by the REST API. */
@@ -25,4 +26,20 @@ export class SystemApi implements SystemGateway {
     const dtos = await this.http.get<PointDTO[]>(`/api/system/history?hours=${hours}`);
     return dtos.map((d) => ({ at: new Date(d.at), cpu: d.cpu, memory: d.memory, disk: d.disk }));
   }
+
+  async version(): Promise<VersionInfo> {
+    return toVersion(await this.http.get<VersionDTO>('/api/system/version'));
+  }
+
+  async setUpdateCheck(enabled: boolean): Promise<VersionInfo> {
+    const body: UpdateCheckDTO = { enabled };
+    return toVersion(await this.http.put<VersionDTO>('/api/system/update-check', body));
+  }
 }
+
+const toVersion = (d: VersionDTO): VersionInfo => ({
+  current: d.current,
+  checkEnabled: d.checkEnabled,
+  latest: d.latest ? { ...d.latest, publishedAt: new Date(d.latest.publishedAt) } : null,
+  updateAvailable: d.updateAvailable,
+});
