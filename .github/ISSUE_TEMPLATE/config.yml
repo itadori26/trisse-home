@@ -3,3 +3,6 @@ contact_links:
   - name: Report a security vulnerability
     url: https://github.com/itadori26/trisse-home/security/advisories/new
     about: Please report vulnerabilities privately, not as a public issue.
+  - name: Ask a question or discuss an idea
+    url: https://github.com/itadori26/trisse-home/discussions
+    about: For questions, setup help and early ideas. Use the forms below for bugs and concrete feature proposals.
