@@ -77,6 +77,12 @@ paths:
         "409": { description: Already set up, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
         "422": { $ref: "#/components/responses/Invalid" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/demo:
+    post:
+      tags: [auth]
+      summary: Password-less login, only routed when DEMO_MODE=true (see docs/demo.md); /api/auth/status reports demo=true
+      security: []
+      responses: { "200": { description: Session started }, "404": { description: Not a demo instance } }
   /api/auth/login:
     post:
       tags: [auth]

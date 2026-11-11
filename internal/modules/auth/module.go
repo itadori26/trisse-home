@@ -31,6 +31,8 @@ type Config struct {
 	SetupToken string
 	// OnAccountCreated runs after the first-run setup; may be nil.
 	OnAccountCreated func(ctx context.Context)
+	// Demo enables the password-less demo login (DEMO_MODE).
+	Demo bool
 }
 
 // observerFunc adapts a function to usecase.SetupObserver.
@@ -62,6 +64,9 @@ type Module struct {
 	status     usecase.GetStatus
 	purge      usecase.PurgeExpiredSessions
 	reset      usecase.ResetAccount
+	setup      usecase.SetupAccount
+	tokens     usecase.TokenGenerator
+	demo       bool
 	setupToken string
 	log        *slog.Logger
 }
@@ -94,11 +99,17 @@ func New(cfg Config, d Deps) (*Module, error) {
 		Sessions:       usecase.NewManageSessions(sessions, d.Clock),
 		TwoFactor:      usecase.NewTwoFactor(deps),
 	}
+	if cfg.Demo {
+		uc.DemoLogin = usecase.NewDemoLogin(deps)
+	}
 	return &Module{
 		handlers:   controller.NewHandlers(uc, controller.CookieConfig{Secure: cfg.CookieSecure}),
 		status:     status,
 		purge:      usecase.NewPurgeExpiredSessions(sessions, d.Clock),
 		reset:      usecase.NewResetAccount(accounts, sessions),
+		setup:      uc.Setup,
+		tokens:     d.Tokens,
+		demo:       cfg.Demo,
 		setupToken: token,
 		log:        d.Log,
 	}, nil
@@ -115,6 +126,9 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Public("GET /api/auth/status", m.handlers.Status)
 	r.Public("POST /api/auth/setup", m.handlers.Setup)
 	r.Public("POST /api/auth/login", m.handlers.Login)
+	if m.demo {
+		r.Public("POST /api/auth/demo", m.handlers.DemoLogin)
+	}
 	r.Protected("POST /api/auth/logout", m.handlers.Logout)
 	r.Protected("PUT /api/auth/password", m.handlers.ChangePassword)
 	r.Protected("GET /api/auth/totp", m.handlers.TwoFactorStatus)
@@ -156,3 +170,20 @@ func (m *Module) AnnounceSetup(ctx context.Context) error {
 
 // ResetAccount deletes the account and all sessions (CLI recovery).
 func (m *Module) ResetAccount(ctx context.Context) error { return m.reset.Execute(ctx) }
+
+// PrepareDemo creates the demo account with a random, never revealed
+// password if none exists yet (which also seeds the sample data).
+func (m *Module) PrepareDemo(ctx context.Context) error {
+	st, err := m.status.Execute(ctx, usecase.StatusRequest{})
+	if err != nil || !st.SetupRequired {
+		return err
+	}
+	password, err := m.tokens.NewToken()
+	if err != nil {
+		return fmt.Errorf("generate demo password: %w", err)
+	}
+	if _, err := m.setup.Execute(ctx, usecase.SetupRequest{SetupToken: m.setupToken, Password: password, ClientKey: "demo-setup"}); err != nil {
+		return fmt.Errorf("create demo account: %w", err)
+	}
+	return nil
+}

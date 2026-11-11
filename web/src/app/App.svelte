@@ -34,5 +34,19 @@
 {:else if view === 'login'}
   <LoginPage auth={container.auth} ondone={refresh} />
 {:else if view === 'app'}
+  {#if container.auth.demo}
+    <p class="demo-banner" role="note">{t('app.demo_banner')}</p>
+  {/if}
   <Shell {container} onlogout={refresh} />
 {/if}
+
+<style>
+  .demo-banner {
+    margin: 0;
+    padding: var(--space-1) var(--space-3);
+    text-align: center;
+    font-size: 0.9em;
+    background: var(--color-accent);
+    color: var(--color-on-accent, #fff);
+  }
+</style>

@@ -7,6 +7,8 @@ export interface AuthGateway {
   status(): Promise<AuthStatus>;
   setup(setupToken: string, password: string): Promise<Session>;
   login(password: string, code?: string): Promise<Session>;
+  /** Only available on a demo instance. */
+  demoLogin(): Promise<Session>;
   logout(): Promise<void>;
   changePassword(currentPassword: string, newPassword: string): Promise<Session>;
   sessions(): Promise<SessionInfo[]>;

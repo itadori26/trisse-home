@@ -53,6 +53,10 @@ type Config struct {
 	DiskPaths    []string
 	// SampleData fills a fresh installation with example widgets and data.
 	SampleData bool
+	// DemoMode runs a public showcase: no login, sample data reset every
+	// DemoResetInterval, no outbound requests and no stored credentials.
+	DemoMode          bool
+	DemoResetInterval time.Duration
 	// SampleWeather is the location of the example weather widget.
 	SampleWeather SampleLocation
 	// SampleFeeds are subscribed as example RSS feeds.
@@ -108,6 +112,8 @@ func Load(getenv func(string) string) (Config, error) {
 		SampleFeeds:             l.rawList("SAMPLE_FEEDS", "https://go.dev/blog/feed.atom,https://hnrss.org/frontpage"),
 		BackupInterval:          l.duration("BACKUP_INTERVAL", 24*time.Hour),
 		BackupRetention:         l.integer("BACKUP_RETENTION", 7),
+		DemoMode:                l.boolean("DEMO_MODE", false),
+		DemoResetInterval:       l.duration("DEMO_RESET_INTERVAL", 3*time.Hour),
 	}
 	cfg.BackupDir = l.str("BACKUP_DIR", filepath.Join(filepath.Dir(cfg.DatabasePath), "backups"))
 	if len(cfg.AllowedCIDRs) == 0 && l.getenv("ALLOWED_CIDRS") != "" {
@@ -115,6 +121,14 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.DockerActions && len(cfg.DockerActionsContainers) == 0 {
 		l.fail("DOCKER_ACTIONS_CONTAINERS", "must list the containers that may be restarted when DOCKER_ACTIONS=true")
+	}
+	if cfg.DemoMode {
+		cfg.SampleData = true
+		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != ""} {
+			if set {
+				l.fail(key, "must not be set together with DEMO_MODE=true (a demo must not reach real systems)")
+			}
+		}
 	}
 	if len(cfg.SetupToken) > 0 && len(cfg.SetupToken) < 16 {
 		l.fail("SETUP_TOKEN", "must be at least 16 characters long")

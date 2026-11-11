@@ -13,6 +13,23 @@ Architecture.
   external requests except to the services you configure.
 - **Modular:** every feature is a module that can be switched off.
 
+![The Home tab with clock, weather, to-dos, notes, bookmarks and news](docs/screenshots/home-desktop-light.png)
+
+<details>
+<summary>More screenshots (dark mode, server tab, mobile)</summary>
+
+| Dark mode | Server tab |
+| --- | --- |
+| ![Home tab in dark mode](docs/screenshots/home-desktop-dark.png) | ![Server tab with services, system metrics and Docker](docs/screenshots/server-desktop-dark.png) |
+
+| Mobile (light) | Mobile (dark) |
+| --- | --- |
+| ![Mobile layout, light](docs/screenshots/home-mobile-light.png) | ![Mobile layout, dark](docs/screenshots/home-mobile-dark.png) |
+
+The screenshots are generated from a demo instance (`npm run screenshots`,
+see [docs/demo.md](docs/demo.md)) and refreshed with every release.
+</details>
+
 ## Features
 
 | Module         | What it does                                                                                          |
@@ -259,6 +276,8 @@ service tiles are configured in the web interface.
 | `BACKUP_RETENTION`  | `7`                               | Number of backups kept.                                                       |
 | `SHUTDOWN_TIMEOUT`  | `15s`                             | Grace period for in-flight requests.                                          |
 | `SAMPLE_DATA`       | `true`                            | Fill a fresh installation with example widgets and data after setup.         |
+| `DEMO_MODE`         | `false`                           | Public demo: no login, fixtures instead of integrations, see [docs/demo.md](docs/demo.md). |
+| `DEMO_RESET_INTERVAL` | `3h`                            | How often a demo restores its sample data.                                    |
 | `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
 | `SAMPLE_FEEDS`      | Go Blog, Hacker News              | Example feeds, comma separated.                                              |
 
@@ -352,7 +371,10 @@ Frontend development with hot reload: run the backend (`make run`), then
 
 ## How to add a new module
 
-Example: a `quotes` module that shows a random quote.
+The fastest way is the generator: `make new-module NAME=quotes` creates all
+rings with tests and registers the module (see
+[CONTRIBUTING.md](CONTRIBUTING.md#adding-a-module)). What it generates, step by
+step, using a `quotes` module that shows a random quote as the example:
 
 1. **Domain** – `internal/modules/quotes/domain/`: `doc.go` (stating the
    ring), the entity `Quote` with a constructor that enforces its

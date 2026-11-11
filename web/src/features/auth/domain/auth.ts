@@ -7,6 +7,8 @@ export interface AuthStatus {
   setupRequired: boolean;
   authenticated: boolean;
   csrfToken: string | null;
+  /** Public demo instance: signs in without a password. */
+  demo: boolean;
 }
 
 /** A freshly started session. */

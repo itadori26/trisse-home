@@ -7,11 +7,16 @@ const session: Session = { csrfToken: 'csrf-1', expiresAt: new Date() };
 
 function setup(status: Partial<AuthStatus> = {}) {
   const gateway: AuthGateway = {
-    status: vi
-      .fn()
-      .mockResolvedValue({ setupRequired: false, authenticated: true, csrfToken: 'csrf-0', ...status }),
+    status: vi.fn().mockResolvedValue({
+      setupRequired: false,
+      authenticated: true,
+      csrfToken: 'csrf-0',
+      demo: false,
+      ...status,
+    }),
     setup: vi.fn().mockResolvedValue(session),
     login: vi.fn().mockResolvedValue(session),
+    demoLogin: vi.fn().mockResolvedValue(session),
     logout: vi.fn().mockResolvedValue(undefined),
     changePassword: vi.fn().mockResolvedValue(session),
     sessions: vi.fn().mockResolvedValue([
@@ -44,6 +49,14 @@ function setup(status: Partial<AuthStatus> = {}) {
 }
 
 describe('AuthUseCases', () => {
+  it('signs in automatically on a demo instance', async () => {
+    const { uc, gateway, csrf } = setup({ authenticated: false, csrfToken: null, demo: true });
+    expect(await uc.currentView()).toBe('app');
+    expect(gateway.demoLogin).toHaveBeenCalled();
+    expect(csrf.setCsrfToken).toHaveBeenCalledWith('csrf-1');
+    expect(uc.demo).toBe(true);
+  });
+
   it('stores the csrf token from the status', async () => {
     const { uc, csrf } = setup();
     expect(await uc.currentView()).toBe('app');

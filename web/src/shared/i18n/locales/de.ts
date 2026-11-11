@@ -691,4 +691,6 @@ export const de: Record<MessageKey, string> = {
   'system.release_notes': 'Release Notes',
   'system.up_to_date': 'Du nutzt das neueste Release.',
   'settings.section.about': 'Über',
+  'app.demo_banner':
+    'Demo: Probier alles aus – Änderungen werden regelmäßig zurückgesetzt, Integrationen zeigen Beispieldaten.',
 };

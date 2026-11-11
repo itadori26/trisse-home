@@ -16,10 +16,19 @@ export class AuthUseCases {
     private readonly csrf: CsrfTokenStore,
   ) {}
 
-  /** Loads the status and returns the screen to show. */
+  /** True on a public demo instance (set by currentView). */
+  demo = false;
+
+  /** Loads the status and returns the screen to show; a demo signs in automatically. */
   async currentView(): Promise<AuthView> {
     const status = await this.gateway.status();
+    this.demo = status.demo;
     if (status.csrfToken) this.csrf.setCsrfToken(status.csrfToken);
+    if (status.demo && !status.authenticated && !status.setupRequired) {
+      const session = await this.gateway.demoLogin();
+      this.csrf.setCsrfToken(session.csrfToken);
+      return 'app';
+    }
     return viewFor(status);
   }
 

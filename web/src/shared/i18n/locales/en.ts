@@ -673,6 +673,7 @@ export const en = {
   'system.release_notes': 'Release notes',
   'system.up_to_date': 'You are running the latest release.',
   'settings.section.about': 'About',
+  'app.demo_banner': 'Demo: try everything — changes are reset regularly, integrations show sample data.',
 } as const;
 
 /** Every message key. */

@@ -19,6 +19,7 @@ import (
 	"trisse-home/internal/platform/config"
 	"trisse-home/internal/platform/crypto"
 	"trisse-home/internal/platform/database"
+	"trisse-home/internal/platform/demo"
 	"trisse-home/internal/platform/httpserver"
 	"trisse-home/internal/platform/logging"
 	"trisse-home/internal/platform/middleware"
@@ -86,6 +87,12 @@ func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*app, erro
 	if err != nil {
 		return nil, err
 	}
+	if cfg.DemoMode {
+		if err := demo.CheckDatabase(ctx, db); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+	}
 	secrets, err := crypto.NewAESGCM(cfg.SecretKey)
 	if err != nil {
 		return nil, err
@@ -96,6 +103,11 @@ func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*app, erro
 	}
 	for _, m := range registry.All() {
 		if err := database.Migrate(ctx, db, m.Name(), m.Migrations()); err != nil {
+			return nil, err
+		}
+	}
+	if cfg.DemoMode {
+		if err := demo.MarkDatabase(ctx, db); err != nil {
 			return nil, err
 		}
 	}
@@ -115,10 +127,16 @@ func serve() error {
 	}
 	defer a.db.Close()
 	a.log.Info("starting trisse-home", "version", version, "modules", a.registry.Names())
-	if err := a.auth.AnnounceSetup(ctx); err != nil {
+	sched := newScheduler(a)
+	if a.cfg.DemoMode {
+		reset, err := prepareDemo(ctx, a)
+		if err != nil {
+			return err
+		}
+		sched.Add(reset)
+	} else if err := a.auth.AnnounceSetup(ctx); err != nil {
 		return err
 	}
-	sched := newScheduler(a)
 	sched.Start(ctx)
 	defer sched.Wait()
 	return httpserver.Run(ctx, a.cfg.ListenAddr, newHandler(a), a.cfg.ShutdownTimeout, a.log)
@@ -134,7 +152,11 @@ func newHandler(a *app) http.Handler {
 	r.Handle("GET /healthz", router.HealthCheck(a.db.PingContext))
 	r.Handle("/", spa.Handler(webui.Dist()))
 
-	return middleware.Chain(r,
+	var h http.Handler = r
+	if a.cfg.DemoMode {
+		h = demo.Block(r)
+	}
+	return middleware.Chain(h,
 		middleware.Recover(a.log),
 		middleware.ClientIP(a.cfg.TrustedProxies),
 		middleware.RequestLog(a.log),
