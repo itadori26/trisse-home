@@ -385,7 +385,9 @@ Frontend development with hot reload: run the backend (`make run`), then
 
 ## How to add a new module
 
-The fastest way is the generator: `make new-module NAME=quotes` creates all
+Step-by-step tutorial: [docs/developer-guide.md](docs/developer-guide.md)
+(your own widget in 30 minutes). The fastest way is the generator:
+`make new-module NAME=quotes` creates all
 rings with tests and registers the module (see
 [CONTRIBUTING.md](CONTRIBUTING.md#adding-a-module)). What it generates, step by
 step, using a `quotes` module that shows a random quote as the example:

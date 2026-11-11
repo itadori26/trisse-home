@@ -49,6 +49,9 @@ once and then `make smoke`.
 
 ## Adding a module
 
+New to the code base? Follow the [developer guide](docs/developer-guide.md):
+it builds a quote-of-the-day widget from scratch and explains every ring.
+
 Scaffold a complete module with one command:
 
 ```sh
