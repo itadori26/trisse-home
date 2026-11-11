@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { AboutSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
   import { FritzBoxSettings } from '../features/fritzbox';
@@ -53,6 +54,7 @@
     { id: 'backups', label: 'settings.section.backups', module: 'backup' },
     { id: 'backupmonitor', label: 'settings.section.backupmonitor', module: 'backupmonitor' },
     { id: 'account', label: 'settings.section.account' },
+    { id: 'about', label: 'settings.section.about', module: 'system' },
   ];
   const visible = $derived(sections.filter((s) => !s.module || modules.has(s.module)));
   let active = $state('');
@@ -82,6 +84,8 @@
   {:else if current === 'transfer'}
     <TransferSettings transfer={container.transfer} />
     {#if modules.has('bookmarks')}<BookmarkImport bookmarks={container.bookmarks} />{/if}
+  {:else if current === 'about'}
+    <AboutSettings system={container.system} />
   {:else if current === 'parcels'}
     <ParcelsSettings parcels={container.parcels} />
   {:else if current === 'shopping'}

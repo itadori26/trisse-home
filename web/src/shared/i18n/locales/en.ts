@@ -665,6 +665,14 @@ export const en = {
   'notes.edit_note': 'Edit note',
   'common.save': 'Save',
   'common.add': 'Add',
+  'system.version_running': 'Running version: {version}',
+  'system.update_check': 'Check daily for new releases (GitHub)',
+  'system.update_check_hint':
+    'Off by default. When enabled, the server asks the GitHub API for the latest release at most once a day.',
+  'system.update_available': 'Version {version} is available.',
+  'system.release_notes': 'Release notes',
+  'system.up_to_date': 'You are running the latest release.',
+  'settings.section.about': 'About',
 } as const;
 
 /** Every message key. */

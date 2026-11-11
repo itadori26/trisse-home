@@ -760,6 +760,17 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SystemSnapshot" } } } }
         "502": { $ref: "#/components/responses/Unavailable" }
+  /api/system/version:
+    get:
+      tags: [system]
+      summary: Running version and, if the opt-in update check is enabled, the latest release (looked up at most once a day)
+      responses: { "200": { description: "OK (current, checkEnabled, latest, updateAvailable)" } }
+  /api/system/update-check:
+    put:
+      tags: [system]
+      summary: Enable or disable the daily update check against the GitHub releases API (default off)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean } } } } } }
+      responses: { "200": { description: OK } }
   /api/system/history:
     get:
       tags: [system]

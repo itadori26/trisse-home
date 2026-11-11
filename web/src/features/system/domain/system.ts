@@ -30,3 +30,11 @@ export interface HistoryPoint {
   memory: number;
   disk: number;
 }
+
+/** Running version and the result of the optional update check. */
+export interface VersionInfo {
+  current: string;
+  checkEnabled: boolean;
+  latest: { version: string; url: string; publishedAt: Date } | null;
+  updateAvailable: boolean;
+}
