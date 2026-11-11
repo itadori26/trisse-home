@@ -30,6 +30,7 @@ Architecture.
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
+| **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
 | **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
 | **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
@@ -112,6 +113,22 @@ start it again.
 `sudo docker compose restart trisse-home` and use the new setup token from
 the log.
 
+## WireGuard widget (optional)
+
+trisse-home has no access to WireGuard itself. A small script on the host exports the peer status every minute into
+`./wireguard`, which is mounted read-only into the container:
+
+```sh
+sudo tee /etc/cron.d/trisse-home-wireguard <<'CRON'
+* * * * * root /opt/stacks/trisse-home/scripts/wireguard-export.sh
+CRON
+```
+
+The script runs `wg show all dump` in the `wireguard` container (`WG_CONTAINER=` for WireGuard on the host), keeps
+only the peer lines — the interface line with the **private key is dropped and preshared keys are blanked** — and
+reads the peer names of `linuxserver/wireguard` from the public keys in its `peer_<name>` folders. Names can be
+changed in Settings → WireGuard. A peer counts as online when its last handshake is less than 3 minutes old.
+
 ## Wake-on-LAN (optional)
 
 Service tiles with a MAC address get a ⏻ button while the service is not online. Magic packets are broadcasts, and
@@ -192,6 +209,7 @@ service tiles are configured in the web interface.
 | `HOST_PROC`         | `/proc` (`/host/proc` in compose) | Host procfs for the system module.                                            |
 | `HOST_SYS`          | `/sys` (`/host/sys` in compose)   | Host sysfs (temperatures).                                                    |
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
+| `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
 | `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |
 | `WOL_BROADCAST`     | `255.255.255.255:9`               | Broadcast address the magic packet is sent to (by the relay or directly).     |
 | `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |

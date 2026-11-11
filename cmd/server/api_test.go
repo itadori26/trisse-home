@@ -230,8 +230,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 20 {
-		t.Fatalf("expected 20 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 21 {
+		t.Fatalf("expected 21 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---

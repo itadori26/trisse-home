@@ -24,6 +24,8 @@ services:
       DOCKER_PROXY_URL: http://docker-socket-proxy:2375
       # Wake-on-LAN goes through the wol-relay service (profile "wol").
       WOL_RELAY: ${WOL_RELAY:-host.docker.internal:9009}
+      # WireGuard widget: export of scripts/wireguard-export.sh (read-only).
+      WIREGUARD_DIR: /wireguard
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -35,6 +37,7 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/host/rootfs:ro
+      - ./wireguard:/wireguard:ro
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

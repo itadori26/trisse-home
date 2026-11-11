@@ -7,6 +7,7 @@ import type { Component } from 'svelte';
 import { AdGuardWidget } from '../features/adguard';
 import { FritzBoxWidget } from '../features/fritzbox';
 import { NextcloudWidget } from '../features/nextcloud';
+import { WireGuardWidget } from '../features/wireguard';
 import { BackupStatusWidget } from '../features/backupmonitor';
 import { BookmarksWidget, BookmarksWidgetSettings } from '../features/bookmarks';
 import { CalendarWidget, CalendarWidgetSettings } from '../features/calendar';
@@ -186,6 +187,15 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(FritzBoxWidget, (_config, c) => ({ fritzbox: c.fritzbox })),
+  },
+  {
+    type: {
+      kind: 'wireguard',
+      title: 'WireGuard',
+      description: 'VPN peers with last handshake and traffic.',
+      defaultSize: { w: 4, h: 3 },
+    },
+    view: renderer(WireGuardWidget, (_config, c) => ({ wireguard: c.wireguard })),
   },
   {
     type: {
