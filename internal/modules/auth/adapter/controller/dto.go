@@ -46,3 +46,9 @@ type TokenRequestDTO struct {
 	Scopes        []string `json:"scopes"`
 	ExpiresInDays int      `json:"expiresInDays"`
 }
+
+// SSOSecondFactorDTO finishes an SSO sign-in that needs the local code.
+type SSOSecondFactorDTO struct {
+	Ticket string `json:"ticket"`
+	Code   string `json:"code"`
+}

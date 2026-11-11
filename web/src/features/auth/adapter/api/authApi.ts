@@ -5,6 +5,7 @@ import type {
   RevokedDTO,
   SessionDTO,
   SessionInfoDTO,
+  SSOTicketDTO,
   StatusDTO,
   TokenDTO,
   TwoFactorStatusDTO,
@@ -18,6 +19,7 @@ import type {
   GuestRequestDTO,
   LoginRequestDTO,
   SetupRequestDTO,
+  SSOSecondFactorDTO,
   TokenRequestDTO,
   TwoFactorCodeDTO,
 } from '../../../../shared/api-client/generated/auth-requests';
@@ -45,6 +47,7 @@ export class AuthApi implements AuthGateway {
       csrfToken: dto.csrfToken ?? null,
       demo: dto.demo,
       guest: dto.role === 'guest',
+      sso: dto.sso ?? { oidc: false, header: false, localLogin: true },
     };
   }
 
@@ -100,6 +103,16 @@ export class AuthApi implements AuthGateway {
 
   revokeApiToken(id: string): Promise<void> {
     return this.http.delete(`/api/auth/tokens/${encodeURIComponent(id)}`);
+  }
+
+  async headerLogin(): Promise<Session | { ticket: string }> {
+    const res = await this.http.post<SessionDTO | SSOTicketDTO>('/api/auth/sso/header');
+    return 'ticket' in res ? { ticket: res.ticket } : toSession(res);
+  }
+
+  async ssoSecondFactor(ticket: string, code: string): Promise<Session> {
+    const body: SSOSecondFactorDTO = { ticket, code };
+    return toSession(await this.http.post<SessionDTO>('/api/auth/sso/2fa', body));
   }
 
   async securityEvents(): Promise<SecurityEvent[]> {

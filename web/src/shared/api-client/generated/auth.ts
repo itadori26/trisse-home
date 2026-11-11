@@ -19,6 +19,24 @@ export interface StatusDTO {
    */
   role?: string;
   username?: string;
+  /**
+   * SSO lists the available sign-in methods.
+   */
+  sso: SSOStatusDTO;
+}
+/**
+ * SSOStatusDTO tells the login page which methods exist.
+ */
+export interface SSOStatusDTO {
+  oidc: boolean;
+  header: boolean;
+  localLogin: boolean;
+}
+/**
+ * SSOTicketDTO is returned when an SSO sign-in still needs the local code.
+ */
+export interface SSOTicketDTO {
+  ticket: string;
 }
 /**
  * SessionDTO is returned after setup, login and password change. The session

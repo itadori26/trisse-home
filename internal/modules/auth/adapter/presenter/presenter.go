@@ -16,6 +16,20 @@ type StatusDTO struct {
 	// Role ("owner" or "guest") and Username of the signed-in account.
 	Role     string `json:"role,omitempty"`
 	Username string `json:"username,omitempty"`
+	// SSO lists the available sign-in methods.
+	SSO SSOStatusDTO `json:"sso"`
+}
+
+// SSOStatusDTO tells the login page which methods exist.
+type SSOStatusDTO struct {
+	OIDC       bool `json:"oidc"`
+	Header     bool `json:"header"`
+	LocalLogin bool `json:"localLogin"`
+}
+
+// SSOTicketDTO is returned when an SSO sign-in still needs the local code.
+type SSOTicketDTO struct {
+	Ticket string `json:"ticket"`
 }
 
 // SessionDTO is returned after setup, login and password change. The session

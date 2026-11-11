@@ -21,6 +21,9 @@ type Deps struct {
 	OTP      OneTimePasswords
 	// Events records security events; nil disables the log (tests).
 	Events *Recorder
+	// PasswordLoginDisabled turns off the owner's password login once SSO
+	// works (guests keep their passwords; reset-account still recovers).
+	PasswordLoginDisabled bool
 }
 
 func (d Deps) issuer() sessionIssuer {

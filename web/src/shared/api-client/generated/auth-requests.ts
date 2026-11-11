@@ -61,3 +61,10 @@ export interface TokenRequestDTO {
   scopes: string[];
   expiresInDays: number /* int */;
 }
+/**
+ * SSOSecondFactorDTO finishes an SSO sign-in that needs the local code.
+ */
+export interface SSOSecondFactorDTO {
+  ticket: string;
+  code: string;
+}

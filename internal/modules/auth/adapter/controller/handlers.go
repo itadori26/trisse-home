@@ -1,9 +1,14 @@
 package controller
 
 import (
+	"errors"
+	"net"
 	"net/http"
+	"net/netip"
+	"net/url"
 
 	"trisse-home/internal/modules/auth/adapter/presenter"
+	"trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/auth/usecase"
 	"trisse-home/internal/shared/httpapi"
 )
@@ -22,6 +27,8 @@ type UseCases struct {
 	Authorizer     usecase.Authorizer
 	Guests         usecase.Guests
 	APITokens      usecase.APITokens
+	// SSO is nil when no single sign-on method is configured.
+	SSO usecase.SSO
 	// DemoLogin is nil unless the instance runs in demo mode.
 	DemoLogin usecase.DemoLogin
 }
@@ -30,6 +37,38 @@ type UseCases struct {
 type Handlers struct {
 	uc      UseCases
 	cookies CookieConfig
+	proxy   ProxyAuth
+}
+
+// ProxyAuth configures login via a header set by a trusted reverse proxy.
+type ProxyAuth struct {
+	// Header carries the authenticated user name, e.g. "Remote-User".
+	Header string
+	// Proxies are the only peers whose header is believed.
+	Proxies []netip.Prefix
+}
+
+// WithProxyAuth enables the trusted header login.
+func (h *Handlers) WithProxyAuth(p ProxyAuth) *Handlers { h.proxy = p; return h }
+
+// fromTrustedProxy reports whether the TCP peer (not a forwarded address)
+// is one of the configured proxies. Headers from anyone else are ignored.
+func (h *Handlers) fromTrustedProxy(r *http.Request) bool {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		return false
+	}
+	addr = addr.Unmap()
+	for _, p := range h.proxy.Proxies {
+		if p.Contains(addr) {
+			return true
+		}
+	}
+	return false
 }
 
 // NewHandlers returns auth handlers.
@@ -46,6 +85,12 @@ func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
 	}
 	dto := presenter.Status(res)
 	dto.Demo = h.uc.DemoLogin != nil
+	if h.uc.SSO != nil {
+		st := h.uc.SSO.Status()
+		dto.SSO = presenter.SSOStatusDTO{OIDC: st.OIDC, Header: st.Header && h.proxy.Header != "" && h.fromTrustedProxy(r), LocalLogin: st.LocalLogin}
+	} else {
+		dto.SSO = presenter.SSOStatusDTO{LocalLogin: true}
+	}
 	httpapi.WriteJSON(w, http.StatusOK, dto)
 }
 
@@ -287,4 +332,91 @@ func (h *Handlers) RevokeToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+const oidcStateCookie = "trisse_oidc_state"
+
+// OIDCStart handles GET /api/auth/oidc/start: redirect to the provider and
+// bind the state to this browser (protects against login CSRF).
+func (h *Handlers) OIDCStart(w http.ResponseWriter, r *http.Request) {
+	if h.uc.SSO == nil {
+		httpapi.WriteDomainError(w, r, domain.ErrSSOUnavailable)
+		return
+	}
+	url, state, err := h.uc.SSO.BeginOIDC(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	// SameSite=Lax: the provider redirects back with a top-level GET.
+	// Secure follows COOKIE_SECURE like the session cookie (plain HTTP in the LAN by default).
+	http.SetCookie(w, &http.Cookie{Name: oidcStateCookie, Value: state, Path: "/api/auth/oidc/", HttpOnly: true, //nolint:gosec // see above
+		Secure: h.cookies.Secure, SameSite: http.SameSiteLaxMode, MaxAge: 600})
+	http.Redirect(w, r, url, http.StatusFound)
+}
+
+// OIDCCallback handles GET /api/auth/oidc/callback.
+func (h *Handlers) OIDCCallback(w http.ResponseWriter, r *http.Request) {
+	clearState := &http.Cookie{Name: oidcStateCookie, Path: "/api/auth/oidc/", MaxAge: -1, HttpOnly: true, //nolint:gosec // Secure follows COOKIE_SECURE
+		Secure: h.cookies.Secure, SameSite: http.SameSiteLaxMode}
+	state := r.URL.Query().Get("state")
+	c, err := r.Cookie(oidcStateCookie)
+	if h.uc.SSO == nil || err != nil || state == "" || !validCSRF(c.Value, state) {
+		http.SetCookie(w, clearState)
+		http.Redirect(w, r, "/?sso_error=state", http.StatusFound)
+		return
+	}
+	http.SetCookie(w, clearState)
+	if e := r.URL.Query().Get("error"); e != "" {
+		http.Redirect(w, r, "/?sso_error=provider", http.StatusFound)
+		return
+	}
+	client := domain.NewClient(r.UserAgent(), clientKey(r))
+	res, ticket, err := h.uc.SSO.CompleteOIDC(r.Context(), state, r.URL.Query().Get("code"), client)
+	h.redirectAfterSSO(w, r, res, ticket, err)
+}
+
+func (h *Handlers) redirectAfterSSO(w http.ResponseWriter, r *http.Request, res usecase.SessionResponse, ticket string, err error) {
+	switch {
+	case errors.Is(err, domain.ErrSSOSecondFactorNeed):
+		http.Redirect(w, r, "/?sso_ticket="+url.QueryEscape(ticket), http.StatusFound)
+	case errors.Is(err, domain.ErrSSONotAllowed):
+		http.Redirect(w, r, "/?sso_error=not_allowed", http.StatusFound)
+	case err != nil:
+		http.Redirect(w, r, "/?sso_error=failed", http.StatusFound)
+	default:
+		h.cookies.set(w, res.SessionToken, res.ExpiresAt)
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
+}
+
+// HeaderLogin handles POST /api/auth/sso/header: the trusted proxy already
+// authenticated the user and passes the name in the configured header.
+func (h *Handlers) HeaderLogin(w http.ResponseWriter, r *http.Request) {
+	if h.uc.SSO == nil || h.proxy.Header == "" || !h.fromTrustedProxy(r) {
+		httpapi.WriteDomainError(w, r, domain.ErrSSOUnavailable)
+		return
+	}
+	client := domain.NewClient(r.UserAgent(), clientKey(r))
+	res, ticket, err := h.uc.SSO.HeaderLogin(r.Context(), r.Header.Get(h.proxy.Header), client)
+	if errors.Is(err, domain.ErrSSOSecondFactorNeed) {
+		httpapi.WriteJSON(w, http.StatusAccepted, presenter.SSOTicketDTO{Ticket: ticket})
+		return
+	}
+	h.respondWithSession(w, r, res, err)
+}
+
+// SSOSecondFactor handles POST /api/auth/sso/2fa.
+func (h *Handlers) SSOSecondFactor(w http.ResponseWriter, r *http.Request) {
+	var dto SSOSecondFactorDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	if h.uc.SSO == nil {
+		httpapi.WriteDomainError(w, r, domain.ErrSSOUnavailable)
+		return
+	}
+	res, err := h.uc.SSO.CompleteSecondFactor(r.Context(), dto.Ticket, dto.Code, domain.NewClient(r.UserAgent(), clientKey(r)))
+	h.respondWithSession(w, r, res, err)
 }

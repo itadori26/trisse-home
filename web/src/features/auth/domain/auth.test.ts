@@ -4,17 +4,38 @@ import { validateNewPassword, viewFor } from './auth';
 describe('viewFor', () => {
   it('prefers setup over everything else', () => {
     expect(
-      viewFor({ setupRequired: true, authenticated: false, csrfToken: null, demo: false, guest: false }),
+      viewFor({
+        setupRequired: true,
+        authenticated: false,
+        csrfToken: null,
+        demo: false,
+        guest: false,
+        sso: { oidc: false, header: false, localLogin: true },
+      }),
     ).toBe('setup');
   });
   it('shows the app for authenticated users', () => {
     expect(
-      viewFor({ setupRequired: false, authenticated: true, csrfToken: 'x', demo: false, guest: false }),
+      viewFor({
+        setupRequired: false,
+        authenticated: true,
+        csrfToken: 'x',
+        demo: false,
+        guest: false,
+        sso: { oidc: false, header: false, localLogin: true },
+      }),
     ).toBe('app');
   });
   it('shows the login otherwise', () => {
     expect(
-      viewFor({ setupRequired: false, authenticated: false, csrfToken: null, demo: false, guest: false }),
+      viewFor({
+        setupRequired: false,
+        authenticated: false,
+        csrfToken: null,
+        demo: false,
+        guest: false,
+        sso: { oidc: false, header: false, localLogin: true },
+      }),
     ).toBe('login');
   });
 });

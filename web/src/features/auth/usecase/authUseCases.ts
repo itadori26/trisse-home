@@ -22,12 +22,30 @@ export class AuthUseCases {
   demo = false;
   /** True when a read-only guest is signed in (set by currentView). */
   guest = false;
+  /** Sign-in methods offered by the server (set by currentView). */
+  sso = { oidc: false, header: false, localLogin: true };
+  /** Ticket of an SSO sign-in that still needs the local code. */
+  ssoTicket = '';
 
   /** Loads the status and returns the screen to show; a demo signs in automatically. */
   async currentView(): Promise<AuthView> {
     const status = await this.gateway.status();
     this.demo = status.demo;
     this.guest = status.guest;
+    this.sso = status.sso;
+    // Behind a reverse proxy with forward auth the user is already known.
+    if (status.sso.header && !status.authenticated && !status.setupRequired) {
+      try {
+        const res = await this.gateway.headerLogin();
+        if ('ticket' in res) this.ssoTicket = res.ticket;
+        else {
+          this.csrf.setCsrfToken(res.csrfToken);
+          return 'app';
+        }
+      } catch {
+        // Not allowed or not configured: fall back to the login page.
+      }
+    }
     if (status.csrfToken) this.csrf.setCsrfToken(status.csrfToken);
     if (status.demo && !status.authenticated && !status.setupRequired) {
       const session = await this.gateway.demoLogin();
@@ -54,6 +72,14 @@ export class AuthUseCases {
     if (password === '') throw new ValidationError(t('auth.enter_password'));
     const name = username?.trim().toLowerCase() || undefined;
     const session = await this.gateway.login(password, code?.trim() || undefined, name);
+    this.csrf.setCsrfToken(session.csrfToken);
+  }
+
+  /** Finishes an SSO sign-in that needs the local authentication code. */
+  async completeSso(ticket: string, code: string): Promise<void> {
+    if (code.trim() === '') throw new ValidationError(t('auth.enter_code_hint'));
+    const session = await this.gateway.ssoSecondFactor(ticket, code.trim());
+    this.ssoTicket = '';
     this.csrf.setCsrfToken(session.csrfToken);
   }
 

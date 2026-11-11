@@ -32,6 +32,9 @@ func (uc *login) Execute(ctx context.Context, req LoginRequest) (SessionResponse
 	if err != nil {
 		return SessionResponse{}, err
 	}
+	if account.IsOwner() && req.Username == "" && uc.deps.PasswordLoginDisabled {
+		return SessionResponse{}, domain.ErrLocalLoginDisabled
+	}
 	// Unknown and disabled guests are checked against the owner's hash so
 	// the response time does not reveal which names exist.
 	ok, err := uc.deps.Hasher.Verify(req.Password, account.PasswordHash())

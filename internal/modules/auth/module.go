@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"trisse-home/internal/modules"
@@ -14,6 +15,7 @@ import (
 	"trisse-home/internal/modules/auth/adapter/gateway"
 	"trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/auth/usecase"
+	"trisse-home/internal/platform/oidc"
 	"trisse-home/internal/shared/kernel"
 )
 
@@ -33,6 +35,38 @@ type Config struct {
 	OnAccountCreated func(ctx context.Context)
 	// Demo enables the password-less demo login (DEMO_MODE).
 	Demo bool
+	// SSO configures single sign-on for the owner (ADR 0013).
+	SSO SSOConfig
+}
+
+// SSOConfig configures OpenID Connect and the trusted proxy header login.
+type SSOConfig struct {
+	// OIDC is nil when OpenID Connect is not configured.
+	OIDC            *oidc.Provider
+	AllowedSubjects []string
+	AllowedEmails   []string
+	// ProxyHeader (e.g. Remote-User) is believed only from TrustedProxies.
+	ProxyHeader    string
+	ProxyUsers     []string
+	TrustedProxies []netip.Prefix
+	// PasswordLogin keeps the owner's password login available.
+	PasswordLogin bool
+	Require2FA    bool
+}
+
+// oidcAdapter maps the platform relying party to the use case port.
+type oidcAdapter struct{ p *oidc.Provider }
+
+func (a oidcAdapter) AuthCodeURL(ctx context.Context, state, nonce, verifier string) (string, error) {
+	return a.p.AuthCodeURL(ctx, state, nonce, verifier)
+}
+
+func (a oidcAdapter) Exchange(ctx context.Context, code, verifier, nonce string) (domain.ExternalIdentity, error) {
+	id, err := a.p.Exchange(ctx, code, verifier, nonce)
+	if err != nil {
+		return domain.ExternalIdentity{}, err
+	}
+	return domain.ExternalIdentity{Subject: id.Subject, Email: id.Email, EmailVerified: id.EmailVerified}, nil
 }
 
 // observerFunc adapts a function to usecase.SetupObserver.
@@ -93,7 +127,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 	deps := usecase.Deps{
 		Accounts: accounts, Sessions: sessions, Hasher: d.Hasher, Tokens: d.Tokens,
 		Limiter: gateway.NewAttemptLimiter(domain.DefaultLoginThrottle), Clock: d.Clock, TTL: ttl, IDs: d.IDs, OTP: d.OTP,
-		Events: events,
+		Events: events, PasswordLoginDisabled: !cfg.SSO.PasswordLogin && (cfg.SSO.OIDC != nil || cfg.SSO.ProxyHeader != ""),
 	}
 	securityLog := usecase.NewSecurityLog(events)
 	status := usecase.NewGetStatus(accounts, sessions, d.Clock)
@@ -106,6 +140,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 		Authorizer:     usecase.NewAuthorizer(d.GuestScope),
 		Guests:         usecase.NewGuests(deps),
 		APITokens:      usecase.NewAPITokens(deps, gateway.NewTokenRepository(d.DB)),
+		SSO:            newSSO(deps, cfg.SSO),
 		ChangePassword: usecase.NewChangePassword(deps),
 		Sessions:       usecase.NewManageSessions(sessions, d.Clock, events),
 		SecurityLog:    securityLog,
@@ -115,7 +150,8 @@ func New(cfg Config, d Deps) (*Module, error) {
 		uc.DemoLogin = usecase.NewDemoLogin(deps)
 	}
 	return &Module{
-		handlers:   controller.NewHandlers(uc, controller.CookieConfig{Secure: cfg.CookieSecure}),
+		handlers: controller.NewHandlers(uc, controller.CookieConfig{Secure: cfg.CookieSecure}).
+			WithProxyAuth(controller.ProxyAuth{Header: cfg.SSO.ProxyHeader, Proxies: cfg.SSO.TrustedProxies}),
 		status:     status,
 		purge:      usecase.NewPurgeExpiredSessions(sessions, d.Clock),
 		reset:      usecase.NewResetAccount(accounts, sessions),
@@ -139,6 +175,10 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Public("GET /api/auth/status", m.handlers.Status)
 	r.Public("POST /api/auth/setup", m.handlers.Setup)
 	r.Public("POST /api/auth/login", m.handlers.Login)
+	r.Public("GET /api/auth/oidc/start", m.handlers.OIDCStart)
+	r.Public("GET /api/auth/oidc/callback", m.handlers.OIDCCallback)
+	r.Public("POST /api/auth/sso/header", m.handlers.HeaderLogin)
+	r.Public("POST /api/auth/sso/2fa", m.handlers.SSOSecondFactor)
 	if m.demo {
 		r.Public("POST /api/auth/demo", m.handlers.DemoLogin)
 	}
@@ -217,3 +257,19 @@ func (m *Module) PrepareDemo(ctx context.Context) error {
 
 // Audit implements kernel.AuditSink for other modules (e.g. data import).
 func (m *Module) Audit(ctx context.Context, e kernel.AuditEvent) { m.security.Audit(ctx, e) }
+
+// newSSO returns nil when no SSO method is configured.
+func newSSO(deps usecase.Deps, c SSOConfig) usecase.SSO {
+	if c.OIDC == nil && c.ProxyHeader == "" {
+		return nil
+	}
+	cfg := usecase.SSOConfig{Mapping: domain.IdentityMapping{Subjects: c.AllowedSubjects, Emails: c.AllowedEmails},
+		LocalLogin: c.PasswordLogin, Require2FA: c.Require2FA}
+	if c.OIDC != nil {
+		cfg.OIDC = oidcAdapter{c.OIDC}
+	}
+	if c.ProxyHeader != "" {
+		cfg.HeaderUsers = c.ProxyUsers
+	}
+	return usecase.NewSSO(deps, cfg)
+}

@@ -113,3 +113,22 @@ func TestGuestAccount(t *testing.T) {
 		t.Fatal("owner sees everything and is not a guest")
 	}
 }
+
+func TestIdentityMapping(t *testing.T) {
+	m := IdentityMapping{Subjects: []string{"sub-1"}, Emails: []string{"Me@Example.org"}}
+	cases := []struct {
+		id   ExternalIdentity
+		want bool
+	}{
+		{ExternalIdentity{Subject: "sub-1"}, true},
+		{ExternalIdentity{Subject: "x", Email: "me@example.org", EmailVerified: true}, true},
+		{ExternalIdentity{Subject: "x", Email: "me@example.org", EmailVerified: false}, false},
+		{ExternalIdentity{Subject: "x", Email: "other@example.org", EmailVerified: true}, false},
+		{ExternalIdentity{}, false},
+	}
+	for _, c := range cases {
+		if got := m.Allows(c.id); got != c.want {
+			t.Errorf("%+v: %v, want %v", c.id, got, c.want)
+		}
+	}
+}

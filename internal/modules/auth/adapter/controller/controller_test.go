@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -103,5 +104,48 @@ func TestGuard(t *testing.T) {
 				t.Fatalf("status %d, want %d", rec.Code, tt.want)
 			}
 		})
+	}
+}
+
+type fakeSSO struct{ usecase.SSO }
+
+func (fakeSSO) Status() usecase.SSOStatus { return usecase.SSOStatus{Header: true, LocalLogin: true} }
+func (fakeSSO) HeaderLogin(_ context.Context, user string, _ domain.Client) (usecase.SessionResponse, string, error) {
+	if user != "me" {
+		return usecase.SessionResponse{}, "", domain.ErrSSONotAllowed
+	}
+	return usecase.SessionResponse{SessionToken: "s", CSRFToken: "c"}, "", nil
+}
+
+func TestHeaderLoginOnlyFromTrustedProxy(t *testing.T) {
+	h := NewHandlers(UseCases{SSO: fakeSSO{}}, CookieConfig{}).
+		WithProxyAuth(ProxyAuth{Header: "Remote-User", Proxies: []netip.Prefix{netip.MustParsePrefix("172.20.0.2/32")}})
+	for _, c := range []struct {
+		peer, user string
+		want       int
+	}{
+		{"172.20.0.2:5000", "me", http.StatusOK},
+		{"172.20.0.2:5000", "eve", http.StatusForbidden},
+		{"192.168.1.50:5000", "me", http.StatusNotFound}, // header from a client: ignored
+	} {
+		r := httptest.NewRequest(http.MethodPost, "/api/auth/sso/header", nil)
+		r.RemoteAddr = c.peer
+		r.Header.Set("Remote-User", c.user)
+		rec := httptest.NewRecorder()
+		h.HeaderLogin(rec, r)
+		if rec.Code != c.want {
+			t.Errorf("%s %s: %d, want %d", c.peer, c.user, rec.Code, c.want)
+		}
+	}
+}
+
+func TestOIDCCallbackChecksStateCookie(t *testing.T) {
+	h := NewHandlers(UseCases{SSO: fakeSSO{}}, CookieConfig{})
+	r := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=abc&code=x", nil)
+	r.AddCookie(&http.Cookie{Name: oidcStateCookie, Value: "other"})
+	rec := httptest.NewRecorder()
+	h.OIDCCallback(rec, r)
+	if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/?sso_error=state" {
+		t.Fatalf("%d %s", rec.Code, rec.Header().Get("Location"))
 	}
 }

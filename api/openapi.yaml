@@ -232,6 +232,31 @@ paths:
         "204": { description: Disabled }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/oidc/start:
+    get:
+      tags: [auth]
+      summary: Redirect to the OpenID provider (sets a short-lived state cookie); 404 when OIDC is not configured
+      security: []
+      responses: { "302": { description: Redirect to the provider } }
+  /api/auth/oidc/callback:
+    get:
+      tags: [auth]
+      summary: Return from the provider; sets the session cookie and redirects to / (or /?sso_error=… / /?sso_ticket=…)
+      security: []
+      responses: { "302": { description: Redirect into the app } }
+  /api/auth/sso/header:
+    post:
+      tags: [auth]
+      summary: Sign in with the user header of a trusted proxy (AUTH_PROXY_HEADER, only from TRUSTED_PROXIES)
+      security: []
+      responses: { "200": { description: Session started }, "202": { description: "Local code required: {ticket}" }, "403": { description: User not allowed }, "404": { description: Not configured or not from a trusted proxy } }
+  /api/auth/sso/2fa:
+    post:
+      tags: [auth]
+      summary: Finish an SSO sign-in with the local TOTP or recovery code (SSO_REQUIRE_2FA)
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { ticket: { type: string }, code: { type: string } } } } } }
+      responses: { "200": { description: Session started } }
   /api/auth/tokens:
     get:
       tags: [auth]

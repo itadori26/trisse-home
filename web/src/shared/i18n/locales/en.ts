@@ -751,6 +751,9 @@ export const en = {
   'auth.event.token_created': 'API token created',
   'auth.event.token_revoked': 'API token revoked',
   'auth.event.token_used': 'API token used',
+  'auth.sign_in_with_sso': 'Sign in with single sign-on',
+  'auth.sso_error.not_allowed': 'Your account at the identity provider is not allowed to sign in here.',
+  'auth.sso_error.failed': 'Single sign-on did not work. Please try again.',
 } as const;
 
 /** Every message key. */

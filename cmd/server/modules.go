@@ -41,6 +41,7 @@ import (
 	"trisse-home/internal/platform/demo"
 	"trisse-home/internal/platform/httpclient"
 	"trisse-home/internal/platform/idgen"
+	"trisse-home/internal/platform/oidc"
 	"trisse-home/internal/platform/wol"
 	"trisse-home/internal/shared/kernel"
 )
@@ -68,6 +69,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			CookieSecure: cfg.CookieSecure, SessionTTL: cfg.SessionTTL, SetupToken: cfg.SetupToken,
 			OnAccountCreated: func(ctx context.Context) { onAccountCreated(ctx, cfg, log, registry) },
 			Demo:             cfg.DemoMode,
+			SSO:              ssoConfig(cfg, out.client, clk),
 		},
 		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log, Alerts: alerts, GuestScope: scope},
 	)
@@ -251,4 +253,16 @@ func (g *guestScope) ModulesForTabs(ctx context.Context, tabs []string) (map[str
 		}
 	}
 	return out, nil
+}
+
+// ssoConfig builds the single sign-on settings of the auth module.
+func ssoConfig(cfg config.Config, client *http.Client, clk clock.System) auth.SSOConfig {
+	sso := auth.SSOConfig{AllowedSubjects: cfg.OIDCAllowedSubjects, AllowedEmails: cfg.OIDCAllowedEmails,
+		ProxyHeader: cfg.AuthProxyHeader, ProxyUsers: cfg.AuthProxyUsers, TrustedProxies: cfg.TrustedProxies,
+		PasswordLogin: cfg.PasswordLogin, Require2FA: cfg.SSORequire2FA}
+	if cfg.OIDCIssuer != "" {
+		sso.OIDC = oidc.New(oidc.Config{Issuer: cfg.OIDCIssuer, ClientID: cfg.OIDCClientID, ClientSecret: cfg.OIDCClientSecret,
+			RedirectURL: cfg.OIDCRedirectURL}, client, clk.Now)
+	}
+	return sso
 }

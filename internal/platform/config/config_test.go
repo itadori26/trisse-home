@@ -102,3 +102,33 @@ func TestDemoModeRefusesRealIntegrations(t *testing.T) {
 		t.Fatal("DOCKER_ACTIONS with DEMO_MODE accepted")
 	}
 }
+
+func TestSSOValidation(t *testing.T) {
+	base := map[string]string{"SECRET_KEY": validKey}
+	with := func(kv ...string) map[string]string {
+		m := map[string]string{}
+		for k, v := range base {
+			m[k] = v
+		}
+		for i := 0; i < len(kv); i += 2 {
+			m[kv[i]] = kv[i+1]
+		}
+		return m
+	}
+	bad := []map[string]string{
+		with("OIDC_ISSUER", "https://id.example"),
+		with("OIDC_ISSUER", "https://id.example", "OIDC_CLIENT_ID", "c", "OIDC_REDIRECT_URL", "https://h/cb"),
+		with("AUTH_PROXY_HEADER", "Remote-User", "AUTH_PROXY_USERS", "me"),
+		with("PASSWORD_LOGIN", "false"),
+	}
+	for _, vars := range bad {
+		if _, err := Load(env(vars)); err == nil {
+			t.Errorf("accepted %v", vars)
+		}
+	}
+	ok := with("OIDC_ISSUER", "https://id.example", "OIDC_CLIENT_ID", "c", "OIDC_REDIRECT_URL", "https://h/cb",
+		"OIDC_ALLOWED_EMAILS", "me@example.org", "PASSWORD_LOGIN", "false")
+	if cfg, err := Load(env(ok)); err != nil || cfg.PasswordLogin {
+		t.Fatalf("%v %v", cfg.PasswordLogin, err)
+	}
+}

@@ -32,3 +32,12 @@ var (
 	ErrTooManyTokens = kernel.NewPublicError(kernel.ErrInvalid, "There are already 50 tokens.")
 	ErrTokenScope    = kernel.NewPublicError(kernel.ErrForbidden, "The token is not allowed to do this.")
 )
+
+// Errors of single sign-on.
+var (
+	ErrSSONotAllowed       = kernel.NewPublicError(kernel.ErrForbidden, "This account is not allowed to sign in here.")
+	ErrSSOStateInvalid     = kernel.NewPublicError(kernel.ErrUnauthorized, "The sign-in took too long or was started elsewhere. Please try again.")
+	ErrSSOUnavailable      = kernel.NewPublicError(kernel.ErrNotFound, "Single sign-on is not configured.")
+	ErrLocalLoginDisabled  = kernel.NewPublicError(kernel.ErrForbidden, "Password login is disabled. Use single sign-on.")
+	ErrSSOSecondFactorNeed = kernel.NewPublicError(kernel.ErrUnauthorized, "Enter your authentication code to finish signing in.")
+)

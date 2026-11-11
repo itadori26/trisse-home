@@ -772,4 +772,7 @@ export const de: Record<MessageKey, string> = {
   'auth.event.token_created': 'API-Token erstellt',
   'auth.event.token_revoked': 'API-Token widerrufen',
   'auth.event.token_used': 'API-Token verwendet',
+  'auth.sign_in_with_sso': 'Mit Single Sign-on anmelden',
+  'auth.sso_error.not_allowed': 'Dein Konto beim Identity Provider darf sich hier nicht anmelden.',
+  'auth.sso_error.failed': 'Single Sign-on hat nicht funktioniert. Bitte erneut versuchen.',
 };

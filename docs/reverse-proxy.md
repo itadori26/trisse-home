@@ -45,3 +45,68 @@ Once the proxy works, remove the `ports:` mapping (or bind it to
   the proxy must not rewrite the `Host` header.
 - Sessions created over plain HTTP are not valid after switching
   `COOKIE_SECURE` because the cookie name changes; simply log in again.
+
+## Single sign-on (optional)
+
+### OpenID Connect (Authelia, Authentik, Keycloak, Pocket ID, …)
+
+Register a confidential client with the redirect URI
+`https://home.example.org/api/auth/oidc/callback`, then add to `.env`:
+
+```sh
+OIDC_ISSUER=https://auth.example.org
+OIDC_CLIENT_ID=trisse-home
+OIDC_CLIENT_SECRET=…
+OIDC_REDIRECT_URL=https://home.example.org/api/auth/oidc/callback
+OIDC_ALLOWED_EMAILS=me@example.org        # or OIDC_ALLOWED_SUBJECTS=<sub>
+# PASSWORD_LOGIN=false                    # once SSO works
+# SSO_REQUIRE_2FA=true                    # also ask for the local TOTP code
+```
+
+The login page then shows **Sign in with single sign-on**. Authelia example
+(`configuration.yml`):
+
+```yaml
+identity_providers:
+  oidc:
+    clients:
+      - client_id: trisse-home
+        client_secret: '$pbkdf2-sha512$…'   # hashed secret
+        authorization_policy: two_factor
+        redirect_uris: [https://home.example.org/api/auth/oidc/callback]
+        scopes: [openid, email, profile]
+        token_endpoint_auth_method: client_secret_basic
+```
+
+In Authentik create an *OAuth2/OpenID Provider* (confidential, the same
+redirect URI, signing key RS256) and an application; the issuer is
+`https://auth.example.org/application/o/trisse-home/`.
+
+### Forward auth with a trusted header
+
+If the proxy already authenticates every request (Authelia/Authentik
+forward auth), trisse-home can trust the user name it passes on:
+
+```sh
+TRUSTED_PROXIES=172.20.0.0/16     # the proxy network - required
+AUTH_PROXY_HEADER=Remote-User
+AUTH_PROXY_USERS=me
+```
+
+The header is **only** believed when the request comes directly from an
+address in `TRUSTED_PROXIES`; the proxy must remove the header from client
+requests (Authelia and Authentik do). Traefik example:
+
+```yaml
+http:
+  middlewares:
+    authelia:
+      forwardAuth:
+        address: http://authelia:9091/api/authz/forward-auth
+        authResponseHeaders: [Remote-User, Remote-Email]
+```
+
+Recovery: if the identity provider is down and the password login is
+disabled, run `docker compose exec trisse-home /trisse-home reset-account`
+and set a new password with the setup token from the log.
+

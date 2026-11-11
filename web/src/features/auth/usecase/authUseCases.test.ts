@@ -12,11 +12,15 @@ function setup(status: Partial<AuthStatus> = {}) {
       authenticated: true,
       csrfToken: 'csrf-0',
       demo: false,
+      guest: false,
+      sso: { oidc: false, header: false, localLogin: true },
       ...status,
     }),
     setup: vi.fn().mockResolvedValue(session),
     login: vi.fn().mockResolvedValue(session),
     demoLogin: vi.fn().mockResolvedValue(session),
+    headerLogin: vi.fn().mockResolvedValue(session),
+    ssoSecondFactor: vi.fn().mockResolvedValue(session),
     guests: vi.fn().mockResolvedValue([]),
     createGuest: vi.fn(),
     updateGuest: vi.fn(),
@@ -72,6 +76,29 @@ describe('AuthUseCases', () => {
     expect(gateway.createGuest).not.toHaveBeenCalled();
     await uc.createGuest(' Anna ', 'guest-password-1', 'guest-password-1', ['t1']);
     expect(gateway.createGuest).toHaveBeenCalledWith('anna', 'guest-password-1', ['t1']);
+  });
+
+  it('signs in through a trusted proxy header automatically', async () => {
+    const { uc, gateway } = setup({
+      authenticated: false,
+      csrfToken: null,
+      sso: { oidc: false, header: true, localLogin: true },
+    });
+    expect(await uc.currentView()).toBe('app');
+    expect(gateway.headerLogin).toHaveBeenCalled();
+  });
+
+  it('keeps the SSO ticket when the local code is required', async () => {
+    const { uc, gateway } = setup({
+      authenticated: false,
+      csrfToken: null,
+      sso: { oidc: false, header: true, localLogin: true },
+    });
+    vi.mocked(gateway.headerLogin).mockResolvedValue({ ticket: 't1' });
+    expect(await uc.currentView()).toBe('login');
+    expect(uc.ssoTicket).toBe('t1');
+    await uc.completeSso('t1', '123456');
+    expect(gateway.ssoSecondFactor).toHaveBeenCalledWith('t1', '123456');
   });
 
   it('remembers a guest session', async () => {

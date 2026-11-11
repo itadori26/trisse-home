@@ -16,6 +16,9 @@ export interface AuthGateway {
   apiTokens(): Promise<ApiToken[]>;
   createApiToken(name: string, scopes: string[], expiresInDays: number): Promise<string>;
   revokeApiToken(id: string): Promise<void>;
+  /** Only accepted from a trusted reverse proxy that sets the user header. */
+  headerLogin(): Promise<Session | { ticket: string }>;
+  ssoSecondFactor(ticket: string, code: string): Promise<Session>;
   /** Only available on a demo instance. */
   demoLogin(): Promise<Session>;
   logout(): Promise<void>;
