@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { BookmarksUseCases } from '../usecase/bookmarksUseCases';
 
@@ -30,13 +31,12 @@
   }
 </script>
 
-<h4>Browser bookmarks</h4>
+<h4>{t('bookmarks.browser_bookmarks')}</h4>
 <p class="muted">
-  Export your bookmarks as HTML in Firefox, Chrome, Edge or Safari and import the file here. Folders are kept,
-  existing links are skipped.
+  {t('bookmarks.export_your_bookmarks_as_html_in')}
 </p>
 <label class="btn file">
-  {busy ? 'Importing…' : 'Choose bookmarks.html…'}
+  {busy ? t('common.importing') : t('bookmarks.choose_file')}
   <input type="file" accept="text/html,.html,.htm" onchange={onfile} disabled={busy} />
 </label>
 {#if error}<p class="error" role="alert">{error}</p>{/if}

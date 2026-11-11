@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** An active login session as shown in the session overview. */
 export interface SessionInfo {
   id: string;
@@ -28,6 +29,6 @@ const systems: [RegExp, string][] = [
 export function describeUserAgent(ua: string): string {
   const browser = browsers.find(([re]) => re.test(ua))?.[1];
   const os = systems.find(([re]) => re.test(ua))?.[1];
-  if (browser && os) return `${browser} on ${os}`;
-  return browser ?? os ?? (ua ? ua.slice(0, 40) : 'Unknown device');
+  if (browser && os) return t('auth.browser_on_os', { browser, os });
+  return browser ?? os ?? (ua ? ua.slice(0, 40) : t('auth.unknown_device'));
 }

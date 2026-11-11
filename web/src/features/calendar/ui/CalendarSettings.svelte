@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
 
@@ -32,7 +33,7 @@
       const s = await calendar.saveSettings(urls, username, password);
       hasPassword = s.hasPassword;
       password = '';
-      message = 'Connected and saved.';
+      message = t('common.connected_saved');
     } catch (err) {
       error = errorMessage(err);
     } finally {
@@ -43,7 +44,7 @@
 
 <form onsubmit={submit}>
   <label class="field">
-    <span>Calendar URLs (one per line)</span>
+    <span>{t('calendar.calendar_urls_one_per_line')}</span>
     <textarea
       class="input"
       rows="3"
@@ -52,14 +53,22 @@
       placeholder="https://cloud.example.com/remote.php/dav/calendars/USER/personal/"></textarea>
   </label>
   <p class="muted">
-    Nextcloud: open the calendar app, click “…” next to a calendar → “Copy private link”, and use that URL.
-    Create an app password under Settings → Security.
+    {t('calendar.nextcloud_open_the_calendar_app_click')}
   </p>
   <label class="field"
-    ><span>Username</span><input class="input" bind:value={username} autocomplete="off" required /></label
+    ><span>{t('calendar.username')}</span><input
+      class="input"
+      bind:value={username}
+      autocomplete="off"
+      required
+    /></label
   >
   <label class="field">
-    <span>App password {hasPassword ? '(leave empty to keep the stored one)' : ''}</span>
+    <span
+      >{t('calendar.app_password', {
+        value: hasPassword ? t('common.keep_stored') : '',
+      })}</span
+    >
     <input
       class="input"
       type="password"
@@ -70,5 +79,7 @@
   </label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if message}<p class="muted">{message}</p>{/if}
-  <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Testing…' : 'Test & save'}</button>
+  <button class="btn btn-primary" type="submit" disabled={busy}
+    >{busy ? t('common.testing') : t('common.test_save')}</button
+  >
 </form>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { FritzBoxUseCases } from '../usecase/fritzboxUseCases';
 
@@ -28,7 +29,7 @@
       const s = await fritzbox.saveSettings(url, username, password);
       hasPassword = s.hasPassword;
       password = '';
-      message = 'Connected and saved.';
+      message = t('common.connected_saved');
     } catch (err) {
       error = errorMessage(err);
     } finally {
@@ -38,13 +39,11 @@
 </script>
 
 <p class="muted">
-  Connection state and throughput work without a login if “Transmit status information over UPnP” is enabled
-  on the box. For the call list and link speed, create a dedicated FRITZ!Box user (System → FRITZ!Box Users)
-  with only the rights “FRITZ!Box settings” and “Voice messages, faxes, FRITZ!App Fon and call list”.
+  {t('fritzbox.connection_state_and_throughput_work_wit')}
 </p>
 <form onsubmit={submit}>
   <label class="field"
-    ><span>FRITZ!Box address (TR-064 port)</span><input
+    ><span>{t('fritzbox.fritz_box_address_tr_064_port')}</span><input
       class="input"
       type="url"
       bind:value={url}
@@ -52,14 +51,24 @@
     /></label
   >
   <label class="field"
-    ><span>Username (optional)</span><input class="input" bind:value={username} autocomplete="off" /></label
+    ><span>{t('fritzbox.username_optional')}</span><input
+      class="input"
+      bind:value={username}
+      autocomplete="off"
+    /></label
   >
   <label class="field">
-    <span>Password {hasPassword ? '(leave empty to keep the stored one)' : '(optional)'}</span>
+    <span
+      >{t('fritzbox.password', {
+        value: hasPassword ? t('common.keep_stored') : t('common.optional'),
+      })}</span
+    >
     <input class="input" type="password" bind:value={password} autocomplete="new-password" />
   </label>
-  <p class="muted">The password is stored encrypted and never shown again.</p>
+  <p class="muted">{t('fritzbox.the_password_is_stored_encrypted_and')}</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if message}<p class="muted">{message}</p>{/if}
-  <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Testing…' : 'Test & save'}</button>
+  <button class="btn btn-primary" type="submit" disabled={busy}
+    >{busy ? t('common.testing') : t('common.test_save')}</button
+  >
 </form>

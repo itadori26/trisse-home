@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../shared/i18n';
   import { LoginPage, SetupPage, type AuthView } from '../features/auth';
   import { errorMessage } from '../shared/api-client/http';
   import { canStartOffline, clearOfflineData, rememberSignedIn } from '../shared/pwa';
@@ -27,7 +28,7 @@
 </script>
 
 {#if loadError}
-  <p class="error" role="alert">Could not reach the server: {loadError}</p>
+  <p class="error" role="alert">{t('app.could_not_reach_the_server', { loadError: loadError })}</p>
 {:else if view === 'setup'}
   <SetupPage auth={container.auth} ondone={refresh} />
 {:else if view === 'login'}

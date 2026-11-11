@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { dueLabel, isDueSoon, type WasteOverview } from '../domain/waste';
   import type { WasteUseCases } from '../usecase/wasteUseCases';
@@ -30,11 +31,11 @@
   });
 
   const date = (d: Date) =>
-    d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
+    d.toLocaleDateString(intlLocale(), { weekday: 'short', day: 'numeric', month: 'numeric' });
 </script>
 
 {#if unconfigured}
-  <p class="muted">Add the ICS link of your waste collection calendar under Settings → Waste.</p>
+  <p class="muted">{t('waste.add_the_ics_link_of_your')}</p>
 {:else if error && !overview}
   <p class="error">{error}</p>
 {:else if overview}
@@ -49,12 +50,12 @@
         </span>
       </li>
     {:else}
-      <li class="muted">No upcoming collections.</li>
+      <li class="muted">{t('waste.no_upcoming_collections')}</li>
     {/each}
   </ul>
   {#if overview.error}<p class="error small">{overview.error}</p>{/if}
 {:else}
-  <p class="muted">Loading…</p>
+  <p class="muted">{t('waste.loading')}</p>
 {/if}
 
 <style>

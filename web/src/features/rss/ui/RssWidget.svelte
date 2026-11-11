@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { age, type FeedItem, parseRssConfig } from '../domain/feed';
   import type { RssUseCases } from '../usecase/rssUseCases';
@@ -70,11 +71,11 @@
       <span class="meta muted">{cfg.feedId ? '' : `${item.feedTitle} · `}{age(item.publishedAt, now)}</span>
     </li>
   {:else}
-    <li class="muted">{cfg.unreadOnly ? 'All caught up.' : 'No items. Add feeds under Settings → Feeds.'}</li>
+    <li class="muted">{cfg.unreadOnly ? t('rss.all_caught_up') : t('rss.no_items')}</li>
   {/each}
 </ul>
 {#if items.some((i) => !i.read)}
-  <button class="btn btn-icon muted" type="button" onclick={markAll}>Mark all as read</button>
+  <button class="btn btn-icon muted" type="button" onclick={markAll}>{t('rss.mark_all_as_read')}</button>
 {/if}
 
 <style>

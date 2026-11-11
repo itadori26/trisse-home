@@ -1,3 +1,5 @@
+import type { MessageKey } from '../shared/i18n';
+
 /** Kinds of entries the quick search finds. */
 export type QuickKind = 'bookmark' | 'service' | 'note' | 'todo';
 
@@ -17,16 +19,16 @@ export interface QuickItem {
 /** A group of results of one kind. */
 export interface QuickGroup {
   kind: QuickKind;
-  label: string;
+  label: MessageKey;
   items: QuickItem[];
 }
 
 const order: QuickKind[] = ['bookmark', 'service', 'note', 'todo'];
-const labels: Record<QuickKind, string> = {
-  bookmark: 'Bookmarks',
-  service: 'Services',
-  note: 'Notes',
-  todo: 'To-dos',
+const labels: Record<QuickKind, MessageKey> = {
+  bookmark: 'app.group.bookmarks',
+  service: 'app.group.services',
+  note: 'app.group.notes',
+  todo: 'app.group.todos',
 };
 
 /** Lower-cased text without diacritics, so "Büro" matches "buro". */

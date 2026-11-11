@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { parseWeatherConfig, radarKey } from '../domain/weather';
   import type { WeatherUseCases } from '../usecase/weatherUseCases';
 
@@ -23,18 +24,20 @@
 </script>
 
 {#if !cfg}
-  <p class="muted">Choose a location in the widget settings.</p>
+  <p class="muted">{t('weather.choose_a_location_in_the_widget')}</p>
 {:else if failed}
-  <p class="muted">The rain radar is not available for this location (DWD covers Germany only).</p>
+  <p class="muted">{t('weather.the_rain_radar_is_not_available')}</p>
 {:else}
   <figure class="radar">
     <img
       src={weather.radarUrl(cfg, key)}
-      alt="Rain radar around {cfg.label || 'the location'}"
+      alt={t('weather.rain_radar_around', { value: cfg.label || t('weather.the_location') })}
       onerror={() => (failed = true)}
     />
     <span class="marker" aria-hidden="true"></span>
-    <figcaption>{cfg.label ? `${cfg.label} · ` : ''}© Deutscher Wetterdienst</figcaption>
+    <figcaption>
+      {t('weather.deutscher_wetterdienst', { value: cfg.label ? `${cfg.label} · ` : '' })}
+    </figcaption>
   </figure>
 {/if}
 

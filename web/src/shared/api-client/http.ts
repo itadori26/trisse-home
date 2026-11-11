@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { ErrorBody } from './generated/httpapi';
 
 /** Header that carries the per-session CSRF token on state-changing requests. */
@@ -87,5 +88,5 @@ export class FetchHttpClient implements HttpClient {
 /** Returns a user-facing message for any thrown value. */
 export function errorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
-  return 'Something went wrong.';
+  return t('common.something_went_wrong');
 }

@@ -156,6 +156,19 @@ test('installable app shows the last data offline and never caches auth', async 
   await context.setOffline(false);
 });
 
+test('the UI follows a German browser language', async ({ browser }) => {
+  const context = await browser.newContext({ locale: 'de-DE' });
+  const page = await context.newPage();
+  await page.goto('/');
+  await page.getByLabel('Passwort').fill(password);
+  await page.getByRole('button', { name: 'Anmelden' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Einstellungen' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Bearbeiten', exact: true })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+  await context.close();
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

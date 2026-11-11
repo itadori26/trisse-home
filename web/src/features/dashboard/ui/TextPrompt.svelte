@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import Modal from '../../../shared/ui/Modal.svelte';
 
   /** Props of a small dialog asking for one line of text. */
@@ -52,6 +53,6 @@
       <input class="input" {type} bind:value autofocus required={!optional} {maxlength} {placeholder} />
     </label>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <button class="btn btn-primary" type="submit">Save</button>
+    <button class="btn btn-primary" type="submit">{t('dashboard.save')}</button>
   </form>
 </Modal>

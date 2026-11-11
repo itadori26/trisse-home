@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { Peer } from '../domain/peer';
   import type { WireGuardUseCases } from '../usecase/wireguardUseCases';
@@ -36,8 +37,8 @@
 </script>
 
 <p class="muted">
-  The WireGuard widget reads a file written every minute by <code>scripts/wireguard-export.sh</code> on the host
-  (see README). Names come from the peer folders of linuxserver/wireguard and can be overridden here.
+  {t('wireguard.the_wireguard_widget_reads_a_file')} <code>scripts/wireguard-export.sh</code>
+  {t('wireguard.on_the_host_see_readme_names')}
 </p>
 {#if error}<p class={peers.length ? 'error' : 'muted'} role="alert">{error}</p>{/if}
 <ul class="list">
@@ -47,9 +48,9 @@
       <input
         class="input"
         bind:value={names[p.publicKey]}
-        placeholder="Name"
+        placeholder={t('wireguard.name')}
         maxlength="40"
-        aria-label="Name of peer {p.publicKey.slice(0, 10)}"
+        aria-label={t('wireguard.name_of_peer', { value: p.publicKey.slice(0, 10) })}
         onchange={() => save(p)}
       />
       {#if saved === p.publicKey}<span class="muted">✓</span>{/if}

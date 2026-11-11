@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { type CalendarEvent, eventsOnDay, monthGrid } from '../domain/calendar';
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
@@ -20,10 +21,10 @@
 
   const cells = $derived(monthGrid(year, month, today));
   const title = $derived(
-    new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+    new Date(year, month, 1).toLocaleDateString(intlLocale(), { month: 'long', year: 'numeric' }),
   );
   const weekdays = Array.from({ length: 7 }, (_, i) =>
-    new Date(2024, 0, 1 + i).toLocaleDateString(undefined, { weekday: 'narrow' }),
+    new Date(2024, 0, 1 + i).toLocaleDateString(intlLocale(), { weekday: 'narrow' }),
   );
 
   $effect(() => {
@@ -44,18 +45,25 @@
     month = d.getMonth();
     selected = null;
   }
-  const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const time = (d: Date) => d.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
 </script>
 
 <div class="head">
-  <button class="btn btn-icon" type="button" aria-label="Previous month" onclick={() => shift(-1)}>‹</button>
+  <button
+    class="btn btn-icon"
+    type="button"
+    aria-label={t('calendar.previous_month')}
+    onclick={() => shift(-1)}>‹</button
+  >
   <button
     class="title"
     type="button"
-    title="Back to today"
+    title={t('calendar.back_to_today')}
     onclick={() => ((year = today.getFullYear()), (month = today.getMonth()))}>{title}</button
   >
-  <button class="btn btn-icon" type="button" aria-label="Next month" onclick={() => shift(1)}>›</button>
+  <button class="btn btn-icon" type="button" aria-label={t('calendar.next_month')} onclick={() => shift(1)}
+    >›</button
+  >
 </div>
 {#if error}<p class="error small">{error}</p>{/if}
 <div class="grid" role="grid" aria-label={title}>
@@ -68,7 +76,10 @@
       class:out={!c.inMonth}
       class:today={c.isToday}
       class:sel={selected?.getTime() === c.date.getTime()}
-      aria-label="{c.date.toLocaleDateString()}: {dayEvents.length} events"
+      aria-label={t('calendar.events', {
+        value: c.date.toLocaleDateString(intlLocale()),
+        length: dayEvents.length,
+      })}
       onclick={() => (selected = c.date)}
     >
       <span class="num">{c.date.getDate()}</span>
@@ -84,12 +95,15 @@
   {@const list = eventsOnDay(events, selected)}
   <div class="detail">
     <strong
-      >{selected.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</strong
+      >{selected.toLocaleDateString(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</strong
     >
     {#each list as e (e.uid + e.start.getTime())}
-      <div class="ev"><span class="time">{e.allDay ? 'all day' : time(e.start)}</span> {e.summary}</div>
+      <div class="ev">
+        <span class="time">{e.allDay ? t('calendar.all_day_short') : time(e.start)}</span>
+        {e.summary}
+      </div>
     {:else}
-      <div class="muted">No events.</div>
+      <div class="muted">{t('calendar.no_events')}</div>
     {/each}
   </div>
 {/if}

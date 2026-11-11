@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { type AgendaDay, groupByDay, parseCalendarConfig } from '../domain/calendar';
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
@@ -48,23 +49,23 @@
     const diff = Math.round(
       (d.getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000,
     );
-    if (diff === 0) return 'Today';
-    if (diff === 1) return 'Tomorrow';
-    return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
+    if (diff === 0) return t('time.today');
+    if (diff === 1) return t('time.tomorrow');
+    return d.toLocaleDateString(intlLocale(), { weekday: 'long', day: 'numeric', month: 'short' });
   };
-  const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const time = (d: Date) => d.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
 </script>
 
 {#if unconfigured}
-  <p class="muted">Connect a CalDAV calendar under Settings → Calendar.</p>
+  <p class="muted">{t('calendar.connect_a_caldav_calendar_under_settings')}</p>
 {:else if error && !loaded}
   <p class="error">{error}</p>
 {:else}
   <button
     class="btn btn-icon add"
     type="button"
-    title="New event"
-    aria-label="New event"
+    title={t('calendar.new_event')}
+    aria-label={t('calendar.new_event')}
     onclick={() => (adding = true)}>+</button
   >
   {#if cfg.view === 'month'}
@@ -77,14 +78,14 @@
         <ul>
           {#each day.events as e (e.uid + e.start.getTime())}
             <li title={[e.location, e.calendar].filter(Boolean).join(' · ')}>
-              <span class="time">{e.allDay ? 'all day' : time(e.start)}</span>
+              <span class="time">{e.allDay ? t('calendar.all_day_short') : time(e.start)}</span>
               <span class="summary">{e.summary}</span>
             </li>
           {/each}
         </ul>
       </section>
     {:else}
-      {#if loaded}<p class="muted">No events in the next {cfg.days} days.</p>{/if}
+      {#if loaded}<p class="muted">{t('calendar.no_events_in_the_next_days', { days: cfg.days })}</p>{/if}
     {/each}
   {/if}
 {/if}

@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** Identifier of trisse-home export files. */
 export const EXPORT_FORMAT = 'trisse-home-export';
 
@@ -21,7 +22,7 @@ export function parseExportFile(text: string): ExportFile | string {
   try {
     data = JSON.parse(text);
   } catch {
-    return 'The file is not valid JSON.';
+    return t('transfer.invalid_json');
   }
   const f = data as Partial<ExportFile> | null;
   if (
@@ -31,15 +32,16 @@ export function parseExportFile(text: string): ExportFile | string {
     typeof f.sections !== 'object' ||
     !f.sections
   )
-    return 'This is not a trisse-home export file.';
+    return t('transfer.not_export');
   return f as ExportFile;
 }
 
 /** One-line summary of an import result. */
 export function describeResult(r: ImportResult): string {
-  const parts = [`Imported: ${r.imported.join(', ') || 'nothing'}.`];
-  if (r.skipped.length) parts.push(`Skipped (module disabled or unknown): ${r.skipped.join(', ')}.`);
+  const parts = [t('transfer.result_imported', { list: r.imported.join(', ') || t('transfer.nothing') })];
+  if (r.skipped.length) parts.push(t('transfer.result_skipped', { list: r.skipped.join(', ') }));
   const failed = Object.entries(r.failed);
-  if (failed.length) parts.push(`Failed: ${failed.map(([k, v]) => `${k} (${v})`).join('; ')}.`);
+  if (failed.length)
+    parts.push(t('transfer.result_failed', { list: failed.map(([k, v]) => `${k} (${v})`).join('; ') }));
   return parts.join(' ');
 }

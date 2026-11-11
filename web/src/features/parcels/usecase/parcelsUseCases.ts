@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 import { normaliseTrackingNumber, type Parcel, type ParcelSettings } from '../domain/parcel';
 
 /** Output port: parcels backend. */
@@ -25,7 +26,7 @@ export class ParcelsUseCases {
   /** Validates and adds a DHL parcel. */
   add(trackingNumber: string, label: string): Promise<Parcel> {
     const n = normaliseTrackingNumber(trackingNumber);
-    if (!n) return Promise.reject(new Error('Tracking numbers consist of 8 to 35 letters and digits.'));
+    if (!n) return Promise.reject(new Error(t('parcels.invalid_number')));
     return this.gateway.add(n, 'dhl', label.trim());
   }
   remove(id: string): Promise<void> {

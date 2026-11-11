@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import type { Snippet } from 'svelte';
 
   /** Props of the card that wraps every widget. */
@@ -40,7 +41,7 @@
             <button
               class="btn btn-icon"
               type="button"
-              aria-label="Widget settings"
+              aria-label={t('dashboard.widget_settings')}
               onpointerdown={(e) => e.stopPropagation()}
               onclick={onsettings}>⚙</button
             >
@@ -49,8 +50,8 @@
             <button
               class="btn btn-icon"
               type="button"
-              aria-label="Duplicate widget"
-              title="Duplicate"
+              aria-label={t('dashboard.duplicate_widget')}
+              title={t('dashboard.duplicate')}
               onpointerdown={(e) => e.stopPropagation()}
               onclick={onduplicate}>⧉</button
             >
@@ -58,7 +59,7 @@
           <button
             class="btn btn-icon"
             type="button"
-            aria-label="Remove widget"
+            aria-label={t('dashboard.remove_widget')}
             onpointerdown={(e) => e.stopPropagation()}
             onclick={ondelete}>✕</button
           >

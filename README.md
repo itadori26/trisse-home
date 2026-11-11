@@ -39,7 +39,7 @@ Architecture.
 | **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
 | **transfer**   | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)     |
 | **quick search** | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web |
-| **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
+| **appearance** | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
 | **notifications** | Push messages via [ntfy](https://ntfy.sh) for offline services, containers, full disks, expiring certificates and failed backups |

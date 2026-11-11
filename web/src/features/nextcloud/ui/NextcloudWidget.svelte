@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { formatBytes, formatCount } from '../../../shared/ui/format';
   import Meter from '../../../shared/ui/Meter.svelte';
@@ -32,40 +33,47 @@
 </script>
 
 {#if unconfigured}
-  <p class="muted">Connect Nextcloud under Settings → Nextcloud.</p>
+  <p class="muted">{t('nextcloud.connect_nextcloud_under_settings_nextclo')}</p>
 {:else if error && !status}
   <p class="error">{error}</p>
 {:else if status}
   <p class="head">
-    <strong>Nextcloud {shortVersion(status.version)}</strong>
-    {#if status.maintenance}<span class="badge warn">maintenance</span>{/if}
-    {#if status.server?.appUpdates}<span class="badge">{status.server.appUpdates} app updates</span>{/if}
+    <strong>{t('nextcloud.nextcloud', { value: shortVersion(status.version) })}</strong>
+    {#if status.maintenance}<span class="badge warn">{t('nextcloud.maintenance')}</span>{/if}
+    {#if status.server?.appUpdates}<span class="badge"
+        >{t('nextcloud.app_updates', { appUpdates: status.server.appUpdates })}</span
+      >{/if}
   </p>
   {#if status.quota.total > 0}
     <Meter
-      label="Your quota"
+      label={t('nextcloud.your_quota')}
       percent={status.quota.percent}
       detail="{formatBytes(status.quota.used)} of {formatBytes(status.quota.total)}"
     />
   {:else}
-    <p class="muted small">You use {formatBytes(status.quota.used)} (no quota).</p>
+    <p class="muted small">{t('nextcloud.you_use_no_quota', { value: formatBytes(status.quota.used) })}</p>
   {/if}
   {#if status.server}
     <div class="numbers">
-      <div><strong>{formatBytes(status.server.freeSpace)}</strong><span class="muted">free</span></div>
       <div>
-        <strong>{status.server.activeUsers1d}/{status.server.users}</strong><span class="muted"
-          >active today</span
+        <strong>{formatBytes(status.server.freeSpace)}</strong><span class="muted">{t('nextcloud.free')}</span
         >
       </div>
-      <div><strong>{formatCount(status.server.files)}</strong><span class="muted">files</span></div>
+      <div>
+        <strong>{status.server.activeUsers1d}/{status.server.users}</strong><span class="muted"
+          >{t('nextcloud.active_today')}</span
+        >
+      </div>
+      <div>
+        <strong>{formatCount(status.server.files)}</strong><span class="muted">{t('nextcloud.files')}</span>
+      </div>
     </div>
   {:else if status.serverHint}
     <p class="muted small">{status.serverHint}</p>
   {/if}
   {#if status.error}<p class="error small">{status.error}</p>{/if}
 {:else}
-  <p class="muted">Loading…</p>
+  <p class="muted">{t('nextcloud.loading')}</p>
 {/if}
 
 <style>

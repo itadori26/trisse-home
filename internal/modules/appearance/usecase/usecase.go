@@ -10,6 +10,7 @@ import (
 // AppearanceResponse is the use case output.
 type AppearanceResponse struct {
 	Theme           string
+	Language        string
 	AccentColor     string
 	BackgroundImage string
 	CustomCSS       string
@@ -18,6 +19,7 @@ type AppearanceResponse struct {
 // UpdateAppearanceRequest is the input of UpdateAppearance.
 type UpdateAppearanceRequest struct {
 	Theme           string
+	Language        string
 	AccentColor     string
 	BackgroundImage string
 	CustomCSS       string
@@ -41,7 +43,7 @@ type Repository interface {
 }
 
 func toResponse(a domain.Appearance) AppearanceResponse {
-	return AppearanceResponse{Theme: string(a.Theme()), AccentColor: a.AccentColor(), BackgroundImage: a.BackgroundImage(), CustomCSS: a.CustomCSS()}
+	return AppearanceResponse{Theme: string(a.Theme()), AccentColor: a.AccentColor(), BackgroundImage: a.BackgroundImage(), CustomCSS: a.CustomCSS(), Language: a.Language()}
 }
 
 type getAppearance struct{ repo Repository }
@@ -66,6 +68,9 @@ func NewUpdateAppearance(repo Repository) UpdateAppearance { return &updateAppea
 // Execute implements UpdateAppearance.
 func (uc *updateAppearance) Execute(ctx context.Context, req UpdateAppearanceRequest) (AppearanceResponse, error) {
 	a, err := domain.NewAppearance(domain.Theme(req.Theme), req.AccentColor, req.BackgroundImage, req.CustomCSS)
+	if err == nil {
+		err = a.SetLanguage(req.Language)
+	}
 	if err != nil {
 		return AppearanceResponse{}, err
 	}

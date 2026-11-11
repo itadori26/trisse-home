@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 import type { Bookmark, BookmarkInput, Folder, Tag } from '../domain/bookmark';
 
 /** Result of listing bookmarks. */
@@ -67,8 +68,7 @@ export class BookmarksUseCases {
 
   /** Imports a browser bookmark export (HTML). */
   importHtml(html: string): Promise<BookmarkImportResult> {
-    if (!/<a\s/i.test(html))
-      return Promise.reject(new Error('No bookmarks found. Please export your bookmarks as HTML.'));
+    if (!/<a\s/i.test(html)) return Promise.reject(new Error(t('bookmarks.no_bookmarks_in_file')));
     return this.gateway.importHtml(html);
   }
 }

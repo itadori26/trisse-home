@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { parseNotesConfig } from '../domain/note';
 
   /** Props of the notes widget settings. */
@@ -17,7 +18,7 @@
     onsave({ scope });
   }}
 >
-  <label><input type="radio" bind:group={scope} value="pinned" /> Pinned notes only</label><br />
-  <label><input type="radio" bind:group={scope} value="all" /> All notes</label>
-  <p><button class="btn btn-primary" type="submit">Save</button></p>
+  <label><input type="radio" bind:group={scope} value="pinned" /> {t('notes.pinned_notes_only')}</label><br />
+  <label><input type="radio" bind:group={scope} value="all" /> {t('notes.all_notes')}</label>
+  <p><button class="btn btn-primary" type="submit">{t('notes.save')}</button></p>
 </form>

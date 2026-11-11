@@ -12,4 +12,5 @@ export interface AppearanceDTO {
   accentColor: string;
   backgroundImage: string;
   customCss: string;
+  language: '' | 'en' | 'de';
 }

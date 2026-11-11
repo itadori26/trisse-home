@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { setLanguage, t } from '../shared/i18n';
   import { type Appearance, cssVariables, defaultAppearance } from '../features/appearance';
   import { Tour } from '../features/onboarding';
   import { errorMessage } from '../shared/api-client/http';
@@ -28,6 +29,7 @@
   let offline = $state(!navigator.onLine);
 
   $effect(() => applyTheme(appearance.theme));
+  $effect(() => setLanguage(appearance.language));
 
   $effect(() => {
     const root = document.documentElement;
@@ -109,8 +111,8 @@
       class="btn btn-icon"
       type="button"
       aria-keyshortcuts="Control+K /"
-      title="Quick search (Ctrl+K or /)"
-      onclick={() => (quickSearch = true)}>Search <kbd>Ctrl K</kbd></button
+      title={t('app.quick_search_ctrl_k_or')}
+      onclick={() => (quickSearch = true)}>{t('app.search')} <kbd>{t('app.ctrl_k')}</kbd></button
     >
     <button
       class="btn btn-icon"
@@ -120,18 +122,18 @@
       aria-pressed={editing}
       onclick={() => (editing = !editing)}
     >
-      {editing ? 'Done' : 'Edit'}
+      {editing ? t('app.done') : t('app.edit')}
     </button>
     <button class="btn btn-icon" type="button" data-tour="settings" onclick={() => (settingsOpen = true)}
-      >Settings</button
+      >{t('app.settings')}</button
     >
-    <button class="btn btn-icon" type="button" onclick={logout}>Log out</button>
+    <button class="btn btn-icon" type="button" onclick={logout}>{t('app.log_out')}</button>
   </nav>
 </header>
 
 <main class="content">
   {#if offline}<p class="offline" role="status">
-      You are offline — showing the last loaded data. Changes are not possible.
+      {t('app.you_are_offline_showing_the_last')}
     </p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if modules}

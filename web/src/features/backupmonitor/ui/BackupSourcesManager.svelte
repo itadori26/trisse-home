@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { type BackupSource, type CreatedSource, pingExamples } from '../domain/source';
   import type { BackupMonitorUseCases } from '../usecase/backupMonitorUseCases';
@@ -31,32 +32,41 @@
 </script>
 
 <p class="muted">
-  Each source gets a secret ping URL. Call it from your backup script after every run; the source is reported
-  as overdue when no successful run arrives within the maximum age.
+  {t('backupmonitor.each_source_gets_a_secret_ping')}
 </p>
 {#if created}
   <div class="created card">
-    <p><strong>Ping URL for “{created.source.name}”</strong> — shown only now:</p>
+    <p>
+      <strong>{t('backupmonitor.ping_url_for', { name: created.source.name })}</strong>
+      {t('backupmonitor.shown_only_now')}
+    </p>
     <pre>{pingExamples(created.pingUrl)}</pre>
-    <button class="btn" type="button" onclick={() => (created = null)}>Done</button>
+    <button class="btn" type="button" onclick={() => (created = null)}>{t('backupmonitor.done')}</button>
   </div>
 {/if}
 <ul class="list">
   {#each sources as s (s.id)}
     <li>
-      <span class="name">{s.name} <span class="muted">(max. {s.maxAgeHours} h, {s.state})</span></span>
-      <button
-        class="btn btn-icon"
-        type="button"
-        onclick={() =>
-          confirm(`Create a new ping URL for "${s.name}"? The old one stops working.`) &&
-          run(async () => (created = await backupMonitor.rotateToken(s.id)))}>New URL</button
+      <span class="name"
+        >{s.name}
+        <span class="muted">{t('backupmonitor.max_h', { maxAgeHours: s.maxAgeHours, state: s.state })}</span
+        ></span
       >
       <button
         class="btn btn-icon"
         type="button"
-        aria-label="Delete {s.name}"
-        onclick={() => confirm(`Delete "${s.name}"?`) && run(() => backupMonitor.delete(s.id))}>✕</button
+        onclick={() =>
+          confirm(t('backupmonitor.confirm_rotate', { name: s.name })) &&
+          run(async () => (created = await backupMonitor.rotateToken(s.id)))}
+        >{t('backupmonitor.new_url')}</button
+      >
+      <button
+        class="btn btn-icon"
+        type="button"
+        aria-label={t('backupmonitor.delete', { name: s.name })}
+        onclick={() =>
+          confirm(t('common.confirm_delete', { name: s.name })) && run(() => backupMonitor.delete(s.id))}
+        >✕</button
       >
     </li>
   {/each}
@@ -74,8 +84,8 @@
   <input
     class="input"
     bind:value={name}
-    placeholder="e.g. NAS restic"
-    aria-label="Name"
+    placeholder={t('backupmonitor.e_g_nas_restic')}
+    aria-label={t('backupmonitor.name')}
     required
     maxlength="60"
   />
@@ -86,10 +96,10 @@
       min="1"
       max="1440"
       bind:value={maxAgeHours}
-      aria-label="Maximum age in hours"
+      aria-label={t('backupmonitor.maximum_age_in_hours')}
     /> h</label
   >
-  <button class="btn" type="submit">Add</button>
+  <button class="btn" type="submit">{t('backupmonitor.add')}</button>
 </form>
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 

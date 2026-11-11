@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** Minimum password length; mirrors the backend password policy. */
 export const MIN_PASSWORD_LENGTH = 12;
 
@@ -29,9 +30,9 @@ export function viewFor(status: AuthStatus): AuthView {
  */
 export function validateNewPassword(password: string, confirmation: string): string | null {
   if ([...password].length < MIN_PASSWORD_LENGTH) {
-    return `The password must be at least ${MIN_PASSWORD_LENGTH} characters long.`;
+    return t('auth.password_too_short', { min: MIN_PASSWORD_LENGTH });
   }
-  if (password.trim() === '') return 'The password must not consist of whitespace only.';
-  if (password !== confirmation) return 'The passwords do not match.';
+  if (password.trim() === '') return t('auth.password_whitespace');
+  if (password !== confirmation) return t('auth.passwords_differ');
   return null;
 }

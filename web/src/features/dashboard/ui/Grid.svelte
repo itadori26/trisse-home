@@ -1,4 +1,5 @@
 <script lang="ts" generics="T extends LayoutItem">
+  import { t } from '../../../shared/i18n';
   import type { Snippet } from 'svelte';
   import {
     type ArrowKey,
@@ -27,7 +28,15 @@
     /** Accessible name of an item (e.g. the widget title). */
     label?: (item: T) => string;
   }
-  let { items, editing, rowHeight = 56, gap = 12, onlayout, item, label = () => 'Widget' }: Props = $props();
+  let {
+    items,
+    editing,
+    rowHeight = 56,
+    gap = 12,
+    onlayout,
+    item,
+    label = () => t('dashboard.widget'),
+  }: Props = $props();
   let announcement = $state('');
 
   /** Arrow keys move, Shift + arrow keys resize the focused item. */
@@ -40,8 +49,14 @@
     const r = (next ?? base).find((i) => i.id === it.id);
     if (!r) return;
     announcement = next
-      ? `${label(it)} ${e.shiftKey ? 'resized' : 'moved'}: ${describeRect(r)}`
-      : `${label(it)} cannot ${e.shiftKey ? 'grow or shrink' : 'move'} further: ${describeRect(r)}`;
+      ? t(e.shiftKey ? 'dashboard.announce_resized' : 'dashboard.announce_moved', {
+          name: label(it),
+          position: describeRect(r),
+        })
+      : t(e.shiftKey ? 'dashboard.announce_cannot_resize' : 'dashboard.announce_cannot_move', {
+          name: label(it),
+          position: describeRect(r),
+        });
     if (next) onlayout(next);
   }
 
@@ -106,9 +121,9 @@
       class:active={preview && gesture?.id === it.id}
       tabindex={editing ? 0 : undefined}
       role={editing ? 'group' : undefined}
-      aria-roledescription={editing ? 'movable widget' : undefined}
+      aria-roledescription={editing ? t('dashboard.movable_widget') : undefined}
       aria-label={editing
-        ? `${label(it)}, ${describeRect(r)}. Arrow keys move, Shift + arrow keys resize.`
+        ? t('dashboard.widget_group_label', { name: label(it), position: describeRect(r) })
         : undefined}
       onkeydown={(e) => onkeydown(it, e)}
       style:grid-area="{r.y + 1} / {r.x + 1} / span {r.h} / span {r.w}"
@@ -119,7 +134,7 @@
         <button
           class="resize"
           type="button"
-          aria-label="Resize widget"
+          aria-label={t('dashboard.resize_widget')}
           onpointerdown={(e) => start('resize', it, e)}
         ></button>
       {/if}

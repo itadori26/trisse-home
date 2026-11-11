@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { parseTransitConfig, type Stop } from '../domain/transit';
   import type { TransitUseCases } from '../usecase/transitUseCases';
@@ -24,7 +25,7 @@
     error = '';
     try {
       results = await transit.searchStops(query);
-      if (results.length === 0) error = 'No stops found.';
+      if (results.length === 0) error = t('transit.no_stops_found');
     } catch (err) {
       error = errorMessage(err);
     }
@@ -32,7 +33,7 @@
 
   function save() {
     if (!stop) {
-      error = 'Please choose a stop.';
+      error = t('transit.choose_stop');
       return;
     }
     onsave({ stopId: stop.id, stopName: stop.name, count });
@@ -40,8 +41,13 @@
 </script>
 
 <form onsubmit={find} class="search">
-  <input class="input" bind:value={query} placeholder="Stop, e.g. Oldenburg Hbf" aria-label="Search stop" />
-  <button class="btn" type="submit">Search</button>
+  <input
+    class="input"
+    bind:value={query}
+    placeholder={t('transit.stop_e_g_oldenburg_hbf')}
+    aria-label={t('transit.search_stop')}
+  />
+  <button class="btn" type="submit">{t('transit.search')}</button>
 </form>
 {#if results.length}
   <ul class="results">
@@ -56,13 +62,13 @@
     {/each}
   </ul>
 {/if}
-{#if stop}<p class="muted">Stop: {stop.name}</p>{/if}
+{#if stop}<p class="muted">{t('transit.stop', { name: stop.name })}</p>{/if}
 <label class="field">
-  <span>Departures: {count}</span>
+  <span>{t('transit.departures', { count: count })}</span>
   <input type="range" min="1" max="20" bind:value={count} />
 </label>
 {#if error}<p class="error" role="alert">{error}</p>{/if}
-<button class="btn btn-primary" type="button" onclick={save}>Save</button>
+<button class="btn btn-primary" type="button" onclick={save}>{t('transit.save')}</button>
 
 <style>
   .search {

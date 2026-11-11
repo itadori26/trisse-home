@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 import type { Note, NoteInput, NotesScope } from '../domain/note';
 
 /** Output port: notes backend. */
@@ -23,7 +24,7 @@ export class NotesUseCases {
   /** Saves a note; it needs a title or some text. */
   save(input: NoteInput, id?: string): Promise<Note> {
     if (input.title.trim() === '' && input.body.trim() === '') {
-      return Promise.reject(new NoteValidationError('A note needs a title or some text.'));
+      return Promise.reject(new NoteValidationError(t('notes.empty_note')));
     }
     return this.gateway.save(input, id);
   }

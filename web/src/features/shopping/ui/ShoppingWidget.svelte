@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { type ShoppingItem, withDone } from '../domain/shopping';
   import type { ShoppingUseCases } from '../usecase/shoppingUseCases';
@@ -71,18 +72,18 @@
 </script>
 
 {#if unconfigured}
-  <p class="muted">Connect a CalDAV task list under Settings → Shopping list.</p>
+  <p class="muted">{t('shopping.connect_a_caldav_task_list_under')}</p>
 {:else}
   <form class="add" onsubmit={add}>
     <input
       class="input"
       bind:value={draft}
-      placeholder="Add item…"
-      aria-label="New item"
+      placeholder={t('shopping.add_item')}
+      aria-label={t('shopping.new_item')}
       maxlength="200"
       disabled={!loaded}
     />
-    <button class="btn" type="submit" disabled={busy || !draft.trim()}>Add</button>
+    <button class="btn" type="submit" disabled={busy || !draft.trim()}>{t('shopping.add')}</button>
   </form>
   {#if error}<p class="error small" role="alert">{error}</p>{/if}
   <ul class="items">
@@ -94,11 +95,13 @@
         >
       </li>
     {:else}
-      {#if loaded}<li class="muted">The list is empty.</li>{/if}
+      {#if loaded}<li class="muted">{t('shopping.the_list_is_empty')}</li>{/if}
     {/each}
   </ul>
   {#if doneCount}
-    <button class="btn link" type="button" onclick={clear}>Remove {doneCount} done</button>
+    <button class="btn link" type="button" onclick={clear}
+      >{t('shopping.remove_done', { doneCount: doneCount })}</button
+    >
   {/if}
 {/if}
 

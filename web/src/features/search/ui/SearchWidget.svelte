@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import type { SearchUseCases } from '../usecase/searchUseCases';
 
   /** Props of the search bar widget. */
@@ -27,8 +28,8 @@
     type="search"
     name="q"
     bind:value={query}
-    placeholder="Search — !bangs like !w work"
-    aria-label="Search"
+    placeholder={t('search.search_bangs_like_w_work')}
+    aria-label={t('search.search')}
     autocomplete="off"
   />
 </form>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../shared/i18n';
   import Markdown from '../shared/ui/Markdown.svelte';
   import Modal from '../shared/ui/Modal.svelte';
   import { errorMessage } from '../shared/api-client/http';
@@ -71,7 +72,7 @@
             l.map((n) => ({
               kind: 'note',
               id: n.id,
-              title: n.title || 'Untitled note',
+              title: n.title || t('app.untitled_note'),
               detail: n.body.slice(0, 200),
             })),
           );
@@ -112,7 +113,7 @@
       try {
         await container.todos.toggle(todo);
         items = items.filter((i) => !(i.kind === 'todo' && i.id === item.id));
-        status = `“${item.title}” marked as done.`;
+        status = t('app.marked_done', { title: item.title });
       } catch (err) {
         status = errorMessage(err);
       }
@@ -135,10 +136,10 @@
   }
 </script>
 
-<Modal title="Quick search" {onclose}>
+<Modal title={t('app.quick_search')} {onclose}>
   {#if note}
     <div class="note">
-      <button class="btn btn-icon" type="button" onclick={() => (note = null)}>‹ Back</button>
+      <button class="btn btn-icon" type="button" onclick={() => (note = null)}>{t('app.back')}</button>
       <h4>{note.title}</h4>
       <Markdown source={note.body} />
     </div>
@@ -152,17 +153,17 @@
       aria-controls="qs-listbox"
       aria-autocomplete="list"
       aria-activedescendant={flat.length ? optionId(active) : undefined}
-      aria-label="Search bookmarks, services, notes and to-dos"
-      placeholder="Search bookmarks, services, notes, to-dos …"
+      aria-label={t('app.search_bookmarks_services_notes_and_to')}
+      placeholder={t('app.search_bookmarks_services_notes_to_dos')}
       autocomplete="off"
       autofocus
       bind:value={query}
       {onkeydown}
     />
-    <div id="qs-listbox" role="listbox" aria-label="Results" class="results">
+    <div id="qs-listbox" role="listbox" aria-label={t('app.results')} class="results">
       {#each groups as g (g.kind)}
         <div role="group" aria-labelledby="qs-group-{g.kind}">
-          <div class="group" id="qs-group-{g.kind}">{g.label}</div>
+          <div class="group" id="qs-group-{g.kind}">{t(g.label)}</div>
           {#each g.items as it (it.kind + it.id)}
             {@const i = flat.indexOf(it)}
             <div
@@ -184,9 +185,9 @@
       {/each}
     </div>
     {#if query.trim() && flat.length === 0}
-      <p class="muted hint">No matches — press Enter to search the web.</p>
+      <p class="muted hint">{t('app.no_matches_press_enter_to_search')}</p>
     {:else if !query.trim()}
-      <p class="muted hint">↑↓ to choose, Enter to open (to-dos: mark as done), Esc to close.</p>
+      <p class="muted hint">{t('app.to_choose_enter_to_open_to')}</p>
     {/if}
     <p class="muted hint" role="status">{status}</p>
   {/if}

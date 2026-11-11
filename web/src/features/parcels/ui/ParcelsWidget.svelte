@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { type Parcel, parcelName, statusInfo } from '../domain/parcel';
   import type { ParcelsUseCases } from '../usecase/parcelsUseCases';
@@ -42,7 +43,7 @@
   }
 
   async function remove(p: Parcel) {
-    if (!confirm(`Stop tracking "${parcelName(p)}"?`)) return;
+    if (!confirm(t('parcels.confirm_stop', { name: parcelName(p) }))) return;
     try {
       await parcels.remove(p.id);
       list = list.filter((x) => x.id !== p.id);
@@ -52,12 +53,12 @@
   }
 
   const day = (d: Date) =>
-    d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'numeric' });
+    d.toLocaleDateString(intlLocale(), { weekday: 'short', day: 'numeric', month: 'numeric' });
 </script>
 
 <div class="head">
   <button class="btn btn-icon" type="button" aria-expanded={adding} onclick={() => (adding = !adding)}
-    >{adding ? '✕' : '+ Parcel'}</button
+    >{adding ? '✕' : t('parcels.add_button')}</button
   >
 </div>
 {#if adding}
@@ -65,18 +66,18 @@
     <input
       class="input"
       bind:value={number}
-      placeholder="Tracking number (DHL)"
-      aria-label="Tracking number"
+      placeholder={t('parcels.tracking_number_dhl')}
+      aria-label={t('parcels.tracking_number')}
       required
     />
     <input
       class="input"
       bind:value={label}
-      placeholder="Label (optional)"
-      aria-label="Label"
+      placeholder={t('parcels.label_optional')}
+      aria-label={t('parcels.label')}
       maxlength="60"
     />
-    <button class="btn btn-primary" type="submit">Track</button>
+    <button class="btn btn-primary" type="submit">{t('parcels.track')}</button>
   </form>
 {/if}
 {#if error}<p class="error small" role="alert">{error}</p>{/if}
@@ -86,11 +87,11 @@
     <li>
       <div class="row">
         <span class="name" title={p.trackingNumber}>{parcelName(p)}</span>
-        <span class="badge" style="color: {info.color}">{info.label}</span>
+        <span class="badge" style="color: {info.color}">{t(info.label)}</span>
         <button
           class="btn btn-icon rm"
           type="button"
-          aria-label="Remove {parcelName(p)}"
+          aria-label={t('parcels.remove', { value: parcelName(p) })}
           onclick={() => remove(p)}>✕</button
         >
       </div>
@@ -105,7 +106,7 @@
       {/if}
     </li>
   {:else}
-    {#if loaded}<li class="muted">No parcels tracked.</li>{/if}
+    {#if loaded}<li class="muted">{t('parcels.no_parcels_tracked')}</li>{/if}
   {/each}
 </ul>
 

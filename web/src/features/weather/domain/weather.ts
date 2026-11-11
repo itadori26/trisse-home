@@ -1,3 +1,4 @@
+import { intlLocale, type MessageKey, t } from '../../../shared/i18n';
 /** Configuration of a weather widget. */
 export interface WeatherConfig {
   lat: number;
@@ -61,41 +62,42 @@ export interface Condition {
 }
 
 const conditions: Record<number, Condition> = {
-  0: { label: 'Clear sky', icon: '☀️' },
-  1: { label: 'Mainly clear', icon: '🌤️' },
-  2: { label: 'Partly cloudy', icon: '⛅' },
-  3: { label: 'Overcast', icon: '☁️' },
-  45: { label: 'Fog', icon: '🌫️' },
-  48: { label: 'Rime fog', icon: '🌫️' },
-  51: { label: 'Light drizzle', icon: '🌦️' },
-  53: { label: 'Drizzle', icon: '🌦️' },
-  55: { label: 'Dense drizzle', icon: '🌧️' },
-  56: { label: 'Freezing drizzle', icon: '🌧️' },
-  57: { label: 'Freezing drizzle', icon: '🌧️' },
-  61: { label: 'Light rain', icon: '🌦️' },
-  63: { label: 'Rain', icon: '🌧️' },
-  65: { label: 'Heavy rain', icon: '🌧️' },
-  66: { label: 'Freezing rain', icon: '🌧️' },
-  67: { label: 'Freezing rain', icon: '🌧️' },
-  71: { label: 'Light snow', icon: '🌨️' },
-  73: { label: 'Snow', icon: '🌨️' },
-  75: { label: 'Heavy snow', icon: '❄️' },
-  77: { label: 'Snow grains', icon: '🌨️' },
-  80: { label: 'Rain showers', icon: '🌦️' },
-  81: { label: 'Rain showers', icon: '🌧️' },
-  82: { label: 'Violent showers', icon: '⛈️' },
-  85: { label: 'Snow showers', icon: '🌨️' },
-  86: { label: 'Snow showers', icon: '❄️' },
-  95: { label: 'Thunderstorm', icon: '⛈️' },
-  96: { label: 'Thunderstorm with hail', icon: '⛈️' },
-  99: { label: 'Thunderstorm with hail', icon: '⛈️' },
+  0: { label: 'weather.cond.clear_sky', icon: '☀️' },
+  1: { label: 'weather.cond.mainly_clear', icon: '🌤️' },
+  2: { label: 'weather.cond.partly_cloudy', icon: '⛅' },
+  3: { label: 'weather.cond.overcast', icon: '☁️' },
+  45: { label: 'weather.cond.fog', icon: '🌫️' },
+  48: { label: 'weather.cond.rime_fog', icon: '🌫️' },
+  51: { label: 'weather.cond.light_drizzle', icon: '🌦️' },
+  53: { label: 'weather.cond.drizzle', icon: '🌦️' },
+  55: { label: 'weather.cond.dense_drizzle', icon: '🌧️' },
+  56: { label: 'weather.cond.freezing_drizzle', icon: '🌧️' },
+  57: { label: 'weather.cond.freezing_drizzle', icon: '🌧️' },
+  61: { label: 'weather.cond.light_rain', icon: '🌦️' },
+  63: { label: 'weather.cond.rain', icon: '🌧️' },
+  65: { label: 'weather.cond.heavy_rain', icon: '🌧️' },
+  66: { label: 'weather.cond.freezing_rain', icon: '🌧️' },
+  67: { label: 'weather.cond.freezing_rain', icon: '🌧️' },
+  71: { label: 'weather.cond.light_snow', icon: '🌨️' },
+  73: { label: 'weather.cond.snow', icon: '🌨️' },
+  75: { label: 'weather.cond.heavy_snow', icon: '❄️' },
+  77: { label: 'weather.cond.snow_grains', icon: '🌨️' },
+  80: { label: 'weather.cond.rain_showers', icon: '🌦️' },
+  81: { label: 'weather.cond.rain_showers', icon: '🌧️' },
+  82: { label: 'weather.cond.violent_showers', icon: '⛈️' },
+  85: { label: 'weather.cond.snow_showers', icon: '🌨️' },
+  86: { label: 'weather.cond.snow_showers', icon: '❄️' },
+  95: { label: 'weather.cond.thunderstorm', icon: '⛈️' },
+  96: { label: 'weather.cond.thunderstorm_with_hail', icon: '⛈️' },
+  99: { label: 'weather.cond.thunderstorm_with_hail', icon: '⛈️' },
 };
 
 /** Maps a WMO weather code to a label and icon; night variants for clear skies. */
 export function describe(code: number, isDay = true): Condition {
-  const c = conditions[code] ?? { label: 'Unknown', icon: '❔' };
-  if (!isDay && (code === 0 || code === 1)) return { ...c, icon: '🌙' };
-  return c;
+  const c = conditions[code] ?? { label: 'weather.cond.unknown', icon: '❔' };
+  const label = t(c.label as MessageKey);
+  if (!isDay && (code === 0 || code === 1)) return { label, icon: '🌙' };
+  return { label, icon: c.icon };
 }
 
 /** Formats a place for display, e.g. "Oldenburg, Lower Saxony, Germany". */
@@ -131,9 +133,9 @@ export const severityColors: Record<WarningSeverity, string> = {
 /** Validity text such as "until Thu 17:00" or "from Fri 09:00". */
 export function validity(w: Pick<WeatherWarning, 'onset' | 'expires'>, now: Date): string {
   const fmt = (d: Date) =>
-    d.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-  if (w.onset && w.onset > now) return `from ${fmt(w.onset)}`;
-  if (w.expires) return `until ${fmt(w.expires)}`;
+    d.toLocaleString(intlLocale(), { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  if (w.onset && w.onset > now) return t('weather.valid_from', { time: fmt(w.onset) });
+  if (w.expires) return t('weather.valid_until', { time: fmt(w.expires) });
   return '';
 }
 

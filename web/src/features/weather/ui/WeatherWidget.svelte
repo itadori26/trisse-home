@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import {
     describe,
@@ -43,12 +44,12 @@
     return () => clearInterval(timer);
   });
 
-  const weekday = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short' });
+  const weekday = (d: Date) => d.toLocaleDateString(intlLocale(), { weekday: 'short' });
   const deg = (v: number) => `${Math.round(v)}°`;
 </script>
 
 {#if !cfg}
-  <p class="muted">Choose a location in the widget settings.</p>
+  <p class="muted">{t('weather.choose_a_location_in_the_widget')}</p>
 {:else if error && !forecast}
   <p class="error">{error}</p>
 {:else if forecast}
@@ -64,7 +65,7 @@
       <strong>⚠ {w.event || w.headline}</strong> <span class="small">{validity(w, new Date())}</span>
       {#if open === w.id}
         <span class="detail"
-          >{w.description}{w.instruction ? ` ${w.instruction}` : ''} <em>Source: DWD</em></span
+          >{w.description}{w.instruction ? ` ${w.instruction}` : ''} <em>{t('weather.source_dwd')}</em></span
         >
       {/if}
     </button>
@@ -76,9 +77,11 @@
         <div class="temp">{deg(forecast.temperature)}</div>
         <div class="muted">{now.label}{cfg.label ? ` · ${cfg.label}` : ''}</div>
         <div class="muted small details">
-          Feels {deg(forecast.apparentTemperature)} · {Math.round(forecast.humidity)}% · {Math.round(
-            forecast.windSpeed,
-          )} km/h
+          {t('weather.feels_km_h', {
+            value: deg(forecast.apparentTemperature),
+            value2: Math.round(forecast.humidity),
+            value3: Math.round(forecast.windSpeed),
+          })}
         </div>
       </div>
     </div>
@@ -99,7 +102,7 @@
     {/if}
   </div>
 {:else}
-  <p class="muted">Loading…</p>
+  <p class="muted">{t('weather.loading')}</p>
 {/if}
 
 <style>

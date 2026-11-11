@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { Appearance } from '../domain/appearance';
   import type { AppearanceUseCases } from '../usecase/appearanceUseCases';
@@ -33,35 +34,43 @@
 
 <form onsubmit={submit}>
   <label class="field">
-    <span>Theme</span>
-    <select class="input" bind:value={form.theme}>
-      <option value="system">System</option>
-      <option value="light">Light</option>
-      <option value="dark">Dark</option>
+    <span>{t('appearance.language')}</span>
+    <select class="input" bind:value={form.language}>
+      <option value="">{t('appearance.language_browser')}</option>
+      <option value="en">English</option>
+      <option value="de">Deutsch</option>
     </select>
   </label>
   <label class="field">
-    <span>Accent color</span>
+    <span>{t('appearance.theme')}</span>
+    <select class="input" bind:value={form.theme}>
+      <option value="system">{t('appearance.system')}</option>
+      <option value="light">{t('appearance.light')}</option>
+      <option value="dark">{t('appearance.dark')}</option>
+    </select>
+  </label>
+  <label class="field">
+    <span>{t('appearance.accent_color')}</span>
     <span class="color">
       <input
         type="color"
         value={form.accentColor || '#3b6ef5'}
         oninput={(e) => (form.accentColor = e.currentTarget.value)}
       />
-      <input class="input" bind:value={form.accentColor} placeholder="default" />
+      <input class="input" bind:value={form.accentColor} placeholder={t('appearance.default')} />
     </span>
   </label>
   <label class="field">
-    <span>Background image URL</span>
+    <span>{t('appearance.background_image_url')}</span>
     <input class="input" type="url" bind:value={form.backgroundImage} placeholder="https://…" />
   </label>
   <label class="field">
-    <span>Custom CSS (override variables such as --radius or --color-bg)</span>
+    <span>{t('appearance.custom_css_override_variables_such_as')}</span>
     <textarea class="input css" bind:value={form.customCss} rows="6" spellcheck="false"></textarea>
   </label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if saved}<p class="muted">Saved.</p>{/if}
-  <button class="btn btn-primary" type="submit">Save appearance</button>
+  <button class="btn btn-primary" type="submit">{t('appearance.save_appearance')}</button>
 </form>
 
 <style>

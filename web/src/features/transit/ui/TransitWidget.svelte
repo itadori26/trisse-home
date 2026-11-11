@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { type Departure, minutesUntil, modeIcon, parseTransitConfig } from '../domain/transit';
   import type { TransitUseCases } from '../usecase/transitUseCases';
@@ -39,11 +40,11 @@
     };
   });
 
-  const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const time = (d: Date) => d.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
 </script>
 
 {#if !cfg}
-  <p class="muted">Choose a stop in the widget settings.</p>
+  <p class="muted">{t('transit.choose_a_stop_in_the_widget')}</p>
 {:else}
   {#if cfg.stopName}<p class="stop muted">{cfg.stopName}</p>{/if}
   {#if error}<p class="error small">{error}</p>{/if}
@@ -52,9 +53,9 @@
       <li class:cancelled={d.cancelled}>
         <span class="line" title={d.mode}>{modeIcon(d.mode)} {d.line}</span>
         <span class="dir">{d.headsign}{d.track ? ` · ${d.track}` : ''}</span>
-        <span class="when" title="Planned {time(d.planned)}">
+        <span class="when" title={t('transit.planned', { value: time(d.planned) })}>
           {#if d.cancelled}
-            <span class="late">cancelled</span>
+            <span class="late">{t('transit.cancelled')}</span>
           {:else}
             {minutesUntil(d, now)}
             {#if d.delayMinutes > 0}<span class="late">+{d.delayMinutes}</span>{/if}
@@ -62,10 +63,10 @@
         </span>
       </li>
     {:else}
-      {#if loaded}<li class="muted">No departures in the near future.</li>{/if}
+      {#if loaded}<li class="muted">{t('transit.no_departures_in_the_near_future')}</li>{/if}
     {/each}
   </ul>
-  <p class="source muted">Data: Transitous</p>
+  <p class="source muted">{t('transit.data_transitous')}</p>
 {/if}
 
 <style>

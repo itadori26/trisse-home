@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { Feed } from '../domain/feed';
   import type { RssUseCases } from '../usecase/rssUseCases';
@@ -44,8 +45,9 @@
       <button
         class="btn btn-icon"
         type="button"
-        aria-label="Unsubscribe {f.title}"
-        onclick={() => confirm(`Unsubscribe from "${f.title}"?`) && run(() => rss.unsubscribe(f.id))}
+        aria-label={t('rss.unsubscribe', { title: f.title })}
+        onclick={() =>
+          confirm(t('rss.confirm_unsubscribe', { name: f.title })) && run(() => rss.unsubscribe(f.id))}
         >✕</button
       >
     </li>
@@ -64,13 +66,13 @@
     bind:value={url}
     placeholder="https://example.com/feed.xml"
     required
-    aria-label="Feed URL"
+    aria-label={t('rss.feed_url')}
   />
-  <button class="btn" type="submit" disabled={busy}>Subscribe</button>
+  <button class="btn" type="submit" disabled={busy}>{t('rss.subscribe')}</button>
 </form>
 <p>
   <button class="btn btn-icon" type="button" disabled={busy} onclick={() => run(() => rss.refresh())}
-    >↻ Refresh all feeds now</button
+    >{t('rss.refresh_all_feeds_now')}</button
   >
 </p>
 {#if error}<p class="error" role="alert">{error}</p>{/if}

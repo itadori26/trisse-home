@@ -9,9 +9,10 @@ type AppearanceDTO struct {
 	AccentColor     string `json:"accentColor"`
 	BackgroundImage string `json:"backgroundImage"`
 	CustomCSS       string `json:"customCss"`
+	Language        string `json:"language" tstype:"'' | 'en' | 'de'"`
 }
 
 // Appearance maps an AppearanceResponse.
 func Appearance(r usecase.AppearanceResponse) AppearanceDTO {
-	return AppearanceDTO{Theme: r.Theme, AccentColor: r.AccentColor, BackgroundImage: r.BackgroundImage, CustomCSS: r.CustomCSS}
+	return AppearanceDTO{Theme: r.Theme, AccentColor: r.AccentColor, BackgroundImage: r.BackgroundImage, CustomCSS: r.CustomCSS, Language: r.Language}
 }

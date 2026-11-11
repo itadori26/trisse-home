@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { qrDataUrl } from '../../../shared/ui/qr';
   import {
@@ -48,20 +49,26 @@
 
 {#if recoveryCodes}
   <p>
-    <strong>Two-factor authentication is on.</strong> Store these recovery codes in a safe place — each works once
-    if you lose your phone. They are shown only now.
+    <strong>{t('auth.two_factor_authentication_is_on')}</strong>
+    {t('auth.store_these_recovery_codes_in_a')}
   </p>
   <ul class="codes">
     {#each recoveryCodes as c (c)}<li>{c}</li>{/each}
   </ul>
   <p>
     <button class="btn" type="button" onclick={() => recoveryCodes && download(recoveryCodes)}
-      >Download codes</button
+      >{t('auth.download_codes')}</button
     >
-    <button class="btn btn-primary" type="button" onclick={() => (recoveryCodes = null)}>I saved them</button>
+    <button class="btn btn-primary" type="button" onclick={() => (recoveryCodes = null)}
+      >{t('auth.i_saved_them')}</button
+    >
   </p>
 {:else if status?.enabled}
-  <p>Two-factor authentication is <strong>on</strong>. Recovery codes left: {status.recoveryCodesLeft}.</p>
+  <p>
+    {t('auth.two_factor_authentication_is')} <strong>{t('auth.on')}</strong>{t('auth.recovery_codes_left', {
+      recoveryCodesLeft: status.recoveryCodesLeft,
+    })}
+  </p>
   <form
     class="row"
     onsubmit={(e) => {
@@ -76,29 +83,34 @@
       class="input"
       type="password"
       autocomplete="current-password"
-      placeholder="Password"
-      aria-label="Password"
+      placeholder={t('auth.password')}
+      aria-label={t('auth.password')}
       bind:value={password}
       required
     />
     <input
       class="input"
       autocomplete="one-time-code"
-      placeholder="Code"
-      aria-label="Authentication code"
+      placeholder={t('auth.code')}
+      aria-label={t('auth.authentication_code')}
       bind:value={code}
       required
     />
-    <button class="btn btn-danger" type="submit">Turn off</button>
+    <button class="btn btn-danger" type="submit">{t('auth.turn_off')}</button>
   </form>
 {:else if enrollment}
   {@const e = enrollment}
   <p>
-    Scan the QR code with an authenticator app (e.g. Aegis, Google Authenticator, 1Password), then enter the
-    code it shows.
+    {t('auth.scan_the_qr_code_with_an')}
   </p>
-  <img class="qr" src={qrDataUrl(e.uri)} alt="QR code for the authenticator app" width="200" height="200" />
-  <p class="muted small">Or enter the key manually: <code>{formatSecret(e.secret)}</code></p>
+  <img
+    class="qr"
+    src={qrDataUrl(e.uri)}
+    alt={t('auth.qr_code_for_the_authenticator_app')}
+    width="200"
+    height="200"
+  />
+  <p class="muted small">{t('auth.or_enter_the_key_manually')} <code>{formatSecret(e.secret)}</code></p>
   <form
     class="row"
     onsubmit={(ev) => {
@@ -115,21 +127,21 @@
       inputmode="numeric"
       autocomplete="one-time-code"
       placeholder="123456"
-      aria-label="Code from the app"
+      aria-label={t('auth.code_from_the_app')}
       bind:value={code}
       required
     />
-    <button class="btn btn-primary" type="submit">Turn on</button>
+    <button class="btn btn-primary" type="submit">{t('auth.turn_on')}</button>
   </form>
 {:else if status}
-  <p class="muted">Protect your login with a second factor from an authenticator app.</p>
+  <p class="muted">{t('auth.protect_your_login_with_a_second')}</p>
   <button
     class="btn"
     type="button"
     onclick={() =>
       run(async () => {
         enrollment = await auth.startTwoFactor();
-      })}>Set up two-factor authentication</button
+      })}>{t('auth.set_up_two_factor_authentication')}</button
   >
 {/if}
 {#if error}<p class="error" role="alert">{error}</p>{/if}

@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /**
  * Pure layout algorithm of the dashboard grid (see ADR 0007). Items live on
  * a 12-column grid with unbounded rows; gravity pulls every item up as far
@@ -124,5 +125,5 @@ export function keyboardStep(
 
 /** Human-readable position and size for screen readers. */
 export function describeRect(r: Rect): string {
-  return `column ${r.x + 1}, row ${r.y + 1}, ${r.w} × ${r.h} cells`;
+  return t('dashboard.describe_rect', { column: r.x + 1, row: r.y + 1, w: r.w, h: r.h });
 }

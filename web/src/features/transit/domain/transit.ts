@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** A public transport stop. */
 export interface Stop {
   id: string;
@@ -40,7 +41,7 @@ export function parseTransitConfig(raw: Record<string, unknown>): TransitConfig 
 export function minutesUntil(d: Pick<Departure, 'planned' | 'expected'>, now: Date): string {
   const at = d.expected ?? d.planned;
   const min = Math.round((at.getTime() - now.getTime()) / 60_000);
-  return min <= 0 ? 'now' : `${min} min`;
+  return min <= 0 ? t('time.now') : t('time.minutes', { n: min });
 }
 
 /** Icon per transport mode (MOTIS modes). */

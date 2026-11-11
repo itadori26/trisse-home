@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../i18n';
   import type { Snippet } from 'svelte';
 
   /** Props of the modal dialog. */
@@ -33,7 +34,7 @@
 >
   <header>
     <h2>{title}</h2>
-    <button class="btn btn-icon" type="button" aria-label="Close" onclick={onclose}>✕</button>
+    <button class="btn btn-icon" type="button" aria-label={t('ui.close')} onclick={onclose}>✕</button>
   </header>
   <div class="body">{@render children()}</div>
 </dialog>

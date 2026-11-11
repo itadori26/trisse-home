@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { emptyServiceInput, type Service, type ServiceInput, statusText } from '../domain/service';
   import type { ServicesUseCases } from '../usecase/servicesUseCases';
@@ -52,7 +53,7 @@
   }
 
   function remove(s: Service) {
-    if (!confirm(`Delete "${s.name}"?`)) return;
+    if (!confirm(t('common.confirm_delete', { name: s.name }))) return;
     run(async () => {
       await services.delete(s.id);
       list = list.filter((x) => x.id !== s.id);
@@ -72,7 +73,7 @@
       <button
         class="btn btn-icon"
         type="button"
-        aria-label="Move up"
+        aria-label={t('services.move_up')}
         disabled={i === 0}
         onclick={() =>
           run(async () => {
@@ -82,29 +83,45 @@
       <button
         class="btn btn-icon"
         type="button"
-        aria-label="Move down"
+        aria-label={t('services.move_down')}
         disabled={i === list.length - 1}
         onclick={() =>
           run(async () => {
             list = await services.move(list, s.id, 1);
           })}>↓</button
       >
-      <button class="btn btn-icon" type="button" aria-label="Edit {s.name}" onclick={() => edit(s)}>✎</button>
-      <button class="btn btn-icon" type="button" aria-label="Delete {s.name}" onclick={() => remove(s)}
-        >✕</button
+      <button
+        class="btn btn-icon"
+        type="button"
+        aria-label={t('services.edit', { name: s.name })}
+        onclick={() => edit(s)}>✎</button
+      >
+      <button
+        class="btn btn-icon"
+        type="button"
+        aria-label={t('services.delete', { name: s.name })}
+        onclick={() => remove(s)}>✕</button
       >
     </li>
   {/each}
 </ul>
 
 <form onsubmit={submit}>
-  <h4>{editingId ? 'Edit service' : 'Add service'}</h4>
+  <h4>{editingId ? t('services.edit_service') : t('services.add_service')}</h4>
   <div class="row">
     <label class="field"
-      ><span>Name</span><input class="input" bind:value={form.name} required maxlength="60" /></label
+      ><span>{t('services.name')}</span><input
+        class="input"
+        bind:value={form.name}
+        required
+        maxlength="60"
+      /></label
     >
     <label class="field"
-      ><span>Icon (emoji or image URL)</span><input class="input" bind:value={form.icon} /></label
+      ><span>{t('services.icon_emoji_or_image_url')}</span><input
+        class="input"
+        bind:value={form.icon}
+      /></label
     >
   </div>
   <label class="field"
@@ -117,18 +134,22 @@
     /></label
   >
   <label class="field"
-    ><span>Health check URL (optional)</span><input
+    ><span>{t('services.health_check_url_optional')}</span><input
       class="input"
       type="url"
       bind:value={form.checkUrl}
-      placeholder="defaults to the URL"
+      placeholder={t('services.defaults_to_the_url')}
     /></label
   >
   <label class="field"
-    ><span>Description</span><input class="input" bind:value={form.description} maxlength="200" /></label
+    ><span>{t('services.description')}</span><input
+      class="input"
+      bind:value={form.description}
+      maxlength="200"
+    /></label
   >
   <label class="field"
-    ><span>MAC address for Wake-on-LAN (optional)</span><input
+    ><span>{t('services.mac_address_for_wake_on_lan')}</span><input
       class="input"
       bind:value={form.mac}
       placeholder="aa:bb:cc:dd:ee:ff"
@@ -136,13 +157,13 @@
     /></label
   >
   <label
-    ><input type="checkbox" bind:checked={form.skipTlsVerify} /> Accept self-signed certificates for the health
-    check</label
+    ><input type="checkbox" bind:checked={form.skipTlsVerify} />
+    {t('services.accept_self_signed_certificates_for_the')}</label
   >
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <p>
-    <button class="btn btn-primary" type="submit">{editingId ? 'Save' : 'Add'}</button>
-    {#if editingId}<button class="btn" type="button" onclick={reset}>Cancel</button>{/if}
+    <button class="btn btn-primary" type="submit">{editingId ? t('common.save') : t('common.add')}</button>
+    {#if editingId}<button class="btn" type="button" onclick={reset}>{t('services.cancel')}</button>{/if}
   </p>
 </form>
 

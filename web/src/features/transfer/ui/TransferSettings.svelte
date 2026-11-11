@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { describeResult } from '../domain/transfer';
   import type { TransferUseCases } from '../usecase/transferUseCases';
@@ -18,17 +19,12 @@
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    if (
-      !confirm(
-        'Importing replaces your dashboard, bookmarks, notes, to-dos, feeds, services and settings with the content of the file. Continue?',
-      )
-    )
-      return;
+    if (!confirm(t('transfer.confirm_import'))) return;
     busy = true;
     error = message = '';
     try {
       const res = await transfer.importFile(await file.text());
-      message = describeResult(res) + ' Reload the page to see everything.';
+      message = `${describeResult(res)} ${t('transfer.reload_hint')}`;
     } catch (err) {
       error = errorMessage(err);
     } finally {
@@ -37,19 +33,18 @@
   }
 </script>
 
-<h4>Export</h4>
+<h4>{t('transfer.export')}</h4>
 <p class="muted">
-  Downloads your layout, bookmarks, notes, to-dos, feeds, services and settings as JSON. Passwords, tokens and
-  API keys are never included.
+  {t('transfer.downloads_your_layout_bookmarks_notes_to')}
 </p>
-<p><a class="btn" href={transfer.exportUrl()} download>Download export</a></p>
+<p><a class="btn" href={transfer.exportUrl()} download>{t('transfer.download_export')}</a></p>
 
-<h4>Import</h4>
+<h4>{t('transfer.import')}</h4>
 <p class="muted">
-  Restores an export, e.g. on a new server. Credentials have to be entered again afterwards.
+  {t('transfer.restores_an_export_e_g_on')}
 </p>
 <label class="btn file">
-  {busy ? 'Importing…' : 'Choose export file…'}
+  {busy ? t('common.importing') : t('transfer.choose_file')}
   <input type="file" accept="application/json,.json" onchange={onfile} disabled={busy} />
 </label>
 {#if error}<p class="error" role="alert">{error}</p>{/if}

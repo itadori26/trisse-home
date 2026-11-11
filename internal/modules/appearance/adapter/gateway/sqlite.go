@@ -28,10 +28,10 @@ func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
 // Load returns the stored appearance or the default.
 func (r *Repository) Load(ctx context.Context) (domain.Appearance, error) {
-	var theme, accent, bg, css string
+	var theme, accent, bg, css, lang string
 	err := r.db.QueryRowContext(ctx,
-		`SELECT theme, accent_color, background_image, custom_css FROM appearance_settings WHERE id = 1`).
-		Scan(&theme, &accent, &bg, &css)
+		`SELECT theme, accent_color, background_image, custom_css, language FROM appearance_settings WHERE id = 1`).
+		Scan(&theme, &accent, &bg, &css, &lang)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Default(), nil
 	}
@@ -39,6 +39,9 @@ func (r *Repository) Load(ctx context.Context) (domain.Appearance, error) {
 		return domain.Appearance{}, fmt.Errorf("select appearance: %w", err)
 	}
 	a, err := domain.NewAppearance(domain.Theme(theme), accent, bg, css)
+	if err == nil {
+		err = a.SetLanguage(lang)
+	}
 	if err != nil {
 		// Stored data that no longer satisfies the rules falls back to the
 		// default instead of locking the user out of the dashboard.
@@ -49,11 +52,11 @@ func (r *Repository) Load(ctx context.Context) (domain.Appearance, error) {
 
 // Save stores the appearance.
 func (r *Repository) Save(ctx context.Context, a domain.Appearance) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO appearance_settings (id, theme, accent_color, background_image, custom_css)
-		VALUES (1, ?, ?, ?, ?)
+	_, err := r.db.ExecContext(ctx, `INSERT INTO appearance_settings (id, theme, accent_color, background_image, custom_css, language)
+		VALUES (1, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET theme = excluded.theme, accent_color = excluded.accent_color,
-			background_image = excluded.background_image, custom_css = excluded.custom_css`,
-		string(a.Theme()), a.AccentColor(), a.BackgroundImage(), a.CustomCSS())
+			background_image = excluded.background_image, custom_css = excluded.custom_css, language = excluded.language`,
+		string(a.Theme()), a.AccentColor(), a.BackgroundImage(), a.CustomCSS(), a.Language())
 	if err != nil {
 		return fmt.Errorf("upsert appearance: %w", err)
 	}

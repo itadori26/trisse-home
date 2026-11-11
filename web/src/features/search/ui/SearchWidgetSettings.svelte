@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   /** Props of the per-widget search settings. */
   interface Props {
     config: Record<string, unknown>;
@@ -15,7 +16,7 @@
     onsave({ newTab });
   }}
 >
-  <label><input type="checkbox" bind:checked={newTab} /> Open results in a new tab</label>
-  <p class="muted">The search engine and custom shortcuts are configured under Settings → Search.</p>
-  <button class="btn btn-primary" type="submit">Save</button>
+  <label><input type="checkbox" bind:checked={newTab} /> {t('search.open_results_in_a_new_tab')}</label>
+  <p class="muted">{t('search.the_search_engine_and_custom_shortcuts')}</p>
+  <button class="btn btn-primary" type="submit">{t('search.save')}</button>
 </form>

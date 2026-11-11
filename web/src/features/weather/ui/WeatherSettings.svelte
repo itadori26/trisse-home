@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { type Place, parseWeatherConfig, placeLabel } from '../domain/weather';
   import type { WeatherUseCases } from '../usecase/weatherUseCases';
@@ -28,7 +29,7 @@
     error = '';
     try {
       results = await weather.searchPlaces(query);
-      if (results.length === 0) error = 'No places found.';
+      if (results.length === 0) error = t('weather.no_places_found');
     } catch (err) {
       error = errorMessage(err);
     }
@@ -42,7 +43,7 @@
 
   function save() {
     if (!selected) {
-      error = 'Please choose a location.';
+      error = t('weather.choose_location');
       return;
     }
     onsave({ ...selected, label: label.trim(), days, warnings: showWarnings });
@@ -50,8 +51,13 @@
 </script>
 
 <form onsubmit={find} class="search">
-  <input class="input" bind:value={query} placeholder="City, e.g. Oldenburg" aria-label="Search location" />
-  <button class="btn" type="submit">Search</button>
+  <input
+    class="input"
+    bind:value={query}
+    placeholder={t('weather.city_e_g_oldenburg')}
+    aria-label={t('weather.search_location')}
+  />
+  <button class="btn" type="submit">{t('weather.search')}</button>
 </form>
 {#if results.length}
   <ul class="results">
@@ -61,23 +67,26 @@
   </ul>
 {/if}
 {#if selected}
-  <p class="muted">Location: {selected.lat.toFixed(2)}, {selected.lon.toFixed(2)}</p>
+  <p class="muted">
+    {t('weather.location', { value: selected.lat.toFixed(2), value2: selected.lon.toFixed(2) })}
+  </p>
 {/if}
 <label class="field">
-  <span>Label</span>
+  <span>{t('weather.label')}</span>
   <input class="input" bind:value={label} maxlength="40" />
 </label>
 {#if mode === 'forecast'}
   <label class="field">
-    <span>Forecast days: {days}</span>
+    <span>{t('weather.forecast_days', { days: days })}</span>
     <input type="range" min="0" max="5" bind:value={days} />
   </label>
   <label
-    ><input type="checkbox" bind:checked={showWarnings} /> Show official weather warnings (DWD, Germany only)</label
+    ><input type="checkbox" bind:checked={showWarnings} />
+    {t('weather.show_official_weather_warnings_dwd_germa')}</label
   >
 {/if}
 {#if error}<p class="error" role="alert">{error}</p>{/if}
-<button class="btn btn-primary" type="button" onclick={save}>Save</button>
+<button class="btn btn-primary" type="button" onclick={save}>{t('weather.save')}</button>
 
 <style>
   .search {

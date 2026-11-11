@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { formatBytes } from '../../../shared/ui/format';
   import { handshakeAgo, type PeerList } from '../domain/peer';
@@ -34,22 +35,29 @@
 {#if error && !list}
   <p class={missing ? 'muted' : 'error'}>{error}</p>
 {:else if list}
-  <p class="summary"><strong>{list.online}</strong> of {list.peers.length} connected</p>
+  <p class="summary">
+    <strong>{list.online}</strong>
+    {t('wireguard.of_connected', { length: list.peers.length })}
+  </p>
   <ul class="peers">
     {#each list.peers as p (p.publicKey)}
       <li title="{p.allowedIps}{p.endpoint ? ` · ${p.endpoint}` : ''}">
-        <span class="dot" class:on={p.online} aria-label={p.online ? 'online' : 'offline'}></span>
+        <span
+          class="dot"
+          class:on={p.online}
+          aria-label={p.online ? t('wireguard.online') : t('wireguard.offline')}
+        ></span>
         <span class="name">{p.name}</span>
         <span class="muted small">{handshakeAgo(p.latestHandshake, now)}</span>
         <span class="muted small traffic">↓{formatBytes(p.receivedBytes)} ↑{formatBytes(p.sentBytes)}</span>
       </li>
     {:else}
-      <li class="muted">No peers.</li>
+      <li class="muted">{t('wireguard.no_peers')}</li>
     {/each}
   </ul>
-  {#if list.stale}<p class="error small">The export is outdated — is the cron job running?</p>{/if}
+  {#if list.stale}<p class="error small">{t('wireguard.the_export_is_outdated_is_the')}</p>{/if}
 {:else}
-  <p class="muted">Loading…</p>
+  <p class="muted">{t('wireguard.loading')}</p>
 {/if}
 
 <style>
