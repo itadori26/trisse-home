@@ -23,6 +23,7 @@ security:
   - session: []
 tags:
   - name: auth
+  - name: onboarding
   - name: dashboard
   - name: appearance
   - name: search
@@ -103,6 +104,21 @@ paths:
         "200": { $ref: "#/components/responses/Session" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/Invalid" }
+
+  # ---------------------------------------------------------------- onboarding
+  /api/onboarding:
+    get:
+      tags: [onboarding]
+      summary: Whether the guided tour has been completed
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Onboarding" } } } }
+    put:
+      tags: [onboarding]
+      summary: Complete (true) or restart (false) the guided tour
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Onboarding" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Onboarding" } } } }
 
   # ---------------------------------------------------------------- dashboard
   /api/dashboard:
@@ -631,6 +647,7 @@ components:
             code: { type: string, enum: [bad_request, invalid, not_found, conflict, unauthorized, forbidden, too_many_requests, unavailable, internal] }
             message: { type: string }
             field: { type: string }
+    Onboarding: { type: object, required: [completed], properties: { completed: { type: boolean } } }
     Health: { type: object, properties: { status: { type: string, enum: [ok, unavailable] } } }
     ModulesInfo:
       type: object

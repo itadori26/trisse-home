@@ -103,7 +103,7 @@
     color: var(--color-text-muted);
   }
   .due {
-    font-size: 0.8rem;
+    font-size: 0.8em;
     color: var(--color-text-muted);
     white-space: nowrap;
   }

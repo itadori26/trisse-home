@@ -35,10 +35,10 @@
   .row {
     display: flex;
     justify-content: space-between;
-    font-size: 0.85rem;
+    font-size: 0.85em;
   }
   .bar {
-    height: 6px;
+    height: clamp(6px, 1.6cqmin, 14px);
     border-radius: 3px;
     background: var(--color-surface-2);
     overflow: hidden;

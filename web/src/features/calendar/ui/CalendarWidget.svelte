@@ -76,7 +76,7 @@
 <style>
   h4 {
     margin: var(--space-2) 0 var(--space-1);
-    font-size: 0.8rem;
+    font-size: 0.8em;
     color: var(--color-text-muted);
   }
   section:first-child h4 {
@@ -97,7 +97,7 @@
     width: 4.5em;
     font-variant-numeric: tabular-nums;
     color: var(--color-accent);
-    font-size: 0.85rem;
+    font-size: 0.85em;
   }
   .summary {
     overflow: hidden;
@@ -105,6 +105,6 @@
     white-space: nowrap;
   }
   .small {
-    font-size: 0.75rem;
+    font-size: 0.75em;
   }
 </style>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { type Appearance, cssVariables, defaultAppearance } from '../features/appearance';
+  import { Tour } from '../features/onboarding';
   import { errorMessage } from '../shared/api-client/http';
   import { applyTheme } from '../shared/theme/theme';
   import type { Container } from './container';
@@ -20,6 +21,7 @@
   let appearance = $state<Appearance>(defaultAppearance);
   let modules = $state<Set<string> | null>(null);
   let widgetKinds = $state<Set<string>>(new Set());
+  let touring = $state(false);
 
   $effect(() => applyTheme(appearance.theme));
 
@@ -45,6 +47,29 @@
       modules = info.modules;
       widgetKinds = info.widgetKinds;
       if (info.modules.has('appearance')) appearance = await container.appearance.load();
+      // Wait a moment so the dashboard is rendered before the tour measures it.
+      if (info.modules.has('onboarding') && (await container.onboarding.shouldShowTour()))
+        setTimeout(startTour, 600);
+    } catch (err) {
+      error = errorMessage(err);
+    }
+  }
+
+  function startTour() {
+    editing = false;
+    touring = true;
+  }
+
+  function finishTour() {
+    touring = false;
+    container.onboarding.finish().catch((err) => (error = errorMessage(err)));
+  }
+
+  async function restartTour() {
+    settingsOpen = false;
+    try {
+      await container.onboarding.restart();
+      setTimeout(startTour, 200);
     } catch (err) {
       error = errorMessage(err);
     }
@@ -69,12 +94,15 @@
       class="btn btn-icon"
       class:on={editing}
       type="button"
+      data-tour="edit"
       aria-pressed={editing}
       onclick={() => (editing = !editing)}
     >
       {editing ? 'Done' : 'Edit'}
     </button>
-    <button class="btn btn-icon" type="button" onclick={() => (settingsOpen = true)}>Settings</button>
+    <button class="btn btn-icon" type="button" data-tour="settings" onclick={() => (settingsOpen = true)}
+      >Settings</button
+    >
     <button class="btn btn-icon" type="button" onclick={logout}>Log out</button>
   </nav>
 </header>
@@ -92,8 +120,13 @@
     {modules}
     {appearance}
     onappearance={(a) => (appearance = a)}
+    onrestarttour={modules.has('onboarding') ? restartTour : undefined}
     onclose={() => (settingsOpen = false)}
   />
+{/if}
+
+{#if touring}
+  <Tour onfinish={finishTour} />
 {/if}
 
 <style>

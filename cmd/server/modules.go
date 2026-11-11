@@ -15,6 +15,7 @@ import (
 	"trisse-home/internal/modules/dashboard"
 	"trisse-home/internal/modules/docker"
 	"trisse-home/internal/modules/notes"
+	"trisse-home/internal/modules/onboarding"
 	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
@@ -46,7 +47,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 	authModule, err := auth.New(
 		auth.Config{
 			CookieSecure: cfg.CookieSecure, SessionTTL: cfg.SessionTTL, SetupToken: cfg.SetupToken,
-			OnAccountCreated: func(ctx context.Context) { seedSampleData(ctx, cfg, log, registry) },
+			OnAccountCreated: func(ctx context.Context) { onAccountCreated(ctx, cfg, log, registry) },
 		},
 		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, Log: log},
 	)
@@ -59,6 +60,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		name  string
 		build func() modules.Module
 	}{
+		{"onboarding", func() modules.Module { return onboarding.New(db, clk) }},
 		{"appearance", func() modules.Module { return appearance.New(db) }},
 		{"search", func() modules.Module { return search.New(db) }},
 		{"weather", func() modules.Module { return weather.New(client, clk) }},
@@ -90,6 +92,24 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 	sample := dashboard.SampleWeather{Label: cfg.SampleWeather.Name, Lat: cfg.SampleWeather.Lat, Lon: cfg.SampleWeather.Lon}
 	registry.Register(dashboard.New(db, ids, kinds, sample))
 	return authModule, registry, nil
+}
+
+// tourRestarter is implemented by the onboarding module.
+type tourRestarter interface {
+	RestartTour(ctx context.Context) error
+}
+
+// onAccountCreated prepares a fresh account: the guided tour is shown again
+// and the installation is filled with sample data.
+func onAccountCreated(ctx context.Context, cfg config.Config, log *slog.Logger, registry *modules.Registry) {
+	for _, m := range registry.All() {
+		if t, ok := m.(tourRestarter); ok {
+			if err := t.RestartTour(ctx); err != nil {
+				log.WarnContext(ctx, "could not reset the guided tour", "err", err)
+			}
+		}
+	}
+	seedSampleData(ctx, cfg, log, registry)
 }
 
 // seedSampleData fills a fresh installation with example data so new users

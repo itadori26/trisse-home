@@ -111,6 +111,6 @@
     color: var(--color-text-muted);
   }
   .meta {
-    font-size: 0.75rem;
+    font-size: 0.75em;
   }
 </style>

@@ -16,12 +16,13 @@
   let { tabs, activeId, editing, onselect, onadd, onrename, ondelete, onmove }: Props = $props();
 </script>
 
-<nav class="tabs" aria-label="Dashboard tabs">
+<nav class="tabs" aria-label="Dashboard tabs" data-tour="tabs">
   {#each tabs as tab, i (tab.id)}
     <div class="tab" class:active={tab.id === activeId}>
       <button
         type="button"
         class="name"
+        data-tour="tab-{tab.name}"
         aria-current={tab.id === activeId ? 'page' : undefined}
         onclick={() => onselect(tab.id)}
       >

@@ -45,7 +45,7 @@
       <div>
         <div class="temp">{deg(forecast.temperature)}</div>
         <div class="muted">{now.label}{cfg.label ? ` · ${cfg.label}` : ''}</div>
-        <div class="muted small">
+        <div class="muted small details">
           Feels {deg(forecast.apparentTemperature)} · {Math.round(forecast.humidity)}% · {Math.round(
             forecast.windSpeed,
           )} km/h
@@ -74,32 +74,36 @@
 
 <style>
   .weather {
+    height: 100%;
     display: flex;
     flex-direction: column;
+    justify-content: space-around;
     gap: var(--space-3);
   }
   .now {
     display: flex;
-    gap: var(--space-3);
+    gap: 0.6em;
     align-items: center;
+    justify-content: center;
   }
   .icon {
-    font-size: 2.6rem;
+    font-size: clamp(2rem, 20cqmin, 8rem);
+    line-height: 1;
   }
   .temp {
-    font-size: 2rem;
+    font-size: clamp(1.6rem, 15cqmin, 6rem);
     font-weight: 600;
     line-height: 1;
   }
   .small {
-    font-size: 0.8rem;
+    font-size: 0.85em;
   }
   .days {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(3.5em, 1fr));
     gap: var(--space-2);
     text-align: center;
   }
@@ -109,9 +113,30 @@
     gap: 2px;
   }
   .day-icon {
-    font-size: 1.4rem;
+    font-size: clamp(1.2rem, 8cqmin, 3rem);
   }
   .rain {
     color: var(--color-accent);
+  }
+  /* Wide widgets: forecast next to the current conditions. */
+  @container widget (min-aspect-ratio: 2.2 / 1) and (min-width: 520px) {
+    .weather {
+      flex-direction: row;
+      align-items: center;
+    }
+    .days {
+      flex: 1;
+    }
+  }
+  /* Low widgets drop the forecast, very low ones the details as well. */
+  @container widget (max-height: 150px) and (max-width: 519px) {
+    .days {
+      display: none;
+    }
+  }
+  @container widget (max-height: 90px) {
+    .details {
+      display: none;
+    }
   }
 </style>

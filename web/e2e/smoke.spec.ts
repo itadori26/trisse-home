@@ -12,6 +12,17 @@ test('setup, logout and login lead to the dashboard', async ({ page }) => {
   await page.getByLabel('Repeat password').fill(password);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  // The guided tour starts automatically after the first login.
+  const tour = page.getByRole('dialog', { name: 'Welcome to trisse-home 👋' });
+  await expect(tour).toBeVisible();
+  for (const title of ['Tabs', 'Search', 'Edit mode', 'Settings', 'Server overview']) {
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: title })).toBeVisible();
+  }
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await page.getByRole('button', { name: "Let's go" }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   // After the first setup the dashboard is filled with sample widgets and data.
   await expect(page.getByRole('search')).toBeVisible();
   await expect(page.locator('time')).toBeVisible();
@@ -36,6 +47,9 @@ test('setup, logout and login lead to the dashboard', async ({ page }) => {
 
   await page.reload();
   await expect(page.getByTestId('dashboard')).toBeVisible();
+  // A completed tour is not shown again.
+  await page.waitForTimeout(1000);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('edit mode adds a tab and a widget', async ({ page }) => {

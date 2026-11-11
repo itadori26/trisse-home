@@ -21,7 +21,7 @@
   }
 </script>
 
-<form class="search" role="search" onsubmit={submit}>
+<form class="search" role="search" onsubmit={submit} data-tour="search">
   <input
     class="input"
     type="search"

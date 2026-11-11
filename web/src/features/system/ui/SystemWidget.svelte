@@ -33,27 +33,36 @@
 {#if error && !snap}
   <p class="error">{error}</p>
 {:else if snap}
-  <Meter label="CPU ({snap.cpuCount} cores)" percent={snap.cpuPercent} />
-  <Meter label="Memory" percent={snap.memory.percent} detail={usage(snap.memory)} />
-  {#if snap.swap.total > 0}<Meter label="Swap" percent={snap.swap.percent} detail={usage(snap.swap)} />{/if}
-  {#each snap.disks as d (d.label)}
-    <Meter label={d.label} percent={d.usage.percent} detail={usage(d.usage)} />
-  {/each}
-  <p class="facts muted">
-    <span title="Load average 1/5/15 min">Load {snap.load.map((l) => l.toFixed(2)).join(' · ')}</span>
-    <span>Up {formatUptime(snap.uptimeSeconds)}</span>
-    {#if snap.temperature > 0}<span>{snap.temperature.toFixed(0)} °C</span>{/if}
-  </p>
+  <div class="system">
+    <Meter label="CPU ({snap.cpuCount} cores)" percent={snap.cpuPercent} />
+    <Meter label="Memory" percent={snap.memory.percent} detail={usage(snap.memory)} />
+    {#if snap.swap.total > 0}<Meter label="Swap" percent={snap.swap.percent} detail={usage(snap.swap)} />{/if}
+    {#each snap.disks as d (d.label)}
+      <Meter label={d.label} percent={d.usage.percent} detail={usage(d.usage)} />
+    {/each}
+    <p class="facts muted">
+      <span title="Load average 1/5/15 min">Load {snap.load.map((l) => l.toFixed(2)).join(' · ')}</span>
+      <span>Up {formatUptime(snap.uptimeSeconds)}</span>
+      {#if snap.temperature > 0}<span>{snap.temperature.toFixed(0)} °C</span>{/if}
+    </p>
+  </div>
 {:else}
   <p class="muted">Loading…</p>
 {/if}
 
 <style>
+  /* Spread the meters over tall widgets instead of stacking them at the top. */
+  .system {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+  }
   .facts {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
     margin: var(--space-2) 0 0;
-    font-size: 0.8rem;
+    font-size: 0.8em;
   }
 </style>

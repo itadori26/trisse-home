@@ -70,16 +70,16 @@
     flex-direction: column;
   }
   .numbers strong {
-    font-size: 1.2rem;
+    font-size: clamp(1.1rem, 9cqmin, 3rem);
   }
   .numbers span,
   .small {
-    font-size: 0.75rem;
+    font-size: 0.75em;
   }
   .top {
     margin: 0;
     padding-left: 1.2em;
-    font-size: 0.85rem;
+    font-size: 0.85em;
   }
   .top li span {
     display: inline-block;
