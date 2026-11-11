@@ -35,9 +35,14 @@ type Config struct {
 	DisabledModules []string
 	ShutdownTimeout time.Duration
 	DockerProxyURL  string
-	HostProcPath    string
-	HostSysPath     string
-	DiskPaths       []string
+	// DockerActions enables restart and logs for DockerActionsContainers;
+	// restarts use DockerActionsProxyURL (a restart-only socket proxy).
+	DockerActions           bool
+	DockerActionsContainers []string
+	DockerActionsProxyURL   string
+	HostProcPath            string
+	HostSysPath             string
+	DiskPaths               []string
 	// SampleData fills a fresh installation with example widgets and data.
 	SampleData bool
 	// SampleWeather is the location of the example weather widget.
@@ -67,31 +72,37 @@ func (c Config) ModuleEnabled(name string) bool {
 func Load(getenv func(string) string) (Config, error) {
 	l := loader{getenv: getenv}
 	cfg := Config{
-		ListenAddr:      l.str("LISTEN_ADDR", ":8090"),
-		DatabasePath:    l.str("DATABASE_PATH", "data/trisse-home.db"),
-		LogLevel:        l.level("LOG_LEVEL", slog.LevelInfo),
-		LogFormat:       l.oneOf("LOG_FORMAT", "json", "json", "text"),
-		AllowedCIDRs:    l.prefixes("ALLOWED_CIDRS", DefaultAllowedCIDRs),
-		TrustedProxies:  l.prefixes("TRUSTED_PROXIES", ""),
-		CookieSecure:    l.boolean("COOKIE_SECURE", false),
-		SessionTTL:      l.duration("SESSION_TTL", 30*24*time.Hour),
-		SecretKey:       l.secretKey("SECRET_KEY"),
-		SetupToken:      l.str("SETUP_TOKEN", ""),
-		DisabledModules: l.list("MODULES_DISABLED", ""),
-		ShutdownTimeout: l.duration("SHUTDOWN_TIMEOUT", 15*time.Second),
-		DockerProxyURL:  l.str("DOCKER_PROXY_URL", "http://docker-socket-proxy:2375"),
-		HostProcPath:    l.str("HOST_PROC", "/proc"),
-		HostSysPath:     l.str("HOST_SYS", "/sys"),
-		DiskPaths:       l.rawList("SYSTEM_DISK_PATHS", "/"),
-		SampleData:      l.boolean("SAMPLE_DATA", true),
-		SampleWeather:   l.location("SAMPLE_WEATHER_LOCATION", "Berlin,52.52,13.41"),
-		SampleFeeds:     l.rawList("SAMPLE_FEEDS", "https://go.dev/blog/feed.atom,https://hnrss.org/frontpage"),
-		BackupInterval:  l.duration("BACKUP_INTERVAL", 24*time.Hour),
-		BackupRetention: l.integer("BACKUP_RETENTION", 7),
+		ListenAddr:              l.str("LISTEN_ADDR", ":8090"),
+		DatabasePath:            l.str("DATABASE_PATH", "data/trisse-home.db"),
+		LogLevel:                l.level("LOG_LEVEL", slog.LevelInfo),
+		LogFormat:               l.oneOf("LOG_FORMAT", "json", "json", "text"),
+		AllowedCIDRs:            l.prefixes("ALLOWED_CIDRS", DefaultAllowedCIDRs),
+		TrustedProxies:          l.prefixes("TRUSTED_PROXIES", ""),
+		CookieSecure:            l.boolean("COOKIE_SECURE", false),
+		SessionTTL:              l.duration("SESSION_TTL", 30*24*time.Hour),
+		SecretKey:               l.secretKey("SECRET_KEY"),
+		SetupToken:              l.str("SETUP_TOKEN", ""),
+		DisabledModules:         l.list("MODULES_DISABLED", ""),
+		ShutdownTimeout:         l.duration("SHUTDOWN_TIMEOUT", 15*time.Second),
+		DockerProxyURL:          l.str("DOCKER_PROXY_URL", "http://docker-socket-proxy:2375"),
+		DockerActions:           l.boolean("DOCKER_ACTIONS", false),
+		DockerActionsContainers: l.rawList("DOCKER_ACTIONS_CONTAINERS", ""),
+		DockerActionsProxyURL:   l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
+		HostProcPath:            l.str("HOST_PROC", "/proc"),
+		HostSysPath:             l.str("HOST_SYS", "/sys"),
+		DiskPaths:               l.rawList("SYSTEM_DISK_PATHS", "/"),
+		SampleData:              l.boolean("SAMPLE_DATA", true),
+		SampleWeather:           l.location("SAMPLE_WEATHER_LOCATION", "Berlin,52.52,13.41"),
+		SampleFeeds:             l.rawList("SAMPLE_FEEDS", "https://go.dev/blog/feed.atom,https://hnrss.org/frontpage"),
+		BackupInterval:          l.duration("BACKUP_INTERVAL", 24*time.Hour),
+		BackupRetention:         l.integer("BACKUP_RETENTION", 7),
 	}
 	cfg.BackupDir = l.str("BACKUP_DIR", filepath.Join(filepath.Dir(cfg.DatabasePath), "backups"))
 	if len(cfg.AllowedCIDRs) == 0 && l.getenv("ALLOWED_CIDRS") != "" {
 		l.fail("ALLOWED_CIDRS", "must contain at least one CIDR")
+	}
+	if cfg.DockerActions && len(cfg.DockerActionsContainers) == 0 {
+		l.fail("DOCKER_ACTIONS_CONTAINERS", "must list the containers that may be restarted when DOCKER_ACTIONS=true")
 	}
 	if len(cfg.SetupToken) > 0 && len(cfg.SetupToken) < 16 {
 		l.fail("SETUP_TOKEN", "must be at least 16 characters long")

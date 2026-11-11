@@ -61,6 +61,12 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /containers/json", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `[{"Id":"abcdef1234567890","Names":["/web"],"Image":"nginx","State":"running","Status":"Up 1 hour (healthy)","Created":1700000000}]`)
 	})
+	mux.HandleFunc("POST /containers/web/restart", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("GET /containers/web/logs", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "started\nlistening on :80\n")
+	})
 	mux.HandleFunc("GET /control/stats", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"num_dns_queries":100,"num_blocked_filtering":25,"avg_processing_time":0.002,"top_blocked_domains":[{"ads.example":7}]}`)
 	})
@@ -155,6 +161,7 @@ func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) 
 		ListenAddr: ":0", DatabasePath: filepath.Join(t.TempDir(), "e2e.db"),
 		AllowedCIDRs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}, SessionTTL: time.Hour,
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
+		DockerActions: true, DockerActionsContainers: []string{"web"}, DockerActionsProxyURL: upstream,
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
 		BackupDir:       filepath.Join(t.TempDir(), "backups"), BackupInterval: 24 * time.Hour, BackupRetention: 3,
@@ -380,6 +387,13 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodGet, "/api/docker/containers", nil, http.StatusOK, &containers)
 	if containers["running"] != float64(1) {
 		t.Fatalf("docker: %v", containers)
+	}
+	c.do(http.MethodPost, "/api/docker/containers/web/restart", nil, http.StatusNoContent)
+	c.do(http.MethodPost, "/api/docker/containers/other/restart", nil, http.StatusForbidden)
+	var logs struct{ Lines []string }
+	c.json(http.MethodGet, "/api/docker/containers/web/logs", nil, http.StatusOK, &logs)
+	if len(logs.Lines) != 2 || logs.Lines[1] != "listening on :80" {
+		t.Fatalf("docker logs: %v", logs)
 	}
 
 	// --- adguard ---

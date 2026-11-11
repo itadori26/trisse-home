@@ -59,6 +59,32 @@ services:
     security_opt: ["no-new-privileges:true"]
     networks: [docker-api]
 
+  # Optional, only started with COMPOSE_PROFILES=docker-actions: a second
+  # socket proxy that allows nothing but POST /containers/<name>/stop|restart|kill
+  # (no reads, no create/exec). trisse-home only calls restart, and only for
+  # the containers listed in DOCKER_ACTIONS_CONTAINERS.
+  docker-actions-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    container_name: trisse-home-docker-actions-proxy
+    profiles: [docker-actions]
+    restart: unless-stopped
+    environment:
+      POST: 1
+      ALLOW_RESTARTS: 1
+      CONTAINERS: 0
+      INFO: 0
+      IMAGES: 0
+      NETWORKS: 0
+      VOLUMES: 0
+      EXEC: 0
+      LOG_LEVEL: warning
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs: [/run, /tmp]
+    security_opt: ["no-new-privileges:true"]
+    networks: [docker-api]
+
 networks:
   default:
     name: trisse-home

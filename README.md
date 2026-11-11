@@ -28,7 +28,7 @@ Architecture.
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Upcoming events from CalDAV calendars, e.g. Nextcloud (recurring events supported)                    |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
-| **docker**     | Container status and health via a read-only Docker socket proxy                                       |
+| **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
@@ -110,6 +110,22 @@ start it again.
 `sudo docker compose restart trisse-home` and use the new setup token from
 the log.
 
+## Docker actions (optional)
+
+The Docker widget can restart containers and show their last 200 log lines. This is **off by default** because a
+restart needs write access to Docker. To enable it, add to `.env`:
+
+```sh
+COMPOSE_PROFILES=docker-actions        # starts the second, restart-only socket proxy
+DOCKER_ACTIONS=true
+DOCKER_ACTIONS_CONTAINERS=homarr,dashdot   # exact container names
+```
+
+The read-only proxy stays unchanged. The additional `docker-actions-proxy` only accepts
+`POST /containers/<name>/stop|restart|kill` and denies everything else (no reads, no create, no exec), and
+trisse-home only calls *restart* for containers on the allow-list. Logs are read through the read-only proxy and
+may contain secrets — only list containers whose logs you are fine seeing on the dashboard.
+
 ## Notifications and backup monitoring
 
 **Notifications** (Settings → Notifications) publish to an [ntfy](https://ntfy.sh) topic. A state change is only
@@ -150,6 +166,9 @@ service tiles are configured in the web interface.
 | `HOST_PROC`         | `/proc` (`/host/proc` in compose) | Host procfs for the system module.                                            |
 | `HOST_SYS`          | `/sys` (`/host/sys` in compose)   | Host sysfs (temperatures).                                                    |
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
+| `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
+| `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
+| `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
 | `TZ`                | `UTC`                             | Time zone for logs and floating calendar times.                               |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
 | `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |

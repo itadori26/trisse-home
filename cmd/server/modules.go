@@ -91,7 +91,10 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"system", func() modules.Module {
 			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths}, db, sink, clk)
 		}},
-		{"docker", func() modules.Module { return docker.New(client, cfg.DockerProxyURL, sink, clk) }},
+		{"docker", func() modules.Module {
+			return docker.New(client, docker.Config{ProxyURL: cfg.DockerProxyURL, Actions: cfg.DockerActions,
+				ActionsContainers: cfg.DockerActionsContainers, ActionsProxyURL: cfg.DockerActionsProxyURL}, sink, clk)
+		}},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
 		{"backupmonitor", func() modules.Module {
 			return backupmonitor.New(backupmonitor.Deps{DB: db, Tokens: crypto.RandomTokens{}, Clock: clk, IDs: ids, Observations: sink})

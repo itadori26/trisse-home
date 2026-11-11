@@ -55,3 +55,14 @@ export function filterContainers(list: Container[], cfg: DockerConfig): Containe
     (c) => (!cfg.project || c.project === cfg.project) && (!cfg.problemsOnly || indicator(c) !== 'ok'),
   );
 }
+
+/** Which containers offer restart and logs (opt-in on the server). */
+export interface DockerActions {
+  enabled: boolean;
+  containers: string[];
+}
+
+/** Whether actions are available for the container. */
+export function canAct(actions: DockerActions | null, name: string): boolean {
+  return !!actions?.enabled && actions.containers.includes(name);
+}

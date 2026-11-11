@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Container, filterContainers, indicator } from './container';
+import { type Container, filterContainers, indicator, canAct } from './container';
 
 const c = (name: string, state: string, health: Container['health'] = 'none', project = ''): Container => ({
   id: name,
@@ -27,5 +27,11 @@ describe('docker domain', () => {
     ];
     expect(filterContainers(list, { problemsOnly: true, project: 'x' }).map((x) => x.name)).toEqual(['b']);
     expect(filterContainers(list, { problemsOnly: false, project: '' })).toHaveLength(3);
+  });
+  it('offers actions only for allowed containers', () => {
+    expect(canAct({ enabled: true, containers: ['homarr'] }, 'homarr')).toBe(true);
+    expect(canAct({ enabled: true, containers: ['homarr'] }, 'redis')).toBe(false);
+    expect(canAct({ enabled: false, containers: ['homarr'] }, 'homarr')).toBe(false);
+    expect(canAct(null, 'homarr')).toBe(false);
   });
 });

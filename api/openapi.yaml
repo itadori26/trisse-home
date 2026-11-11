@@ -707,6 +707,26 @@ paths:
       summary: Containers via the read-only socket proxy (refreshed every 20 seconds)
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContainerList" } } } }
+  /api/docker/actions:
+    get:
+      tags: [docker]
+      summary: Whether container actions are enabled (DOCKER_ACTIONS) and for which containers
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, containers: { type: array, items: { type: string } } } } } } }
+  /api/docker/containers/{name}/restart:
+    post:
+      tags: [docker]
+      summary: Restart a container on the allow-list (through the restart-only proxy)
+      parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Restarted }, "403": { description: Actions disabled or container not allowed } }
+  /api/docker/containers/{name}/logs:
+    get:
+      tags: [docker]
+      summary: Last 200 log lines of a container on the allow-list
+      parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { lines: { type: array, items: { type: string } } } } } } }
+        "403": { description: Actions disabled or container not allowed }
 
   # ---------------------------------------------------------------- adguard
   /api/adguard/settings:
