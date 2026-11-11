@@ -130,6 +130,7 @@ func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) 
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
+		BackupDir:       filepath.Join(t.TempDir(), "backups"), BackupInterval: 24 * time.Hour, BackupRetention: 3,
 	}
 	for _, o := range opts {
 		o(&cfg)
@@ -174,9 +175,22 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 15 {
-		t.Fatalf("expected 15 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 16 {
+		t.Fatalf("expected 16 modules, got %d: %v", n, info)
 	}
+
+	// --- backups ---
+	var backupFile obj
+	c.json(http.MethodPost, "/api/backups", nil, http.StatusCreated, &backupFile)
+	var backups []obj
+	c.json(http.MethodGet, "/api/backups", nil, http.StatusOK, &backups)
+	if len(backups) != 1 {
+		t.Fatalf("expected one backup, got %v", backups)
+	}
+	if body := c.do(http.MethodGet, "/api/backups/"+backupFile["name"].(string), nil, http.StatusOK); !strings.HasPrefix(string(body), "SQLite format 3") {
+		t.Fatal("backup download is not an SQLite database")
+	}
+	c.do(http.MethodGet, "/api/backups/..%2F..%2Fetc%2Fpasswd", nil, http.StatusNotFound)
 
 	// --- onboarding ---
 	var tour obj

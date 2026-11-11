@@ -2,6 +2,7 @@
   import { AdGuardSettings } from '../features/adguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
   import { ChangePasswordForm } from '../features/auth';
+  import { BackupSettings } from '../features/backup';
   import { FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
@@ -31,6 +32,7 @@
     { id: 'folders', label: 'Bookmark folders', module: 'bookmarks' },
     { id: 'calendar', label: 'Calendar', module: 'calendar' },
     { id: 'adguard', label: 'AdGuard', module: 'adguard' },
+    { id: 'backups', label: 'Backups', module: 'backup' },
     { id: 'account', label: 'Account' },
   ];
   const visible = $derived(sections.filter((s) => !s.module || modules.has(s.module)));
@@ -60,6 +62,8 @@
     <CalendarSettings calendar={container.calendar} />
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
+  {:else if current === 'backups'}
+    <BackupSettings backups={container.backup} />
   {:else}
     {#if onrestarttour}
       <h3>Guided tour</h3>

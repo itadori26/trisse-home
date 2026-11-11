@@ -73,3 +73,5 @@ packages:
   - path: "trisse-home/internal/modules/onboarding/adapter/controller"
     output_path: "web/src/shared/api-client/generated/onboarding-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/backup/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/backup.ts"

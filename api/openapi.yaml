@@ -23,6 +23,7 @@ security:
   - session: []
 tags:
   - name: auth
+  - name: backup
   - name: onboarding
   - name: dashboard
   - name: appearance
@@ -104,6 +105,28 @@ paths:
         "200": { $ref: "#/components/responses/Session" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/Invalid" }
+
+  # ---------------------------------------------------------------- backup
+  /api/backups:
+    get:
+      tags: [backup]
+      summary: Stored database backups
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BackupFile" } } } } }
+    post:
+      tags: [backup]
+      summary: Create a backup now (old ones are pruned per BACKUP_RETENTION)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BackupFile" } } } }
+  /api/backups/{name}:
+    get:
+      tags: [backup]
+      summary: Download a backup (SQLite database file)
+      parameters: [{ name: name, in: path, required: true, schema: { type: string, pattern: '^trisse-home-\d{8}-\d{6}\.db$' } }]
+      responses:
+        "200": { description: SQLite database, content: { application/vnd.sqlite3: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------------------------------------------------------- onboarding
   /api/onboarding:
@@ -647,6 +670,7 @@ components:
             code: { type: string, enum: [bad_request, invalid, not_found, conflict, unauthorized, forbidden, too_many_requests, unavailable, internal] }
             message: { type: string }
             field: { type: string }
+    BackupFile: { type: object, properties: { name: { type: string }, size: { type: integer }, createdAt: { type: string, format: date-time } } }
     Onboarding: { type: object, required: [completed], properties: { completed: { type: boolean } } }
     Health: { type: object, properties: { status: { type: string, enum: [ok, unavailable] } } }
     ModulesInfo:

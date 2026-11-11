@@ -6,6 +6,7 @@
 import { AdGuardApi, AdGuardUseCases } from '../features/adguard';
 import { AppearanceApi, AppearanceUseCases } from '../features/appearance';
 import { AuthApi, AuthUseCases } from '../features/auth';
+import { BackupApi, BackupUseCases } from '../features/backup';
 import { BookmarksApi, BookmarksUseCases } from '../features/bookmarks';
 import { CalendarApi, CalendarUseCases } from '../features/calendar';
 import { DashboardApi, DashboardUseCases } from '../features/dashboard';
@@ -39,6 +40,7 @@ export interface Container {
   adguard: AdGuardUseCases;
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
+  backup: BackupUseCases;
   /** Loads which backend modules and widget kinds are enabled. */
   enabledModules(): Promise<{ modules: Set<string>; widgetKinds: Set<string> }>;
 }
@@ -63,6 +65,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     adguard: new AdGuardUseCases(new AdGuardApi(http)),
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),
+    backup: new BackupUseCases(new BackupApi(http)),
     async enabledModules() {
       const info = await http.get<InfoResponse>('/api/modules');
       return { modules: new Set(info.modules), widgetKinds: new Set(info.widgetKinds) };

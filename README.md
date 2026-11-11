@@ -31,6 +31,7 @@ Architecture.
 | **docker**     | Container status and health via a read-only Docker socket proxy                                       |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
+| **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
 | **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
 | **auth**       | First-run setup, login, sessions, password change (always enabled)                                    |
 
@@ -87,14 +88,20 @@ start with an almost empty page instead.
 
 **Updating:** `git pull && sudo docker compose build && sudo docker compose up -d`
 
-**Backup:** the data lives in the Docker volume `trisse-home-data`
-(`/data/trisse-home.db`). Keep `SECRET_KEY` together with the backup; without
-it stored integration passwords cannot be decrypted.
+**Backup:** the app creates consistent database backups automatically
+(daily, 7 kept; see `BACKUP_*`) in `/data/backups` and offers them for
+download under Settings → Backups. Keep `SECRET_KEY` separately; without it
+stored integration passwords cannot be decrypted. To copy the backups off the
+volume:
 
 ```sh
 sudo docker run --rm -v trisse-home-data:/data -v "$PWD":/backup alpine \
-  tar czf /backup/trisse-home-$(date +%F).tgz -C /data .
+  cp -r /data/backups /backup/
 ```
+
+**Restore:** stop the stack, replace `/data/trisse-home.db` in the volume
+with a backup file (and remove `trisse-home.db-wal`/`-shm` if present), then
+start it again.
 
 **Forgot the password?**
 `sudo docker compose exec trisse-home /trisse-home reset-account`, then
@@ -127,6 +134,9 @@ service tiles are configured in the web interface.
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
 | `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
 | `DATABASE_PATH`     | `/data/trisse-home.db`            | SQLite file.                                                                  |
+| `BACKUP_DIR`        | `backups` next to the database    | Directory for automatic backups.                                              |
+| `BACKUP_INTERVAL`   | `24h`                             | How often a backup is created (≥ 1h).                                         |
+| `BACKUP_RETENTION`  | `7`                               | Number of backups kept.                                                       |
 | `SHUTDOWN_TIMEOUT`  | `15s`                             | Grace period for in-flight requests.                                          |
 | `SAMPLE_DATA`       | `true`                            | Fill a fresh installation with example widgets and data after setup.         |
 | `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |

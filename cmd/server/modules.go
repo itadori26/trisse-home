@@ -10,6 +10,7 @@ import (
 	"trisse-home/internal/modules/adguard"
 	"trisse-home/internal/modules/appearance"
 	"trisse-home/internal/modules/auth"
+	"trisse-home/internal/modules/backup"
 	"trisse-home/internal/modules/bookmarks"
 	"trisse-home/internal/modules/calendar"
 	"trisse-home/internal/modules/dashboard"
@@ -86,6 +87,13 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		if cfg.ModuleEnabled(m.name) {
 			registry.Register(m.build())
 		}
+	}
+	if cfg.ModuleEnabled("backup") {
+		b, err := backup.New(backup.Config{Dir: cfg.BackupDir, Interval: cfg.BackupInterval, Retention: cfg.BackupRetention}, db, clk)
+		if err != nil {
+			return nil, nil, err
+		}
+		registry.Register(b)
 	}
 
 	kinds := append(append([]string{}, frontendOnlyWidgetKinds...), registry.WidgetKinds()...)
