@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { parseTodosConfig } from '../domain/todo';
 
   /** Props of the to-do widget settings. */
@@ -17,6 +18,6 @@
     onsave({ showDone });
   }}
 >
-  <label><input type="checkbox" bind:checked={showDone} /> Show completed to-dos</label>
-  <p><button class="btn btn-primary" type="submit">Save</button></p>
+  <label><input type="checkbox" bind:checked={showDone} /> {t('todos.show_completed_to_dos')}</label>
+  <p><button class="btn btn-primary" type="submit">{t('todos.save')}</button></p>
 </form>

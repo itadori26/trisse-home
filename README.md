@@ -17,7 +17,7 @@ Architecture.
 
 | Module         | What it does                                                                                          |
 | -------------- | ----------------------------------------------------------------------------------------------------- |
-| **dashboard**  | Tabs (e.g. Home / Server / Study) with a 12-column drag & drop grid; layout stored in the database    |
+| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates and per-tab backgrounds |
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
@@ -37,7 +37,9 @@ Architecture.
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
 | **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
 | **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
-| **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
+| **transfer**   | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)     |
+| **quick search** | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web |
+| **appearance** | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
 | **notifications** | Push messages via [ntfy](https://ntfy.sh) for offline services, containers, full disks, expiring certificates and failed backups |
@@ -132,6 +134,19 @@ The script runs `wg show all dump` in the `wireguard` container (`WG_CONTAINER=`
 only the peer lines — the interface line with the **private key is dropped and preshared keys are blanked** — and
 reads the peer names of `linuxserver/wireguard` from the public keys in its `peer_<name>` folders. Names can be
 changed in Settings → WireGuard. A peer counts as online when its last handshake is less than 3 minutes old.
+
+## Progressive Web App
+
+trisse-home can be installed as an app (Android, iOS, desktop) and shows the
+last loaded data when you are offline. Browsers only allow this in a **secure
+context**, so run it behind HTTPS (see *Behind a reverse proxy*) or open it
+via `localhost`; on plain `http://<lan-ip>` the app still works, just without
+installation and offline mode.
+
+The service worker caches the app shell and a fixed allow-list of read-only
+widget data (network first, cache only as fallback). Login, settings,
+exports, backups, logs and every non-GET request are never cached, and the
+cached data is deleted on logout.
 
 ## Wake-on-LAN (optional)
 

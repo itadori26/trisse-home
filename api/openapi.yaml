@@ -313,6 +313,41 @@ paths:
         "204": { description: Saved }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}/background:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Set the background image of a tab (http(s) URL; empty = global background)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { background: { type: string } } } } } }
+      responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" }, "422": { description: Invalid URL } }
+  /api/dashboard/templates:
+    get:
+      tags: [dashboard]
+      summary: Tab templates
+      security: [{ session: [] }]
+      responses: { "200": { description: "OK (id, name, widgets, kinds)" } }
+    post:
+      tags: [dashboard]
+      summary: Save the widgets of a tab as a template
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { tabId: { type: string }, name: { type: string, maxLength: 40 } } } } } }
+      responses: { "201": { description: Created }, "404": { $ref: "#/components/responses/NotFound" }, "409": { description: Too many templates } }
+  /api/dashboard/templates/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    delete:
+      tags: [dashboard]
+      summary: Delete a template
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { $ref: "#/components/responses/NotFound" } }
+  /api/dashboard/templates/{id}/tabs:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [dashboard]
+      summary: Create a tab from a template (empty name = template name); widgets of disabled modules are skipped
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+      responses: { "201": { description: Created }, "404": { $ref: "#/components/responses/NotFound" } }
   /api/dashboard/widgets/{id}:
     parameters: [{ $ref: "#/components/parameters/id" }]
     patch:
@@ -537,6 +572,14 @@ paths:
       responses:
         "204": { description: Deleted }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/bookmarks/import:
+    post:
+      tags: [bookmarks]
+      summary: Import a browser bookmark export (Netscape HTML, max. 8 MB); folders are kept as "Parent / Child", existing URLs and non-http(s) links are skipped
+      requestBody: { required: true, content: { text/html: { schema: { type: string } } } }
+      responses:
+        "200": { description: "Counts (created, skippedInvalid, skippedExists, foldersCreated)" }
+        "422": { description: No bookmarks found or file too large }
   /api/bookmarks/folders:
     post:
       tags: [bookmarks]
@@ -750,6 +793,21 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: object, properties: { lines: { type: array, items: { type: string } } } } } } }
         "403": { description: Actions disabled or container not allowed }
+
+  # ---------------------------------------------------------------- transfer
+  /api/transfer/export:
+    get:
+      tags: [transfer]
+      summary: Download all user data (layout, bookmarks, notes, to-dos, feeds, services, settings) as a versioned JSON file; never contains secrets
+      responses: { "200": { description: "Export file (format trisse-home-export, version, exportedAt, sections)" } }
+  /api/transfer/import:
+    post:
+      tags: [transfer]
+      summary: Import an export file (max. 16 MB). Each contained section replaces the module's data atomically; sections of disabled modules are skipped
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { format: { type: string, enum: [trisse-home-export] }, version: { type: integer }, sections: { type: object } } } } } }
+      responses:
+        "200": { description: "Result (imported, skipped, failed with reasons)" }
+        "422": { description: Not an export file, unsupported version or too large }
 
   # ---------------------------------------------------------------- nextcloud
   /api/nextcloud/settings:

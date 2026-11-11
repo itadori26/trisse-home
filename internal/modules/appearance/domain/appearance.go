@@ -3,6 +3,7 @@ package domain
 import (
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 
 	"trisse-home/internal/shared/kernel"
@@ -33,7 +34,24 @@ type Appearance struct {
 	accentColor     string
 	backgroundImage string
 	customCSS       string
+	language        string
 }
+
+// Languages lists the supported UI languages; "" follows the browser.
+var Languages = []string{"", "en", "de"}
+
+// SetLanguage sets the UI language ("" = browser language).
+func (a *Appearance) SetLanguage(lang string) error {
+	lang = strings.ToLower(strings.TrimSpace(lang))
+	if !slices.Contains(Languages, lang) {
+		return kernel.NewValidationError("language", "The language must be en, de or empty (browser).")
+	}
+	a.language = lang
+	return nil
+}
+
+// Language returns the UI language or "" for the browser language.
+func (a Appearance) Language() string { return a.language }
 
 // Default returns the appearance of a fresh installation.
 func Default() Appearance { return Appearance{theme: ThemeSystem} }

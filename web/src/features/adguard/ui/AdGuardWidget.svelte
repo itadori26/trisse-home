@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { formatCount } from '../../../shared/ui/format';
   import Meter from '../../../shared/ui/Meter.svelte';
@@ -32,17 +33,21 @@
 </script>
 
 {#if unconfigured}
-  <p class="muted">Connect AdGuard Home under Settings → AdGuard.</p>
+  <p class="muted">{t('adguard.connect_adguard_home_under_settings_adgu')}</p>
 {:else if error && !stats}
   <p class="error">{error}</p>
 {:else if stats}
   <div class="numbers">
-    <div><strong>{formatCount(stats.queries)}</strong><span class="muted">queries</span></div>
-    <div><strong>{formatCount(stats.blocked)}</strong><span class="muted">blocked</span></div>
-    <div><strong>{stats.avgProcessingMs.toFixed(1)} ms</strong><span class="muted">avg</span></div>
+    <div><strong>{formatCount(stats.queries)}</strong><span class="muted">{t('adguard.queries')}</span></div>
+    <div><strong>{formatCount(stats.blocked)}</strong><span class="muted">{t('adguard.blocked')}</span></div>
+    <div>
+      <strong>{t('adguard.ms', { value: stats.avgProcessingMs.toFixed(1) })}</strong><span class="muted"
+        >{t('adguard.avg')}</span
+      >
+    </div>
   </div>
   <Meter
-    label={stats.protectionEnabled ? 'Blocked' : 'Protection disabled!'}
+    label={stats.protectionEnabled ? t('adguard.blocked_label') : t('adguard.protection_disabled')}
     percent={stats.blockedPercent}
     detail="{stats.blockedPercent.toFixed(1)} %"
   />
@@ -55,7 +60,7 @@
   {/if}
   {#if stats.error}<p class="error small">{stats.error}</p>{/if}
 {:else}
-  <p class="muted">Loading…</p>
+  <p class="muted">{t('adguard.loading')}</p>
 {/if}
 
 <style>

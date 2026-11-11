@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** Two-factor authentication state. */
 export interface TwoFactorStatus {
   enabled: boolean;
@@ -18,9 +19,9 @@ export function formatSecret(secret: string): string {
 /** Text file content for downloading the recovery codes. */
 export function recoveryCodesText(codes: string[], createdAt: Date): string {
   return [
-    'trisse-home recovery codes',
-    `Created: ${createdAt.toISOString()}`,
-    'Each code can be used once instead of an authenticator code.',
+    t('auth.recovery_file_title'),
+    t('auth.recovery_file_created', { date: createdAt.toISOString() }),
+    t('auth.recovery_file_hint'),
     '',
     ...codes,
     '',

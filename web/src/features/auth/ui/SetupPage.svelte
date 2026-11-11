@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { AuthUseCases } from '../usecase/authUseCases';
   import AuthCard from './AuthCard.svelte';
@@ -33,16 +34,16 @@
 </script>
 
 <AuthCard
-  title="Welcome to trisse-home"
+  title={t('auth.welcome_to_trisse_home')}
   subtitle="Set a password to finish the setup. The setup token is printed in the server log."
 >
   <form onsubmit={submit}>
     <label class="field">
-      <span>Setup token</span>
+      <span>{t('auth.setup_token')}</span>
       <input class="input" name="setupToken" autocomplete="off" bind:value={token} required />
     </label>
     <label class="field">
-      <span>Password (at least 12 characters)</span>
+      <span>{t('auth.password_at_least_12_characters')}</span>
       <input
         class="input"
         type="password"
@@ -53,7 +54,7 @@
       />
     </label>
     <label class="field">
-      <span>Repeat password</span>
+      <span>{t('auth.repeat_password')}</span>
       <input
         class="input"
         type="password"
@@ -64,6 +65,6 @@
       />
     </label>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <button class="btn btn-primary" type="submit" disabled={busy}>Create account</button>
+    <button class="btn btn-primary" type="submit" disabled={busy}>{t('auth.create_account')}</button>
   </form>
 </AuthCard>

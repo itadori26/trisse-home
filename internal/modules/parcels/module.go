@@ -20,6 +20,7 @@ const refreshInterval = time.Hour
 // Module wires the parcel rings and implements modules.Module.
 type Module struct {
 	modules.Base
+	modules.Transferable
 	uc       usecase.Parcels
 	handlers *controller.Handlers
 }
@@ -31,7 +32,7 @@ func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Cl
 		Providers: map[domain.Carrier]usecase.Provider{domain.CarrierDHL: gateway.NewDHL(client, gateway.DefaultDHLURL)},
 		Clock:     clock, IDs: ids,
 	})
-	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, uc: uc, handlers: controller.NewHandlers(uc)}
 }
 
 // Name implements modules.Module.

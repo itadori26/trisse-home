@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { emptyRule, type WasteRule } from '../domain/waste';
   import type { WasteUseCases } from '../usecase/wasteUseCases';
@@ -26,7 +27,7 @@
     try {
       const s = await waste.saveSettings(url, rules);
       rules = s.rules;
-      message = 'Loaded and saved.';
+      message = t('waste.loaded_saved');
     } catch (err) {
       error = errorMessage(err);
     } finally {
@@ -36,13 +37,13 @@
 </script>
 
 <p class="muted">
-  Many municipalities offer the collection dates as an ICS/iCal link (sometimes <code>webcal://</code>). Types
-  are recognised automatically (Restmüll, Bio, Papier, Gelber Sack, Glas, …); rules below override label,
-  color and icon.
+  {t('waste.many_municipalities_offer_the_collection')} <code>webcal://</code>{t(
+    'waste.types_are_recognised_automatically_restm',
+  )}
 </p>
 <form onsubmit={submit}>
   <label class="field"
-    ><span>ICS link</span><input
+    ><span>{t('waste.ics_link')}</span><input
       class="input"
       bind:value={url}
       placeholder="https://…/abfuhrkalender.ics"
@@ -50,36 +51,53 @@
     /></label
   >
   <fieldset>
-    <legend>Rules (optional)</legend>
+    <legend>{t('waste.rules_optional')}</legend>
     {#each rules as r, i (i)}
       <div class="rule">
         <input
           class="input"
           bind:value={r.match}
-          placeholder="contains …"
-          aria-label="Match text"
+          placeholder={t('waste.contains')}
+          aria-label={t('waste.match_text')}
           maxlength="40"
         />
-        <input class="input" bind:value={r.label} placeholder="Label" aria-label="Label" maxlength="40" />
-        <input class="input icon" bind:value={r.icon} placeholder="🗑️" aria-label="Icon" maxlength="8" />
+        <input
+          class="input"
+          bind:value={r.label}
+          placeholder={t('waste.label')}
+          aria-label={t('waste.label')}
+          maxlength="40"
+        />
+        <input
+          class="input icon"
+          bind:value={r.icon}
+          placeholder="🗑️"
+          aria-label={t('waste.icon')}
+          maxlength="8"
+        />
         <input
           type="color"
           value={r.color || '#64748b'}
           oninput={(e) => (r.color = e.currentTarget.value)}
-          aria-label="Color"
+          aria-label={t('waste.color')}
         />
-        <button class="btn btn-icon" type="button" aria-label="Remove rule" onclick={() => rules.splice(i, 1)}
-          >✕</button
+        <button
+          class="btn btn-icon"
+          type="button"
+          aria-label={t('waste.remove_rule')}
+          onclick={() => rules.splice(i, 1)}>✕</button
         >
       </div>
     {/each}
     <button class="btn" type="button" onclick={() => rules.push(emptyRule())} disabled={rules.length >= 20}
-      >Add rule</button
+      >{t('waste.add_rule')}</button
     >
   </fieldset>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if message}<p class="muted">{message}</p>{/if}
-  <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Loading…' : 'Test & save'}</button>
+  <button class="btn btn-primary" type="submit" disabled={busy}
+    >{busy ? t('common.loading') : t('common.test_save')}</button
+  >
 </form>
 
 <style>

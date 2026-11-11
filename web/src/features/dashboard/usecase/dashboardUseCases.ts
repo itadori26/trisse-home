@@ -1,6 +1,8 @@
 import {
   reorder,
   type Tab,
+  type TabTemplate,
+  validateBackground,
   validateTabName,
   type Widget,
   type WidgetConfig,
@@ -63,6 +65,39 @@ export class DashboardUseCases {
   async saveLayout(tabId: string, before: readonly LayoutItem[], after: LayoutItem[]): Promise<void> {
     if (sameLayout(before, after)) return;
     await this.gateway.saveLayout(tabId, after);
+  }
+
+  /** Copies a widget (kind, size and configuration) to the first free spot of its tab. */
+  duplicateWidget(tab: Tab, widget: Widget): Promise<Widget> {
+    const rect = findFreeSpot(tab.widgets, widget.w, widget.h);
+    return this.gateway.addWidget(tab.id, widget.kind, rect, structuredClone(widget.config));
+  }
+
+  /** Sets the background image of a tab ("" = global background). */
+  async setBackground(tabId: string, background: string): Promise<Tab> {
+    const problem = validateBackground(background);
+    if (problem) throw new DashboardValidationError(problem);
+    return this.gateway.setBackground(tabId, background.trim());
+  }
+
+  listTemplates(): Promise<TabTemplate[]> {
+    return this.gateway.listTemplates();
+  }
+
+  /** Saves the widgets of a tab as a template. */
+  async saveTemplate(tabId: string, name: string): Promise<TabTemplate> {
+    this.assertTabName(name);
+    return this.gateway.saveTemplate(tabId, name.trim());
+  }
+
+  deleteTemplate(id: string): Promise<void> {
+    return this.gateway.deleteTemplate(id);
+  }
+
+  /** Creates a new tab from a template; the template name is used if name is empty. */
+  createTabFromTemplate(templateId: string, name: string): Promise<Tab> {
+    if (name.trim() !== '') this.assertTabName(name);
+    return this.gateway.createTabFromTemplate(templateId, name.trim());
   }
 
   /** Removes a widget. */

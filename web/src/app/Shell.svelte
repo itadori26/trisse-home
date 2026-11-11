@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { setLanguage, t } from '../shared/i18n';
   import { type Appearance, cssVariables, defaultAppearance } from '../features/appearance';
   import { Tour } from '../features/onboarding';
   import { errorMessage } from '../shared/api-client/http';
   import { applyTheme } from '../shared/theme/theme';
   import type { Container } from './container';
   import DashboardPage from './DashboardPage.svelte';
+  import QuickSearch from './QuickSearch.svelte';
+  import { opensQuickSearch } from './quickSearch';
   import SettingsDialog from './SettingsDialog.svelte';
 
   /** Props of the authenticated application shell. */
@@ -22,8 +25,11 @@
   let modules = $state<Set<string> | null>(null);
   let widgetKinds = $state<Set<string>>(new Set());
   let touring = $state(false);
+  let quickSearch = $state(false);
+  let offline = $state(!navigator.onLine);
 
   $effect(() => applyTheme(appearance.theme));
+  $effect(() => setLanguage(appearance.language));
 
   $effect(() => {
     const root = document.documentElement;
@@ -87,9 +93,27 @@
   init();
 </script>
 
+<svelte:window
+  ononline={() => (offline = false)}
+  onoffline={() => (offline = true)}
+  onkeydown={(e) => {
+    if (!quickSearch && !settingsOpen && opensQuickSearch(e, e.target)) {
+      e.preventDefault();
+      quickSearch = true;
+    }
+  }}
+/>
+
 <header class="topbar">
   <strong class="brand">trisse-home</strong>
   <nav>
+    <button
+      class="btn btn-icon"
+      type="button"
+      aria-keyshortcuts="Control+K /"
+      title={t('app.quick_search_ctrl_k_or')}
+      onclick={() => (quickSearch = true)}>{t('app.search')} <kbd>{t('app.ctrl_k')}</kbd></button
+    >
     <button
       class="btn btn-icon"
       class:on={editing}
@@ -98,16 +122,19 @@
       aria-pressed={editing}
       onclick={() => (editing = !editing)}
     >
-      {editing ? 'Done' : 'Edit'}
+      {editing ? t('app.done') : t('app.edit')}
     </button>
     <button class="btn btn-icon" type="button" data-tour="settings" onclick={() => (settingsOpen = true)}
-      >Settings</button
+      >{t('app.settings')}</button
     >
-    <button class="btn btn-icon" type="button" onclick={logout}>Log out</button>
+    <button class="btn btn-icon" type="button" onclick={logout}>{t('app.log_out')}</button>
   </nav>
 </header>
 
 <main class="content">
+  {#if offline}<p class="offline" role="status">
+      {t('app.you_are_offline_showing_the_last')}
+    </p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if modules}
     <DashboardPage {container} {editing} {widgetKinds} />
@@ -125,11 +152,33 @@
   />
 {/if}
 
+{#if quickSearch && modules}
+  <QuickSearch {container} {modules} onclose={() => (quickSearch = false)} />
+{/if}
+
 {#if touring}
   <Tour onfinish={finishTour} />
 {/if}
 
 <style>
+  .offline {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-small);
+    background: color-mix(in srgb, var(--color-warning) 22%, transparent);
+  }
+  kbd {
+    font-size: 0.7em;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0 4px;
+    margin-left: 4px;
+  }
+  @media (max-width: 600px) {
+    kbd {
+      display: none;
+    }
+  }
   .topbar {
     display: flex;
     align-items: center;

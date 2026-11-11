@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 import type { LayoutItem } from './layout';
 
 /** Opaque widget configuration owned by the widget's feature. */
@@ -15,7 +16,23 @@ export interface Tab {
   id: string;
   name: string;
   position: number;
+  /** Background image URL of this tab ("" = global background). */
+  background: string;
   widgets: Widget[];
+}
+
+/** A saved tab layout new tabs can be created from. */
+export interface TabTemplate {
+  id: string;
+  name: string;
+  widgets: number;
+  kinds: string[];
+}
+
+/** Validates a background URL (empty is allowed) and returns an error or null. */
+export function validateBackground(url: string): string | null {
+  const v = url.trim();
+  return v === '' || /^https?:\/\/\S+$/i.test(v) ? null : t('dashboard.invalid_background');
 }
 
 /** Describes a widget kind that can be added to a tab. */
@@ -32,8 +49,9 @@ export const MAX_TAB_NAME_LENGTH = 40;
 /** Validates a tab name and returns an error message or null. */
 export function validateTabName(name: string): string | null {
   const trimmed = name.trim();
-  if (trimmed === '') return 'The tab name must not be empty.';
-  if ([...trimmed].length > MAX_TAB_NAME_LENGTH) return 'The tab name must be at most 40 characters long.';
+  if (trimmed === '') return t('dashboard.tab_name_empty');
+  if ([...trimmed].length > MAX_TAB_NAME_LENGTH)
+    return t('dashboard.tab_name_too_long', { max: MAX_TAB_NAME_LENGTH });
   return null;
 }
 

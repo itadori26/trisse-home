@@ -117,3 +117,6 @@ packages:
   - path: "trisse-home/internal/modules/parcels/adapter/controller"
     output_path: "web/src/shared/api-client/generated/parcels-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/transfer/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/transfer.ts"
+    include_files: ["dto.go"]

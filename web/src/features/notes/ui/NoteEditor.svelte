@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Markdown from '../../../shared/ui/Markdown.svelte';
   import type { Note } from '../domain/note';
@@ -29,7 +30,7 @@
   }
 
   async function remove() {
-    if (!note || !confirm(`Delete "${note.title}"?`)) return;
+    if (!note || !confirm(t('common.confirm_delete', { name: note.title }))) return;
     try {
       await notes.delete(note.id);
       ondone();
@@ -41,14 +42,14 @@
 
 <form onsubmit={save}>
   <label class="field"
-    ><span>Title</span><input class="input" bind:value={form.title} maxlength="200" /></label
+    ><span>{t('notes.title')}</span><input class="input" bind:value={form.title} maxlength="200" /></label
   >
   <div class="tabs">
     <button class="btn btn-icon" class:on={!preview} type="button" onclick={() => (preview = false)}
-      >Write</button
+      >{t('notes.write')}</button
     >
     <button class="btn btn-icon" class:on={preview} type="button" onclick={() => (preview = true)}
-      >Preview</button
+      >{t('notes.preview')}</button
     >
   </div>
   {#if preview}
@@ -58,14 +59,14 @@
       class="input body"
       bind:value={form.body}
       rows="12"
-      placeholder="Markdown supported"
-      aria-label="Note text"></textarea>
+      placeholder={t('notes.markdown_supported')}
+      aria-label={t('notes.note_text')}></textarea>
   {/if}
-  <label><input type="checkbox" bind:checked={form.pinned} /> Pin to dashboard</label>
+  <label><input type="checkbox" bind:checked={form.pinned} /> {t('notes.pin_to_dashboard')}</label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <p class="actions">
-    <button class="btn btn-primary" type="submit">Save</button>
-    {#if note}<button class="btn btn-danger" type="button" onclick={remove}>Delete</button>{/if}
+    <button class="btn btn-primary" type="submit">{t('notes.save')}</button>
+    {#if note}<button class="btn btn-danger" type="button" onclick={remove}>{t('notes.delete')}</button>{/if}
   </p>
 </form>
 

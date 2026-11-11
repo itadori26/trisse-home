@@ -7,10 +7,19 @@ type DashboardResponse struct {
 
 // TabResponse describes one tab and its widgets.
 type TabResponse struct {
-	ID       string
-	Name     string
-	Position int
-	Widgets  []WidgetResponse
+	ID         string
+	Name       string
+	Position   int
+	Background string
+	Widgets    []WidgetResponse
+}
+
+// TemplateResponse describes a tab template.
+type TemplateResponse struct {
+	ID      string
+	Name    string
+	Widgets int
+	Kinds   []string
 }
 
 // WidgetResponse describes one widget.

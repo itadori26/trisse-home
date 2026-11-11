@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { ParcelsUseCases } from '../usecase/parcelsUseCases';
 
@@ -25,7 +26,7 @@
       const s = await parcels.saveSettings(apiKey, hideDays);
       hasKey = s.hasDhlApiKey;
       apiKey = '';
-      message = 'Saved.';
+      message = t('common.saved');
     } catch (err) {
       error = errorMessage(err);
     }
@@ -33,21 +34,21 @@
 </script>
 
 <p class="muted">
-  DHL tracking needs a free API key: register at
-  <a href="https://developer.dhl.com" target="_blank" rel="noopener noreferrer">developer.dhl.com</a>, create
-  an app with the “Shipment Tracking – Unified” API and paste its key here. The free plan allows 250 requests
-  a day; parcels are refreshed hourly. Tracking numbers stay on your server.
+  {t('parcels.dhl_tracking_needs_a_free_api')}
+  <a href="https://developer.dhl.com" target="_blank" rel="noopener noreferrer">developer.dhl.com</a>{t(
+    'parcels.create_an_app_with_the_shipment',
+  )}
 </p>
 <form onsubmit={submit}>
   <label class="field">
-    <span>DHL API key {hasKey ? '(leave empty to keep the stored one)' : ''}</span>
+    <span>{t('parcels.dhl_api_key', { value: hasKey ? t('common.keep_stored') : '' })}</span>
     <input class="input" type="password" bind:value={apiKey} autocomplete="off" />
   </label>
   <label class="field">
-    <span>Hide delivered parcels after {hideDays} {hideDays === 1 ? 'day' : 'days'}</span>
+    <span>{t(hideDays === 1 ? 'parcels.hide_after_day' : 'parcels.hide_after_days', { n: hideDays })}</span>
     <input type="range" min="0" max="30" bind:value={hideDays} />
   </label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if message}<p class="muted">{message}</p>{/if}
-  <button class="btn btn-primary" type="submit">Save</button>
+  <button class="btn btn-primary" type="submit">{t('parcels.save')}</button>
 </form>

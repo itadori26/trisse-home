@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** A calendar event. All-day events have date-only start/end (end exclusive). */
 export interface CalendarEvent {
   uid: string;
@@ -89,16 +90,16 @@ export interface NewEventInput {
 
 /** Validates the quick-add form and returns an error message or null. */
 export function validateNewEvent(i: NewEventInput): string | null {
-  if (!i.calendarUrl) return 'Please choose a calendar.';
-  if (i.summary.trim() === '') return 'Please enter a title.';
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(i.date)) return 'Please enter a date.';
+  if (!i.calendarUrl) return t('calendar.choose_calendar');
+  if (i.summary.trim() === '') return t('calendar.enter_title');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(i.date)) return t('calendar.enter_date');
   if (i.allDay) {
-    if (i.endDate && i.endDate < i.date) return 'The end date must not be before the start date.';
+    if (i.endDate && i.endDate < i.date) return t('calendar.end_before_start_date');
     return null;
   }
   if (!/^\d{2}:\d{2}$/.test(i.startTime) || !/^\d{2}:\d{2}$/.test(i.endTime))
-    return 'Please enter start and end time.';
-  if (i.endTime <= i.startTime) return 'The event must end after it starts.';
+    return t('calendar.enter_times');
+  if (i.endTime <= i.startTime) return t('calendar.end_after_start');
   return null;
 }
 

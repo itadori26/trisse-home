@@ -3,11 +3,13 @@ import {
   clampRect,
   collides,
   compact,
+  describeRect,
   findFreeSpot,
-  type LayoutItem,
+  keyboardStep,
   moveItem,
   resizeItem,
   sameLayout,
+  type LayoutItem,
 } from './layout';
 
 const item = (id: string, x: number, y: number, w: number, h: number): LayoutItem => ({ id, x, y, w, h });
@@ -81,5 +83,31 @@ describe('sameLayout', () => {
     const a = [item('a', 0, 0, 1, 1), item('b', 1, 0, 1, 1)];
     expect(sameLayout(a, [...a].reverse())).toBe(true);
     expect(sameLayout(a, [item('a', 0, 1, 1, 1), item('b', 1, 0, 1, 1)])).toBe(false);
+  });
+
+  describe('keyboardStep', () => {
+    const items = [
+      { id: 'a', x: 0, y: 0, w: 4, h: 2 },
+      { id: 'b', x: 0, y: 2, w: 4, h: 2 },
+    ];
+    it('moves right and stops at the edge', () => {
+      expect(keyboardStep(items, 'a', 'ArrowRight', false)?.find((i) => i.id === 'a')?.x).toBe(1);
+      const edge = [{ id: 'a', x: 8, y: 0, w: 4, h: 2 }];
+      expect(keyboardStep(edge, 'a', 'ArrowRight', false)).toBeNull();
+    });
+    it('moves down past the widget below', () => {
+      const next = keyboardStep(items, 'a', 'ArrowDown', false);
+      const a = next?.find((i) => i.id === 'a');
+      const b = next?.find((i) => i.id === 'b');
+      expect(b?.y).toBe(0);
+      expect(a?.y).toBe(2);
+    });
+    it('resizes with shift', () => {
+      expect(keyboardStep(items, 'a', 'ArrowRight', true)?.find((i) => i.id === 'a')?.w).toBe(5);
+      expect(keyboardStep([{ id: 'a', x: 0, y: 0, w: 1, h: 1 }], 'a', 'ArrowLeft', true)).toBeNull();
+    });
+    it('describes positions', () => {
+      expect(describeRect({ x: 0, y: 2, w: 4, h: 3 })).toBe('column 1, row 3, 4 × 3 cells');
+    });
   });
 });

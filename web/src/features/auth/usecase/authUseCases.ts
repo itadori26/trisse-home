@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 import { type AuthView, validateNewPassword, viewFor } from '../domain/auth';
 import type { SessionInfo } from '../domain/session';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
@@ -26,15 +27,14 @@ export class AuthUseCases {
   async setup(setupToken: string, password: string, confirmation: string): Promise<void> {
     const problem = validateNewPassword(password, confirmation);
     if (problem) throw new ValidationError(problem);
-    if (setupToken.trim() === '')
-      throw new ValidationError('Please enter the setup token from the server log.');
+    if (setupToken.trim() === '') throw new ValidationError(t('auth.enter_setup_token'));
     const session = await this.gateway.setup(setupToken.trim(), password);
     this.csrf.setCsrfToken(session.csrfToken);
   }
 
   /** Logs in with the password and, if two-factor authentication is enabled, a code. */
   async login(password: string, code?: string): Promise<void> {
-    if (password === '') throw new ValidationError('Please enter your password.');
+    if (password === '') throw new ValidationError(t('auth.enter_password'));
     const session = await this.gateway.login(password, code?.trim() || undefined);
     this.csrf.setCsrfToken(session.csrfToken);
   }
@@ -82,14 +82,13 @@ export class AuthUseCases {
   /** Confirms the setup with a code and returns the one-time recovery codes. */
   confirmTwoFactor(code: string): Promise<string[]> {
     const c = code.replace(/\s/g, '');
-    if (!/^\d{6}$/.test(c))
-      return Promise.reject(new ValidationError('Please enter the 6-digit code from your app.'));
+    if (!/^\d{6}$/.test(c)) return Promise.reject(new ValidationError(t('auth.enter_code')));
     return this.gateway.confirmTwoFactor(c);
   }
 
   disableTwoFactor(password: string, code: string): Promise<void> {
     if (password === '' || code.trim() === '') {
-      return Promise.reject(new ValidationError('Password and a current code are required.'));
+      return Promise.reject(new ValidationError(t('auth.password_and_code_required')));
     }
     return this.gateway.disableTwoFactor(password, code.trim());
   }

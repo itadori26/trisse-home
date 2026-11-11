@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { parseDockerConfig } from '../domain/container';
   import type { DockerUseCases } from '../usecase/dockerUseCases';
 
@@ -26,14 +27,15 @@
   }}
 >
   <label class="field">
-    <span>Compose project</span>
+    <span>{t('docker.compose_project')}</span>
     <select class="input" bind:value={form.project}>
-      <option value="">All containers</option>
+      <option value="">{t('docker.all_containers')}</option>
       {#each projects as p (p)}<option value={p}>{p}</option>{/each}
     </select>
   </label>
   <label
-    ><input type="checkbox" bind:checked={form.problemsOnly} /> Only show containers that need attention</label
+    ><input type="checkbox" bind:checked={form.problemsOnly} />
+    {t('docker.only_show_containers_that_need_attention')}</label
   >
-  <p><button class="btn btn-primary" type="submit">Save</button></p>
+  <p><button class="btn btn-primary" type="submit">{t('docker.save')}</button></p>
 </form>

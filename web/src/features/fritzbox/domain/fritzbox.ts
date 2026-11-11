@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** Connection settings as shown in the UI (the password is never returned). */
 export interface FritzBoxSettings {
   configured: boolean;
@@ -50,7 +51,7 @@ export function formatRate(bytesPerSecond: number): string {
 
 /** Display name of the other party. */
 export function callParty(c: Pick<Call, 'name' | 'number'>): string {
-  return c.name || c.number || 'Unknown';
+  return c.name || c.number || t('fritzbox.unknown_caller');
 }
 
 /** Arrow/icon per call type. */

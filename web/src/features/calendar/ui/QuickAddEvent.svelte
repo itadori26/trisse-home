@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
   import { calendarName, type NewEventInput } from '../domain/calendar';
@@ -52,22 +53,27 @@
   }
 </script>
 
-<Modal title="New event" {onclose}>
+<Modal title={t('calendar.new_event')} {onclose}>
   <form onsubmit={submit}>
     <label class="field"
-      ><span>Title</span><input class="input" bind:value={form.summary} maxlength="200" required /></label
+      ><span>{t('calendar.title')}</span><input
+        class="input"
+        bind:value={form.summary}
+        maxlength="200"
+        required
+      /></label
     >
     {#if calendars.length > 1}
       <label class="field"
-        ><span>Calendar</span><select class="input" bind:value={form.calendarUrl}>
+        ><span>{t('calendar.calendar')}</span><select class="input" bind:value={form.calendarUrl}>
           {#each calendars as url (url)}<option value={url}>{calendarName(url)}</option>{/each}
         </select></label
       >
     {/if}
-    <label><input type="checkbox" bind:checked={form.allDay} /> All day</label>
+    <label><input type="checkbox" bind:checked={form.allDay} /> {t('calendar.all_day')}</label>
     <div class="row">
       <label class="field"
-        ><span>{form.allDay ? 'From' : 'Date'}</span><input
+        ><span>{form.allDay ? t('calendar.from') : t('calendar.date')}</span><input
           class="input"
           type="date"
           bind:value={form.date}
@@ -76,7 +82,7 @@
       >
       {#if form.allDay}
         <label class="field"
-          ><span>Until (optional)</span><input
+          ><span>{t('calendar.until_optional')}</span><input
             class="input"
             type="date"
             bind:value={form.endDate}
@@ -85,15 +91,25 @@
         >
       {:else}
         <label class="field"
-          ><span>Start</span><input class="input" type="time" bind:value={form.startTime} required /></label
+          ><span>{t('calendar.start')}</span><input
+            class="input"
+            type="time"
+            bind:value={form.startTime}
+            required
+          /></label
         >
         <label class="field"
-          ><span>End</span><input class="input" type="time" bind:value={form.endTime} required /></label
+          ><span>{t('calendar.end')}</span><input
+            class="input"
+            type="time"
+            bind:value={form.endTime}
+            required
+          /></label
         >
       {/if}
     </div>
     <label class="field"
-      ><span>Location (optional)</span><input
+      ><span>{t('calendar.location_optional')}</span><input
         class="input"
         bind:value={form.location}
         maxlength="200"
@@ -101,8 +117,10 @@
     >
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <p class="actions">
-      <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Create'}</button>
-      <button class="btn" type="button" onclick={onclose}>Cancel</button>
+      <button class="btn btn-primary" type="submit" disabled={busy}
+        >{busy ? t('common.saving') : t('common.create')}</button
+      >
+      <button class="btn" type="button" onclick={onclose}>{t('calendar.cancel')}</button>
     </p>
   </form>
 </Modal>

@@ -21,6 +21,8 @@ type ManageTabs interface {
 	Rename(ctx context.Context, req RenameTabRequest) (TabResponse, error)
 	Delete(ctx context.Context, tabID string) error
 	Reorder(ctx context.Context, req ReorderTabsRequest) error
+	// SetBackground sets the tab's background image ("" = global one).
+	SetBackground(ctx context.Context, tabID, background string) (TabResponse, error)
 }
 
 // ManageWidgets adds, configures, places and removes widgets.
@@ -55,6 +57,24 @@ type WidgetRepository interface {
 	DeleteWidget(ctx context.Context, id string) error
 }
 
+// TemplateRepository persists tab templates (output port).
+type TemplateRepository interface {
+	ListTemplates(ctx context.Context) ([]domain.Template, error)
+	GetTemplate(ctx context.Context, id string) (domain.Template, error)
+	CreateTemplate(ctx context.Context, t domain.Template) error
+	DeleteTemplate(ctx context.Context, id string) error
+	// CreateTabWithWidgets stores a new tab and its widgets atomically.
+	CreateTabWithWidgets(ctx context.Context, t domain.Tab, widgets []domain.Widget) error
+}
+
+// ManageTemplates saves tabs as templates and creates tabs from them.
+type ManageTemplates interface {
+	List(ctx context.Context) ([]TemplateResponse, error)
+	SaveTab(ctx context.Context, tabID, name string) (TemplateResponse, error)
+	Delete(ctx context.Context, id string) error
+	CreateTab(ctx context.Context, templateID, name string) (TabResponse, error)
+}
+
 // KindCatalog knows which widget kinds are provided by enabled modules.
 type KindCatalog interface {
 	Available(kind string) bool
@@ -62,8 +82,9 @@ type KindCatalog interface {
 
 // Deps bundles the output ports of the dashboard use cases.
 type Deps struct {
-	Tabs    TabRepository
-	Widgets WidgetRepository
-	Kinds   KindCatalog
-	IDs     kernel.IDGenerator
+	Tabs      TabRepository
+	Widgets   WidgetRepository
+	Templates TemplateRepository
+	Kinds     KindCatalog
+	IDs       kernel.IDGenerator
 }

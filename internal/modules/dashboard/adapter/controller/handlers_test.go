@@ -22,7 +22,7 @@ func (f *fakeWidgets) Add(_ context.Context, req usecase.AddWidgetRequest) (usec
 
 func TestAddWidget(t *testing.T) {
 	fw := &fakeWidgets{}
-	h := NewHandlers(nil, nil, fw)
+	h := NewHandlers(nil, nil, fw, nil)
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/dashboard/tabs/{id}/widgets", h.AddWidget)
 

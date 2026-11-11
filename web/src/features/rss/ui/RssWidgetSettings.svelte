@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { type Feed, parseRssConfig } from '../domain/feed';
   import type { RssUseCases } from '../usecase/rssUseCases';
 
@@ -24,14 +25,14 @@
   }}
 >
   <label class="field">
-    <span>Feed</span>
+    <span>{t('rss.feed')}</span>
     <select class="input" bind:value={form.feedId}>
-      <option value="">All feeds</option>
+      <option value="">{t('rss.all_feeds')}</option>
       {#each feeds as f (f.id)}<option value={f.id}>{f.title}</option>{/each}
     </select>
   </label>
   <label class="field"
-    ><span>Items: {form.limit}</span><input
+    ><span>{t('rss.items', { limit: form.limit })}</span><input
       type="range"
       min="5"
       max="100"
@@ -39,6 +40,6 @@
       bind:value={form.limit}
     /></label
   >
-  <label><input type="checkbox" bind:checked={form.unreadOnly} /> Unread items only</label>
-  <p><button class="btn btn-primary" type="submit">Save</button></p>
+  <label><input type="checkbox" bind:checked={form.unreadOnly} /> {t('rss.unread_items_only')}</label>
+  <p><button class="btn btn-primary" type="submit">{t('rss.save')}</button></p>
 </form>

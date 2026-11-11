@@ -1,3 +1,4 @@
+import { t } from '../shared/i18n';
 /**
  * Widget registry (Strategy pattern): maps every widget kind to its
  * component, settings form and default size. Features never know about each
@@ -59,8 +60,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'search',
-      title: 'Search',
-      description: 'Search bar (DuckDuckGo by default, !bangs work).',
+      get title() {
+        return t('widget.search.title');
+      },
+      get description() {
+        return t('widget.search.description');
+      },
       defaultSize: { w: 8, h: 2 },
     },
     chromeless: true,
@@ -70,8 +75,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'clock',
-      title: 'Clock',
-      description: 'Time and date, optionally in another time zone.',
+      get title() {
+        return t('widget.clock.title');
+      },
+      get description() {
+        return t('widget.clock.description');
+      },
       defaultSize: { w: 3, h: 3 },
     },
     view: renderer(ClockWidget, (config) => ({ config })),
@@ -80,8 +89,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'weather',
-      title: 'Weather',
-      description: 'Current weather and forecast (Open-Meteo).',
+      get title() {
+        return t('widget.weather.title');
+      },
+      get description() {
+        return t('widget.weather.description');
+      },
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(WeatherWidget, (config, c) => ({ config, weather: c.weather })),
@@ -90,8 +103,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'radar',
-      title: 'Rain radar',
-      description: 'Current precipitation radar around a location in Germany (DWD).',
+      get title() {
+        return t('widget.radar.title');
+      },
+      get description() {
+        return t('widget.radar.description');
+      },
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(RadarWidget, (config, c) => ({ config, weather: c.weather })),
@@ -104,8 +121,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'services',
-      title: 'Services',
-      description: 'Tiles for your services with online status.',
+      get title() {
+        return t('widget.services.title');
+      },
+      get description() {
+        return t('widget.services.description');
+      },
       defaultSize: { w: 6, h: 4 },
     },
     view: renderer(ServicesWidget, (config, c) => ({ config, services: c.services })),
@@ -113,8 +134,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'bookmarks',
-      title: 'Bookmarks',
-      description: 'Links from a folder or with a tag.',
+      get title() {
+        return t('widget.bookmarks.title');
+      },
+      get description() {
+        return t('widget.bookmarks.description');
+      },
       defaultSize: { w: 4, h: 5 },
     },
     view: renderer(BookmarksWidget, (config, c) => ({ config, bookmarks: c.bookmarks })),
@@ -123,8 +148,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'notes',
-      title: 'Notes',
-      description: 'Pinned Markdown notes.',
+      get title() {
+        return t('widget.notes.title');
+      },
+      get description() {
+        return t('widget.notes.description');
+      },
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(NotesWidget, (config, c) => ({ config, notes: c.notes })),
@@ -133,8 +162,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'todos',
-      title: 'To-dos',
-      description: 'A to-do list with due dates.',
+      get title() {
+        return t('widget.todos.title');
+      },
+      get description() {
+        return t('widget.todos.description');
+      },
       defaultSize: { w: 4, h: 5 },
     },
     view: renderer(TodosWidget, (config, c) => ({ config, todos: c.todos })),
@@ -143,8 +176,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'rss',
-      title: 'News',
-      description: 'Latest items of your RSS/Atom feeds.',
+      get title() {
+        return t('widget.rss.title');
+      },
+      get description() {
+        return t('widget.rss.description');
+      },
       defaultSize: { w: 5, h: 6 },
     },
     view: renderer(RssWidget, (config, c) => ({ config, rss: c.rss })),
@@ -153,8 +190,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'calendar',
-      title: 'Calendar',
-      description: 'Upcoming events from CalDAV (e.g. Nextcloud).',
+      get title() {
+        return t('widget.calendar.title');
+      },
+      get description() {
+        return t('widget.calendar.description');
+      },
       defaultSize: { w: 4, h: 5 },
     },
     view: renderer(CalendarWidget, (config, c) => ({ config, calendar: c.calendar })),
@@ -163,8 +204,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'system',
-      title: 'System',
-      description: 'CPU, memory, disks, load and uptime of the host.',
+      get title() {
+        return t('widget.system.title');
+      },
+      get description() {
+        return t('widget.system.description');
+      },
       defaultSize: { w: 4, h: 5 },
     },
     view: renderer(SystemWidget, (_config, c) => ({ system: c.system })),
@@ -172,8 +217,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'docker',
-      title: 'Docker',
-      description: 'Container status via the read-only socket proxy.',
+      get title() {
+        return t('widget.docker.title');
+      },
+      get description() {
+        return t('widget.docker.description');
+      },
       defaultSize: { w: 4, h: 6 },
     },
     view: renderer(DockerWidget, (config, c) => ({ config, docker: c.docker })),
@@ -182,8 +231,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'adguard',
-      title: 'AdGuard Home',
-      description: 'DNS queries and blocking statistics.',
+      get title() {
+        return t('widget.adguard.title');
+      },
+      get description() {
+        return t('widget.adguard.description');
+      },
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(AdGuardWidget, (_config, c) => ({ adguard: c.adguard })),
@@ -191,8 +244,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'nextcloud',
-      title: 'Nextcloud',
-      description: 'Version, your quota and server status of your Nextcloud.',
+      get title() {
+        return t('widget.nextcloud.title');
+      },
+      get description() {
+        return t('widget.nextcloud.description');
+      },
       defaultSize: { w: 4, h: 3 },
     },
     view: renderer(NextcloudWidget, (_config, c) => ({ nextcloud: c.nextcloud })),
@@ -200,8 +257,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'fritzbox',
-      title: 'FRITZ!Box',
-      description: 'Internet connection, current throughput and recent calls.',
+      get title() {
+        return t('widget.fritzbox.title');
+      },
+      get description() {
+        return t('widget.fritzbox.description');
+      },
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(FritzBoxWidget, (_config, c) => ({ fritzbox: c.fritzbox })),
@@ -209,8 +270,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'wireguard',
-      title: 'WireGuard',
-      description: 'VPN peers with last handshake and traffic.',
+      get title() {
+        return t('widget.wireguard.title');
+      },
+      get description() {
+        return t('widget.wireguard.description');
+      },
       defaultSize: { w: 4, h: 3 },
     },
     view: renderer(WireGuardWidget, (_config, c) => ({ wireguard: c.wireguard })),
@@ -218,8 +283,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'waste',
-      title: 'Waste collection',
-      description: 'Next collection dates from your municipality’s ICS calendar.',
+      get title() {
+        return t('widget.waste.title');
+      },
+      get description() {
+        return t('widget.waste.description');
+      },
       defaultSize: { w: 3, h: 3 },
     },
     view: renderer(WasteWidget, (_config, c) => ({ waste: c.waste })),
@@ -227,8 +296,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'shopping',
-      title: 'Shopping list',
-      description: 'Shared shopping list stored in a CalDAV task list.',
+      get title() {
+        return t('widget.shopping.title');
+      },
+      get description() {
+        return t('widget.shopping.description');
+      },
       defaultSize: { w: 3, h: 4 },
     },
     view: renderer(ShoppingWidget, (_config, c) => ({ shopping: c.shopping })),
@@ -236,8 +309,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'transit',
-      title: 'Departures',
-      description: 'Next public transport departures of a stop with real-time delays.',
+      get title() {
+        return t('widget.transit.title');
+      },
+      get description() {
+        return t('widget.transit.description');
+      },
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(TransitWidget, (config, c) => ({ config, transit: c.transit })),
@@ -246,8 +323,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'parcels',
-      title: 'Parcels',
-      description: 'Track parcels (DHL) with their latest status.',
+      get title() {
+        return t('widget.parcels.title');
+      },
+      get description() {
+        return t('widget.parcels.description');
+      },
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(ParcelsWidget, (_config, c) => ({ parcels: c.parcels })),
@@ -255,8 +336,12 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'backup-status',
-      title: 'Backups',
-      description: 'Status of your monitored backup jobs.',
+      get title() {
+        return t('widget.backup-status.title');
+      },
+      get description() {
+        return t('widget.backup-status.description');
+      },
       defaultSize: { w: 4, h: 3 },
     },
     view: renderer(BackupStatusWidget, (_config, c) => ({ backupMonitor: c.backupMonitor })),

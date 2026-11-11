@@ -1,3 +1,5 @@
+import type { MessageKey } from '../../../shared/i18n';
+
 /** Normalised shipment state. */
 export type ParcelStatus = 'unknown' | 'pre-transit' | 'transit' | 'delivered' | 'failure';
 
@@ -22,12 +24,12 @@ export interface ParcelSettings {
 }
 
 /** Short label and color per status. */
-export const statusInfo: Record<ParcelStatus, { label: string; color: string }> = {
-  unknown: { label: 'Unknown', color: 'var(--color-text-muted)' },
-  'pre-transit': { label: 'Announced', color: 'var(--color-text-muted)' },
-  transit: { label: 'On the way', color: 'var(--color-accent)' },
-  delivered: { label: 'Delivered', color: 'var(--color-success)' },
-  failure: { label: 'Problem', color: 'var(--color-danger)' },
+export const statusInfo: Record<ParcelStatus, { label: MessageKey; color: string }> = {
+  unknown: { label: 'parcels.status.unknown', color: 'var(--color-text-muted)' },
+  'pre-transit': { label: 'parcels.status.pre_transit', color: 'var(--color-text-muted)' },
+  transit: { label: 'parcels.status.transit', color: 'var(--color-accent)' },
+  delivered: { label: 'parcels.status.delivered', color: 'var(--color-success)' },
+  failure: { label: 'parcels.status.failure', color: 'var(--color-danger)' },
 };
 
 /** Removes spaces and validates a tracking number (8–35 letters/digits). */

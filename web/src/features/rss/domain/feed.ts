@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** A subscribed feed. */
 export interface Feed {
   id: string;
@@ -40,8 +41,8 @@ export function parseRssConfig(raw: Record<string, unknown>): RssConfig {
 /** Formats an age such as "5 min", "3 h" or "2 d". */
 export function age(date: Date, now: Date): string {
   const minutes = Math.max(0, Math.round((now.getTime() - date.getTime()) / 60_000));
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return t('time.age_minutes', { n: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours} h`;
-  return `${Math.round(hours / 24)} d`;
+  if (hours < 48) return t('time.age_hours', { n: hours });
+  return t('time.age_days', { n: Math.round(hours / 24) });
 }

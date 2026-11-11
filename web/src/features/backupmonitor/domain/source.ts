@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** State of a monitored backup. */
 export type SourceState = 'ok' | 'overdue' | 'failed' | 'waiting';
 
@@ -30,9 +31,9 @@ export function pingExamples(pingUrl: string): string {
 
 /** "3 h ago", "2 d ago" or "never". */
 export function ago(date: Date | null, now: Date): string {
-  if (!date) return 'never';
+  if (!date) return t('time.never');
   const hours = Math.max(0, (now.getTime() - date.getTime()) / 3_600_000);
-  if (hours < 1) return `${Math.round(hours * 60)} min ago`;
-  if (hours < 48) return `${Math.round(hours)} h ago`;
-  return `${Math.round(hours / 24)} d ago`;
+  if (hours < 1) return t('time.minutes_ago', { n: Math.round(hours * 60) });
+  if (hours < 48) return t('time.hours_ago', { n: Math.round(hours) });
+  return t('time.days_ago', { n: Math.round(hours / 24) });
 }

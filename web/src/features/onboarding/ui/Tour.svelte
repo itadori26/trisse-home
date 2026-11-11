@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { availableSteps, type Box, popoverPosition, tourSteps } from '../domain/tour';
 
   /** Props of the guided tour overlay. */
@@ -87,12 +88,16 @@
       style:left="{pos.left}px"
     >
       <p class="progress muted">{index + 1} / {steps.length}</p>
-      <h2 id="tour-title">{step.title}</h2>
-      <p>{step.body}</p>
+      <h2 id="tour-title">{t(step.title)}</h2>
+      <p>{t(step.body)}</p>
       <div class="actions">
-        {#if !last}<button class="btn btn-icon skip" type="button" onclick={onfinish}>Skip tour</button>{/if}
-        {#if index > 0}<button class="btn" type="button" onclick={back}>Back</button>{/if}
-        <button class="btn btn-primary" type="button" onclick={next}>{last ? "Let's go" : 'Next'}</button>
+        {#if !last}<button class="btn btn-icon skip" type="button" onclick={onfinish}
+            >{t('onboarding.skip_tour')}</button
+          >{/if}
+        {#if index > 0}<button class="btn" type="button" onclick={back}>{t('onboarding.back')}</button>{/if}
+        <button class="btn btn-primary" type="button" onclick={next}
+          >{last ? t('tour.lets_go') : t('tour.next')}</button
+        >
       </div>
     </div>
   </div>

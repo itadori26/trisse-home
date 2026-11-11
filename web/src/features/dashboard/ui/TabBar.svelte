@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import type { Tab } from '../domain/dashboard';
 
   /** Props of the tab bar. */
@@ -12,11 +13,26 @@
     ondelete: (tab: Tab) => void;
     /** Moves a tab by `delta` positions (-1 = left, +1 = right). */
     onmove: (tab: Tab, delta: number) => void;
+    /** Opens the background dialog of a tab. */
+    onbackground: (tab: Tab) => void;
+    /** Saves a tab as template. */
+    ontemplate: (tab: Tab) => void;
   }
-  let { tabs, activeId, editing, onselect, onadd, onrename, ondelete, onmove }: Props = $props();
+  let {
+    tabs,
+    activeId,
+    editing,
+    onselect,
+    onadd,
+    onrename,
+    ondelete,
+    onmove,
+    onbackground,
+    ontemplate,
+  }: Props = $props();
 </script>
 
-<nav class="tabs" aria-label="Dashboard tabs" data-tour="tabs">
+<nav class="tabs" aria-label={t('dashboard.dashboard_tabs')} data-tour="tabs">
   {#each tabs as tab, i (tab.id)}
     <div class="tab" class:active={tab.id === activeId}>
       <button
@@ -32,24 +48,41 @@
         <button
           class="btn btn-icon"
           type="button"
-          aria-label="Move tab left"
+          aria-label={t('dashboard.move_tab_left')}
           disabled={i === 0}
           onclick={() => onmove(tab, -1)}>‹</button
         >
         <button
           class="btn btn-icon"
           type="button"
-          aria-label="Move tab right"
+          aria-label={t('dashboard.move_tab_right')}
           disabled={i === tabs.length - 1}
           onclick={() => onmove(tab, 1)}>›</button
-        >
-        <button class="btn btn-icon" type="button" aria-label="Rename tab" onclick={() => onrename(tab)}
-          >✎</button
         >
         <button
           class="btn btn-icon"
           type="button"
-          aria-label="Delete tab"
+          aria-label={t('dashboard.rename_tab')}
+          onclick={() => onrename(tab)}>✎</button
+        >
+        <button
+          class="btn btn-icon"
+          type="button"
+          aria-label={t('dashboard.tab_background')}
+          title={t('dashboard.background')}
+          onclick={() => onbackground(tab)}>🖼</button
+        >
+        <button
+          class="btn btn-icon"
+          type="button"
+          aria-label={t('dashboard.save_tab_as_template')}
+          title={t('dashboard.save_as_template_2')}
+          onclick={() => ontemplate(tab)}>⎘</button
+        >
+        <button
+          class="btn btn-icon"
+          type="button"
+          aria-label={t('dashboard.delete_tab')}
           disabled={tabs.length === 1}
           onclick={() => ondelete(tab)}>✕</button
         >
@@ -57,7 +90,7 @@
     </div>
   {/each}
   {#if editing}
-    <button class="btn btn-icon" type="button" onclick={onadd}>+ Tab</button>
+    <button class="btn btn-icon" type="button" onclick={onadd}>{t('dashboard.tab')}</button>
   {/if}
 </nav>
 

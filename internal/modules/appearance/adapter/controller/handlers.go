@@ -37,7 +37,7 @@ func (h *Handlers) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := h.update.Execute(r.Context(), usecase.UpdateAppearanceRequest{
-		Theme: dto.Theme, AccentColor: dto.AccentColor, BackgroundImage: dto.BackgroundImage, CustomCSS: dto.CustomCSS,
+		Theme: dto.Theme, AccentColor: dto.AccentColor, BackgroundImage: dto.BackgroundImage, CustomCSS: dto.CustomCSS, Language: dto.Language,
 	})
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)

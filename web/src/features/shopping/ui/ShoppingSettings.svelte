@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { ShoppingSuggestion } from '../domain/shopping';
   import type { ShoppingUseCases } from '../usecase/shoppingUseCases';
@@ -42,7 +43,7 @@
       const s = await shopping.saveSettings(listUrl, username, password);
       hasPassword = s.hasPassword;
       password = '';
-      message = 'Connected and saved.';
+      message = t('common.connected_saved');
     } catch (err) {
       error = errorMessage(err);
     } finally {
@@ -52,13 +53,11 @@
 </script>
 
 <p class="muted">
-  The shopping list is stored as tasks in a CalDAV task list, so everyone in your household can use it in
-  their task app (e.g. Nextcloud Tasks, Apple Reminders, DAVx⁵ + Tasks.org). Create a list called “shopping”
-  in Nextcloud Tasks and use its URL.
+  {t('shopping.the_shopping_list_is_stored_as')}
 </p>
 <form onsubmit={submit}>
   <label class="field"
-    ><span>Task list URL</span><input
+    ><span>{t('shopping.task_list_url')}</span><input
       class="input"
       type="url"
       bind:value={listUrl}
@@ -67,10 +66,19 @@
     /></label
   >
   <label class="field"
-    ><span>Username</span><input class="input" bind:value={username} autocomplete="off" required /></label
+    ><span>{t('shopping.username')}</span><input
+      class="input"
+      bind:value={username}
+      autocomplete="off"
+      required
+    /></label
   >
   <label class="field">
-    <span>App password {hasPassword ? '(leave empty to keep the stored one)' : ''}</span>
+    <span
+      >{t('shopping.app_password', {
+        value: hasPassword ? t('common.keep_stored') : '',
+      })}</span
+    >
     <input
       class="input"
       type="password"
@@ -81,5 +89,7 @@
   </label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if message}<p class="muted">{message}</p>{/if}
-  <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Testing…' : 'Test & save'}</button>
+  <button class="btn btn-primary" type="submit" disabled={busy}
+    >{busy ? t('common.testing') : t('common.test_save')}</button
+  >
 </form>

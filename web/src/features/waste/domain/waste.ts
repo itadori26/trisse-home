@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** Maps summaries containing `match` to a label, color and icon. */
 export interface WasteRule {
   match: string;
@@ -30,9 +31,9 @@ export interface WasteOverview {
 
 /** "Today", "Tomorrow" or "in 3 days". */
 export function dueLabel(daysUntil: number): string {
-  if (daysUntil <= 0) return 'Today';
-  if (daysUntil === 1) return 'Tomorrow';
-  return `in ${daysUntil} days`;
+  if (daysUntil <= 0) return t('time.today');
+  if (daysUntil === 1) return t('time.tomorrow');
+  return t('time.in_days', { n: daysUntil });
 }
 
 /** Whether a collection needs attention: tomorrow, or today before noon. */

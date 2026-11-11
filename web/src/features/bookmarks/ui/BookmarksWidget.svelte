@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
   import { type Bookmark, faviconUrl, parseBookmarksConfig } from '../domain/bookmark';
@@ -34,7 +35,7 @@
   });
 
   async function remove(b: Bookmark) {
-    if (!confirm(`Delete "${b.title}"?`)) return;
+    if (!confirm(t('common.confirm_delete', { name: b.title }))) return;
     await bookmarks.delete(b.id).catch((err) => (error = errorMessage(err)));
     editing = null;
     load();
@@ -42,9 +43,18 @@
 </script>
 
 <div class="toolbar">
-  <input class="input" type="search" placeholder="Filter…" bind:value={query} aria-label="Filter bookmarks" />
-  <button class="btn btn-icon" type="button" aria-label="Add bookmark" onclick={() => (editing = 'new')}
-    >＋</button
+  <input
+    class="input"
+    type="search"
+    placeholder={t('bookmarks.filter')}
+    bind:value={query}
+    aria-label={t('bookmarks.filter_bookmarks')}
+  />
+  <button
+    class="btn btn-icon"
+    type="button"
+    aria-label={t('bookmarks.add_bookmark')}
+    onclick={() => (editing = 'new')}>＋</button
   >
 </div>
 {#if error}<p class="error">{error}</p>{/if}
@@ -69,18 +79,21 @@
         <button
           class="btn btn-icon edit"
           type="button"
-          aria-label="Edit {b.title}"
+          aria-label={t('bookmarks.edit', { title: b.title })}
           onclick={() => (editing = b)}>✎</button
         >
       </li>
     {:else}
-      <li class="muted">No bookmarks{query ? ' match the filter' : ' yet'}.</li>
+      <li class="muted">{query ? t('bookmarks.none_match') : t('bookmarks.none_yet')}</li>
     {/each}
   </ul>
 {/if}
 
 {#if editing && data}
-  <Modal title={editing === 'new' ? 'Add bookmark' : 'Edit bookmark'} onclose={() => (editing = null)}>
+  <Modal
+    title={editing === 'new' ? t('bookmarks.add_bookmark') : t('bookmarks.edit_bookmark')}
+    onclose={() => (editing = null)}
+  >
     <BookmarkForm
       {bookmarks}
       folders={data.folders}
@@ -93,7 +106,11 @@
     />
     {#if editing !== 'new'}
       {@const b = editing}
-      <p><button class="btn btn-danger" type="button" onclick={() => remove(b)}>Delete bookmark</button></p>
+      <p>
+        <button class="btn btn-danger" type="button" onclick={() => remove(b)}
+          >{t('bookmarks.delete_bookmark')}</button
+        >
+      </p>
     {/if}
   </Modal>
 {/if}

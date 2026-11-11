@@ -62,18 +62,40 @@ test('edit mode adds a tab and a widget', async ({ page }) => {
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByRole('button', { name: '+ Tab' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('Study');
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('button', { name: 'Study' })).toHaveAttribute('aria-current', 'page');
 
   await page.getByRole('button', { name: '+ Add widget' }).click();
   await page.getByRole('button', { name: /^Clock/ }).click();
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.locator('time')).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole('button', { name: 'Study' })).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('time')).toBeVisible();
+});
+
+test('widgets can be moved and resized with the keyboard', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Study' }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+
+  const clock = page.getByRole('group', { name: /^Clock, column 1, row 1/ });
+  await clock.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByText(/^Clock moved: column 2, row 1/)).toBeAttached();
+  await page.keyboard.press('Shift+ArrowRight');
+  await expect(page.getByText(/^Clock resized: column 2, row 1, \d+ × \d+ cells/)).toBeAttached();
+  await expect(page.getByRole('group', { name: /^Clock, column 2, row 1/ })).toBeFocused();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+
+  await page.reload();
+  await page.getByRole('button', { name: 'Study' }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('group', { name: /^Clock, column 2, row 1/ })).toBeVisible();
 });
 
 /** RFC 6238 TOTP for the test (SHA1, 6 digits, 30 s). */
@@ -89,6 +111,66 @@ function totp(base32Secret: string, now = Date.now()): string {
   const offset = (mac[mac.length - 1] ?? 0) & 0x0f;
   return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
 }
+
+test('quick search finds bookmarks with the keyboard', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  await page.keyboard.press('Control+k');
+  const box = page.getByRole('combobox', { name: /Search bookmarks/ });
+  await expect(box).toBeFocused();
+  await box.fill('docker docs');
+  await expect(page.getByRole('option', { name: /Docker documentation/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await box.fill('nothing-matches-this');
+  await expect(page.getByText(/No matches/)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(box).toBeHidden();
+
+  await page.keyboard.press('/');
+  await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toBeFocused();
+});
+
+test('installable app shows the last data offline and never caches auth', async ({ page, context }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload(); // the worker controls the page from now on
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  const cached = await page.evaluate(async () => {
+    const cache = await caches.open('trisse-data-v1');
+    return (await cache.keys()).map((r) => new URL(r.url).pathname);
+  });
+  expect(cached).toContain('/api/dashboard');
+  expect(cached.some((p) => p.startsWith('/api/auth'))).toBe(false);
+
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByText(/You are offline/)).toBeVisible();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await context.setOffline(false);
+});
+
+test('the UI follows a German browser language', async ({ browser }) => {
+  const context = await browser.newContext({ locale: 'de-DE' });
+  const page = await context.newPage();
+  await page.goto('/');
+  await page.getByLabel('Passwort').fill(password);
+  await page.getByRole('button', { name: 'Anmelden' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Einstellungen' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Bearbeiten', exact: true })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+  await context.close();
+});
 
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');

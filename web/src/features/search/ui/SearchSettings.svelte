@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { SearchSettings } from '../usecase/ports';
   import type { SearchUseCases } from '../usecase/searchUseCases';
@@ -37,7 +38,7 @@
 
 {#if settings}
   <label class="field">
-    <span>Search engine</span>
+    <span>{t('search.search_engine')}</span>
     <select
       class="input"
       value={settings.defaultProvider}
@@ -47,8 +48,8 @@
     </select>
   </label>
   <p class="muted">
-    DuckDuckGo understands thousands of !bangs (e.g. <code>!w</code>, <code>!g</code>, <code>!osm</code>).
-    Custom shortcuts below take precedence and work with every engine.
+    {t('search.duckduckgo_understands_thousands_of_bang')} <code>!w</code>, <code>!g</code>,
+    <code>!osm</code>{t('search.custom_shortcuts_below_take_precedence_a')}
   </p>
   {#if settings.shortcuts.length}
     <ul class="shortcuts">
@@ -59,7 +60,7 @@
           <button
             class="btn btn-icon"
             type="button"
-            aria-label="Delete shortcut !{s.keyword}"
+            aria-label={t('search.delete_shortcut', { keyword: s.keyword })}
             onclick={() => run(() => search.deleteShortcut(s.keyword))}>✕</button
           >
         </li>
@@ -67,16 +68,22 @@
     </ul>
   {/if}
   <form class="add" onsubmit={add}>
-    <input class="input" bind:value={keyword} placeholder="!gh" aria-label="Keyword" required />
-    <input class="input" bind:value={name} placeholder="GitHub" aria-label="Name" required />
+    <input class="input" bind:value={keyword} placeholder="!gh" aria-label={t('search.keyword')} required />
+    <input
+      class="input"
+      bind:value={name}
+      placeholder={t('search.github')}
+      aria-label={t('search.name')}
+      required
+    />
     <input
       class="input"
       bind:value={urlTemplate}
       placeholder={'https://github.com/search?q={query}'}
-      aria-label="URL with {'{query}'}"
+      aria-label={t('search.url_with', { value: '{query}' })}
       required
     />
-    <button class="btn" type="submit">Add</button>
+    <button class="btn" type="submit">{t('search.add')}</button>
   </form>
 {/if}
 {#if error}<p class="error" role="alert">{error}</p>{/if}

@@ -48,3 +48,17 @@ export interface PlacementDTO {
 export interface LayoutDTO {
   items: PlacementDTO[];
 }
+/**
+ * TabBackgroundDTO is the body of PUT /api/dashboard/tabs/{id}/background;
+ * an empty background uses the global one.
+ */
+export interface TabBackgroundDTO {
+  background: string;
+}
+/**
+ * SaveTemplateDTO is the body of POST /api/dashboard/templates.
+ */
+export interface SaveTemplateDTO {
+  tabId: string;
+  name: string;
+}

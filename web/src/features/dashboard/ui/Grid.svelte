@@ -1,6 +1,15 @@
 <script lang="ts" generics="T extends LayoutItem">
+  import { t } from '../../../shared/i18n';
   import type { Snippet } from 'svelte';
-  import { GRID_COLUMNS, type LayoutItem, moveItem, resizeItem } from '../domain/layout';
+  import {
+    type ArrowKey,
+    describeRect,
+    GRID_COLUMNS,
+    keyboardStep,
+    type LayoutItem,
+    moveItem,
+    resizeItem,
+  } from '../domain/layout';
 
   /** Props of the drag & drop grid. */
   interface Props {
@@ -16,8 +25,40 @@
     onlayout: (items: LayoutItem[]) => void;
     /** Renders the content of one item; `handle` must be spread onto the drag handle. */
     item: Snippet<[T, { onpointerdown: (e: PointerEvent) => void }]>;
+    /** Accessible name of an item (e.g. the widget title). */
+    label?: (item: T) => string;
   }
-  let { items, editing, rowHeight = 56, gap = 12, onlayout, item }: Props = $props();
+  let {
+    items,
+    editing,
+    rowHeight = 56,
+    gap = 12,
+    onlayout,
+    item,
+    label = () => t('dashboard.widget'),
+  }: Props = $props();
+  let announcement = $state('');
+
+  /** Arrow keys move, Shift + arrow keys resize the focused item. */
+  function onkeydown(it: T, e: KeyboardEvent) {
+    if (!editing || e.target !== e.currentTarget) return;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    e.preventDefault();
+    const base = items.map(({ id, x, y, w, h }) => ({ id, x, y, w, h }));
+    const next = keyboardStep(base, it.id, e.key as ArrowKey, e.shiftKey);
+    const r = (next ?? base).find((i) => i.id === it.id);
+    if (!r) return;
+    announcement = next
+      ? t(e.shiftKey ? 'dashboard.announce_resized' : 'dashboard.announce_moved', {
+          name: label(it),
+          position: describeRect(r),
+        })
+      : t(e.shiftKey ? 'dashboard.announce_cannot_resize' : 'dashboard.announce_cannot_move', {
+          name: label(it),
+          position: describeRect(r),
+        });
+    if (next) onlayout(next);
+  }
 
   let container: HTMLDivElement;
   let preview = $state<LayoutItem[] | null>(null);
@@ -74,9 +115,17 @@
 >
   {#each items as it (it.id)}
     {@const r = rects.get(it.id) ?? it}
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
       class="cell"
       class:active={preview && gesture?.id === it.id}
+      tabindex={editing ? 0 : undefined}
+      role={editing ? 'group' : undefined}
+      aria-roledescription={editing ? t('dashboard.movable_widget') : undefined}
+      aria-label={editing
+        ? t('dashboard.widget_group_label', { name: label(it), position: describeRect(r) })
+        : undefined}
+      onkeydown={(e) => onkeydown(it, e)}
       style:grid-area="{r.y + 1} / {r.x + 1} / span {r.h} / span {r.w}"
       style:--span={r.h}
     >
@@ -85,13 +134,14 @@
         <button
           class="resize"
           type="button"
-          aria-label="Resize widget"
+          aria-label={t('dashboard.resize_widget')}
           onpointerdown={(e) => start('resize', it, e)}
         ></button>
       {/if}
     </div>
   {/each}
 </div>
+<p class="sr-only" aria-live="polite">{announcement}</p>
 
 <style>
   .grid {
@@ -111,6 +161,19 @@
     position: relative;
     min-width: 0;
     min-height: 0;
+  }
+  .cell:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .cell.active {
     z-index: 2;

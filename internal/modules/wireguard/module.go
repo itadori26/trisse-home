@@ -14,13 +14,14 @@ import (
 // Module wires the WireGuard rings and implements modules.Module.
 type Module struct {
 	modules.Base
+	modules.Transferable
 	handlers *controller.Handlers
 }
 
 // New builds the WireGuard module; dir is the export directory.
 func New(db *sql.DB, dir string, clock kernel.Clock) *Module {
 	uc := usecase.NewWireGuard(gateway.NewFileSource(dir), gateway.NewNameStore(db), clock)
-	return &Module{handlers: controller.NewHandlers(uc)}
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, handlers: controller.NewHandlers(uc)}
 }
 
 // Name implements modules.Module.

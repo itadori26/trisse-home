@@ -8,6 +8,7 @@ import { FritzBoxApi, FritzBoxUseCases } from '../features/fritzbox';
 import { NextcloudApi, NextcloudUseCases } from '../features/nextcloud';
 import { ShoppingApi, ShoppingUseCases } from '../features/shopping';
 import { ParcelsApi, ParcelsUseCases } from '../features/parcels';
+import { TransferApi, TransferUseCases } from '../features/transfer';
 import { TransitApi, TransitUseCases } from '../features/transit';
 import { WasteApi, WasteUseCases } from '../features/waste';
 import { WireGuardApi, WireGuardUseCases } from '../features/wireguard';
@@ -54,6 +55,7 @@ export interface Container {
   shopping: ShoppingUseCases;
   transit: TransitUseCases;
   parcels: ParcelsUseCases;
+  transfer: TransferUseCases;
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
   backup: BackupUseCases;
@@ -88,6 +90,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     shopping: new ShoppingUseCases(new ShoppingApi(http)),
     transit: new TransitUseCases(new TransitApi(http)),
     parcels: new ParcelsUseCases(new ParcelsApi(http)),
+    transfer: new TransferUseCases(new TransferApi(http)),
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),
     backup: new BackupUseCases(new BackupApi(http)),

@@ -6,6 +6,8 @@ export interface Appearance {
   accentColor: string;
   backgroundImage: string;
   customCss: string;
+  /** UI language; "" follows the browser. */
+  language: '' | 'en' | 'de';
 }
 
 /** Defaults before the preferences are loaded. */
@@ -14,6 +16,7 @@ export const defaultAppearance: Appearance = {
   accentColor: '',
   backgroundImage: '',
   customCss: '',
+  language: '',
 };
 
 /**

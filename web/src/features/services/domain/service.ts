@@ -1,3 +1,4 @@
+import { t } from '../../../shared/i18n';
 /** Health state of a service. */
 export type ServiceState = 'online' | 'offline' | 'unknown';
 
@@ -64,18 +65,20 @@ export function isImageIcon(icon: string): boolean {
 
 /** Short status text for tooltips. */
 export function statusText(s: Service): string {
-  if (s.state === 'unknown') return 'Not checked yet';
-  if (s.state === 'offline') return s.error ? `Offline: ${s.error}` : `Offline (HTTP ${s.httpStatus})`;
-  return `Online · HTTP ${s.httpStatus} · ${s.latencyMs} ms`;
+  if (s.state === 'unknown') return t('services.not_checked');
+  if (s.state === 'offline')
+    return s.error
+      ? t('services.offline_error', { error: s.error })
+      : t('services.offline_http', { status: s.httpStatus });
+  return t('services.online', { status: s.httpStatus, ms: s.latencyMs });
 }
 
 /** Validates the form before it is sent and returns an error message or null. */
 export function validateServiceInput(input: ServiceInput): string | null {
-  if (input.name.trim() === '') return 'Please enter a name.';
-  if (!/^https?:\/\/\S+$/i.test(input.url.trim())) return 'The URL must start with http:// or https://.';
+  if (input.name.trim() === '') return t('services.enter_name');
+  if (!/^https?:\/\/\S+$/i.test(input.url.trim())) return t('services.invalid_url');
   if (input.checkUrl.trim() !== '' && !/^https?:\/\/\S+$/i.test(input.checkUrl.trim()))
-    return 'The check URL must start with http:// or https://.';
-  if (input.mac.trim() !== '' && !macPattern.test(input.mac.trim()))
-    return 'The MAC address must look like aa:bb:cc:dd:ee:ff.';
+    return t('services.invalid_check_url');
+  if (input.mac.trim() !== '' && !macPattern.test(input.mac.trim())) return t('services.invalid_mac');
   return null;
 }

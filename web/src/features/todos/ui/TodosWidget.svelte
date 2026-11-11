@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { formatDue, parseTodosConfig, type Todo } from '../domain/todo';
   import type { TodosUseCases } from '../usecase/todosUseCases';
@@ -42,33 +43,34 @@
   <input
     class="input"
     bind:value={text}
-    placeholder="Add a to-do… (@2026-12-24 sets a due date)"
-    aria-label="New to-do"
+    placeholder={t('todos.add_a_to_do_2026_12')}
+    aria-label={t('todos.new_to_do')}
   />
 </form>
 {#if error}<p class="error">{error}</p>{/if}
 <ul class="list">
-  {#each list as t (t.id)}
-    <li class:done={t.done}>
+  {#each list as todo (todo.id)}
+    <li class:done={todo.done}>
       <label>
-        <input type="checkbox" checked={t.done} onchange={() => run(() => todos.toggle(t))} />
-        <span class="title">{t.title}</span>
+        <input type="checkbox" checked={todo.done} onchange={() => run(() => todos.toggle(todo))} />
+        <span class="title">{todo.title}</span>
       </label>
-      {#if t.due}<span class="due" class:overdue={t.overdue}>{formatDue(t.due, new Date())}</span>{/if}
+      {#if todo.due}<span class="due" class:overdue={todo.overdue}>{formatDue(todo.due, new Date())}</span
+        >{/if}
       <button
         class="btn btn-icon del"
         type="button"
-        aria-label="Delete {t.title}"
-        onclick={() => run(() => todos.delete(t.id))}>✕</button
+        aria-label={t('todos.delete', { title: todo.title })}
+        onclick={() => run(() => todos.delete(todo.id))}>✕</button
       >
     </li>
   {:else}
-    <li class="muted">Nothing to do 🎉</li>
+    <li class="muted">{t('todos.nothing_to_do')}</li>
   {/each}
 </ul>
 {#if hasDone}
   <button class="btn btn-icon muted" type="button" onclick={() => run(() => todos.clearCompleted())}
-    >Clear completed</button
+    >{t('todos.clear_completed')}</button
   >
 {/if}
 

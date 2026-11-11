@@ -138,3 +138,18 @@ func TestBookmarkUseCases(t *testing.T) {
 		t.Fatalf("expected folder not found, got %v", err)
 	}
 }
+
+func TestImportBookmarks(t *testing.T) {
+	d := Deps{Repo: newMem(), Clock: clk{}, IDs: &ids{}}
+	ctx := context.Background()
+	_, _ = NewCreateBookmark(d).Execute(ctx, Input{Title: "Go", URL: "https://go.dev/"})
+	res, err := NewImportBookmarks(d).Execute(ctx, []domain.ImportCandidate{
+		{Title: "Go again", URL: "https://go.dev/"},
+		{Title: "Wiki", URL: "https://example.com/wiki", FolderPath: "Toolbar / Work", Tags: []string{"work", "not valid!"}},
+		{Title: "Docs", URL: "https://example.com/docs", FolderPath: "toolbar / work"},
+		{Title: "Bookmarklet", URL: "javascript:alert(1)"},
+	})
+	if err != nil || res.Created != 2 || res.SkippedExists != 1 || res.SkippedInvalid != 1 || res.FoldersCreated != 1 {
+		t.Fatalf("%+v %v", res, err)
+	}
+}

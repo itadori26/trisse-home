@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { Folder } from '../domain/bookmark';
   import type { BookmarksUseCases } from '../usecase/bookmarksUseCases';
@@ -26,7 +27,7 @@
   run(async () => {});
 </script>
 
-<p class="muted">Bookmarks are added and edited directly in the bookmarks widget.</p>
+<p class="muted">{t('bookmarks.bookmarks_are_added_and_edited_directly')}</p>
 <ul class="list">
   {#each folders as f (f.id)}
     <li>
@@ -34,18 +35,18 @@
       <button
         class="btn btn-icon"
         type="button"
-        aria-label="Rename {f.name}"
+        aria-label={t('bookmarks.rename', { name: f.name })}
         onclick={() => {
-          const n = prompt('Folder name', f.name);
+          const n = prompt(t('bookmarks.folder_name'), f.name);
           if (n) run(() => bookmarks.renameFolder(f.id, n));
         }}>✎</button
       >
       <button
         class="btn btn-icon"
         type="button"
-        aria-label="Delete {f.name}"
+        aria-label={t('bookmarks.delete', { name: f.name })}
         onclick={() =>
-          confirm(`Delete folder "${f.name}"? Its bookmarks are kept.`) &&
+          confirm(t('bookmarks.confirm_delete_folder', { name: f.name })) &&
           run(() => bookmarks.deleteFolder(f.id))}>✕</button
       >
     </li>
@@ -61,12 +62,12 @@
   <input
     class="input"
     bind:value={name}
-    placeholder="New folder"
+    placeholder={t('bookmarks.new_folder')}
     required
     maxlength="60"
-    aria-label="Folder name"
+    aria-label={t('bookmarks.folder_name')}
   />
-  <button class="btn" type="submit">Add</button>
+  <button class="btn" type="submit">{t('bookmarks.add')}</button>
 </form>
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 

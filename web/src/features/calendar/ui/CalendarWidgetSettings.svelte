@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../../shared/i18n';
   import { parseCalendarConfig } from '../domain/calendar';
 
   /** Props of the calendar widget settings. */
@@ -20,15 +21,20 @@
   }}
 >
   <label class="field"
-    ><span>View</span><select class="input" bind:value={view}>
-      <option value="agenda">Agenda</option>
-      <option value="month">Month</option>
+    ><span>{t('calendar.view')}</span><select class="input" bind:value={view}>
+      <option value="agenda">{t('calendar.agenda')}</option>
+      <option value="month">{t('calendar.month')}</option>
     </select></label
   >
   {#if view === 'agenda'}
     <label class="field"
-      ><span>Days ahead: {days}</span><input type="range" min="1" max="31" bind:value={days} /></label
+      ><span>{t('calendar.days_ahead', { days: days })}</span><input
+        type="range"
+        min="1"
+        max="31"
+        bind:value={days}
+      /></label
     >
   {/if}
-  <button class="btn btn-primary" type="submit">Save</button>
+  <button class="btn btn-primary" type="submit">{t('calendar.save')}</button>
 </form>
