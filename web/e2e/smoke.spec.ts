@@ -122,7 +122,10 @@ test('quick search finds bookmarks with the keyboard', async ({ page }) => {
   const box = page.getByRole('combobox', { name: /Search bookmarks/ });
   await expect(box).toBeFocused();
   await box.fill('docker docs');
-  await expect(page.getByRole('option', { name: /Docker documentation/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('option', { name: /Docker documentation/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   await box.fill('nothing-matches-this');
   await expect(page.getByText(/No matches/)).toBeVisible();
   await page.keyboard.press('Escape');
