@@ -250,11 +250,16 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars and AdGuard Home. This is intended behaviour, so
-static analysis reports these as "server-side request forgery" — only the
-single, authenticated user can configure them (session + CSRF protection,
-IP allowlist). Weather data comes from Open-Meteo. Nothing else leaves the
-server. The search endpoint redirects to the search engine (or to a URL typed
+RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, the FRITZ!Box and your
+ntfy server. This is intended behaviour, so static analysis reports these as
+"server-side request forgery" — only the single, authenticated user can
+configure them (session + CSRF protection, IP allowlist). Weather data comes
+from Open-Meteo. Nothing else leaves the server.
+
+The FRITZ!Box login uses HTTP digest authentication, which TR-064 defines with
+MD5. Static analysis flags this as weak password hashing; the password is not
+stored as a hash (it is encrypted with `SECRET_KEY`), MD5 only answers the
+box's login challenge as the protocol requires. The search endpoint redirects to the search engine (or to a URL typed
 into the search bar); it requires a session, and the `SameSite=Strict` cookie
 is never sent with cross-site requests, so it cannot be abused as an open
 redirect.

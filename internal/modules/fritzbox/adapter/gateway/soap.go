@@ -119,6 +119,8 @@ func responseArgs(raw []byte, wrapper string) (map[string]string, error) {
 var challengeParam = regexp.MustCompile(`(\w+)="?([^",]*)"?`)
 
 // digestAuthorization answers an RFC 7616 digest challenge (MD5, qop=auth).
+// MD5 is mandated by TR-064; it only proves knowledge of the password to the
+// box and is never used to store it.
 func digestAuthorization(challenge, method, uri, user, password string) (string, error) {
 	if !strings.HasPrefix(strings.ToLower(challenge), "digest ") {
 		return "", errors.New("the FRITZ!Box did not offer digest authentication")
