@@ -7,8 +7,10 @@ widgets on multiple tabs plus small modules for everyday life and the home
 server — as lean as possible, as much as necessary, built on a strict Clean
 Architecture.
 
-- **One binary, one container (~25 MB):** Go backend with the Svelte frontend
-  embedded; SQLite as database. Node is only needed to build.
+- **One binary, one container (~8 MB image, ~75 MB RAM idle):** Go backend with
+  the Svelte frontend embedded; SQLite as database. Node is only needed to
+  build. Size and memory are budgets enforced in CI
+  ([lean by default](docs/adr/0011-lean-by-default.md)).
 - **Private by default:** single-user login, IP allowlist, no telemetry, no
   external requests except to the services you configure.
 - **Modular:** every feature is a module that can be switched off.

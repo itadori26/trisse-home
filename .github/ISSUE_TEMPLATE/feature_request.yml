@@ -36,6 +36,13 @@ body:
     validations:
       required: true
   - type: textarea
+    id: footprint
+    attributes:
+      label: Expected size/performance impact (optional)
+      description: New dependencies, extra requests or polling, data stored over time, code that could be lazy-loaded (see ADR 0011).
+    validations:
+      required: false
+  - type: textarea
     id: notes
     attributes:
       label: Architecture, security or privacy notes

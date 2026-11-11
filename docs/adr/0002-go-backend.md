@@ -18,6 +18,6 @@ Argon2id (`golang.org/x/crypto`) and an RSS/Atom parser.
 
 ## Consequences
 
-- One static binary without CGO, a distroless runtime image of ~25 MB.
+- One static binary without CGO, a distroless runtime image of ~8 MB (measured, see ADR 0011).
 - No web framework to learn or upgrade; middleware are plain decorators.
 - Some helpers (JSON envelope, migrations) are written by hand.

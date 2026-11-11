@@ -16,3 +16,4 @@ that supersedes the old one.
 | [0009](0009-two-factor-authentication.md)   | Two-factor authentication with TOTP           | Accepted |
 | [0008](0008-sample-data-on-setup.md)        | Sample data after the first setup             | Accepted |
 | [0010](0010-internationalisation.md)        | Internationalisation without a framework      | Accepted |
+| [0011](0011-lean-by-default.md)             | Lean by default: dependency policy and resource budgets | Accepted |
