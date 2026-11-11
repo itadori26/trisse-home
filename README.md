@@ -153,6 +153,10 @@ the log.
 
 ## WireGuard widget (optional)
 
+> **Why is this an extra step?** `wg` needs network admin rights and its output contains the server's private key.
+> A host script exports only the public peer status instead. Settings → WireGuard generates the cron line for your
+> paths. [Security model →](docs/security-model.md#wireguard-export)
+
 trisse-home has no access to WireGuard itself. A small script on the host exports the peer status every minute into
 `./wireguard`, which is mounted read-only into the container:
 
@@ -182,6 +186,10 @@ cached data is deleted on logout.
 
 ## Wake-on-LAN (optional)
 
+> **Why is this an extra step?** Broadcasts cannot leave a Docker bridge network, and moving the whole app into the
+> host network would drop its isolation. A tiny relay does only this one job. The service dialog generates the `.env`
+> lines for your setup. [Security model →](docs/security-model.md#wake-on-lan-relay)
+
 Service tiles with a MAC address get a ⏻ button while the service is not online. Magic packets are broadcasts, and
 broadcasts cannot leave a Docker bridge network — so trisse-home stays in its own network and a tiny relay does
 the broadcasting. Enable it with one line in `.env`, then run `docker compose up -d` as usual:
@@ -205,6 +213,10 @@ do anyway: wake devices.
 The target device must have Wake-on-LAN enabled in its BIOS/UEFI and network driver.
 
 ## Docker actions (optional)
+
+> **Why is this an extra step?** Write access to Docker is root on the host. Instead of loosening the read-only proxy,
+> a second proxy allows nothing but restarts, plus an allow-list in trisse-home.
+> [Security model →](docs/security-model.md#docker-actions)
 
 The Docker widget can restart containers and show their last 200 log lines. This is **off by default** because a
 restart needs write access to Docker. To enable it, add to `.env`:

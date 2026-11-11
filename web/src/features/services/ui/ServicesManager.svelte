@@ -1,4 +1,6 @@
 <script lang="ts">
+  import CopySnippet from '../../../shared/ui/CopySnippet.svelte';
+  import { type WolSetup, wolEnvSnippet } from '../domain/wolSnippet';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { emptyServiceInput, type Service, type ServiceInput, statusText } from '../domain/service';
@@ -63,6 +65,13 @@
   run(async () => {
     list = await services.list();
   });
+
+  let wolSetup = $state<WolSetup>('relay');
+  let wolBroadcast = $state('');
+  let wolDockerActions = $state(false);
+  const wolSnippet = $derived(
+    wolEnvSnippet({ setup: wolSetup, broadcast: wolBroadcast, dockerActions: wolDockerActions }),
+  );
 </script>
 
 <ul class="list">
@@ -156,6 +165,41 @@
       autocomplete="off"
     /></label
   >
+  {#if form.mac.trim() !== ''}
+    <details>
+      <summary>{t('services.wol_setup')}</summary>
+      <label class="field"
+        ><span>{t('services.wol_how')}</span><select class="input" bind:value={wolSetup}>
+          <option value="relay">{t('services.wol_relay')}</option>
+          <option value="host-network">{t('services.wol_host_network')}</option>
+        </select></label
+      >
+      <label class="field"
+        ><span>{t('services.wol_broadcast')}</span><input
+          class="input"
+          bind:value={wolBroadcast}
+          placeholder="192.168.178.255:9"
+          autocomplete="off"
+        /></label
+      >
+      <label
+        ><input type="checkbox" bind:checked={wolDockerActions} /> {t('services.wol_docker_actions')}</label
+      >
+      {#if wolSnippet}
+        <p class="muted">{t('services.wol_snippet_hint')}</p>
+        <CopySnippet code={wolSnippet} label={t('services.wol_setup')} />
+      {:else}
+        <p class="error">{t('services.wol_broadcast_invalid')}</p>
+      {/if}
+      <p class="muted">
+        <a
+          href="https://github.com/itadori26/trisse-home/blob/main/docs/security-model.md#wake-on-lan-relay"
+          target="_blank"
+          rel="noopener noreferrer">{t('common.why_extra_step')}</a
+        >
+      </p>
+    </details>
+  {/if}
   <label
     ><input type="checkbox" bind:checked={form.skipTlsVerify} />
     {t('services.accept_self_signed_certificates_for_the')}</label
