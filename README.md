@@ -162,6 +162,18 @@ service tiles are configured in the web interface.
   with container listing enabled and everything else (including all POST
   requests) denied, on an internal network without published port.
 
+### Outbound requests
+
+Several modules fetch URLs that you configure yourself: service health checks,
+RSS feeds, CalDAV calendars and AdGuard Home. This is intended behaviour, so
+static analysis reports these as "server-side request forgery" — only the
+single, authenticated user can configure them (session + CSRF protection,
+IP allowlist). Weather data comes from Open-Meteo. Nothing else leaves the
+server. The search endpoint redirects to the search engine (or to a URL typed
+into the search bar); it requires a session, and the `SameSite=Strict` cookie
+is never sent with cross-site requests, so it cannot be abused as an open
+redirect.
+
 ### Behind a reverse proxy (optional)
 
 The app is prepared for HTTPS behind a reverse proxy such as
