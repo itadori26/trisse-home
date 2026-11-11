@@ -10,6 +10,7 @@ type ServiceInputDTO struct {
 	Icon          string `json:"icon"`
 	Description   string `json:"description"`
 	SkipTLSVerify bool   `json:"skipTlsVerify"`
+	MAC           string `json:"mac"`
 }
 
 // OrderDTO is the body of PUT /api/services/order.
@@ -18,5 +19,5 @@ type OrderDTO struct {
 }
 
 func (d ServiceInputDTO) toInput() usecase.ServiceInput {
-	return usecase.ServiceInput{Name: d.Name, URL: d.URL, CheckURL: d.CheckURL, Icon: d.Icon, Description: d.Description, SkipTLSVerify: d.SkipTLSVerify}
+	return usecase.ServiceInput{Name: d.Name, URL: d.URL, CheckURL: d.CheckURL, Icon: d.Icon, Description: d.Description, SkipTLSVerify: d.SkipTLSVerify, MAC: d.MAC}
 }

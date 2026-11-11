@@ -16,6 +16,8 @@ import (
 	"trisse-home/internal/modules/calendar"
 	"trisse-home/internal/modules/dashboard"
 	"trisse-home/internal/modules/docker"
+	"trisse-home/internal/modules/fritzbox"
+	"trisse-home/internal/modules/nextcloud"
 	"trisse-home/internal/modules/notes"
 	"trisse-home/internal/modules/notifications"
 	"trisse-home/internal/modules/onboarding"
@@ -25,11 +27,13 @@ import (
 	"trisse-home/internal/modules/system"
 	"trisse-home/internal/modules/todos"
 	"trisse-home/internal/modules/weather"
+	"trisse-home/internal/modules/wireguard"
 	"trisse-home/internal/platform/clock"
 	"trisse-home/internal/platform/config"
 	"trisse-home/internal/platform/crypto"
 	"trisse-home/internal/platform/httpclient"
 	"trisse-home/internal/platform/idgen"
+	"trisse-home/internal/platform/wol"
 	"trisse-home/internal/shared/kernel"
 )
 
@@ -80,6 +84,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"services", func() modules.Module {
 			return services.New(services.Deps{
 				DB: db, Clock: clk, IDs: ids, Observations: sink,
+				Waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
 				Client:         httpclient.New(httpclient.WithTimeout(healthCheckTimeout)),
 				InsecureClient: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
 			})
@@ -91,8 +96,14 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"system", func() modules.Module {
 			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths}, db, sink, clk)
 		}},
-		{"docker", func() modules.Module { return docker.New(client, cfg.DockerProxyURL, sink, clk) }},
+		{"docker", func() modules.Module {
+			return docker.New(client, docker.Config{ProxyURL: cfg.DockerProxyURL, Actions: cfg.DockerActions,
+				ActionsContainers: cfg.DockerActionsContainers, ActionsProxyURL: cfg.DockerActionsProxyURL}, sink, clk)
+		}},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
+		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, client, clk) }},
+		{"wireguard", func() modules.Module { return wireguard.New(db, cfg.WireGuardDir, clk) }},
+		{"fritzbox", func() modules.Module { return fritzbox.New(db, secrets, client, clk, time.Local) }},
 		{"backupmonitor", func() modules.Module {
 			return backupmonitor.New(backupmonitor.Deps{DB: db, Tokens: crypto.RandomTokens{}, Clock: clk, IDs: ids, Observations: sink})
 		}},

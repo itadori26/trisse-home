@@ -441,6 +441,15 @@ paths:
       security: [{ session: [], csrf: [] }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Service" } } } } }
+  /api/services/{id}/wake:
+    post:
+      tags: [services]
+      summary: Send a Wake-on-LAN magic packet to the service's MAC address (directly or via the wol-relay)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Sent }
+        "400": { description: No MAC address stored }
+        "503": { description: The relay did not answer (profile "wol" not enabled) }
   /api/services/history:
     get:
       tags: [services]
@@ -707,6 +716,75 @@ paths:
       summary: Containers via the read-only socket proxy (refreshed every 20 seconds)
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContainerList" } } } }
+  /api/docker/actions:
+    get:
+      tags: [docker]
+      summary: Whether container actions are enabled (DOCKER_ACTIONS) and for which containers
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, containers: { type: array, items: { type: string } } } } } } }
+  /api/docker/containers/{name}/restart:
+    post:
+      tags: [docker]
+      summary: Restart a container on the allow-list (through the restart-only proxy)
+      parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Restarted }, "403": { description: Actions disabled or container not allowed } }
+  /api/docker/containers/{name}/logs:
+    get:
+      tags: [docker]
+      summary: Last 200 log lines of a container on the allow-list
+      parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { lines: { type: array, items: { type: string } } } } } } }
+        "403": { description: Actions disabled or container not allowed }
+
+  # ---------------------------------------------------------------- nextcloud
+  /api/nextcloud/settings:
+    get:
+      tags: [nextcloud]
+      summary: Connection settings (the app password is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [nextcloud]
+      summary: Test and save the connection; an empty app password keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, username: { type: string }, appPassword: { type: string } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error or connection failed } }
+  /api/nextcloud/status:
+    get:
+      tags: [nextcloud]
+      summary: Version, maintenance mode, the account's quota and (for admins with the serverinfo app) server details; refreshed every 5 minutes
+      responses:
+        "200": { description: "OK; server is null and serverHint explains why when serverinfo is unavailable" }
+        "404": { description: Not configured }
+
+  # ---------------------------------------------------------------- fritzbox
+  /api/fritzbox/settings:
+    get:
+      tags: [fritzbox]
+      summary: Connection settings (the password is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [fritzbox]
+      summary: Test and save; username/password are optional (needed for calls and link speed), an empty password keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string, example: "http://192.168.178.1:49000" }, username: { type: string }, password: { type: string } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error, box not reachable or login failed } }
+  /api/fritzbox/status:
+    get:
+      tags: [fritzbox]
+      summary: WAN state, external IP, throughput (bytes/s via UPnP), link speed and recent calls (via TR-064); refreshed every 15 s, calls every 2 min
+      responses: { "200": { description: OK }, "404": { description: Not configured } }
+
+  # ---------------------------------------------------------------- wireguard
+  /api/wireguard/peers:
+    get:
+      tags: [wireguard]
+      summary: Peers from the export of scripts/wireguard-export.sh (online = handshake within 3 minutes; stale = export older than 5 minutes)
+      responses: { "200": { description: OK }, "404": { description: No export found } }
+  /api/wireguard/names:
+    put:
+      tags: [wireguard]
+      summary: Set a custom name for a public key (empty name removes it)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { publicKey: { type: string }, name: { type: string, maxLength: 40 } } } } } }
+      responses: { "204": { description: Saved }, "422": { description: Validation error } }
 
   # ---------------------------------------------------------------- adguard
   /api/adguard/settings:
@@ -945,6 +1023,7 @@ components:
         icon: { type: string, description: Emoji, text or http(s) image URL }
         description: { type: string, maxLength: 200 }
         skipTlsVerify: { type: boolean }
+        mac: { type: string, description: "MAC address for Wake-on-LAN, normalised to aa:bb:cc:dd:ee:ff; empty for none" }
     Service:
       allOf:
         - $ref: "#/components/schemas/ServiceInput"

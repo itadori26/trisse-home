@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -23,6 +24,9 @@ import (
 	"trisse-home/internal/platform/config"
 	"trisse-home/internal/platform/crypto"
 )
+
+// wolTarget receives the magic packets of the end-to-end test.
+var wolTarget net.PacketConn
 
 // flakyDown switches the /flaky endpoint of the fake upstream to 503.
 var flakyDown atomic.Bool
@@ -60,6 +64,22 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	})
 	mux.HandleFunc("GET /containers/json", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `[{"Id":"abcdef1234567890","Names":["/web"],"Image":"nginx","State":"running","Status":"Up 1 hour (healthy)","Created":1700000000}]`)
+	})
+	mux.HandleFunc("POST /containers/web/restart", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("GET /containers/web/logs", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "started\nlistening on :80\n")
+	})
+	mux.HandleFunc("GET /status.php", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"installed":true,"maintenance":false,"versionstring":"30.0.2"}`)
+	})
+	mux.HandleFunc("GET /ocs/v1.php/cloud/users/anna", func(w http.ResponseWriter, r *http.Request) {
+		if _, p, _ := r.BasicAuth(); p != "app-pw" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `{"ocs":{"meta":{"statuscode":100},"data":{"quota":{"used":250,"free":750,"quota":1000}}}}`)
 	})
 	mux.HandleFunc("GET /control/stats", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"num_dns_queries":100,"num_blocked_filtering":25,"avg_processing_time":0.002,"top_blocked_domains":[{"ads.example":7}]}`)
@@ -149,12 +169,20 @@ type obj = map[string]any
 
 func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) *httptest.Server {
 	t.Helper()
+	var err error
+	wolTarget, err = net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = wolTarget.Close() })
 	key := make([]byte, config.SecretKeyBytes)
 	_, _ = rand.Read(key)
 	cfg := config.Config{
 		ListenAddr: ":0", DatabasePath: filepath.Join(t.TempDir(), "e2e.db"),
 		AllowedCIDRs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}, SessionTTL: time.Hour,
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
+		DockerActions: true, DockerActionsContainers: []string{"web"}, DockerActionsProxyURL: upstream,
+		WolBroadcast: wolTarget.LocalAddr().String(),
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
 		BackupDir:       filepath.Join(t.TempDir(), "backups"), BackupInterval: 24 * time.Hour, BackupRetention: 3,
@@ -202,8 +230,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 18 {
-		t.Fatalf("expected 18 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 21 {
+		t.Fatalf("expected 21 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -287,6 +315,20 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodPost, "/api/services/check", nil, http.StatusOK, nil)
 	c.json(http.MethodGet, "/api/services", nil, http.StatusOK, nil)
 	c.do(http.MethodDelete, "/api/services/"+sID, nil, http.StatusNoContent)
+
+	// --- wake-on-lan: magic packet sent directly to WOL_BROADCAST ---
+	var nas obj
+	c.json(http.MethodPost, "/api/services", obj{"name": "NAS", "url": up.URL + "/flaky", "mac": "AA-BB-CC-DD-EE-FF"}, http.StatusCreated, &nas)
+	if nas["mac"] != "aa:bb:cc:dd:ee:ff" {
+		t.Fatalf("mac not normalised: %v", nas["mac"])
+	}
+	c.do(http.MethodPost, "/api/services/"+nas["id"].(string)+"/wake", nil, http.StatusNoContent)
+	buf := make([]byte, 200)
+	_ = wolTarget.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if n, _, err := wolTarget.ReadFrom(buf); err != nil || n != 102 {
+		t.Fatalf("magic packet not received: %d %v", n, err)
+	}
+	c.do(http.MethodDelete, "/api/services/"+nas["id"].(string), nil, http.StatusNoContent)
 
 	// --- notifications: a service going offline is pushed via ntfy ---
 	rules := obj{"services": true, "containers": true, "disk": true, "diskThreshold": 90, "tls": true, "tlsDays": 14, "backups": true}
@@ -380,6 +422,31 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodGet, "/api/docker/containers", nil, http.StatusOK, &containers)
 	if containers["running"] != float64(1) {
 		t.Fatalf("docker: %v", containers)
+	}
+	c.do(http.MethodPost, "/api/docker/containers/web/restart", nil, http.StatusNoContent)
+	c.do(http.MethodPost, "/api/docker/containers/other/restart", nil, http.StatusForbidden)
+	var logs struct{ Lines []string }
+	c.json(http.MethodGet, "/api/docker/containers/web/logs", nil, http.StatusOK, &logs)
+	if len(logs.Lines) != 2 || logs.Lines[1] != "listening on :80" {
+		t.Fatalf("docker logs: %v", logs)
+	}
+
+	// --- fritzbox: not configured until saved ---
+	c.do(http.MethodGet, "/api/fritzbox/status", nil, http.StatusNotFound)
+	var fb obj
+	c.json(http.MethodGet, "/api/fritzbox/settings", nil, http.StatusOK, &fb)
+	if fb["configured"] != false || fb["url"] != "http://192.168.178.1:49000" {
+		t.Fatalf("fritzbox defaults: %v", fb)
+	}
+
+	// --- nextcloud (no serverinfo app on the fake: degrades gracefully) ---
+	c.do(http.MethodGet, "/api/nextcloud/status", nil, http.StatusNotFound)
+	c.do(http.MethodPut, "/api/nextcloud/settings", obj{"url": up.URL, "username": "anna", "appPassword": "wrong"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/nextcloud/settings", obj{"url": up.URL, "username": "anna", "appPassword": "app-pw"}, http.StatusOK, nil)
+	var nc obj
+	c.json(http.MethodGet, "/api/nextcloud/status", nil, http.StatusOK, &nc)
+	if nc["version"] != "30.0.2" || nc["server"] != nil || nc["serverHint"] == "" || nc["quota"].(obj)["percent"] != float64(25) {
+		t.Fatalf("nextcloud: %v", nc)
 	}
 
 	// --- adguard ---

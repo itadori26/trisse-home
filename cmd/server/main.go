@@ -26,6 +26,7 @@ import (
 	"trisse-home/internal/platform/scheduler"
 	"trisse-home/internal/platform/spa"
 	"trisse-home/internal/platform/webui"
+	"trisse-home/internal/platform/wol"
 )
 
 // version is set at build time via -ldflags "-X main.version=...".
@@ -44,12 +45,14 @@ func main() {
 		err = serve()
 	case "healthcheck":
 		err = healthcheck()
+	case "wol-relay":
+		err = wolRelay()
 	case "reset-account":
 		err = resetAccount()
 	case "version":
 		fmt.Println(version)
 	default:
-		err = fmt.Errorf("unknown command %q (available: serve, healthcheck, reset-account, version)", cmd)
+		err = fmt.Errorf("unknown command %q (available: serve, healthcheck, wol-relay, reset-account, version)", cmd)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
@@ -191,4 +194,24 @@ func healthcheck() error {
 		return errors.New("unhealthy: " + res.Status)
 	}
 	return nil
+}
+
+// wolRelay runs the Wake-on-LAN relay (compose profile "wol"). It only reads
+// WOL_RELAY_LISTEN and WOL_BROADCAST and needs no database or secret key.
+func wolRelay() error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	env := func(key, def string) string {
+		if v := os.Getenv(key); v != "" {
+			return v
+		}
+		return def
+	}
+	return wol.Relay{
+		Listen:    env("WOL_RELAY_LISTEN", ":"+wol.DefaultRelayPort),
+		Broadcast: env("WOL_BROADCAST", wol.DefaultBroadcast),
+		Log:       slog.New(slog.NewJSONHandler(os.Stdout, nil)),
+		Burst:     10,
+		Every:     time.Second,
+	}.Serve(ctx)
 }

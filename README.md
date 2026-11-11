@@ -21,15 +21,18 @@ Architecture.
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Current weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), place search      |
 | **clock**      | Time and date, optionally in another time zone                                                        |
-| **services**   | Tiles for your services with online status, response time history and TLS certificate expiry warning  |
+| **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN |
 | **bookmarks**  | Links in folders with tags, filterable                                                                |
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Upcoming events from CalDAV calendars, e.g. Nextcloud (recurring events supported)                    |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
-| **docker**     | Container status and health via a read-only Docker socket proxy                                       |
+| **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
+| **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
+| **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
+| **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
@@ -110,6 +113,62 @@ start it again.
 `sudo docker compose restart trisse-home` and use the new setup token from
 the log.
 
+## WireGuard widget (optional)
+
+trisse-home has no access to WireGuard itself. A small script on the host exports the peer status every minute into
+`./wireguard`, which is mounted read-only into the container:
+
+```sh
+sudo tee /etc/cron.d/trisse-home-wireguard <<'CRON'
+* * * * * root /opt/stacks/trisse-home/scripts/wireguard-export.sh
+CRON
+```
+
+The script runs `wg show all dump` in the `wireguard` container (`WG_CONTAINER=` for WireGuard on the host), keeps
+only the peer lines — the interface line with the **private key is dropped and preshared keys are blanked** — and
+reads the peer names of `linuxserver/wireguard` from the public keys in its `peer_<name>` folders. Names can be
+changed in Settings → WireGuard. A peer counts as online when its last handshake is less than 3 minutes old.
+
+## Wake-on-LAN (optional)
+
+Service tiles with a MAC address get a ⏻ button while the service is not online. Magic packets are broadcasts, and
+broadcasts cannot leave a Docker bridge network — so trisse-home stays in its own network and a tiny relay does
+the broadcasting. Enable it with one line in `.env`, then run `docker compose up -d` as usual:
+
+```sh
+COMPOSE_PROFILES=wol                 # or wol,docker-actions
+# WOL_BROADCAST=192.168.178.255:9    # optional, if 255.255.255.255 leaves through the wrong interface
+```
+
+The `wol-relay` service uses the same image (`trisse-home wol-relay`), runs in the host network, read-only and
+without capabilities, has no access to data, Docker or secrets, accepts nothing but valid magic packets on UDP
+port 9009 and is rate-limited. The port is reachable from your LAN, which only allows what every LAN device can
+do anyway: wake devices.
+
+| Setup | What to do |
+|---|---|
+| Docker Compose (default) | `COMPOSE_PROFILES=wol` |
+| Binary / container in host network | `WOL_RELAY=` (empty) — trisse-home broadcasts itself |
+| No extra container wanted | Enable directed broadcast forwarding on the host (`sysctl net.ipv4.conf.all.bc_forwarding=1` and `net.ipv4.conf.<lan-if>.bc_forwarding=1`), set `WOL_RELAY=` and `WOL_BROADCAST=<lan>.255:9` |
+
+The target device must have Wake-on-LAN enabled in its BIOS/UEFI and network driver.
+
+## Docker actions (optional)
+
+The Docker widget can restart containers and show their last 200 log lines. This is **off by default** because a
+restart needs write access to Docker. To enable it, add to `.env`:
+
+```sh
+COMPOSE_PROFILES=docker-actions        # starts the second, restart-only socket proxy
+DOCKER_ACTIONS=true
+DOCKER_ACTIONS_CONTAINERS=homarr,dashdot   # exact container names
+```
+
+The read-only proxy stays unchanged. The additional `docker-actions-proxy` only accepts
+`POST /containers/<name>/stop|restart|kill` and denies everything else (no reads, no create, no exec), and
+trisse-home only calls *restart* for containers on the allow-list. Logs are read through the read-only proxy and
+may contain secrets — only list containers whose logs you are fine seeing on the dashboard.
+
 ## Notifications and backup monitoring
 
 **Notifications** (Settings → Notifications) publish to an [ntfy](https://ntfy.sh) topic. A state change is only
@@ -150,6 +209,12 @@ service tiles are configured in the web interface.
 | `HOST_PROC`         | `/proc` (`/host/proc` in compose) | Host procfs for the system module.                                            |
 | `HOST_SYS`          | `/sys` (`/host/sys` in compose)   | Host sysfs (temperatures).                                                    |
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
+| `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
+| `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |
+| `WOL_BROADCAST`     | `255.255.255.255:9`               | Broadcast address the magic packet is sent to (by the relay or directly).     |
+| `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
+| `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
+| `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
 | `TZ`                | `UTC`                             | Time zone for logs and floating calendar times.                               |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
 | `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
@@ -185,11 +250,16 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars and AdGuard Home. This is intended behaviour, so
-static analysis reports these as "server-side request forgery" — only the
-single, authenticated user can configure them (session + CSRF protection,
-IP allowlist). Weather data comes from Open-Meteo. Nothing else leaves the
-server. The search endpoint redirects to the search engine (or to a URL typed
+RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, the FRITZ!Box and your
+ntfy server. This is intended behaviour, so static analysis reports these as
+"server-side request forgery" — only the single, authenticated user can
+configure them (session + CSRF protection, IP allowlist). Weather data comes
+from Open-Meteo. Nothing else leaves the server.
+
+The FRITZ!Box login uses HTTP digest authentication, which TR-064 defines with
+MD5. Static analysis flags this as weak password hashing; the password is not
+stored as a hash (it is encrypted with `SECRET_KEY`), MD5 only answers the
+box's login challenge as the protocol requires. The search endpoint redirects to the search engine (or to a URL typed
 into the search bar); it requires a session, and the `SameSite=Strict` cookie
 is never sent with cross-site requests, so it cannot be abused as an open
 redirect.

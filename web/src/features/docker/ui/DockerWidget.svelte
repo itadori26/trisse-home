@@ -1,6 +1,14 @@
 <script lang="ts">
   import { errorMessage } from '../../../shared/api-client/http';
-  import { type ContainerList, filterContainers, indicator, parseDockerConfig } from '../domain/container';
+  import Modal from '../../../shared/ui/Modal.svelte';
+  import {
+    canAct,
+    type ContainerList,
+    type DockerActions,
+    filterContainers,
+    indicator,
+    parseDockerConfig,
+  } from '../domain/container';
   import type { DockerUseCases } from '../usecase/dockerUseCases';
 
   /** Props of the docker widget. */
@@ -15,6 +23,40 @@
   let data = $state<ContainerList | null>(null);
   let error = $state('');
   const shown = $derived(data ? filterContainers(data.containers, cfg) : []);
+  let actions = $state<DockerActions | null>(null);
+  let busy = $state('');
+  let logs = $state<{ name: string; lines: string[] | null; error: string } | null>(null);
+
+  $effect(() => {
+    docker
+      .actions()
+      .then((a) => (actions = a))
+      .catch(() => {});
+  });
+
+  async function restart(name: string) {
+    if (!confirm(`Restart the container "${name}"?`)) return;
+    busy = name;
+    try {
+      await docker.restart(name);
+      data = await docker.containers();
+      error = '';
+    } catch (err) {
+      error = errorMessage(err);
+    } finally {
+      busy = '';
+    }
+  }
+
+  async function showLogs(name: string) {
+    logs = { name, lines: null, error: '' };
+    try {
+      const lines = await docker.logs(name);
+      if (logs?.name === name) logs = { name, lines, error: '' };
+    } catch (err) {
+      if (logs?.name === name) logs = { name, lines: [], error: errorMessage(err) };
+    }
+  }
 
   $effect(() => {
     const load = () =>
@@ -42,6 +84,23 @@
         <span class="dot {indicator(c)}" aria-label={c.state}></span>
         <span class="name">{c.name}</span>
         <span class="muted small status">{c.status}</span>
+        {#if canAct(actions, c.name)}
+          <button
+            class="btn btn-icon act"
+            type="button"
+            title="Show logs"
+            aria-label="Logs of {c.name}"
+            onclick={() => showLogs(c.name)}>≡</button
+          >
+          <button
+            class="btn btn-icon act"
+            type="button"
+            title="Restart"
+            aria-label="Restart {c.name}"
+            disabled={busy === c.name}
+            onclick={() => restart(c.name)}>↻</button
+          >
+        {/if}
       </li>
     {:else}
       <li class="muted">{cfg.problemsOnly ? 'All containers are healthy. 👍' : 'No containers.'}</li>
@@ -49,7 +108,34 @@
   </ul>
 {/if}
 
+{#if logs}
+  <Modal title="Logs: {logs.name}" onclose={() => (logs = null)}>
+    {#if logs.error}<p class="error">{logs.error}</p>{/if}
+    {#if logs.lines === null}
+      <p class="muted">Loading …</p>
+    {:else}
+      <pre class="logs">{logs.lines.join('\n') || '(no output)'}</pre>
+    {/if}
+  </Modal>
+{/if}
+
 <style>
+  .act {
+    padding: 0 4px;
+    line-height: 1.2;
+    font-size: 0.9em;
+  }
+  .logs {
+    max-height: 60vh;
+    max-width: min(90vw, 900px);
+    overflow: auto;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: var(--color-surface-2);
+    padding: var(--space-2);
+    border-radius: var(--radius-small);
+  }
   .summary {
     display: flex;
     gap: var(--space-3);

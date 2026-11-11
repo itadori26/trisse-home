@@ -1,6 +1,6 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { ListDTO } from '../../../../shared/api-client/generated/docker';
-import type { ContainerList } from '../../domain/container';
+import type { CapabilitiesDTO, ListDTO, LogsDTO } from '../../../../shared/api-client/generated/docker';
+import type { ContainerList, DockerActions } from '../../domain/container';
 import type { DockerGateway } from '../../usecase/dockerUseCases';
 
 /** DockerGateway backed by the REST API. */
@@ -25,5 +25,18 @@ export class DockerApi implements DockerGateway {
       unhealthy: d.unhealthy,
       error: d.error,
     };
+  }
+
+  async actions(): Promise<DockerActions> {
+    const d = await this.http.get<CapabilitiesDTO>('/api/docker/actions');
+    return { enabled: d.enabled, containers: d.containers };
+  }
+
+  restart(name: string): Promise<void> {
+    return this.http.post(`/api/docker/containers/${encodeURIComponent(name)}/restart`);
+  }
+
+  async logs(name: string): Promise<string[]> {
+    return (await this.http.get<LogsDTO>(`/api/docker/containers/${encodeURIComponent(name)}/logs`)).lines;
   }
 }

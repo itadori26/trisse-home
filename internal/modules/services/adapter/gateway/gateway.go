@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/services/domain"
+	"trisse-home/internal/shared/kernel"
 	"trisse-home/internal/shared/sqlutil"
 )
 
@@ -31,13 +32,14 @@ type Repository struct{ db *sql.DB }
 // NewRepository returns a repository backed by db.
 func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
-const columns = `id, name, url, check_url, icon, description, skip_tls_verify, position`
+const columns = `id, name, url, check_url, icon, description, skip_tls_verify, position, mac`
 
 func scan(s interface{ Scan(...any) error }) (domain.Service, error) {
 	var svc domain.Service
 	var skip int
-	err := s.Scan(&svc.ID, &svc.Name, &svc.URL, &svc.CheckURL, &svc.Icon, &svc.Description, &skip, &svc.Position)
-	svc.SkipTLSVerify = skip == 1
+	var mac string
+	err := s.Scan(&svc.ID, &svc.Name, &svc.URL, &svc.CheckURL, &svc.Icon, &svc.Description, &skip, &svc.Position, &mac)
+	svc.SkipTLSVerify, svc.MAC = skip == 1, kernel.MAC(mac)
 	return svc, err
 }
 
@@ -73,8 +75,8 @@ func (r *Repository) Get(ctx context.Context, id string) (domain.Service, error)
 
 // Create inserts a service.
 func (r *Repository) Create(ctx context.Context, s domain.Service) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO services (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.ID, s.Name, s.URL, s.CheckURL, s.Icon, s.Description, boolInt(s.SkipTLSVerify), s.Position)
+	_, err := r.db.ExecContext(ctx, `INSERT INTO services (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.ID, s.Name, s.URL, s.CheckURL, s.Icon, s.Description, boolInt(s.SkipTLSVerify), s.Position, string(s.MAC))
 	if err != nil {
 		return fmt.Errorf("insert service: %w", err)
 	}
@@ -84,8 +86,8 @@ func (r *Repository) Create(ctx context.Context, s domain.Service) error {
 // Update stores all fields of a service.
 func (r *Repository) Update(ctx context.Context, s domain.Service) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE services SET name = ?, url = ?, check_url = ?, icon = ?, description = ?,
-		skip_tls_verify = ?, position = ? WHERE id = ?`,
-		s.Name, s.URL, s.CheckURL, s.Icon, s.Description, boolInt(s.SkipTLSVerify), s.Position, s.ID)
+		skip_tls_verify = ?, position = ?, mac = ? WHERE id = ?`,
+		s.Name, s.URL, s.CheckURL, s.Icon, s.Description, boolInt(s.SkipTLSVerify), s.Position, string(s.MAC), s.ID)
 	if err != nil {
 		return fmt.Errorf("update service: %w", err)
 	}

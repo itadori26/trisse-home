@@ -29,6 +29,21 @@ type Service struct {
 	Description   string
 	SkipTLSVerify bool
 	Position      int
+	// MAC is the hardware address for Wake-on-LAN (optional).
+	MAC kernel.MAC
+}
+
+// ErrNoMAC is returned when waking a service without MAC address.
+var ErrNoMAC = kernel.NewPublicError(kernel.ErrInvalid, "No MAC address is stored for this service.")
+
+// SetMAC validates and stores the Wake-on-LAN address; empty removes it.
+func (s *Service) SetMAC(raw string) error {
+	m, err := kernel.ParseMAC(raw)
+	if err != nil {
+		return err
+	}
+	s.MAC = m
+	return nil
 }
 
 // NewService validates all fields. CheckURL defaults to URL; Icon may be an

@@ -22,6 +22,12 @@ services:
       SYSTEM_DISK_PATHS: ${SYSTEM_DISK_PATHS:-System=/host/rootfs}
       # Docker module: only the read-only socket proxy, never the raw socket.
       DOCKER_PROXY_URL: http://docker-socket-proxy:2375
+      # Wake-on-LAN goes through the wol-relay service (profile "wol").
+      WOL_RELAY: ${WOL_RELAY:-host.docker.internal:9009}
+      # WireGuard widget: export of scripts/wireguard-export.sh (read-only).
+      WIREGUARD_DIR: /wireguard
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       # Bind to a specific LAN address via BIND_ADDRESS to avoid exposing the
       # port on every interface of the host.
@@ -31,6 +37,7 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/host/rootfs:ro
+      - ./wireguard:/wireguard:ro
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
@@ -58,6 +65,53 @@ services:
     tmpfs: [/run, /tmp]
     security_opt: ["no-new-privileges:true"]
     networks: [docker-api]
+
+  # Optional, only started with COMPOSE_PROFILES=docker-actions: a second
+  # socket proxy that allows nothing but POST /containers/<name>/stop|restart|kill
+  # (no reads, no create/exec). trisse-home only calls restart, and only for
+  # the containers listed in DOCKER_ACTIONS_CONTAINERS.
+  docker-actions-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    container_name: trisse-home-docker-actions-proxy
+    profiles: [docker-actions]
+    restart: unless-stopped
+    environment:
+      POST: 1
+      ALLOW_RESTARTS: 1
+      CONTAINERS: 0
+      INFO: 0
+      IMAGES: 0
+      NETWORKS: 0
+      VOLUMES: 0
+      EXEC: 0
+      LOG_LEVEL: warning
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs: [/run, /tmp]
+    security_opt: ["no-new-privileges:true"]
+    networks: [docker-api]
+
+  # Optional, only started with COMPOSE_PROFILES=wol: re-broadcasts valid
+  # Wake-on-LAN magic packets into the LAN. It is the only service in the host
+  # network (broadcasts cannot leave a Docker bridge network); it has no access
+  # to data, Docker or secrets and ignores everything that is not a magic packet.
+  wol-relay:
+    image: trisse-home:local
+    container_name: trisse-home-wol-relay
+    profiles: [wol]
+    command: ["wol-relay"]
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      WOL_RELAY_LISTEN: ${WOL_RELAY_LISTEN:-:9009}
+      WOL_BROADCAST: ${WOL_BROADCAST:-255.255.255.255:9}
+    healthcheck:
+      disable: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on: [trisse-home]
 
 networks:
   default:

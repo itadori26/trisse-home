@@ -64,6 +64,15 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// Wake handles POST /api/services/{id}/wake.
+func (h *Handlers) Wake(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.Wake(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // Reorder handles PUT /api/services/order.
 func (h *Handlers) Reorder(w http.ResponseWriter, r *http.Request) {
 	var dto OrderDTO

@@ -1,6 +1,7 @@
 # Local configuration and data
 .env
 data/
+/wireguard/
 *.db
 *.db-shm
 *.db-wal
@@ -20,3 +21,6 @@ web/playwright-report/
 .idea/
 .vscode/
 *.swp
+
+# Binary built in the repository root (go build ./cmd/server)
+/server

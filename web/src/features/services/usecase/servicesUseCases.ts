@@ -9,6 +9,7 @@ export interface ServicesGateway {
   reorder(ids: string[]): Promise<void>;
   checkNow(): Promise<Service[]>;
   history(hours: number): Promise<Record<string, LatencyPoint[]>>;
+  wake(id: string): Promise<void>;
 }
 
 /** Error for input rejected before it reaches the backend. */
@@ -54,5 +55,10 @@ export class ServicesUseCases {
   /** Response time history of the last 24 hours per service ID. */
   history(): Promise<Record<string, LatencyPoint[]>> {
     return this.gateway.history(24);
+  }
+
+  /** Sends a Wake-on-LAN packet to the service's MAC address. */
+  wake(id: string): Promise<void> {
+    return this.gateway.wake(id);
   }
 }

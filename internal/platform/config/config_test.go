@@ -80,3 +80,13 @@ func TestDisabledModules(t *testing.T) {
 		t.Fatalf("unexpected module switches: %v", cfg.DisabledModules)
 	}
 }
+
+func TestDockerActionsNeedAllowList(t *testing.T) {
+	if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "DOCKER_ACTIONS": "true"})); err == nil || !strings.Contains(err.Error(), "DOCKER_ACTIONS_CONTAINERS") {
+		t.Fatalf("expected allow-list error, got %v", err)
+	}
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "DOCKER_ACTIONS": "true", "DOCKER_ACTIONS_CONTAINERS": "homarr, Dashdot"}))
+	if err != nil || len(cfg.DockerActionsContainers) != 2 || cfg.DockerActionsContainers[1] != "Dashdot" {
+		t.Fatalf("unexpected %v %v", cfg.DockerActionsContainers, err)
+	}
+}
