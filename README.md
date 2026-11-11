@@ -431,7 +431,11 @@ step, using a `quotes` module that shows a random quote as the example:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: see
+See [CONTRIBUTING.md](CONTRIBUTING.md) (development setup in about ten
+minutes, adding modules, integrations and translations), the
+[roadmap](ROADMAP.md) and the [changelog](https://github.com/itadori26/trisse-home/releases).
+Questions and ideas: [Discussions](https://github.com/itadori26/trisse-home/discussions).
+Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). Security issues: see
 [SECURITY.md](SECURITY.md).
 
 ## License
