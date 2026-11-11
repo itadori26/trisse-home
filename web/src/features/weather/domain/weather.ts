@@ -5,6 +5,8 @@ export interface WeatherConfig {
   label: string;
   /** Number of forecast days to show (0–5). */
   days: number;
+  /** Show official warnings (DWD, Germany only). */
+  warnings: boolean;
 }
 
 /** One forecast day. */
@@ -43,7 +45,13 @@ export function parseWeatherConfig(raw: Record<string, unknown>): WeatherConfig 
   const lon = raw['lon'];
   if (typeof lat !== 'number' || typeof lon !== 'number') return null;
   const days = typeof raw['days'] === 'number' ? Math.max(0, Math.min(5, Math.round(raw['days']))) : 3;
-  return { lat, lon, label: typeof raw['label'] === 'string' ? raw['label'] : '', days };
+  return {
+    lat,
+    lon,
+    label: typeof raw['label'] === 'string' ? raw['label'] : '',
+    days,
+    warnings: raw['warnings'] !== false,
+  };
 }
 
 /** Human readable label and emoji for a WMO weather code. */
@@ -95,4 +103,41 @@ export function placeLabel(p: Place): string {
   return [p.name, p.region, p.country]
     .filter((s) => s && s !== p.name)
     .reduce((a, s) => `${a}, ${s}`, p.name);
+}
+
+/** Severity of an official warning. */
+export type WarningSeverity = 'minor' | 'moderate' | 'severe' | 'extreme';
+
+/** An official weather warning. */
+export interface WeatherWarning {
+  id: string;
+  event: string;
+  headline: string;
+  description: string;
+  instruction: string;
+  severity: WarningSeverity;
+  onset: Date | null;
+  expires: Date | null;
+}
+
+/** DWD warning colors per severity (levels 1–4). */
+export const severityColors: Record<WarningSeverity, string> = {
+  minor: '#ffeb3b',
+  moderate: '#fb8c00',
+  severe: '#e53935',
+  extreme: '#880e4f',
+};
+
+/** Validity text such as "until Thu 17:00" or "from Fri 09:00". */
+export function validity(w: Pick<WeatherWarning, 'onset' | 'expires'>, now: Date): string {
+  const fmt = (d: Date) =>
+    d.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  if (w.onset && w.onset > now) return `from ${fmt(w.onset)}`;
+  if (w.expires) return `until ${fmt(w.expires)}`;
+  return '';
+}
+
+/** Cache-busting key that changes every five minutes (radar refresh). */
+export function radarKey(now: Date): number {
+  return Math.floor(now.getTime() / 300_000);
 }

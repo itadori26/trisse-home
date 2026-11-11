@@ -410,6 +410,20 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Forecast" } } } }
         "422": { $ref: "#/components/responses/Invalid" }
         "502": { $ref: "#/components/responses/Unavailable" }
+  /api/weather/warnings:
+    get:
+      tags: [weather]
+      summary: Official DWD warnings for the location (empty outside Germany), most severe first; cached 5 minutes
+      parameters: [{ name: lat, in: query, required: true, schema: { type: number } }, { name: lon, in: query, required: true, schema: { type: number } }]
+      responses: { "200": { description: OK }, "422": { description: Invalid coordinates }, "503": { description: DWD not reachable } }
+  /api/weather/radar:
+    get:
+      tags: [weather]
+      summary: PNG of the DWD precipitation radar (≈220 km around the location, Germany only); cached 5 minutes
+      parameters: [{ name: lat, in: query, required: true, schema: { type: number } }, { name: lon, in: query, required: true, schema: { type: number } }]
+      responses:
+        "200": { description: OK, content: { image/png: { schema: { type: string, format: binary } } } }
+        "422": { description: Outside Germany or invalid coordinates }
   /api/weather/places:
     get:
       tags: [weather]

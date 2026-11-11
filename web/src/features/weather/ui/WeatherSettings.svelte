@@ -8,14 +8,17 @@
     weather: WeatherUseCases;
     config: Record<string, unknown>;
     onsave: (config: Record<string, unknown>) => Promise<void>;
+    /** The radar widget only needs a location. */
+    mode?: 'forecast' | 'radar';
   }
-  let { weather, config, onsave }: Props = $props();
+  let { weather, config, onsave, mode = 'forecast' }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   const initial = parseWeatherConfig(config);
   let selected = $state(initial ? { lat: initial.lat, lon: initial.lon } : null);
   let label = $state(initial?.label ?? '');
   let days = $state(initial?.days ?? 3);
+  let showWarnings = $state(initial?.warnings ?? true);
   let query = $state('');
   let results = $state<Place[]>([]);
   let error = $state('');
@@ -42,7 +45,7 @@
       error = 'Please choose a location.';
       return;
     }
-    onsave({ ...selected, label: label.trim(), days });
+    onsave({ ...selected, label: label.trim(), days, warnings: showWarnings });
   }
 </script>
 
@@ -64,10 +67,15 @@
   <span>Label</span>
   <input class="input" bind:value={label} maxlength="40" />
 </label>
-<label class="field">
-  <span>Forecast days: {days}</span>
-  <input type="range" min="0" max="5" bind:value={days} />
-</label>
+{#if mode === 'forecast'}
+  <label class="field">
+    <span>Forecast days: {days}</span>
+    <input type="range" min="0" max="5" bind:value={days} />
+  </label>
+  <label
+    ><input type="checkbox" bind:checked={showWarnings} /> Show official weather warnings (DWD, Germany only)</label
+  >
+{/if}
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 <button class="btn btn-primary" type="button" onclick={save}>Save</button>
 

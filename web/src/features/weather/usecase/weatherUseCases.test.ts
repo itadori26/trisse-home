@@ -24,11 +24,19 @@ describe('WeatherUseCases', () => {
   const gateway: WeatherGateway = {
     forecast: vi.fn().mockResolvedValue(forecast),
     searchPlaces: vi.fn().mockResolvedValue([]),
+    warnings: vi.fn().mockResolvedValue([]),
+    radarUrl: vi.fn().mockReturnValue('/radar'),
   };
   const uc = new WeatherUseCases(gateway);
 
   it('limits the number of days', async () => {
-    expect((await uc.forecast({ lat: 1, lon: 2, label: '', days: 2 })).days).toHaveLength(2);
+    expect((await uc.forecast({ lat: 1, lon: 2, label: '', days: 2, warnings: true })).days).toHaveLength(2);
+  });
+  it('skips warnings when disabled', async () => {
+    await uc.warnings({ lat: 1, lon: 2, label: '', days: 2, warnings: false });
+    expect(gateway.warnings).not.toHaveBeenCalled();
+    await uc.warnings({ lat: 1, lon: 2, label: '', days: 2, warnings: true });
+    expect(gateway.warnings).toHaveBeenCalledWith(1, 2);
   });
   it('does not search for single characters', async () => {
     await uc.searchPlaces(' a ');

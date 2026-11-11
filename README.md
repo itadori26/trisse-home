@@ -19,7 +19,7 @@ Architecture.
 | -------------- | ----------------------------------------------------------------------------------------------------- |
 | **dashboard**  | Tabs (e.g. Home / Server / Study) with a 12-column drag & drop grid; layout stored in the database    |
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
-| **weather**    | Current weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), place search      |
+| **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
 | **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN |
 | **bookmarks**  | Links in folders with tags, filterable                                                                |
@@ -256,7 +256,10 @@ RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, the FRITZ!Box and your
 ntfy server. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can
 configure them (session + CSRF protection, IP allowlist). Weather data comes
-from Open-Meteo. Nothing else leaves the server.
+from Open-Meteo, weather warnings and the rain radar from the open data
+services of the Deutscher Wetterdienst (only for locations in Germany; the
+radar image is proxied, so the browser never contacts DWD). Nothing else
+leaves the server.
 
 The FRITZ!Box login uses HTTP digest authentication, which TR-064 defines with
 MD5. Static analysis flags this as weak password hashing; the password is not

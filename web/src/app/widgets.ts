@@ -22,7 +22,7 @@ import { SearchWidget, SearchWidgetSettings } from '../features/search';
 import { ServicesWidget } from '../features/services';
 import { SystemWidget } from '../features/system';
 import { TodosWidget, TodosWidgetSettings } from '../features/todos';
-import { WeatherSettings, WeatherWidget } from '../features/weather';
+import { RadarWidget, WeatherSettings, WeatherWidget } from '../features/weather';
 import type { Container } from './container';
 
 /** Configuration object stored per widget. */
@@ -84,6 +84,20 @@ export const widgetDefinitions: WidgetDefinition[] = [
     },
     view: renderer(WeatherWidget, (config, c) => ({ config, weather: c.weather })),
     settings: renderer(WeatherSettings, (config, c) => ({ config, weather: c.weather })),
+  },
+  {
+    type: {
+      kind: 'radar',
+      title: 'Rain radar',
+      description: 'Current precipitation radar around a location in Germany (DWD).',
+      defaultSize: { w: 4, h: 4 },
+    },
+    view: renderer(RadarWidget, (config, c) => ({ config, weather: c.weather })),
+    settings: renderer(WeatherSettings, (config, c) => ({
+      config,
+      weather: c.weather,
+      mode: 'radar' as const,
+    })),
   },
   {
     type: {

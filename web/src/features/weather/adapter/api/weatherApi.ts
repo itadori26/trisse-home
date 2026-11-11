@@ -1,6 +1,6 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { ForecastDTO, PlaceDTO } from '../../../../shared/api-client/generated/weather';
-import type { Forecast, Place } from '../../domain/weather';
+import type { ForecastDTO, PlaceDTO, WarningDTO } from '../../../../shared/api-client/generated/weather';
+import type { Forecast, Place, WeatherWarning } from '../../domain/weather';
 import type { WeatherGateway } from '../../usecase/weatherUseCases';
 
 /** WeatherGateway backed by the REST API. */
@@ -30,5 +30,18 @@ export class WeatherApi implements WeatherGateway {
   async searchPlaces(query: string): Promise<Place[]> {
     const dtos = await this.http.get<PlaceDTO[]>(`/api/weather/places?q=${encodeURIComponent(query)}`);
     return dtos.map((p) => ({ name: p.name, region: p.region, country: p.country, lat: p.lat, lon: p.lon }));
+  }
+
+  async warnings(lat: number, lon: number): Promise<WeatherWarning[]> {
+    const dtos = await this.http.get<WarningDTO[]>(`/api/weather/warnings?lat=${lat}&lon=${lon}`);
+    return dtos.map((w) => ({
+      ...w,
+      onset: w.onset ? new Date(w.onset) : null,
+      expires: w.expires ? new Date(w.expires) : null,
+    }));
+  }
+
+  radarUrl(lat: number, lon: number, key: number): string {
+    return `/api/weather/radar?${new URLSearchParams({ lat: String(lat), lon: String(lon), k: String(key) })}`;
   }
 }

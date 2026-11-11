@@ -472,6 +472,14 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("docker logs: %v", logs)
 	}
 
+	// --- weather alerts outside Germany need no DWD request ---
+	var noWarnings []obj
+	c.json(http.MethodGet, "/api/weather/warnings?lat=48.86&lon=2.35", nil, http.StatusOK, &noWarnings)
+	if len(noWarnings) != 0 {
+		t.Fatalf("warnings outside Germany: %v", noWarnings)
+	}
+	c.do(http.MethodGet, "/api/weather/radar?lat=48.86&lon=2.35", nil, http.StatusUnprocessableEntity)
+
 	// --- waste: ICS subscription with a recurring rule ---
 	c.do(http.MethodGet, "/api/waste/upcoming", nil, http.StatusNotFound)
 	c.json(http.MethodPut, "/api/waste/settings", obj{"url": up.URL + "/abfall.ics", "rules": []obj{}}, http.StatusOK, nil)
