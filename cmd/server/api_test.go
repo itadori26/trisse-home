@@ -230,8 +230,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 19 {
-		t.Fatalf("expected 19 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 20 {
+		t.Fatalf("expected 20 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -429,6 +429,14 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodGet, "/api/docker/containers/web/logs", nil, http.StatusOK, &logs)
 	if len(logs.Lines) != 2 || logs.Lines[1] != "listening on :80" {
 		t.Fatalf("docker logs: %v", logs)
+	}
+
+	// --- fritzbox: not configured until saved ---
+	c.do(http.MethodGet, "/api/fritzbox/status", nil, http.StatusNotFound)
+	var fb obj
+	c.json(http.MethodGet, "/api/fritzbox/settings", nil, http.StatusOK, &fb)
+	if fb["configured"] != false || fb["url"] != "http://192.168.178.1:49000" {
+		t.Fatalf("fritzbox defaults: %v", fb)
 	}
 
 	// --- nextcloud (no serverinfo app on the fake: degrades gracefully) ---

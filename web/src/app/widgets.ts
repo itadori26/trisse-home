@@ -5,6 +5,7 @@
  */
 import type { Component } from 'svelte';
 import { AdGuardWidget } from '../features/adguard';
+import { FritzBoxWidget } from '../features/fritzbox';
 import { NextcloudWidget } from '../features/nextcloud';
 import { BackupStatusWidget } from '../features/backupmonitor';
 import { BookmarksWidget, BookmarksWidgetSettings } from '../features/bookmarks';
@@ -176,6 +177,15 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 4, h: 3 },
     },
     view: renderer(NextcloudWidget, (_config, c) => ({ nextcloud: c.nextcloud })),
+  },
+  {
+    type: {
+      kind: 'fritzbox',
+      title: 'FRITZ!Box',
+      description: 'Internet connection, current throughput and recent calls.',
+      defaultSize: { w: 4, h: 4 },
+    },
+    view: renderer(FritzBoxWidget, (_config, c) => ({ fritzbox: c.fritzbox })),
   },
   {
     type: {

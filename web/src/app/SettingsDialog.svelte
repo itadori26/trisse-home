@@ -1,5 +1,6 @@
 <script lang="ts">
   import { AdGuardSettings } from '../features/adguard';
+  import { FritzBoxSettings } from '../features/fritzbox';
   import { NextcloudSettings } from '../features/nextcloud';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
   import { ChangePasswordForm, SessionsList, TwoFactorSettings } from '../features/auth';
@@ -36,6 +37,7 @@
     { id: 'calendar', label: 'Calendar', module: 'calendar' },
     { id: 'adguard', label: 'AdGuard', module: 'adguard' },
     { id: 'nextcloud', label: 'Nextcloud', module: 'nextcloud' },
+    { id: 'fritzbox', label: 'FRITZ!Box', module: 'fritzbox' },
     { id: 'notifications', label: 'Notifications', module: 'notifications' },
     { id: 'backups', label: 'Backups', module: 'backup' },
     { id: 'backupmonitor', label: 'Backup monitoring', module: 'backupmonitor' },
@@ -66,6 +68,8 @@
     <FoldersManager bookmarks={container.bookmarks} />
   {:else if current === 'calendar'}
     <CalendarSettings calendar={container.calendar} />
+  {:else if current === 'fritzbox'}
+    <FritzBoxSettings fritzbox={container.fritzbox} />
   {:else if current === 'nextcloud'}
     <NextcloudSettings nextcloud={container.nextcloud} />
   {:else if current === 'adguard'}

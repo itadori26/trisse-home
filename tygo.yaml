@@ -90,3 +90,8 @@ packages:
   - path: "trisse-home/internal/modules/nextcloud/adapter/controller"
     output_path: "web/src/shared/api-client/generated/nextcloud-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/fritzbox/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/fritzbox.ts"
+  - path: "trisse-home/internal/modules/fritzbox/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/fritzbox-requests.ts"
+    include_files: ["dto.go"]

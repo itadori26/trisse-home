@@ -1,0 +1,53 @@
+// Package controller contains the FRITZ!Box HTTP handlers.
+//
+// Ring: Interface Adapters.
+package controller
+
+import (
+	"net/http"
+
+	"trisse-home/internal/modules/fritzbox/adapter/presenter"
+	"trisse-home/internal/modules/fritzbox/usecase"
+	"trisse-home/internal/shared/httpapi"
+)
+
+// Handlers serves the FRITZ!Box endpoints.
+type Handlers struct{ uc usecase.FritzBox }
+
+// NewHandlers returns FRITZ!Box handlers.
+func NewHandlers(uc usecase.FritzBox) *Handlers { return &Handlers{uc: uc} }
+
+// Settings handles GET /api/fritzbox/settings.
+func (h *Handlers) Settings(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Settings(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
+}
+
+// SaveSettings handles PUT /api/fritzbox/settings.
+func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
+	var dto SettingsInputDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.uc.SaveSettings(r.Context(), usecase.SettingsInput{URL: dto.URL, Username: dto.Username, Password: dto.Password})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
+}
+
+// Status handles GET /api/fritzbox/status.
+func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Status(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Status(res))
+}

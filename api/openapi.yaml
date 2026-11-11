@@ -756,6 +756,23 @@ paths:
         "200": { description: "OK; server is null and serverHint explains why when serverinfo is unavailable" }
         "404": { description: Not configured }
 
+  # ---------------------------------------------------------------- fritzbox
+  /api/fritzbox/settings:
+    get:
+      tags: [fritzbox]
+      summary: Connection settings (the password is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [fritzbox]
+      summary: Test and save; username/password are optional (needed for calls and link speed), an empty password keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string, example: "http://192.168.178.1:49000" }, username: { type: string }, password: { type: string } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error, box not reachable or login failed } }
+  /api/fritzbox/status:
+    get:
+      tags: [fritzbox]
+      summary: WAN state, external IP, throughput (bytes/s via UPnP), link speed and recent calls (via TR-064); refreshed every 15 s, calls every 2 min
+      responses: { "200": { description: OK }, "404": { description: Not configured } }
+
   # ---------------------------------------------------------------- adguard
   /api/adguard/settings:
     get:

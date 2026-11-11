@@ -4,6 +4,7 @@
  * adapters, so features stay independent of each other.
  */
 import { AdGuardApi, AdGuardUseCases } from '../features/adguard';
+import { FritzBoxApi, FritzBoxUseCases } from '../features/fritzbox';
 import { NextcloudApi, NextcloudUseCases } from '../features/nextcloud';
 import { AppearanceApi, AppearanceUseCases } from '../features/appearance';
 import { AuthApi, AuthUseCases } from '../features/auth';
@@ -42,6 +43,7 @@ export interface Container {
   docker: DockerUseCases;
   adguard: AdGuardUseCases;
   nextcloud: NextcloudUseCases;
+  fritzbox: FritzBoxUseCases;
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
   backup: BackupUseCases;
@@ -70,6 +72,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     docker: new DockerUseCases(new DockerApi(http)),
     adguard: new AdGuardUseCases(new AdGuardApi(http)),
     nextcloud: new NextcloudUseCases(new NextcloudApi(http)),
+    fritzbox: new FritzBoxUseCases(new FritzBoxApi(http)),
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),
     backup: new BackupUseCases(new BackupApi(http)),
