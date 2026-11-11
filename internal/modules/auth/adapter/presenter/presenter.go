@@ -11,6 +11,8 @@ type StatusDTO struct {
 	SetupRequired bool   `json:"setupRequired"`
 	Authenticated bool   `json:"authenticated"`
 	CSRFToken     string `json:"csrfToken,omitempty"`
+	// Demo is true on a public demo instance (POST /api/auth/demo logs in).
+	Demo bool `json:"demo"`
 }
 
 // SessionDTO is returned after setup, login and password change. The session

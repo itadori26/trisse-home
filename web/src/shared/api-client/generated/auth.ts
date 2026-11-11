@@ -10,6 +10,10 @@ export interface StatusDTO {
   setupRequired: boolean;
   authenticated: boolean;
   csrfToken?: string;
+  /**
+   * Demo is true on a public demo instance (POST /api/auth/demo logs in).
+   */
+  demo: boolean;
 }
 /**
  * SessionDTO is returned after setup, login and password change. The session

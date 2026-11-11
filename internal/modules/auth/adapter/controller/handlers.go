@@ -18,6 +18,8 @@ type UseCases struct {
 	ChangePassword usecase.ChangePassword
 	Sessions       usecase.ManageSessions
 	TwoFactor      usecase.TwoFactor
+	// DemoLogin is nil unless the instance runs in demo mode.
+	DemoLogin usecase.DemoLogin
 }
 
 // Handlers serves the auth endpoints.
@@ -38,7 +40,15 @@ func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	httpapi.WriteJSON(w, http.StatusOK, presenter.Status(res))
+	dto := presenter.Status(res)
+	dto.Demo = h.uc.DemoLogin != nil
+	httpapi.WriteJSON(w, http.StatusOK, dto)
+}
+
+// DemoLogin handles POST /api/auth/demo (only routed in demo mode).
+func (h *Handlers) DemoLogin(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.DemoLogin.Execute(r.Context(), usecase.DemoLoginRequest{ClientKey: clientKey(r), UserAgent: r.UserAgent()})
+	h.respondWithSession(w, r, res, err)
 }
 
 // Setup handles POST /api/auth/setup.

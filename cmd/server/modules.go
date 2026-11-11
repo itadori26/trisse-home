@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"trisse-home/internal/modules"
@@ -36,6 +37,7 @@ import (
 	"trisse-home/internal/platform/clock"
 	"trisse-home/internal/platform/config"
 	"trisse-home/internal/platform/crypto"
+	"trisse-home/internal/platform/demo"
 	"trisse-home/internal/platform/httpclient"
 	"trisse-home/internal/platform/idgen"
 	"trisse-home/internal/platform/wol"
@@ -51,16 +53,18 @@ const healthCheckTimeout = 5 * time.Second
 // buildModules constructs every enabled module. Auth and the dashboard are
 // always enabled: everything else depends on the session guard, and the
 // dashboard is the page that hosts all widgets.
-func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *crypto.AESGCM) (*auth.Module, *modules.Registry, error) {
+func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secretStore) (*auth.Module, *modules.Registry, error) {
 	clk := clock.System{}
 	ids := idgen.Random{}
-	client := httpclient.New()
+	out := newOutbound(cfg, clk, cipher)
+	client, secrets := out.client, out.secrets
 	registry := &modules.Registry{}
 
 	authModule, err := auth.New(
 		auth.Config{
 			CookieSecure: cfg.CookieSecure, SessionTTL: cfg.SessionTTL, SetupToken: cfg.SetupToken,
 			OnAccountCreated: func(ctx context.Context) { onAccountCreated(ctx, cfg, log, registry) },
+			Demo:             cfg.DemoMode,
 		},
 		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log},
 	)
@@ -89,9 +93,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"services", func() modules.Module {
 			return services.New(services.Deps{
 				DB: db, Clock: clk, IDs: ids, Observations: sink,
-				Waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
-				Client:         httpclient.New(httpclient.WithTimeout(healthCheckTimeout)),
-				InsecureClient: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
+				Waker: out.waker, Client: out.health, InsecureClient: out.insecureHealth,
 			})
 		}},
 		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids) }},
@@ -125,7 +127,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 			registry.Register(m.build())
 		}
 	}
-	if cfg.ModuleEnabled("backup") {
+	if cfg.ModuleEnabled("backup") && !cfg.DemoMode {
 		b, err := backup.New(backup.Config{Dir: cfg.BackupDir, Interval: cfg.BackupInterval, Retention: cfg.BackupRetention}, db, clk)
 		if err != nil {
 			return nil, nil, err
@@ -170,4 +172,39 @@ func seedSampleData(ctx context.Context, cfg config.Config, log *slog.Logger, re
 		}
 	}
 	log.InfoContext(ctx, "sample data created", "modules", len(registry.Seeders()))
+}
+
+// secretStore encrypts credentials before modules store them.
+type secretStore interface {
+	Encrypt(plaintext string) (string, error)
+	Decrypt(ciphertext string) (string, error)
+}
+
+// outbound bundles the adapters that reach other systems. In demo mode they
+// are replaced by fixtures, so no module ever contacts a real system.
+type outbound struct {
+	client, health, insecureHealth *http.Client
+	waker                          interface {
+		Wake(context.Context, kernel.MAC) error
+	}
+	secrets secretStore
+}
+
+func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbound {
+	if cfg.DemoMode {
+		return outbound{
+			client:         &http.Client{Transport: demo.Transport{Now: clk.Now}, Timeout: healthCheckTimeout},
+			health:         &http.Client{Transport: demo.HealthyTransport{}},
+			insecureHealth: &http.Client{Transport: demo.HealthyTransport{}},
+			waker:          demo.NoWake{},
+			secrets:        demo.ReadOnlySecrets{Inner: cipher},
+		}
+	}
+	return outbound{
+		client:         httpclient.New(),
+		health:         httpclient.New(httpclient.WithTimeout(healthCheckTimeout)),
+		insecureHealth: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
+		waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
+		secrets:        cipher,
+	}
 }

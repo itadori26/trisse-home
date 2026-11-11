@@ -90,3 +90,15 @@ func TestDockerActionsNeedAllowList(t *testing.T) {
 		t.Fatalf("unexpected %v %v", cfg.DockerActionsContainers, err)
 	}
 }
+
+func TestDemoModeRefusesRealIntegrations(t *testing.T) {
+	vars := map[string]string{"SECRET_KEY": validKey, "DEMO_MODE": "true", "SAMPLE_DATA": "false"}
+	cfg, err := Load(env(vars))
+	if err != nil || !cfg.DemoMode || !cfg.SampleData {
+		t.Fatalf("demo: %+v %v", cfg.DemoMode, err)
+	}
+	vars["DOCKER_ACTIONS"], vars["DOCKER_ACTIONS_CONTAINERS"] = "true", "x"
+	if _, err := Load(env(vars)); err == nil {
+		t.Fatal("DOCKER_ACTIONS with DEMO_MODE accepted")
+	}
+}

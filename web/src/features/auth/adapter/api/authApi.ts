@@ -35,7 +35,12 @@ export class AuthApi implements AuthGateway {
       setupRequired: dto.setupRequired,
       authenticated: dto.authenticated,
       csrfToken: dto.csrfToken ?? null,
+      demo: dto.demo,
     };
+  }
+
+  async demoLogin(): Promise<Session> {
+    return toSession(await this.http.post<SessionDTO>('/api/auth/demo'));
   }
 
   async setup(setupToken: string, password: string): Promise<Session> {
