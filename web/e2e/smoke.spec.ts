@@ -132,6 +132,30 @@ test('quick search finds bookmarks with the keyboard', async ({ page }) => {
   await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toBeFocused();
 });
 
+test('installable app shows the last data offline and never caches auth', async ({ page, context }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.reload(); // the worker controls the page from now on
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  const cached = await page.evaluate(async () => {
+    const cache = await caches.open('trisse-data-v1');
+    return (await cache.keys()).map((r) => new URL(r.url).pathname);
+  });
+  expect(cached).toContain('/api/dashboard');
+  expect(cached.some((p) => p.startsWith('/api/auth'))).toBe(false);
+
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByText(/You are offline/)).toBeVisible();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await context.setOffline(false);
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

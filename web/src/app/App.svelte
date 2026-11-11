@@ -1,6 +1,7 @@
 <script lang="ts">
   import { LoginPage, SetupPage, type AuthView } from '../features/auth';
   import { errorMessage } from '../shared/api-client/http';
+  import { canStartOffline, clearOfflineData, rememberSignedIn } from '../shared/pwa';
   import { createContainer } from './container';
   import Shell from './Shell.svelte';
 
@@ -13,8 +14,12 @@
     try {
       view = await container.auth.currentView();
       loadError = '';
+      rememberSignedIn(view === 'app');
+      if (view !== 'app') await clearOfflineData();
     } catch (err) {
-      loadError = errorMessage(err);
+      // Offline after an earlier session: show the last loaded data read-only.
+      if (canStartOffline()) view = 'app';
+      else loadError = errorMessage(err);
     }
   }
 

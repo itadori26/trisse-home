@@ -25,6 +25,7 @@
   let widgetKinds = $state<Set<string>>(new Set());
   let touring = $state(false);
   let quickSearch = $state(false);
+  let offline = $state(!navigator.onLine);
 
   $effect(() => applyTheme(appearance.theme));
 
@@ -91,6 +92,8 @@
 </script>
 
 <svelte:window
+  ononline={() => (offline = false)}
+  onoffline={() => (offline = true)}
   onkeydown={(e) => {
     if (!quickSearch && !settingsOpen && opensQuickSearch(e, e.target)) {
       e.preventDefault();
@@ -127,6 +130,9 @@
 </header>
 
 <main class="content">
+  {#if offline}<p class="offline" role="status">
+      You are offline — showing the last loaded data. Changes are not possible.
+    </p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if modules}
     <DashboardPage {container} {editing} {widgetKinds} />
@@ -153,6 +159,12 @@
 {/if}
 
 <style>
+  .offline {
+    margin: 0 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-small);
+    background: color-mix(in srgb, var(--color-warning) 22%, transparent);
+  }
   kbd {
     font-size: 0.7em;
     border: 1px solid var(--color-border);

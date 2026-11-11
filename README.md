@@ -135,6 +135,19 @@ only the peer lines — the interface line with the **private key is dropped and
 reads the peer names of `linuxserver/wireguard` from the public keys in its `peer_<name>` folders. Names can be
 changed in Settings → WireGuard. A peer counts as online when its last handshake is less than 3 minutes old.
 
+## Progressive Web App
+
+trisse-home can be installed as an app (Android, iOS, desktop) and shows the
+last loaded data when you are offline. Browsers only allow this in a **secure
+context**, so run it behind HTTPS (see *Behind a reverse proxy*) or open it
+via `localhost`; on plain `http://<lan-ip>` the app still works, just without
+installation and offline mode.
+
+The service worker caches the app shell and a fixed allow-list of read-only
+widget data (network first, cache only as fallback). Login, settings,
+exports, backups, logs and every non-GET request are never cached, and the
+cached data is deleted on logout.
+
 ## Wake-on-LAN (optional)
 
 Service tiles with a MAC address get a ⏻ button while the service is not online. Magic packets are broadcasts, and
