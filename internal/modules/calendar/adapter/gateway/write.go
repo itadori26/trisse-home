@@ -9,36 +9,13 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/calendar/domain"
+	"trisse-home/internal/shared/ical"
 )
 
 const (
 	icalDateLayout     = "20060102"
 	icalDateTimeLayout = "20060102T150405Z"
-	maxLineOctets      = 75
 )
-
-// escapeText escapes a TEXT value (RFC 5545 §3.3.11).
-func escapeText(s string) string {
-	return strings.NewReplacer(`\`, `\\`, ";", `\;`, ",", `\,`, "\r\n", `\n`, "\n", `\n`, "\r", "").Replace(s)
-}
-
-// foldLine splits a content line into chunks of at most 75 octets without
-// breaking UTF-8 sequences (RFC 5545 §3.1).
-func foldLine(line string) string {
-	var b strings.Builder
-	limit := maxLineOctets
-	for len(line) > limit {
-		cut := limit
-		for cut > 0 && line[cut]&0xC0 == 0x80 { // continuation byte: move back
-			cut--
-		}
-		b.WriteString(line[:cut] + "\r\n ")
-		line = line[cut:]
-		limit = maxLineOctets - 1 // the leading space counts
-	}
-	b.WriteString(line + "\r\n")
-	return b.String()
-}
 
 // FormatEvent serialises e as a VCALENDAR with one VEVENT.
 func FormatEvent(e domain.Event, stamp time.Time) string {
@@ -53,14 +30,14 @@ func FormatEvent(e domain.Event, stamp time.Time) string {
 	} else {
 		lines = append(lines, "DTSTART:"+e.Start.UTC().Format(icalDateTimeLayout), "DTEND:"+e.End.UTC().Format(icalDateTimeLayout))
 	}
-	lines = append(lines, "SUMMARY:"+escapeText(e.Summary))
+	lines = append(lines, "SUMMARY:"+ical.EscapeText(e.Summary))
 	if e.Location != "" {
-		lines = append(lines, "LOCATION:"+escapeText(e.Location))
+		lines = append(lines, "LOCATION:"+ical.EscapeText(e.Location))
 	}
 	lines = append(lines, "END:VEVENT", "END:VCALENDAR")
 	var b strings.Builder
 	for _, l := range lines {
-		b.WriteString(foldLine(l))
+		b.WriteString(ical.FoldLine(l))
 	}
 	return b.String()
 }

@@ -78,6 +78,8 @@ linters:
               desc: "HTTP helpers belong to the adapter ring"
             - pkg: trisse-home/internal/shared/sqlutil
               desc: "SQL helpers belong to the adapter ring"
+            - pkg: trisse-home/internal/shared/ical
+              desc: "iCalendar parsing belongs to the adapter ring"
         adapter-ring:
           files:
             - "**/internal/modules/*/adapter/**"
