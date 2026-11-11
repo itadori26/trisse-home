@@ -1,4 +1,5 @@
 import type { AuthStatus, Session } from '../domain/auth';
+import type { SessionInfo } from '../domain/session';
 
 /** Output port: talks to the authentication backend. */
 export interface AuthGateway {
@@ -7,6 +8,9 @@ export interface AuthGateway {
   login(password: string): Promise<Session>;
   logout(): Promise<void>;
   changePassword(currentPassword: string, newPassword: string): Promise<Session>;
+  sessions(): Promise<SessionInfo[]>;
+  revokeSession(id: string): Promise<void>;
+  revokeOtherSessions(): Promise<number>;
 }
 
 /** Output port: receives the CSRF token so later requests can send it. */

@@ -94,7 +94,7 @@ func (uc *changePassword) Execute(ctx context.Context, req ChangePasswordRequest
 		return SessionResponse{}, fmt.Errorf("revoke sessions: %w", err)
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
-	return uc.deps.issuer().issue(ctx)
+	return uc.deps.issuer().issue(ctx, domain.NewClient(req.UserAgent, req.ClientKey))
 }
 
 type resetAccount struct {
@@ -133,6 +133,47 @@ func (uc *purgeExpiredSessions) Execute(ctx context.Context) (int64, error) {
 	n, err := uc.sessions.DeleteExpired(ctx, uc.clock.Now())
 	if err != nil {
 		return 0, fmt.Errorf("purge sessions: %w", err)
+	}
+	return n, nil
+}
+
+type manageSessions struct {
+	sessions SessionRepository
+	clock    Clock
+}
+
+// NewManageSessions returns the ManageSessions use cases.
+func NewManageSessions(sessions SessionRepository, clock Clock) ManageSessions {
+	return &manageSessions{sessions: sessions, clock: clock}
+}
+
+// List implements ManageSessions; the caller's session is marked as current.
+func (uc *manageSessions) List(ctx context.Context, currentToken string) ([]SessionView, error) {
+	list, err := uc.sessions.ListActive(ctx, uc.clock.Now())
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: %w", err)
+	}
+	current := domain.HashToken(currentToken)
+	out := make([]SessionView, 0, len(list))
+	for _, s := range list {
+		out = append(out, SessionView{
+			ID: s.PublicID(), UserAgent: s.Client().UserAgent, ClientIP: s.Client().IP, CreatedAt: s.CreatedAt(),
+			LastSeenAt: s.RefreshedAt(), ExpiresAt: s.ExpiresAt(), Current: s.TokenHash() == current,
+		})
+	}
+	return out, nil
+}
+
+// Revoke implements ManageSessions.
+func (uc *manageSessions) Revoke(ctx context.Context, _ string, sessionID string) error {
+	return uc.sessions.DeleteByPublicID(ctx, sessionID)
+}
+
+// RevokeOthers implements ManageSessions: every session except the caller's ends.
+func (uc *manageSessions) RevokeOthers(ctx context.Context, currentToken string) (int64, error) {
+	n, err := uc.sessions.DeleteAllExcept(ctx, domain.HashToken(currentToken))
+	if err != nil {
+		return 0, fmt.Errorf("revoke sessions: %w", err)
 	}
 	return n, nil
 }

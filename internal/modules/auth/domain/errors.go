@@ -11,5 +11,6 @@ var (
 	ErrInvalidCredentials = kernel.NewPublicError(kernel.ErrUnauthorized, "The password is incorrect.")
 	ErrSessionInvalid     = kernel.NewPublicError(kernel.ErrUnauthorized, "Your session has expired. Please log in again.")
 	ErrSessionNotFound    = kernel.NewPublicError(kernel.ErrNotFound, "Session not found.")
+	ErrSessionNotListed   = kernel.NewPublicError(kernel.ErrNotFound, "The session does not exist (anymore).")
 	ErrTooManyAttempts    = kernel.NewPublicError(kernel.ErrTooManyRequests, "Too many failed attempts. Please wait a few minutes.")
 )

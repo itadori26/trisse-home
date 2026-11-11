@@ -143,6 +143,29 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Onboarding" } } } }
 
+  /api/auth/sessions:
+    get:
+      tags: [auth]
+      summary: Active sessions of the account (current one marked)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SessionInfo" } } } } }
+  /api/auth/sessions/revoke-others:
+    post:
+      tags: [auth]
+      summary: Sign out every session except the current one
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { revoked: { type: integer } } } } } }
+  /api/auth/sessions/{id}:
+    delete:
+      tags: [auth]
+      summary: Sign out one session
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      responses:
+        "204": { description: Signed out }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   # ---------------------------------------------------------------- dashboard
   /api/dashboard:
     get:
@@ -670,6 +693,16 @@ components:
             code: { type: string, enum: [bad_request, invalid, not_found, conflict, unauthorized, forbidden, too_many_requests, unavailable, internal] }
             message: { type: string }
             field: { type: string }
+    SessionInfo:
+      type: object
+      properties:
+        id: { type: string }
+        userAgent: { type: string }
+        clientIp: { type: string }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        current: { type: boolean }
     BackupFile: { type: object, properties: { name: { type: string }, size: { type: integer }, createdAt: { type: string, format: date-time } } }
     Onboarding: { type: object, required: [completed], properties: { completed: { type: boolean } } }
     Health: { type: object, properties: { status: { type: string, enum: [ok, unavailable] } } }

@@ -39,6 +39,13 @@ type ChangePassword interface {
 	Execute(ctx context.Context, req ChangePasswordRequest) (SessionResponse, error)
 }
 
+// ManageSessions lists and revokes the sessions of the account.
+type ManageSessions interface {
+	List(ctx context.Context, currentToken string) ([]SessionView, error)
+	Revoke(ctx context.Context, currentToken, sessionID string) error
+	RevokeOthers(ctx context.Context, currentToken string) (int64, error)
+}
+
 // ResetAccount deletes the account and all sessions so setup runs again.
 type ResetAccount interface {
 	Execute(ctx context.Context) error
@@ -70,6 +77,11 @@ type SessionRepository interface {
 	Delete(ctx context.Context, hash domain.TokenHash) error
 	DeleteAll(ctx context.Context) error
 	DeleteExpired(ctx context.Context, now time.Time) (int64, error)
+	// ListActive returns sessions that have not expired at now.
+	ListActive(ctx context.Context, now time.Time) ([]domain.Session, error)
+	// DeleteByPublicID returns domain.ErrSessionNotListed for unknown IDs.
+	DeleteByPublicID(ctx context.Context, publicID string) error
+	DeleteAllExcept(ctx context.Context, keep domain.TokenHash) (int64, error)
 }
 
 // PasswordHasher hashes and verifies passwords.

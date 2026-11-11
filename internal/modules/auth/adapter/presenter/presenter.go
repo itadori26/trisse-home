@@ -29,3 +29,28 @@ func Status(r usecase.StatusResponse) StatusDTO {
 func Session(r usecase.SessionResponse) SessionDTO {
 	return SessionDTO{CSRFToken: r.CSRFToken, ExpiresAt: r.ExpiresAt}
 }
+
+// SessionInfoDTO describes an active session in the session overview.
+type SessionInfoDTO struct {
+	ID         string    `json:"id"`
+	UserAgent  string    `json:"userAgent"`
+	ClientIP   string    `json:"clientIp"`
+	CreatedAt  time.Time `json:"createdAt"`
+	LastSeenAt time.Time `json:"lastSeenAt"`
+	ExpiresAt  time.Time `json:"expiresAt"`
+	Current    bool      `json:"current"`
+}
+
+// RevokedDTO is returned by POST /api/auth/sessions/revoke-others.
+type RevokedDTO struct {
+	Revoked int64 `json:"revoked"`
+}
+
+// Sessions maps session views.
+func Sessions(vs []usecase.SessionView) []SessionInfoDTO {
+	out := make([]SessionInfoDTO, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, SessionInfoDTO(v))
+	}
+	return out
+}

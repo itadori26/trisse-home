@@ -34,5 +34,5 @@ func (uc *login) Execute(ctx context.Context, req LoginRequest) (SessionResponse
 		return SessionResponse{}, domain.ErrInvalidCredentials
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
-	return uc.deps.issuer().issue(ctx)
+	return uc.deps.issuer().issue(ctx, domain.NewClient(req.UserAgent, req.ClientKey))
 }

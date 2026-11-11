@@ -19,3 +19,21 @@ export interface SessionDTO {
   csrfToken: string;
   expiresAt: string /* RFC 3339 */;
 }
+/**
+ * SessionInfoDTO describes an active session in the session overview.
+ */
+export interface SessionInfoDTO {
+  id: string;
+  userAgent: string;
+  clientIp: string;
+  createdAt: string /* RFC 3339 */;
+  lastSeenAt: string /* RFC 3339 */;
+  expiresAt: string /* RFC 3339 */;
+  current: boolean;
+}
+/**
+ * RevokedDTO is returned by POST /api/auth/sessions/revoke-others.
+ */
+export interface RevokedDTO {
+  revoked: number /* int64 */;
+}

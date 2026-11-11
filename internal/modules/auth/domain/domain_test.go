@@ -37,7 +37,7 @@ func TestNewPassword(t *testing.T) {
 func TestSessionLifecycle(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	ttl := 24 * time.Hour
-	s, err := NewSession(HashToken("raw"), "csrf", now, ttl)
+	s, err := NewSession(HashToken("raw"), "pub", "csrf", NewClient("ua", "1.2.3.4"), now, ttl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,10 +57,10 @@ func TestSessionLifecycle(t *testing.T) {
 }
 
 func TestNewSessionRejectsInvalidInput(t *testing.T) {
-	if _, err := NewSession("", "csrf", time.Now(), time.Hour); err == nil {
+	if _, err := NewSession("", "pub", "csrf", Client{}, time.Now(), time.Hour); err == nil {
 		t.Fatal("expected error for empty token hash")
 	}
-	if _, err := NewSession("h", "csrf", time.Now(), 0); err == nil {
+	if _, err := NewSession("h", "pub", "csrf", Client{}, time.Now(), 0); err == nil {
 		t.Fatal("expected error for zero ttl")
 	}
 }
@@ -83,5 +83,12 @@ func TestAccount(t *testing.T) {
 	a, _ := NewAccount("h1", now)
 	if err := a.ChangePasswordHash("h2", now.Add(time.Hour)); err != nil || a.PasswordHash() != "h2" {
 		t.Fatal("password hash not changed")
+	}
+}
+
+func TestNewClientTruncatesUserAgent(t *testing.T) {
+	c := NewClient(strings.Repeat("x", 1000), "10.0.0.1")
+	if len(c.UserAgent) != maxUserAgentLength || c.IP != "10.0.0.1" {
+		t.Fatalf("unexpected %d %q", len(c.UserAgent), c.IP)
 	}
 }

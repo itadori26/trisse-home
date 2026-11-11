@@ -14,6 +14,26 @@ function setup(status: Partial<AuthStatus> = {}) {
     login: vi.fn().mockResolvedValue(session),
     logout: vi.fn().mockResolvedValue(undefined),
     changePassword: vi.fn().mockResolvedValue(session),
+    sessions: vi.fn().mockResolvedValue([
+      {
+        id: 'a',
+        userAgent: '',
+        clientIp: '',
+        createdAt: new Date(1),
+        lastSeenAt: new Date(5),
+        current: false,
+      },
+      {
+        id: 'b',
+        userAgent: '',
+        clientIp: '',
+        createdAt: new Date(1),
+        lastSeenAt: new Date(1),
+        current: true,
+      },
+    ]),
+    revokeSession: vi.fn(),
+    revokeOtherSessions: vi.fn(),
   };
   const csrf = { setCsrfToken: vi.fn() };
   return { uc: new AuthUseCases(gateway, csrf), gateway, csrf };
@@ -48,5 +68,10 @@ describe('AuthUseCases', () => {
     const { uc, csrf } = setup();
     await uc.logout();
     expect(csrf.setCsrfToken).toHaveBeenLastCalledWith('');
+  });
+
+  it('lists the current session first', async () => {
+    const { uc } = setup();
+    expect((await uc.sessions()).map((s) => s.id)).toEqual(['b', 'a']);
   });
 });

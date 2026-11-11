@@ -16,6 +16,7 @@ type UseCases struct {
 	Logout         usecase.Logout
 	Authenticate   usecase.Authenticate
 	ChangePassword usecase.ChangePassword
+	Sessions       usecase.ManageSessions
 }
 
 // Handlers serves the auth endpoints.
@@ -47,7 +48,7 @@ func (h *Handlers) Setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := h.uc.Setup.Execute(r.Context(), usecase.SetupRequest{
-		SetupToken: dto.SetupToken, Password: dto.Password, ClientKey: clientKey(r),
+		SetupToken: dto.SetupToken, Password: dto.Password, ClientKey: clientKey(r), UserAgent: r.UserAgent(),
 	})
 	h.respondWithSession(w, r, res, err)
 }
@@ -59,7 +60,7 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	res, err := h.uc.Login.Execute(r.Context(), usecase.LoginRequest{Password: dto.Password, ClientKey: clientKey(r)})
+	res, err := h.uc.Login.Execute(r.Context(), usecase.LoginRequest{Password: dto.Password, ClientKey: clientKey(r), UserAgent: r.UserAgent()})
 	h.respondWithSession(w, r, res, err)
 }
 
@@ -81,9 +82,38 @@ func (h *Handlers) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := h.uc.ChangePassword.Execute(r.Context(), usecase.ChangePasswordRequest{
-		CurrentPassword: dto.CurrentPassword, NewPassword: dto.NewPassword, ClientKey: clientKey(r),
+		CurrentPassword: dto.CurrentPassword, NewPassword: dto.NewPassword, ClientKey: clientKey(r), UserAgent: r.UserAgent(),
 	})
 	h.respondWithSession(w, r, res, err)
+}
+
+// ListSessions handles GET /api/auth/sessions.
+func (h *Handlers) ListSessions(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Sessions.List(r.Context(), h.cookies.read(r))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Sessions(res))
+}
+
+// RevokeSession handles DELETE /api/auth/sessions/{id}.
+func (h *Handlers) RevokeSession(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.Sessions.Revoke(r.Context(), h.cookies.read(r), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RevokeOtherSessions handles POST /api/auth/sessions/revoke-others.
+func (h *Handlers) RevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
+	n, err := h.uc.Sessions.RevokeOthers(r.Context(), h.cookies.read(r))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.RevokedDTO{Revoked: n})
 }
 
 func (h *Handlers) respondWithSession(w http.ResponseWriter, r *http.Request, res usecase.SessionResponse, err error) {

@@ -143,3 +143,33 @@ func TestLogoutAndReset(t *testing.T) {
 		t.Fatalf("reset failed: %v", err)
 	}
 }
+
+func TestManageSessions(t *testing.T) {
+	e := newEnv().withAccount()
+	a, _ := NewLogin(e.deps).Execute(ctx, LoginRequest{Password: goodPassword, ClientKey: "10.0.0.1", UserAgent: "Firefox"})
+	b, _ := NewLogin(e.deps).Execute(ctx, LoginRequest{Password: goodPassword, ClientKey: "10.0.0.2", UserAgent: "Chrome"})
+	uc := NewManageSessions(e.sessions, e.clock)
+	list, err := uc.List(ctx, a.SessionToken)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("list: %v %v", list, err)
+	}
+	var otherID string
+	for _, s := range list {
+		if s.Current != (s.UserAgent == "Firefox") {
+			t.Fatalf("current flag wrong: %+v", s)
+		}
+		if !s.Current {
+			otherID = s.ID
+		}
+	}
+	if err := uc.Revoke(ctx, a.SessionToken, otherID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewAuthenticate(e.sessions, e.clock, e.deps.TTL).Execute(ctx, AuthenticateRequest{SessionToken: b.SessionToken}); err == nil {
+		t.Fatal("revoked session still valid")
+	}
+	_, _ = NewLogin(e.deps).Execute(ctx, LoginRequest{Password: goodPassword, ClientKey: "10.0.0.3"})
+	if n, _ := uc.RevokeOthers(ctx, a.SessionToken); n != 1 {
+		t.Fatalf("revoke others removed %d", n)
+	}
+}

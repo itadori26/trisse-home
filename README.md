@@ -33,7 +33,7 @@ Architecture.
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
 | **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
-| **auth**       | First-run setup, login, sessions, password change (always enabled)                                    |
+| **auth**       | First-run setup, login, session overview with sign-out per device, password change (always enabled)   |
 
 ## Architecture in brief
 

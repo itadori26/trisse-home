@@ -97,8 +97,9 @@ func NewSessionRepository(db *sql.DB) *SessionRepository { return &SessionReposi
 // Create implements usecase.SessionRepository.
 func (r *SessionRepository) Create(ctx context.Context, s domain.Session) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO auth_sessions (token_hash, csrf_token, created_at, expires_at, refreshed_at) VALUES (?, ?, ?, ?, ?)`,
-		string(s.TokenHash()), s.CSRFToken(), sqlutil.FormatTime(s.CreatedAt()),
+		`INSERT INTO auth_sessions (token_hash, public_id, csrf_token, user_agent, client_ip, created_at, expires_at, refreshed_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		string(s.TokenHash()), s.PublicID(), s.CSRFToken(), s.Client().UserAgent, s.Client().IP, sqlutil.FormatTime(s.CreatedAt()),
 		sqlutil.FormatTime(s.ExpiresAt()), sqlutil.FormatTime(s.RefreshedAt()))
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
@@ -106,25 +107,73 @@ func (r *SessionRepository) Create(ctx context.Context, s domain.Session) error 
 	return nil
 }
 
+const sessionColumns = `token_hash, public_id, csrf_token, user_agent, client_ip, created_at, expires_at, refreshed_at`
+
+func scanSession(sc interface{ Scan(...any) error }) (domain.Session, error) {
+	var hash, publicID, csrf, ua, ip, created, expires, refreshed string
+	if err := sc.Scan(&hash, &publicID, &csrf, &ua, &ip, &created, &expires, &refreshed); err != nil {
+		return domain.Session{}, err
+	}
+	times := make([]time.Time, 3)
+	for i, raw := range []string{created, expires, refreshed} {
+		t, err := sqlutil.ParseTime(raw)
+		if err != nil {
+			return domain.Session{}, err
+		}
+		times[i] = t
+	}
+	return domain.RestoreSession(domain.TokenHash(hash), publicID, csrf, domain.Client{UserAgent: ua, IP: ip}, times[0], times[1], times[2]), nil
+}
+
 // Find implements usecase.SessionRepository.
 func (r *SessionRepository) Find(ctx context.Context, hash domain.TokenHash) (domain.Session, error) {
-	var csrf, created, expires, refreshed string
-	err := r.db.QueryRowContext(ctx,
-		`SELECT csrf_token, created_at, expires_at, refreshed_at FROM auth_sessions WHERE token_hash = ?`, string(hash)).
-		Scan(&csrf, &created, &expires, &refreshed)
+	s, err := scanSession(r.db.QueryRowContext(ctx, `SELECT `+sessionColumns+` FROM auth_sessions WHERE token_hash = ?`, string(hash)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Session{}, domain.ErrSessionNotFound
 	}
 	if err != nil {
 		return domain.Session{}, fmt.Errorf("select session: %w", err)
 	}
-	times := make([]time.Time, 3)
-	for i, raw := range []string{created, expires, refreshed} {
-		if times[i], err = sqlutil.ParseTime(raw); err != nil {
-			return domain.Session{}, err
-		}
+	return s, nil
+}
+
+// ListActive implements usecase.SessionRepository; most recently used first.
+func (r *SessionRepository) ListActive(ctx context.Context, now time.Time) ([]domain.Session, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM auth_sessions WHERE expires_at > ? ORDER BY refreshed_at DESC`, sqlutil.FormatTime(now))
+	if err != nil {
+		return nil, fmt.Errorf("query sessions: %w", err)
 	}
-	return domain.RestoreSession(hash, csrf, times[0], times[1], times[2]), nil
+	defer rows.Close()
+	var out []domain.Session
+	for rows.Next() {
+		s, err := scanSession(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan session: %w", err)
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+// DeleteByPublicID implements usecase.SessionRepository.
+func (r *SessionRepository) DeleteByPublicID(ctx context.Context, publicID string) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM auth_sessions WHERE public_id = ?`, publicID)
+	if err != nil {
+		return fmt.Errorf("delete session: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return domain.ErrSessionNotListed
+	}
+	return nil
+}
+
+// DeleteAllExcept implements usecase.SessionRepository.
+func (r *SessionRepository) DeleteAllExcept(ctx context.Context, keep domain.TokenHash) (int64, error) {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM auth_sessions WHERE token_hash <> ?`, string(keep))
+	if err != nil {
+		return 0, fmt.Errorf("delete sessions: %w", err)
+	}
+	return res.RowsAffected()
 }
 
 // Update implements usecase.SessionRepository.

@@ -1,4 +1,5 @@
 import { type AuthView, validateNewPassword, viewFor } from '../domain/auth';
+import type { SessionInfo } from '../domain/session';
 import type { AuthGateway, CsrfTokenStore } from './ports';
 
 /** Error for input rejected before it reaches the backend. */
@@ -49,5 +50,22 @@ export class AuthUseCases {
     if (problem) throw new ValidationError(problem);
     const session = await this.gateway.changePassword(current, next);
     this.csrf.setCsrfToken(session.csrfToken);
+  }
+
+  /** Lists active sessions; the current one first. */
+  async sessions(): Promise<SessionInfo[]> {
+    const list = await this.gateway.sessions();
+    return [...list].sort(
+      (a, b) => Number(b.current) - Number(a.current) || b.lastSeenAt.getTime() - a.lastSeenAt.getTime(),
+    );
+  }
+
+  revokeSession(id: string): Promise<void> {
+    return this.gateway.revokeSession(id);
+  }
+
+  /** Signs out every other device; returns how many sessions ended. */
+  revokeOtherSessions(): Promise<number> {
+    return this.gateway.revokeOtherSessions();
   }
 }

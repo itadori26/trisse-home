@@ -347,6 +347,22 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("calendar: %+v", agenda)
 	}
 
+	// --- sessions ---
+	other := newClient(t, srv.URL)
+	other.json(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-123"}, http.StatusOK, nil)
+	var sessions []obj
+	c.json(http.MethodGet, "/api/auth/sessions", nil, http.StatusOK, &sessions)
+	if len(sessions) != 2 {
+		t.Fatalf("expected 2 sessions, got %v", sessions)
+	}
+	var revoked obj
+	c.json(http.MethodPost, "/api/auth/sessions/revoke-others", nil, http.StatusOK, &revoked)
+	if revoked["revoked"] != float64(1) {
+		t.Fatalf("revoke others: %v", revoked)
+	}
+	other.do(http.MethodGet, "/api/dashboard", nil, http.StatusUnauthorized)
+	c.do(http.MethodDelete, "/api/auth/sessions/unknown", nil, http.StatusNotFound)
+
 	// --- password change, logout, login ---
 	var changed obj
 	c.json(http.MethodPut, "/api/auth/password", obj{"currentPassword": "e2e-password-123", "newPassword": "e2e-password-456"}, http.StatusOK, &changed)

@@ -19,6 +19,7 @@ type SetupRequest struct {
 	SetupToken string
 	Password   string
 	ClientKey  string
+	UserAgent  string
 }
 
 // LoginRequest is the input of Login. ClientKey identifies the client for
@@ -26,6 +27,7 @@ type SetupRequest struct {
 type LoginRequest struct {
 	Password  string
 	ClientKey string
+	UserAgent string
 }
 
 // LogoutRequest is the input of Logout.
@@ -51,6 +53,18 @@ type ChangePasswordRequest struct {
 	CurrentPassword string
 	NewPassword     string
 	ClientKey       string
+	UserAgent       string
+}
+
+// SessionView describes an active session in the session overview.
+type SessionView struct {
+	ID         string
+	UserAgent  string
+	ClientIP   string
+	CreatedAt  time.Time
+	LastSeenAt time.Time
+	ExpiresAt  time.Time
+	Current    bool
 }
 
 // SessionResponse describes a newly created session. SessionToken is the raw
