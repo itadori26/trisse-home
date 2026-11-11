@@ -10,11 +10,22 @@
     /** Opens the widget settings; omitted for widgets without settings. */
     onsettings?: () => void;
     ondelete: () => void;
+    /** Copies the widget including its configuration. */
+    onduplicate?: () => void;
     /** Hides the title bar outside edit mode (e.g. for the search bar). */
     chromeless?: boolean;
     children: Snippet;
   }
-  let { title, editing, handle, onsettings, ondelete, chromeless = false, children }: Props = $props();
+  let {
+    title,
+    editing,
+    handle,
+    onsettings,
+    ondelete,
+    onduplicate,
+    chromeless = false,
+    children,
+  }: Props = $props();
 </script>
 
 <article class="widget card" class:chromeless={chromeless && !editing}>
@@ -32,6 +43,16 @@
               aria-label="Widget settings"
               onpointerdown={(e) => e.stopPropagation()}
               onclick={onsettings}>⚙</button
+            >
+          {/if}
+          {#if onduplicate}
+            <button
+              class="btn btn-icon"
+              type="button"
+              aria-label="Duplicate widget"
+              title="Duplicate"
+              onpointerdown={(e) => e.stopPropagation()}
+              onclick={onduplicate}>⧉</button
             >
           {/if}
           <button

@@ -1,13 +1,20 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { DashboardDTO, TabDTO, WidgetDTO } from '../../../../shared/api-client/generated/dashboard';
+import type {
+  DashboardDTO,
+  TabDTO,
+  TemplateDTO,
+  WidgetDTO,
+} from '../../../../shared/api-client/generated/dashboard';
 import type {
   AddWidgetDTO,
   LayoutDTO,
+  SaveTemplateDTO,
+  TabBackgroundDTO,
   TabNameDTO,
   TabOrderDTO,
   WidgetConfigDTO,
 } from '../../../../shared/api-client/generated/dashboard-requests';
-import type { Tab, Widget, WidgetConfig } from '../../domain/dashboard';
+import type { Tab, TabTemplate, Widget, WidgetConfig } from '../../domain/dashboard';
 import type { LayoutItem, Rect } from '../../domain/layout';
 import type { DashboardGateway } from '../../usecase/ports';
 
@@ -26,6 +33,7 @@ const toTab = (dto: TabDTO): Tab => ({
   id: dto.id,
   name: dto.name,
   position: dto.position,
+  background: dto.background ?? '',
   widgets: dto.widgets.map(toWidget),
 });
 
@@ -78,5 +86,32 @@ export class DashboardApi implements DashboardGateway {
 
   deleteWidget(id: string): Promise<void> {
     return this.http.delete(`/api/dashboard/widgets/${encodeURIComponent(id)}`);
+  }
+
+  async setBackground(tabId: string, background: string): Promise<Tab> {
+    const body: TabBackgroundDTO = { background };
+    return toTab(
+      await this.http.put<TabDTO>(`/api/dashboard/tabs/${encodeURIComponent(tabId)}/background`, body),
+    );
+  }
+
+  async listTemplates(): Promise<TabTemplate[]> {
+    return (await this.http.get<TemplateDTO[]>('/api/dashboard/templates')).map((t) => ({ ...t }));
+  }
+
+  async saveTemplate(tabId: string, name: string): Promise<TabTemplate> {
+    const body: SaveTemplateDTO = { tabId, name };
+    return { ...(await this.http.post<TemplateDTO>('/api/dashboard/templates', body)) };
+  }
+
+  deleteTemplate(id: string): Promise<void> {
+    return this.http.delete(`/api/dashboard/templates/${encodeURIComponent(id)}`);
+  }
+
+  async createTabFromTemplate(templateId: string, name: string): Promise<Tab> {
+    const body: TabNameDTO = { name };
+    return toTab(
+      await this.http.post<TabDTO>(`/api/dashboard/templates/${encodeURIComponent(templateId)}/tabs`, body),
+    );
   }
 }

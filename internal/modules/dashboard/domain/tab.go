@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"net/url"
 	"strings"
 	"unicode/utf8"
 
@@ -12,10 +13,14 @@ const MaxTabNameLength = 40
 
 // Tab is a page of the dashboard, e.g. "Home" or "Server".
 type Tab struct {
-	id       string
-	name     string
-	position int
+	id         string
+	name       string
+	position   int
+	background string
 }
+
+// maxBackgroundLength limits the background image URL.
+const maxBackgroundLength = 2048
 
 // NewTab creates a tab after validating its name.
 func NewTab(id, name string, position int) (Tab, error) {
@@ -27,8 +32,24 @@ func NewTab(id, name string, position int) (Tab, error) {
 }
 
 // RestoreTab rebuilds a tab from persisted state.
-func RestoreTab(id, name string, position int) Tab {
-	return Tab{id: id, name: name, position: position}
+func RestoreTab(id, name string, position int, background string) Tab {
+	return Tab{id: id, name: name, position: position, background: background}
+}
+
+// Background returns the tab's background image URL ("" = global one).
+func (t Tab) Background() string { return t.background }
+
+// SetBackground sets an http(s) image URL; empty uses the global background.
+func (t *Tab) SetBackground(raw string) error {
+	raw = strings.TrimSpace(raw)
+	if raw != "" {
+		u, err := url.Parse(raw)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || len(raw) > maxBackgroundLength {
+			return kernel.NewValidationError("background", "The background image must be an http(s) URL.")
+		}
+	}
+	t.background = raw
+	return nil
 }
 
 // ID returns the identifier.

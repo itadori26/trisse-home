@@ -15,7 +15,23 @@ export interface Tab {
   id: string;
   name: string;
   position: number;
+  /** Background image URL of this tab ("" = global background). */
+  background: string;
   widgets: Widget[];
+}
+
+/** A saved tab layout new tabs can be created from. */
+export interface TabTemplate {
+  id: string;
+  name: string;
+  widgets: number;
+  kinds: string[];
+}
+
+/** Validates a background URL (empty is allowed) and returns an error or null. */
+export function validateBackground(url: string): string | null {
+  const v = url.trim();
+  return v === '' || /^https?:\/\/\S+$/i.test(v) ? null : 'The background image must be an http(s) URL.';
 }
 
 /** Describes a widget kind that can be added to a tab. */

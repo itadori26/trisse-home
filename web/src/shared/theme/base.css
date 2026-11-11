@@ -15,7 +15,8 @@ body {
   font-size: 15px;
   line-height: 1.45;
   color: var(--color-text);
-  background: var(--color-bg) var(--background-image) center / cover fixed no-repeat;
+  background: var(--color-bg) var(--tab-background-image, var(--background-image)) center / cover fixed
+    no-repeat;
 }
 
 a {

@@ -62,12 +62,12 @@ test('edit mode adds a tab and a widget', async ({ page }) => {
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByRole('button', { name: '+ Tab' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('Study');
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('button', { name: 'Study' })).toHaveAttribute('aria-current', 'page');
 
   await page.getByRole('button', { name: '+ Add widget' }).click();
   await page.getByRole('button', { name: /^Clock/ }).click();
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.locator('time')).toBeVisible();
 

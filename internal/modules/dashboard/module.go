@@ -30,11 +30,12 @@ type SampleWeather struct {
 // enabled modules.
 func New(db *sql.DB, ids kernel.IDGenerator, widgetKinds []string, weather SampleWeather) *Module {
 	repo := gateway.NewRepository(db)
-	deps := usecase.Deps{Tabs: repo, Widgets: repo, Kinds: gateway.NewKindCatalog(widgetKinds), IDs: ids}
+	deps := usecase.Deps{Tabs: repo, Widgets: repo, Templates: repo, Kinds: gateway.NewKindCatalog(widgetKinds), IDs: ids}
 	weatherConfig, _ := json.Marshal(map[string]any{"lat": weather.Lat, "lon": weather.Lon, "label": weather.Label, "days": 4}) // plain map, cannot fail
 	return &Module{
-		handlers: controller.NewHandlers(usecase.NewGetDashboard(deps), usecase.NewManageTabs(deps), usecase.NewManageWidgets(deps)),
-		seed:     usecase.NewSeedSampleData(deps, usecase.SampleLayout(string(weatherConfig))),
+		handlers: controller.NewHandlers(usecase.NewGetDashboard(deps), usecase.NewManageTabs(deps), usecase.NewManageWidgets(deps),
+			usecase.NewManageTemplates(deps)),
+		seed: usecase.NewSeedSampleData(deps, usecase.SampleLayout(string(weatherConfig))),
 	}
 }
 
@@ -59,4 +60,9 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("PUT /api/dashboard/tabs/{id}/layout", h.SaveLayout)
 	r.Protected("PATCH /api/dashboard/widgets/{id}", h.ConfigureWidget)
 	r.Protected("DELETE /api/dashboard/widgets/{id}", h.DeleteWidget)
+	r.Protected("PUT /api/dashboard/tabs/{id}/background", h.SetBackground)
+	r.Protected("GET /api/dashboard/templates", h.ListTemplates)
+	r.Protected("POST /api/dashboard/templates", h.SaveTemplate)
+	r.Protected("DELETE /api/dashboard/templates/{id}", h.DeleteTemplate)
+	r.Protected("POST /api/dashboard/templates/{id}/tabs", h.CreateTabFromTemplate)
 }

@@ -13,14 +13,15 @@ import (
 
 // Handlers serves the dashboard endpoints.
 type Handlers struct {
-	get     usecase.GetDashboard
-	tabs    usecase.ManageTabs
-	widgets usecase.ManageWidgets
+	get       usecase.GetDashboard
+	tabs      usecase.ManageTabs
+	widgets   usecase.ManageWidgets
+	templates usecase.ManageTemplates
 }
 
 // NewHandlers returns dashboard handlers.
-func NewHandlers(get usecase.GetDashboard, tabs usecase.ManageTabs, widgets usecase.ManageWidgets) *Handlers {
-	return &Handlers{get: get, tabs: tabs, widgets: widgets}
+func NewHandlers(get usecase.GetDashboard, tabs usecase.ManageTabs, widgets usecase.ManageWidgets, templates usecase.ManageTemplates) *Handlers {
+	return &Handlers{get: get, tabs: tabs, widgets: widgets, templates: templates}
 }
 
 // Get handles GET /api/dashboard.
@@ -169,4 +170,68 @@ func normaliseConfig(raw json.RawMessage) (string, error) {
 		return "", kernel.NewValidationError("config", "The widget configuration must be a JSON object.")
 	}
 	return buf.String(), nil
+}
+
+// SetBackground handles PUT /api/dashboard/tabs/{id}/background.
+func (h *Handlers) SetBackground(w http.ResponseWriter, r *http.Request) {
+	var dto TabBackgroundDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.tabs.SetBackground(r.Context(), r.PathValue("id"), dto.Background)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Tab(res))
+}
+
+// ListTemplates handles GET /api/dashboard/templates.
+func (h *Handlers) ListTemplates(w http.ResponseWriter, r *http.Request) {
+	res, err := h.templates.List(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Templates(res))
+}
+
+// SaveTemplate handles POST /api/dashboard/templates.
+func (h *Handlers) SaveTemplate(w http.ResponseWriter, r *http.Request) {
+	var dto SaveTemplateDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.templates.SaveTab(r.Context(), dto.TabID, dto.Name)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.Template(res))
+}
+
+// DeleteTemplate handles DELETE /api/dashboard/templates/{id}.
+func (h *Handlers) DeleteTemplate(w http.ResponseWriter, r *http.Request) {
+	if err := h.templates.Delete(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// CreateTabFromTemplate handles POST /api/dashboard/templates/{id}/tabs.
+func (h *Handlers) CreateTabFromTemplate(w http.ResponseWriter, r *http.Request) {
+	var dto TabNameDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.templates.CreateTab(r.Context(), r.PathValue("id"), dto.Name)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.Tab(res))
 }

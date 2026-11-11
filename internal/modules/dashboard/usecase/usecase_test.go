@@ -11,8 +11,40 @@ import (
 )
 
 type memRepo struct {
-	tabs    []domain.Tab
-	widgets map[string]domain.Widget
+	tabs      []domain.Tab
+	widgets   map[string]domain.Widget
+	templates []domain.Template
+}
+
+func (m *memRepo) ListTemplates(context.Context) ([]domain.Template, error) {
+	return slices.Clone(m.templates), nil
+}
+
+func (m *memRepo) GetTemplate(_ context.Context, id string) (domain.Template, error) {
+	for _, t := range m.templates {
+		if t.ID == id {
+			return t, nil
+		}
+	}
+	return domain.Template{}, domain.ErrTemplateNotFound
+}
+
+func (m *memRepo) CreateTemplate(_ context.Context, t domain.Template) error {
+	m.templates = append(m.templates, t)
+	return nil
+}
+
+func (m *memRepo) DeleteTemplate(_ context.Context, id string) error {
+	m.templates = slices.DeleteFunc(m.templates, func(t domain.Template) bool { return t.ID == id })
+	return nil
+}
+
+func (m *memRepo) CreateTabWithWidgets(_ context.Context, t domain.Tab, ws []domain.Widget) error {
+	m.tabs = append(m.tabs, t)
+	for _, w := range ws {
+		m.widgets[w.ID()] = w
+	}
+	return nil
 }
 
 func newMemRepo() *memRepo { return &memRepo{widgets: map[string]domain.Widget{}} }
@@ -116,7 +148,7 @@ func (s *seqIDs) NewID() string { s.n++; return fmt.Sprintf("id%d", s.n) }
 
 func newDeps(available ...string) (Deps, *memRepo) {
 	repo := newMemRepo()
-	return Deps{Tabs: repo, Widgets: repo, Kinds: kinds(available), IDs: &seqIDs{}}, repo
+	return Deps{Tabs: repo, Widgets: repo, Templates: repo, Kinds: kinds(available), IDs: &seqIDs{}}, repo
 }
 
 var ctx = context.Background()
@@ -202,5 +234,33 @@ func TestWidgets(t *testing.T) {
 	}
 	if err := widgets.Delete(ctx, w.ID); err != nil || len(repo.widgets) != 0 {
 		t.Fatalf("delete failed: %v", err)
+	}
+}
+
+func TestTemplatesAndBackground(t *testing.T) {
+	deps, repo := newDeps("clock", "notes")
+	tabs, widgets, tpls := NewManageTabs(deps), NewManageWidgets(deps), NewManageTemplates(deps)
+	home, _ := tabs.Create(ctx, CreateTabRequest{Name: "Home"})
+	_, _ = widgets.Add(ctx, AddWidgetRequest{TabID: home.ID, Kind: "clock", W: 3, H: 2, Config: `{"tz":"UTC"}`})
+	_, _ = widgets.Add(ctx, AddWidgetRequest{TabID: home.ID, Kind: "notes", X: 3, W: 3, H: 2})
+	tpl, err := tpls.SaveTab(ctx, home.ID, "Desk")
+	if err != nil || tpl.Widgets != 2 {
+		t.Fatalf("save: %+v %v", tpl, err)
+	}
+	// A disabled module's widgets are skipped when the template is applied.
+	deps.Kinds = kinds{"clock"}
+	tab, err := NewManageTemplates(deps).CreateTab(ctx, tpl.ID, "")
+	if err != nil || tab.Name != "Desk" || len(tab.Widgets) != 1 || tab.Widgets[0].Config != `{"tz":"UTC"}` || len(repo.tabs) != 2 {
+		t.Fatalf("create: %+v %v", tab, err)
+	}
+	if _, err := tabs.SetBackground(ctx, tab.ID, "ftp://x"); err == nil {
+		t.Fatal("invalid background accepted")
+	}
+	res, err := tabs.SetBackground(ctx, tab.ID, "https://img.example/a.jpg")
+	if err != nil || res.Background != "https://img.example/a.jpg" {
+		t.Fatalf("background: %+v %v", res, err)
+	}
+	if err := tpls.Delete(ctx, "nope"); err == nil {
+		t.Fatal("unknown template deleted")
 	}
 }

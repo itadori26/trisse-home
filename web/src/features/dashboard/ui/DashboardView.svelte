@@ -6,6 +6,7 @@
   import type { LayoutItem } from '../domain/layout';
   import type { DashboardUseCases } from '../usecase/dashboardUseCases';
   import Grid from './Grid.svelte';
+  import NewTabDialog from './NewTabDialog.svelte';
   import TabBar from './TabBar.svelte';
   import TextPrompt from './TextPrompt.svelte';
   import WidgetFrame from './WidgetFrame.svelte';
@@ -38,6 +39,8 @@
     | { kind: 'add-widget' }
     | { kind: 'new-tab' }
     | { kind: 'rename-tab'; tab: Tab }
+    | { kind: 'background'; tab: Tab }
+    | { kind: 'template'; tab: Tab }
     | { kind: 'settings'; widget: Widget }
     | null
   >(null);
@@ -105,6 +108,24 @@
     });
   }
 
+  function duplicateWidget(widget: Widget) {
+    const tab = tabs.find((t) => t.id === widget.tabId);
+    if (!tab) return;
+    run(async () => {
+      const copy = await uc.duplicateWidget(tab, widget);
+      replaceTab({ ...tab, widgets: [...tab.widgets, copy] });
+    });
+  }
+
+  // A tab background overrides the global one (see base.css).
+  $effect(() => {
+    const bg = active?.background ?? '';
+    const root = document.documentElement.style;
+    if (bg) root.setProperty('--tab-background-image', `url("${bg.replace(/["\\]/g, '')}")`);
+    else root.removeProperty('--tab-background-image');
+    return () => root.removeProperty('--tab-background-image');
+  });
+
   function removeWidget(widget: Widget) {
     if (!confirm(`Remove the widget "${titles.get(widget.kind) ?? widget.kind}"?`)) return;
     run(async () => {
@@ -154,6 +175,8 @@
     onrename={(tab) => (dialog = { kind: 'rename-tab', tab })}
     ondelete={deleteTab}
     onmove={moveTab}
+    onbackground={(tab) => (dialog = { kind: 'background', tab })}
+    ontemplate={(tab) => (dialog = { kind: 'template', tab })}
   />
 
   {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -169,6 +192,7 @@
           chromeless={chromeless(widget.kind)}
           onsettings={hasSettings(widget.kind) ? () => (dialog = { kind: 'settings', widget }) : undefined}
           ondelete={() => removeWidget(widget)}
+          onduplicate={() => duplicateWidget(widget)}
         >
           {@render content(widget)}
         </WidgetFrame>
@@ -202,14 +226,39 @@
     </ul>
   </Modal>
 {:else if dialog?.kind === 'new-tab'}
-  <TextPrompt
-    title="New tab"
-    label="Name"
+  <NewTabDialog
+    {uc}
     onclose={() => (dialog = null)}
-    onsubmit={async (name) => {
-      const tab = await uc.createTab(name);
+    oncreated={(tab) => {
       tabs = [...tabs, tab];
       select(tab.id);
+    }}
+  />
+{:else if dialog?.kind === 'background'}
+  {@const tab = dialog.tab}
+  <TextPrompt
+    title="Background of “{tab.name}”"
+    label="Image URL (empty = global background)"
+    type="url"
+    optional
+    maxlength={2048}
+    placeholder="https://…"
+    initial={tab.background}
+    onclose={() => (dialog = null)}
+    onsubmit={async (url) => {
+      const updated = await uc.setBackground(tab.id, url);
+      replaceTab({ ...tab, background: updated.background });
+    }}
+  />
+{:else if dialog?.kind === 'template'}
+  {@const tab = dialog.tab}
+  <TextPrompt
+    title="Save “{tab.name}” as template"
+    label="Template name"
+    initial={tab.name}
+    onclose={() => (dialog = null)}
+    onsubmit={async (name) => {
+      await uc.saveTemplate(tab.id, name);
     }}
   />
 {:else if dialog?.kind === 'rename-tab'}

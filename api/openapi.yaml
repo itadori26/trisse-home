@@ -313,6 +313,41 @@ paths:
         "204": { description: Saved }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}/background:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Set the background image of a tab (http(s) URL; empty = global background)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { background: { type: string } } } } } }
+      responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" }, "422": { description: Invalid URL } }
+  /api/dashboard/templates:
+    get:
+      tags: [dashboard]
+      summary: Tab templates
+      security: [{ session: [] }]
+      responses: { "200": { description: "OK (id, name, widgets, kinds)" } }
+    post:
+      tags: [dashboard]
+      summary: Save the widgets of a tab as a template
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { tabId: { type: string }, name: { type: string, maxLength: 40 } } } } } }
+      responses: { "201": { description: Created }, "404": { $ref: "#/components/responses/NotFound" }, "409": { description: Too many templates } }
+  /api/dashboard/templates/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    delete:
+      tags: [dashboard]
+      summary: Delete a template
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { $ref: "#/components/responses/NotFound" } }
+  /api/dashboard/templates/{id}/tabs:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [dashboard]
+      summary: Create a tab from a template (empty name = template name); widgets of disabled modules are skipped
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+      responses: { "201": { description: Created }, "404": { $ref: "#/components/responses/NotFound" } }
   /api/dashboard/widgets/{id}:
     parameters: [{ $ref: "#/components/parameters/id" }]
     patch:

@@ -7,6 +7,7 @@ const tab = (id: string, position: number, widgets: Tab['widgets'] = []): Tab =>
   id,
   name: id,
   position,
+  background: '',
   widgets,
 });
 
@@ -21,6 +22,11 @@ function setup() {
     configureWidget: vi.fn(),
     saveLayout: vi.fn().mockResolvedValue(undefined),
     deleteWidget: vi.fn(),
+    setBackground: vi.fn(),
+    listTemplates: vi.fn(),
+    saveTemplate: vi.fn(),
+    deleteTemplate: vi.fn(),
+    createTabFromTemplate: vi.fn(),
   } satisfies DashboardGateway;
   return { uc: new DashboardUseCases(gateway), gateway };
 }
@@ -67,5 +73,22 @@ describe('DashboardUseCases', () => {
       ['b', 2],
     ]);
     expect(gateway.reorderTabs).toHaveBeenCalledWith(['c', 'a', 'b']);
+  });
+
+  it('duplicates a widget into the first free spot', async () => {
+    const { uc, gateway } = setup();
+    const w = { id: 'w', tabId: 'a', kind: 'clock', config: { tz: 'UTC' }, x: 0, y: 0, w: 4, h: 2 };
+    await uc.duplicateWidget(tab('a', 0, [w]), w);
+    expect(gateway.addWidget).toHaveBeenCalledWith('a', 'clock', { x: 4, y: 0, w: 4, h: 2 }, { tz: 'UTC' });
+  });
+
+  it('validates backgrounds and template names', async () => {
+    const { uc, gateway } = setup();
+    await expect(uc.setBackground('a', 'ftp://x')).rejects.toBeInstanceOf(DashboardValidationError);
+    await uc.setBackground('a', ' https://img.example/a.jpg ');
+    expect(gateway.setBackground).toHaveBeenCalledWith('a', 'https://img.example/a.jpg');
+    await expect(uc.saveTemplate('a', ' ')).rejects.toBeInstanceOf(DashboardValidationError);
+    await uc.createTabFromTemplate('t', '');
+    expect(gateway.createTabFromTemplate).toHaveBeenCalledWith('t', '');
   });
 });

@@ -329,6 +329,18 @@ func TestAPIEndToEnd(t *testing.T) {
 	wID := widget["id"].(string)
 	c.do(http.MethodPut, "/api/dashboard/tabs/"+tabID+"/layout", obj{"items": []obj{{"id": wID, "x": 2, "y": 0, "w": 5, "h": 4}}}, http.StatusNoContent)
 	c.json(http.MethodPatch, "/api/dashboard/widgets/"+wID, obj{"config": obj{"a": 1}}, http.StatusOK, nil)
+	// templates and per-tab background
+	var tpl obj
+	c.json(http.MethodPost, "/api/dashboard/templates", obj{"tabId": tabID, "name": "Server set"}, http.StatusCreated, &tpl)
+	var fromTpl obj
+	c.json(http.MethodPost, "/api/dashboard/templates/"+tpl["id"].(string)+"/tabs", obj{"name": ""}, http.StatusCreated, &fromTpl)
+	if fromTpl["name"] != "Server set" || len(fromTpl["widgets"].([]any)) != 1 {
+		t.Fatalf("tab from template: %v", fromTpl)
+	}
+	c.do(http.MethodPut, "/api/dashboard/tabs/"+fromTpl["id"].(string)+"/background", obj{"background": "javascript:x"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/dashboard/tabs/"+fromTpl["id"].(string)+"/background", obj{"background": "https://img.example/a.jpg"}, http.StatusOK, nil)
+	c.do(http.MethodDelete, "/api/dashboard/templates/"+tpl["id"].(string), nil, http.StatusNoContent)
+	c.do(http.MethodDelete, "/api/dashboard/tabs/"+fromTpl["id"].(string), nil, http.StatusNoContent)
 	c.do(http.MethodDelete, "/api/dashboard/widgets/"+wID, nil, http.StatusNoContent)
 	c.do(http.MethodDelete, "/api/dashboard/tabs/"+tabID, nil, http.StatusNoContent)
 	c.do(http.MethodDelete, "/api/dashboard/tabs/"+home, nil, http.StatusConflict) // last tab

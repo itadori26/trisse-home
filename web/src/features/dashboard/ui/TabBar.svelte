@@ -12,8 +12,23 @@
     ondelete: (tab: Tab) => void;
     /** Moves a tab by `delta` positions (-1 = left, +1 = right). */
     onmove: (tab: Tab, delta: number) => void;
+    /** Opens the background dialog of a tab. */
+    onbackground: (tab: Tab) => void;
+    /** Saves a tab as template. */
+    ontemplate: (tab: Tab) => void;
   }
-  let { tabs, activeId, editing, onselect, onadd, onrename, ondelete, onmove }: Props = $props();
+  let {
+    tabs,
+    activeId,
+    editing,
+    onselect,
+    onadd,
+    onrename,
+    ondelete,
+    onmove,
+    onbackground,
+    ontemplate,
+  }: Props = $props();
 </script>
 
 <nav class="tabs" aria-label="Dashboard tabs" data-tour="tabs">
@@ -45,6 +60,20 @@
         >
         <button class="btn btn-icon" type="button" aria-label="Rename tab" onclick={() => onrename(tab)}
           >✎</button
+        >
+        <button
+          class="btn btn-icon"
+          type="button"
+          aria-label="Tab background"
+          title="Background"
+          onclick={() => onbackground(tab)}>🖼</button
+        >
+        <button
+          class="btn btn-icon"
+          type="button"
+          aria-label="Save tab as template"
+          title="Save as template"
+          onclick={() => ontemplate(tab)}>⎘</button
         >
         <button
           class="btn btn-icon"
