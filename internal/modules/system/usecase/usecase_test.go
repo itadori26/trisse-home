@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/system/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 type fakeHost struct {
@@ -41,7 +42,7 @@ func (clk) Now() time.Time { return time.Unix(0, 0) }
 func TestMonitor(t *testing.T) {
 	ctx := context.Background()
 	host := &fakeHost{cpu: []domain.CPUTimes{{Idle: 0, Total: 0}, {Idle: 75, Total: 100}}}
-	m := NewMonitor(host, &memHistory{}, clk{})
+	m := NewMonitor(host, &memHistory{}, kernel.DiscardObservations{}, clk{})
 	first, err := m.Current(ctx)
 	if err != nil || first.CPUPercent != 0 || first.CPUCount != 4 {
 		t.Fatalf("first snapshot: %+v %v", first, err)
@@ -56,7 +57,7 @@ func TestMonitor(t *testing.T) {
 }
 
 func TestMonitorUnavailable(t *testing.T) {
-	m := NewMonitor(&fakeHost{err: errors.New("no /proc")}, &memHistory{}, clk{})
+	m := NewMonitor(&fakeHost{err: errors.New("no /proc")}, &memHistory{}, kernel.DiscardObservations{}, clk{})
 	if _, err := m.Current(context.Background()); err == nil {
 		t.Fatal("expected error")
 	}
@@ -96,7 +97,7 @@ func TestHistoryIsRecordedOncePerMinute(t *testing.T) {
 	ctx := context.Background()
 	c := &movingClock{t: time.Unix(1_000_000, 0)}
 	hist := &memHistory{}
-	m := NewMonitor(&fakeHost{cpu: []domain.CPUTimes{{Total: 1}, {Total: 2}}}, hist, c)
+	m := NewMonitor(&fakeHost{cpu: []domain.CPUTimes{{Total: 1}, {Total: 2}}}, hist, kernel.DiscardObservations{}, c)
 	for range 30 { // 30 samples, 5 s apart = 2.5 minutes
 		if err := m.Sample(ctx); err != nil {
 			t.Fatal(err)

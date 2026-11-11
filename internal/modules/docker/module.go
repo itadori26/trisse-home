@@ -21,8 +21,8 @@ type Module struct {
 }
 
 // New builds the docker module. proxyURL points to docker-socket-proxy.
-func New(client *http.Client, proxyURL string, clock kernel.Clock) *Module {
-	uc := usecase.NewContainers(gateway.NewAPI(client, proxyURL), clock)
+func New(client *http.Client, proxyURL string, sink kernel.ObservationSink, clock kernel.Clock) *Module {
+	uc := usecase.NewContainers(gateway.NewAPI(client, proxyURL), sink, clock)
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
 }
 

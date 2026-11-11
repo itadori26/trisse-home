@@ -32,6 +32,8 @@ Architecture.
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
+| **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
+| **notifications** | Push messages via [ntfy](https://ntfy.sh) for offline services, containers, full disks, expiring certificates and failed backups |
 | **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
 | **auth**       | First-run setup, login, session overview with sign-out per device, password change (always enabled)   |
 
@@ -107,6 +109,24 @@ start it again.
 `sudo docker compose exec trisse-home /trisse-home reset-account`, then
 `sudo docker compose restart trisse-home` and use the new setup token from
 the log.
+
+## Notifications and backup monitoring
+
+**Notifications** (Settings → Notifications) publish to an [ntfy](https://ntfy.sh) topic. A state change is only
+reported after two consecutive checks (no flapping) and the first observation after a restart only sets the
+baseline. Topics on public servers are readable by anyone who knows the name — use a long random topic (one is
+suggested) or your own ntfy server with an access token; the token is stored encrypted with `SECRET_KEY`.
+
+**Backup monitoring** (Settings → Backup monitoring) gives every backup job a secret ping URL, shown once. Call it
+at the end of your backup script:
+
+```sh
+restic backup /data && curl -fsS -X POST "$PING_URL" || curl -fsS -X POST --data "restic failed" "$PING_URL?status=fail"
+```
+
+A source is *overdue* when no successful run arrives within its maximum age. The ping endpoint needs no login but
+is still subject to `ALLOWED_CIDRS`; only a SHA-256 hash of the token is stored, and a new URL can be generated at
+any time.
 
 ## Configuration
 

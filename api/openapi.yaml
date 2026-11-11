@@ -107,6 +107,55 @@ paths:
         "422": { $ref: "#/components/responses/Invalid" }
 
   # ---------------------------------------------------------------- backup
+  /api/notifications/settings:
+    get:
+      tags: [notifications]
+      summary: ntfy notification settings (the token is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [notifications]
+      summary: Save notification settings; an empty token keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, serverUrl: { type: string }, topic: { type: string }, token: { type: string }, rules: { type: object, properties: { services: { type: boolean }, containers: { type: boolean }, disk: { type: boolean }, diskThreshold: { type: number, minimum: 50, maximum: 99 }, tls: { type: boolean }, tlsDays: { type: integer, minimum: 1, maximum: 90 }, backups: { type: boolean } } } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error } }
+  /api/notifications/test:
+    post:
+      tags: [notifications]
+      summary: Send a test message
+      responses: { "204": { description: Sent }, "503": { description: ntfy server not reachable } }
+  /api/backup-status/sources:
+    get:
+      tags: [backup-status]
+      summary: Monitored backup sources with state ok | overdue | failed | waiting
+      responses: { "200": { description: OK } }
+    post:
+      tags: [backup-status]
+      summary: Create a source; the response contains the ping URL once
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string }, maxAgeHours: { type: number, minimum: 1, maximum: 1440 } } } } } }
+      responses: { "201": { description: Created (source + pingUrl) }, "422": { description: Validation error } }
+  /api/backup-status/sources/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    put:
+      tags: [backup-status]
+      summary: Rename or change the maximum age
+      responses: { "200": { description: OK }, "404": { description: Not found } }
+    delete:
+      tags: [backup-status]
+      summary: Delete a source
+      responses: { "204": { description: Deleted }, "404": { description: Not found } }
+  /api/backup-status/sources/{id}/token:
+    post:
+      tags: [backup-status]
+      summary: Generate a new ping URL; the old one stops working
+      responses: { "200": { description: OK (source + pingUrl) } }
+  /api/backup-status/ping/{token}:
+    post:
+      tags: [backup-status]
+      summary: Report a backup run (no session; the secret token authenticates). Body is an optional message.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [ok, fail] } }
+      responses: { "204": { description: Recorded }, "404": { description: Unknown token } }
   /api/backups:
     get:
       tags: [backup]

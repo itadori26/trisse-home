@@ -86,8 +86,10 @@ type Deps struct {
 	Status  StatusStore
 	Checker HealthChecker
 	History HistoryStore
-	Clock   kernel.Clock
-	IDs     kernel.IDGenerator
+	// Observations receives the health of every check (e.g. for notifications).
+	Observations kernel.ObservationSink
+	Clock        kernel.Clock
+	IDs          kernel.IDGenerator
 }
 
 type services struct{ d Deps }
@@ -208,6 +210,12 @@ func (uc *services) check(ctx context.Context, s domain.Service) {
 	now := uc.d.Clock.Now()
 	st := domain.StatusFromCheck(s.ID, uc.d.Checker.Check(ctx, s.CheckURL, s.SkipTLSVerify), now)
 	uc.d.Status.Put(st)
+	uc.d.Observations.Observe(ctx, kernel.Observation{Kind: "service", Key: s.ID, Label: s.Name, Healthy: st.State == domain.StateOnline, Detail: st.Error})
+	if !st.CertExpiresAt.IsZero() {
+		days := st.CertExpiresAt.Sub(now).Hours() / 24
+		uc.d.Observations.Observe(ctx, kernel.Observation{Kind: "tls", Key: s.ID, Label: s.Name, Healthy: true, Value: days,
+			Detail: "The certificate expires on " + st.CertExpiresAt.Format("2006-01-02") + "."})
+	}
 	// History is best effort: a failed write must not hide the live status.
 	_ = uc.d.History.Add(ctx, domain.LatencyPoint{ServiceID: s.ID, At: now, LatencyMs: float64(st.Latency.Milliseconds()), Online: st.State == domain.StateOnline})
 }

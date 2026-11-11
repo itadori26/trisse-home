@@ -5,6 +5,7 @@
  */
 import type { Component } from 'svelte';
 import { AdGuardWidget } from '../features/adguard';
+import { BackupStatusWidget } from '../features/backupmonitor';
 import { BookmarksWidget, BookmarksWidgetSettings } from '../features/bookmarks';
 import { CalendarWidget, CalendarWidgetSettings } from '../features/calendar';
 import { ClockSettings, ClockWidget } from '../features/clock';
@@ -165,6 +166,15 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(AdGuardWidget, (_config, c) => ({ adguard: c.adguard })),
+  },
+  {
+    type: {
+      kind: 'backup-status',
+      title: 'Backups',
+      description: 'Status of your monitored backup jobs.',
+      defaultSize: { w: 4, h: 3 },
+    },
+    view: renderer(BackupStatusWidget, (_config, c) => ({ backupMonitor: c.backupMonitor })),
   },
 ];
 

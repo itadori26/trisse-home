@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/services/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 type memRepo struct{ items []domain.Service }
@@ -97,7 +98,7 @@ func TestServices(t *testing.T) {
 	ctx := context.Background()
 	repo := &memRepo{}
 	uc := NewServices(Deps{Repo: repo, Status: &memStatus{m: map[string]domain.Status{}},
-		Checker: fakeChecker{down: map[string]bool{"https://down.example": true}}, History: &memHistory{}, Clock: clk{}, IDs: &ids{}})
+		Checker: fakeChecker{down: map[string]bool{"https://down.example": true}}, History: &memHistory{}, Observations: kernel.DiscardObservations{}, Clock: clk{}, IDs: &ids{}})
 
 	up, err := uc.Create(ctx, ServiceInput{Name: "Up", URL: "https://up.example"})
 	if err != nil || up.State != "online" || up.LatencyMs != 12 || !up.CertExpiresSoon {

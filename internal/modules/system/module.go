@@ -30,9 +30,9 @@ type Module struct {
 }
 
 // New builds the system module.
-func New(cfg Config, db *sql.DB, clock kernel.Clock) *Module {
+func New(cfg Config, db *sql.DB, sink kernel.ObservationSink, clock kernel.Clock) *Module {
 	host := gateway.NewHost(cfg.ProcPath, cfg.SysPath, gateway.ParseDiskMounts(cfg.DiskPaths))
-	uc := usecase.NewMonitor(host, gateway.NewHistoryStore(db), clock)
+	uc := usecase.NewMonitor(host, gateway.NewHistoryStore(db), sink, clock)
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
 }
 

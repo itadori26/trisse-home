@@ -89,6 +89,7 @@ func toView(s domain.Snapshot) SnapshotView {
 type monitor struct {
 	host     HostReader
 	history  HistoryStore
+	sink     kernel.ObservationSink
 	clock    kernel.Clock
 	recorded time.Time
 	mu       sync.RWMutex
@@ -97,8 +98,8 @@ type monitor struct {
 }
 
 // NewMonitor returns the system monitor.
-func NewMonitor(host HostReader, history HistoryStore, clock kernel.Clock) Monitor {
-	return &monitor{host: host, history: history, clock: clock}
+func NewMonitor(host HostReader, history HistoryStore, sink kernel.ObservationSink, clock kernel.Clock) Monitor {
+	return &monitor{host: host, history: history, sink: sink, clock: clock}
 }
 
 // Sample implements Monitor. CPU usage needs two counter readings, so the
@@ -132,6 +133,10 @@ func (m *monitor) Sample(ctx context.Context) error {
 	// Temperature sensors are optional (VMs often have none).
 	snap.Temperature, _ = m.host.Temperature(ctx)
 
+	for _, d := range snap.Disks {
+		m.sink.Observe(ctx, kernel.Observation{Kind: "disk", Key: d.Label, Label: d.Label, Healthy: true, Value: d.Usage.Percent(),
+			Detail: fmt.Sprintf("%.0f %% of the disk %s is used.", d.Usage.Percent(), d.Label)})
+	}
 	m.mu.Lock()
 	// The first sample has no CPU delta yet and is not worth storing.
 	record := m.prev != nil && domain.ShouldRecord(m.recorded, snap.TakenAt)
