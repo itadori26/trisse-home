@@ -42,6 +42,10 @@ once and then `make smoke`.
 5. Run `make ci` before opening a pull request. If you change a DTO, run
    `make generate` and commit the generated TypeScript types.
 6. Significant decisions get an ADR in `docs/adr/`.
+7. **Lean by default** ([ADR 0011](docs/adr/0011-lean-by-default.md)): prefer
+   the standard library, lazy-load what the first paint does not need, and
+   justify every new runtime dependency in the PR. CI fails when a budget in
+   `budgets.json` is exceeded.
 
 ## Adding a module
 
