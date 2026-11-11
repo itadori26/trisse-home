@@ -27,6 +27,9 @@ func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Cl
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
 }
 
+// Alert implements kernel.AlertSink.
+func (m *Module) Alert(ctx context.Context, a kernel.Alert) { m.uc.Alert(ctx, a) }
+
 // Observe implements kernel.ObservationSink.
 func (m *Module) Observe(ctx context.Context, o kernel.Observation) { m.uc.Observe(ctx, o) }
 

@@ -7,3 +7,4 @@ export { default as LoginPage } from './ui/LoginPage.svelte';
 export { default as ChangePasswordForm } from './ui/ChangePasswordForm.svelte';
 export { default as SessionsList } from './ui/SessionsList.svelte';
 export { default as TwoFactorSettings } from './ui/TwoFactorSettings.svelte';
+export { default as SecurityLog } from './ui/SecurityLog.svelte';

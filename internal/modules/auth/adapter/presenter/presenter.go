@@ -73,3 +73,23 @@ type EnrollmentDTO struct {
 type RecoveryCodesDTO struct {
 	Codes []string `json:"codes"`
 }
+
+// SecurityEventDTO is one entry of GET /api/auth/events.
+type SecurityEventDTO struct {
+	ID        string    `json:"id"`
+	At        time.Time `json:"at"`
+	Type      string    `json:"type"`
+	AccountID string    `json:"accountId"`
+	IP        string    `json:"ip"`
+	UserAgent string    `json:"userAgent"`
+	Detail    string    `json:"detail"`
+}
+
+// SecurityEvents maps the security log.
+func SecurityEvents(list []usecase.SecurityEventView) []SecurityEventDTO {
+	out := make([]SecurityEventDTO, 0, len(list))
+	for _, e := range list {
+		out = append(out, SecurityEventDTO(e))
+	}
+	return out
+}

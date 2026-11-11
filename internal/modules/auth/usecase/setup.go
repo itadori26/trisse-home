@@ -19,6 +19,8 @@ type Deps struct {
 	TTL      SessionTTL
 	IDs      kernel.IDGenerator
 	OTP      OneTimePasswords
+	// Events records security events; nil disables the log (tests).
+	Events *Recorder
 }
 
 func (d Deps) issuer() sessionIssuer {
@@ -72,5 +74,7 @@ func (uc *setupAccount) Execute(ctx context.Context, req SetupRequest) (SessionR
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
 	uc.observer.AccountCreated(ctx)
-	return uc.deps.issuer().issue(ctx, domain.NewClient(req.UserAgent, req.ClientKey))
+	client := domain.NewClient(req.UserAgent, req.ClientKey)
+	uc.deps.Events.loginSucceeded(ctx, domain.OwnerID, client, "setup")
+	return uc.deps.issuer().issue(ctx, client)
 }

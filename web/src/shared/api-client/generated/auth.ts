@@ -61,3 +61,15 @@ export interface EnrollmentDTO {
 export interface RecoveryCodesDTO {
   codes: string[];
 }
+/**
+ * SecurityEventDTO is one entry of GET /api/auth/events.
+ */
+export interface SecurityEventDTO {
+  id: string;
+  at: string /* RFC 3339 */;
+  type: string;
+  accountId: string;
+  ip: string;
+  userAgent: string;
+  detail: string;
+}

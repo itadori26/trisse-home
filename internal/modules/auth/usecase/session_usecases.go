@@ -73,7 +73,7 @@ func (uc *changePassword) Execute(ctx context.Context, req ChangePasswordRequest
 		return SessionResponse{}, fmt.Errorf("verify password: %w", err)
 	}
 	if !ok {
-		uc.deps.Limiter.RecordFailure(req.ClientKey, now)
+		uc.deps.Events.loginFailed(ctx, domain.OwnerID, domain.NewClient(req.UserAgent, req.ClientKey), uc.deps.Limiter.RecordFailure(req.ClientKey, now))
 		return SessionResponse{}, domain.ErrInvalidCredentials
 	}
 	password, err := domain.NewPassword(req.NewPassword)
@@ -94,7 +94,9 @@ func (uc *changePassword) Execute(ctx context.Context, req ChangePasswordRequest
 		return SessionResponse{}, fmt.Errorf("revoke sessions: %w", err)
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
-	return uc.deps.issuer().issue(ctx, domain.NewClient(req.UserAgent, req.ClientKey))
+	client := domain.NewClient(req.UserAgent, req.ClientKey)
+	uc.deps.Events.record(ctx, domain.EventPasswordChanged, domain.OwnerID, client, "")
+	return uc.deps.issuer().issue(ctx, client)
 }
 
 type resetAccount struct {
@@ -140,11 +142,12 @@ func (uc *purgeExpiredSessions) Execute(ctx context.Context) (int64, error) {
 type manageSessions struct {
 	sessions SessionRepository
 	clock    Clock
+	events   *Recorder
 }
 
-// NewManageSessions returns the ManageSessions use cases.
-func NewManageSessions(sessions SessionRepository, clock Clock) ManageSessions {
-	return &manageSessions{sessions: sessions, clock: clock}
+// NewManageSessions returns the ManageSessions use cases; events may be nil.
+func NewManageSessions(sessions SessionRepository, clock Clock, events *Recorder) ManageSessions {
+	return &manageSessions{sessions: sessions, clock: clock, events: events}
 }
 
 // List implements ManageSessions; the caller's session is marked as current.
@@ -166,7 +169,11 @@ func (uc *manageSessions) List(ctx context.Context, currentToken string) ([]Sess
 
 // Revoke implements ManageSessions.
 func (uc *manageSessions) Revoke(ctx context.Context, _ string, sessionID string) error {
-	return uc.sessions.DeleteByPublicID(ctx, sessionID)
+	if err := uc.sessions.DeleteByPublicID(ctx, sessionID); err != nil {
+		return err
+	}
+	uc.events.record(ctx, domain.EventSessionRevoked, domain.OwnerID, domain.Client{}, "")
+	return nil
 }
 
 // RevokeOthers implements ManageSessions: every session except the caller's ends.
@@ -175,5 +182,6 @@ func (uc *manageSessions) RevokeOthers(ctx context.Context, currentToken string)
 	if err != nil {
 		return 0, fmt.Errorf("revoke sessions: %w", err)
 	}
+	uc.events.record(ctx, domain.EventLogoutEverywhere, domain.OwnerID, domain.Client{}, fmt.Sprintf("%d sessions", n))
 	return n, nil
 }

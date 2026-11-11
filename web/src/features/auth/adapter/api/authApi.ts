@@ -7,6 +7,7 @@ import type {
   SessionInfoDTO,
   StatusDTO,
   TwoFactorStatusDTO,
+  SecurityEventDTO,
 } from '../../../../shared/api-client/generated/auth';
 import type {
   ChangePasswordRequestDTO,
@@ -17,6 +18,7 @@ import type {
 } from '../../../../shared/api-client/generated/auth-requests';
 import type { AuthStatus, Session } from '../../domain/auth';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../../domain/twoFactor';
+import type { SecurityEvent } from '../../domain/securityEvent';
 import type { SessionInfo } from '../../domain/session';
 import type { AuthGateway } from '../../usecase/ports';
 
@@ -60,6 +62,18 @@ export class AuthApi implements AuthGateway {
   async changePassword(currentPassword: string, newPassword: string): Promise<Session> {
     const body: ChangePasswordRequestDTO = { currentPassword, newPassword };
     return toSession(await this.http.put<SessionDTO>('/api/auth/password', body));
+  }
+
+  async securityEvents(): Promise<SecurityEvent[]> {
+    const list = await this.http.get<SecurityEventDTO[]>('/api/auth/events');
+    return list.map((e) => ({
+      id: e.id,
+      at: new Date(e.at),
+      type: e.type,
+      ip: e.ip,
+      userAgent: e.userAgent,
+      detail: e.detail,
+    }));
   }
 
   async sessions(): Promise<SessionInfo[]> {

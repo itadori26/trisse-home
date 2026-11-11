@@ -10,7 +10,7 @@
   import { WasteSettings } from '../features/waste';
   import { WireGuardSettings } from '../features/wireguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
-  import { ChangePasswordForm, SessionsList, TwoFactorSettings } from '../features/auth';
+  import { ChangePasswordForm, SecurityLog, SessionsList, TwoFactorSettings } from '../features/auth';
   import { BackupSettings } from '../features/backup';
   import { BackupSourcesManager } from '../features/backupmonitor';
   import { NotificationSettings } from '../features/notifications';
@@ -54,6 +54,7 @@
     { id: 'backups', label: 'settings.section.backups', module: 'backup' },
     { id: 'backupmonitor', label: 'settings.section.backupmonitor', module: 'backupmonitor' },
     { id: 'account', label: 'settings.section.account' },
+    { id: 'security-log', label: 'settings.section.security_log' },
     { id: 'about', label: 'settings.section.about', module: 'system' },
   ];
   const visible = $derived(sections.filter((s) => !s.module || modules.has(s.module)));
@@ -84,6 +85,8 @@
   {:else if current === 'transfer'}
     <TransferSettings transfer={container.transfer} />
     {#if modules.has('bookmarks')}<BookmarkImport bookmarks={container.bookmarks} />{/if}
+  {:else if current === 'security-log'}
+    <SecurityLog auth={container.auth} />
   {:else if current === 'about'}
     <AboutSettings system={container.system} />
   {:else if current === 'parcels'}

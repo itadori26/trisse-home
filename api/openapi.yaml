@@ -231,6 +231,11 @@ paths:
         "204": { description: Disabled }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/events:
+    get:
+      tags: [auth]
+      summary: Security log of the last 90 days (sign-ins, failures, lockouts, new devices, password and 2FA changes, data imports), newest first
+      responses: { "200": { description: "List of {id, at, type, accountId, ip, userAgent, detail}" } }
   /api/auth/sessions:
     get:
       tags: [auth]

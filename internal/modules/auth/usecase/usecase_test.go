@@ -148,7 +148,7 @@ func TestManageSessions(t *testing.T) {
 	e := newEnv().withAccount()
 	a, _ := NewLogin(e.deps).Execute(ctx, LoginRequest{Password: goodPassword, ClientKey: "10.0.0.1", UserAgent: "Firefox"})
 	b, _ := NewLogin(e.deps).Execute(ctx, LoginRequest{Password: goodPassword, ClientKey: "10.0.0.2", UserAgent: "Chrome"})
-	uc := NewManageSessions(e.sessions, e.clock)
+	uc := NewManageSessions(e.sessions, e.clock, nil)
 	list, err := uc.List(ctx, a.SessionToken)
 	if err != nil || len(list) != 2 {
 		t.Fatalf("list: %v %v", list, err)

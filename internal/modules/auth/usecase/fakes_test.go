@@ -143,9 +143,12 @@ type fakeLimiter struct {
 
 func newFakeLimiter(max int) *fakeLimiter { return &fakeLimiter{failures: map[string]int{}, max: max} }
 
-func (l *fakeLimiter) Allow(k string, _ time.Time) bool    { return l.failures[k] < l.max }
-func (l *fakeLimiter) RecordFailure(k string, _ time.Time) { l.failures[k]++ }
-func (l *fakeLimiter) Reset(k string)                      { delete(l.failures, k) }
+func (l *fakeLimiter) Allow(k string, _ time.Time) bool { return l.failures[k] < l.max }
+func (l *fakeLimiter) RecordFailure(k string, _ time.Time) bool {
+	l.failures[k]++
+	return l.failures[k] >= l.max
+}
+func (l *fakeLimiter) Reset(k string) { delete(l.failures, k) }
 
 type countingObserver struct{ calls int }
 

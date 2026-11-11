@@ -12,14 +12,14 @@ import (
 	"trisse-home/internal/modules"
 	"trisse-home/internal/modules/auth/adapter/controller"
 	"trisse-home/internal/modules/auth/adapter/gateway"
+	"trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/auth/usecase"
 	"trisse-home/internal/shared/kernel"
 )
 
 const (
-	maxFailedAttempts    = 5
-	failedAttemptsWindow = 15 * time.Minute
-	purgeInterval        = time.Hour
+	purgeInterval      = time.Hour
+	eventPruneInterval = 24 * time.Hour
 )
 
 // Config holds the auth settings derived from the environment.
@@ -55,6 +55,8 @@ type Deps struct {
 	OTP    usecase.OneTimePasswords
 	Cipher gateway.Cipher
 	Log    *slog.Logger
+	// Alerts receives security alerts (new device, lockouts); may be nil.
+	Alerts kernel.AlertSink
 }
 
 // Module wires the auth rings and implements modules.Module.
@@ -64,6 +66,7 @@ type Module struct {
 	status     usecase.GetStatus
 	purge      usecase.PurgeExpiredSessions
 	reset      usecase.ResetAccount
+	security   usecase.SecurityLog
 	setup      usecase.SetupAccount
 	tokens     usecase.TokenGenerator
 	demo       bool
@@ -84,10 +87,13 @@ func New(cfg Config, d Deps) (*Module, error) {
 	accounts := gateway.NewAccountRepository(d.DB, d.Cipher)
 	sessions := gateway.NewSessionRepository(d.DB)
 	ttl := usecase.SessionTTL(cfg.SessionTTL)
+	events := usecase.NewRecorder(gateway.NewEventRepository(d.DB), d.Alerts, d.IDs, d.Clock, d.Log)
 	deps := usecase.Deps{
 		Accounts: accounts, Sessions: sessions, Hasher: d.Hasher, Tokens: d.Tokens,
-		Limiter: gateway.NewAttemptLimiter(maxFailedAttempts, failedAttemptsWindow), Clock: d.Clock, TTL: ttl, IDs: d.IDs, OTP: d.OTP,
+		Limiter: gateway.NewAttemptLimiter(domain.DefaultLoginThrottle), Clock: d.Clock, TTL: ttl, IDs: d.IDs, OTP: d.OTP,
+		Events: events,
 	}
+	securityLog := usecase.NewSecurityLog(events)
 	status := usecase.NewGetStatus(accounts, sessions, d.Clock)
 	uc := controller.UseCases{
 		Status:         status,
@@ -96,7 +102,8 @@ func New(cfg Config, d Deps) (*Module, error) {
 		Logout:         usecase.NewLogout(sessions),
 		Authenticate:   usecase.NewAuthenticate(sessions, d.Clock, ttl),
 		ChangePassword: usecase.NewChangePassword(deps),
-		Sessions:       usecase.NewManageSessions(sessions, d.Clock),
+		Sessions:       usecase.NewManageSessions(sessions, d.Clock, events),
+		SecurityLog:    securityLog,
 		TwoFactor:      usecase.NewTwoFactor(deps),
 	}
 	if cfg.Demo {
@@ -107,6 +114,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 		status:     status,
 		purge:      usecase.NewPurgeExpiredSessions(sessions, d.Clock),
 		reset:      usecase.NewResetAccount(accounts, sessions),
+		security:   securityLog,
 		setup:      uc.Setup,
 		tokens:     d.Tokens,
 		demo:       cfg.Demo,
@@ -136,6 +144,7 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("POST /api/auth/totp/confirm", m.handlers.ConfirmTwoFactor)
 	r.Protected("POST /api/auth/totp/disable", m.handlers.DisableTwoFactor)
 	r.Protected("GET /api/auth/sessions", m.handlers.ListSessions)
+	r.Protected("GET /api/auth/events", m.handlers.SecurityEvents)
 	r.Protected("POST /api/auth/sessions/revoke-others", m.handlers.RevokeOtherSessions)
 	r.Protected("DELETE /api/auth/sessions/{id}", m.handlers.RevokeSession)
 }
@@ -146,6 +155,12 @@ func (m *Module) Jobs() []modules.Job {
 		Name: "auth.purge-expired-sessions", Interval: purgeInterval,
 		Run: func(ctx context.Context) error {
 			_, err := m.purge.Execute(ctx)
+			return err
+		},
+	}, {
+		Name: "auth.prune-security-events", Interval: eventPruneInterval,
+		Run: func(ctx context.Context) error {
+			_, err := m.security.Prune(ctx)
 			return err
 		},
 	}}
@@ -187,3 +202,6 @@ func (m *Module) PrepareDemo(ctx context.Context) error {
 	}
 	return nil
 }
+
+// Audit implements kernel.AuditSink for other modules (e.g. data import).
+func (m *Module) Audit(ctx context.Context, e kernel.AuditEvent) { m.security.Audit(ctx, e) }

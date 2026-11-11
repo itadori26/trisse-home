@@ -6,6 +6,9 @@ import (
 	"trisse-home/internal/shared/kernel"
 )
 
+// OwnerID identifies the owner account in sessions and events.
+const OwnerID = "owner"
+
 // Account is the single user of the application, identified only by its
 // password hash.
 type Account struct {

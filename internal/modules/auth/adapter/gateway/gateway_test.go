@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -80,25 +81,6 @@ func TestSQLiteRepositories(t *testing.T) {
 	}
 }
 
-func TestAttemptLimiter(t *testing.T) {
-	l := NewAttemptLimiter(2, time.Minute)
-	now := time.Now()
-	l.RecordFailure("a", now)
-	if !l.Allow("a", now) {
-		t.Fatal("blocked too early")
-	}
-	l.RecordFailure("a", now)
-	if l.Allow("a", now) {
-		t.Fatal("not blocked after max failures")
-	}
-	if !l.Allow("b", now) {
-		t.Fatal("other key blocked")
-	}
-	if !l.Allow("a", now.Add(time.Minute)) {
-		t.Fatal("not unblocked after window")
-	}
-}
-
 func TestSetupToken(t *testing.T) {
 	if NewSetupToken("").Verify("") {
 		t.Fatal("empty token must never verify")
@@ -113,3 +95,53 @@ type prefixCipher struct{}
 
 func (prefixCipher) Encrypt(s string) (string, error) { return "enc:" + s, nil }
 func (prefixCipher) Decrypt(s string) (string, error) { return strings.TrimPrefix(s, "enc:"), nil }
+
+func TestEventRepository(t *testing.T) {
+	ctx := context.Background()
+	repo := NewEventRepository(dbtest.Open(t, "auth", Migrations()))
+	old := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i, at := range []time.Time{old, old.AddDate(0, 6, 0)} {
+		e, _ := domain.NewSecurityEvent(fmt.Sprint(i), at, domain.EventLoginSucceeded, domain.OwnerID, domain.Client{UserAgent: "Firefox", IP: "10.0.0.2"}, "")
+		if err := repo.Add(ctx, e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list, err := repo.List(ctx, 10)
+	if err != nil || len(list) != 2 || list[0].ID != "1" || list[0].Client.UserAgent != "Firefox" {
+		t.Fatalf("%+v %v", list, err)
+	}
+	if known, _ := repo.KnownDevice(ctx, domain.OwnerID, "Firefox"); !known {
+		t.Fatal("device must be known")
+	}
+	if known, _ := repo.KnownDevice(ctx, domain.OwnerID, "Safari"); known {
+		t.Fatal("unknown device reported as known")
+	}
+	if n, _ := repo.DeleteBefore(ctx, old.AddDate(0, 1, 0)); n != 1 {
+		t.Fatalf("pruned %d", n)
+	}
+}
+
+func TestAttemptLimiterBackoff(t *testing.T) {
+	policy := domain.LoginThrottle{MaxFailures: 2, Window: time.Minute, BaseLockout: time.Minute, MaxLockout: time.Hour}
+	l := NewAttemptLimiter(policy)
+	now := time.Unix(0, 0)
+	if l.RecordFailure("a", now) || !l.Allow("a", now) {
+		t.Fatal("one failure must not lock")
+	}
+	if !l.RecordFailure("a", now) || l.Allow("a", now.Add(59*time.Second)) {
+		t.Fatal("second failure must lock for a minute")
+	}
+	now = now.Add(time.Minute)
+	if !l.Allow("a", now) {
+		t.Fatal("lock must expire")
+	}
+	l.RecordFailure("a", now)
+	l.RecordFailure("a", now)
+	if l.Allow("a", now.Add(119*time.Second)) || !l.Allow("a", now.Add(2*time.Minute)) {
+		t.Fatal("second lockout must last twice as long")
+	}
+	l.Reset("a")
+	if !l.Allow("a", now) {
+		t.Fatal("reset must unlock")
+	}
+}

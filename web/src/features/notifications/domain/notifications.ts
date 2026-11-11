@@ -7,6 +7,7 @@ export interface NotificationRules {
   tls: boolean;
   tlsDays: number;
   backups: boolean;
+  security: boolean;
 }
 
 /** Notification settings as shown in the UI (the token is never returned). */

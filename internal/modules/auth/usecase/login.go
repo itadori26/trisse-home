@@ -30,14 +30,15 @@ func (uc *login) Execute(ctx context.Context, req LoginRequest) (SessionResponse
 	if err != nil {
 		return SessionResponse{}, fmt.Errorf("verify password: %w", err)
 	}
+	client := domain.NewClient(req.UserAgent, req.ClientKey)
 	if !ok {
-		uc.deps.Limiter.RecordFailure(req.ClientKey, now)
+		uc.deps.Events.loginFailed(ctx, domain.OwnerID, client, uc.deps.Limiter.RecordFailure(req.ClientKey, now))
 		return SessionResponse{}, domain.ErrInvalidCredentials
 	}
 	if account.TOTPEnabled() {
-		if err := uc.deps.checkSecondFactor(&account, req.TOTPCode, now); err != nil {
+		if err := uc.deps.checkSecondFactor(ctx, &account, req.TOTPCode, now); err != nil {
 			if errors.Is(err, domain.ErrInvalidTOTPCode) {
-				uc.deps.Limiter.RecordFailure(req.ClientKey, now)
+				uc.deps.Events.loginFailed(ctx, domain.OwnerID, client, uc.deps.Limiter.RecordFailure(req.ClientKey, now))
 			}
 			return SessionResponse{}, err
 		}
@@ -46,5 +47,6 @@ func (uc *login) Execute(ctx context.Context, req LoginRequest) (SessionResponse
 		}
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
-	return uc.deps.issuer().issue(ctx, domain.NewClient(req.UserAgent, req.ClientKey))
+	uc.deps.Events.loginSucceeded(ctx, domain.OwnerID, client, "password")
+	return uc.deps.issuer().issue(ctx, client)
 }

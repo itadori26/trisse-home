@@ -126,6 +126,7 @@ type TwoFactor interface {
 // AttemptLimiter throttles repeated failed attempts per key (client IP).
 type AttemptLimiter interface {
 	Allow(key string, now time.Time) bool
-	RecordFailure(key string, now time.Time)
+	// RecordFailure reports whether this failure locked the client out.
+	RecordFailure(key string, now time.Time) bool
 	Reset(key string)
 }

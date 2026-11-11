@@ -113,6 +113,10 @@
         ><input type="checkbox" bind:checked={form.rules.backups} />
         {t('notifications.a_monitored_backup_fails_or_is')}</label
       >
+      <label
+        ><input type="checkbox" bind:checked={form.rules.security} />
+        {t('notifications.rule_security')}</label
+      >
     </fieldset>
     {#if lastError}<p class="error">
         {t('notifications.last_delivery_failed', { lastError: lastError })}

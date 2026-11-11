@@ -13,3 +13,13 @@ on this repository instead. You will get an answer as soon as possible.
 ## Supported versions
 
 Only the latest release receives security fixes.
+
+## Data the application keeps about sign-ins
+
+The security log (Settings → Security log) stores time, event type, client IP
+address and user agent of sign-ins, failed attempts, lockouts and security
+changes — never passwords, codes or tokens. IP addresses are personal data,
+so entries are deleted automatically after **90 days**. Repeated failed logins
+lock the client out for 15 minutes, doubling with every further lockout up to
+24 hours.
+

@@ -9,6 +9,7 @@ type RulesInputDTO struct {
 	TLS           bool    `json:"tls"`
 	TLSDays       int     `json:"tlsDays"`
 	Backups       bool    `json:"backups"`
+	Security      bool    `json:"security"`
 }
 
 // SettingsInputDTO is the body of PUT /api/notifications/settings; an empty

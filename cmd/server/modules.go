@@ -59,6 +59,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	out := newOutbound(cfg, clk, cipher)
 	client, secrets := out.client, out.secrets
 	registry := &modules.Registry{}
+	alerts := &alertRelay{}
 
 	authModule, err := auth.New(
 		auth.Config{
@@ -66,7 +67,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			OnAccountCreated: func(ctx context.Context) { onAccountCreated(ctx, cfg, log, registry) },
 			Demo:             cfg.DemoMode,
 		},
-		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log},
+		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log, Alerts: alerts},
 	)
 	if err != nil {
 		return nil, nil, err
@@ -80,6 +81,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		n := notifications.New(db, secrets, client, clk)
 		registry.Register(n)
 		sink = n
+		alerts.target = n
 	}
 
 	optional := []struct {
@@ -110,7 +112,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, client, clk) }},
 		{"parcels", func() modules.Module { return parcels.New(db, secrets, client, clk, ids) }},
-		{"transfer", func() modules.Module { return transfer.New(registry.Portables, clk) }},
+		{"transfer", func() modules.Module { return transfer.New(registry.Portables, clk, authModule) }},
 		{"transit", func() modules.Module { return transit.New(client, cfg.TransitAPIURL, clk) }},
 		{"shopping", func() modules.Module { return shopping.New(db, secrets, client, ids) }},
 		{"waste", func() modules.Module { return waste.New(db, client, clk, time.Local) }},
@@ -206,5 +208,16 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 		insecureHealth: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
 		waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
 		secrets:        cipher,
+	}
+}
+
+// alertRelay forwards security alerts of the auth module (built first) to
+// the notifications module once that exists; without it alerts are dropped.
+type alertRelay struct{ target kernel.AlertSink }
+
+// Alert implements kernel.AlertSink.
+func (a *alertRelay) Alert(ctx context.Context, al kernel.Alert) {
+	if a.target != nil {
+		a.target.Alert(ctx, al)
 	}
 }

@@ -690,6 +690,23 @@ export const en = {
   'services.wol_broadcast_invalid': 'Use the form 192.168.178.255:9.',
   'services.wol_docker_actions': 'Docker actions are enabled as well',
   'services.wol_snippet_hint': 'Add these lines to .env and run docker compose up -d.',
+  'notifications.rule_security': 'Security: sign-in from a new device, login lockouts',
+  'settings.section.security_log': 'Security log',
+  'auth.security_log_hint':
+    'Sign-ins and security-relevant changes of the last 90 days. No passwords or codes are stored.',
+  'auth.security_log_empty': 'No events yet.',
+  'auth.event.login_succeeded': 'Signed in',
+  'auth.event.login_failed': 'Failed sign-in',
+  'auth.event.login_locked': 'Sign-ins blocked after repeated failures',
+  'auth.event.new_device': 'Sign-in from a new device',
+  'auth.event.logout_everywhere': 'Signed out on all other devices',
+  'auth.event.password_changed': 'Password changed',
+  'auth.event.two_factor_enabled': 'Two-factor authentication enabled',
+  'auth.event.two_factor_disabled': 'Two-factor authentication disabled',
+  'auth.event.recovery_code_used': 'Recovery code used',
+  'auth.event.session_revoked': 'Session ended',
+  'auth.event.external': 'Data change',
+  'auth.event.other': 'Security event',
 } as const;
 
 /** Every message key. */

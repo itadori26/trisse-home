@@ -18,6 +18,7 @@ type UseCases struct {
 	ChangePassword usecase.ChangePassword
 	Sessions       usecase.ManageSessions
 	TwoFactor      usecase.TwoFactor
+	SecurityLog    usecase.SecurityLog
 	// DemoLogin is nil unless the instance runs in demo mode.
 	DemoLogin usecase.DemoLogin
 }
@@ -190,4 +191,14 @@ func (h *Handlers) respondWithSession(w http.ResponseWriter, r *http.Request, re
 
 func clientKey(r *http.Request) string {
 	return httpapi.ClientIP(r.Context()).String()
+}
+
+// SecurityEvents handles GET /api/auth/events.
+func (h *Handlers) SecurityEvents(w http.ResponseWriter, r *http.Request) {
+	list, err := h.uc.SecurityLog.List(r.Context(), 200)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.SecurityEvents(list))
 }

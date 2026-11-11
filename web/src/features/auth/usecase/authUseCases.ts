@@ -1,5 +1,6 @@
 import { t } from '../../../shared/i18n';
 import { type AuthView, validateNewPassword, viewFor } from '../domain/auth';
+import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
 import type { AuthGateway, CsrfTokenStore } from './ports';
@@ -60,6 +61,11 @@ export class AuthUseCases {
     if (problem) throw new ValidationError(problem);
     const session = await this.gateway.changePassword(current, next);
     this.csrf.setCsrfToken(session.csrfToken);
+  }
+
+  /** The security log, newest first. */
+  securityEvents(): Promise<SecurityEvent[]> {
+    return this.gateway.securityEvents();
   }
 
   /** Lists active sessions; the current one first. */

@@ -16,8 +16,8 @@ type Module struct {
 
 // New builds the transfer module. portables is called per request (usually
 // Registry.Portables) so modules registered later are included.
-func New(portables func() map[string]modules.Portable, clock kernel.Clock) *Module {
-	return &Module{handlers: controller.NewHandlers(usecase.NewTransfer(gateway.Sections(portables), clock))}
+func New(portables func() map[string]modules.Portable, clock kernel.Clock, audit kernel.AuditSink) *Module {
+	return &Module{handlers: controller.NewHandlers(usecase.NewTransfer(gateway.Sections(portables), clock, audit))}
 }
 
 // Name implements modules.Module.

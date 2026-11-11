@@ -34,7 +34,8 @@ func (h *Handlers) Guard(next http.Handler) http.Handler {
 		if res.Refreshed {
 			h.cookies.set(w, h.cookies.read(r), res.ExpiresAt)
 		}
-		next.ServeHTTP(w, r)
+		ctx := usecase.WithClient(r.Context(), domain.NewClient(r.UserAgent(), clientKey(r)))
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

@@ -619,6 +619,17 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("bookmark import: %d %v", res.StatusCode, imported)
 	}
 
+	// --- security log: the setup counts as the first sign-in of a new device ---
+	var events []obj
+	c.json(http.MethodGet, "/api/auth/events", nil, http.StatusOK, &events)
+	seen := map[any]bool{}
+	for _, e := range events {
+		seen[e["type"]] = true
+	}
+	if !seen["login_succeeded"] || !seen["new_device"] {
+		t.Fatalf("security log: %v", events)
+	}
+
 	// --- version and update check (off by default, no outbound request) ---
 	var ver obj
 	c.json(http.MethodGet, "/api/system/version", nil, http.StatusOK, &ver)

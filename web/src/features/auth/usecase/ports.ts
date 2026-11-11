@@ -1,4 +1,5 @@
 import type { AuthStatus, Session } from '../domain/auth';
+import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
 
@@ -12,6 +13,7 @@ export interface AuthGateway {
   logout(): Promise<void>;
   changePassword(currentPassword: string, newPassword: string): Promise<Session>;
   sessions(): Promise<SessionInfo[]>;
+  securityEvents(): Promise<SecurityEvent[]>;
   revokeSession(id: string): Promise<void>;
   revokeOtherSessions(): Promise<number>;
   twoFactorStatus(): Promise<TwoFactorStatus>;

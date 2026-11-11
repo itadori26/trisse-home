@@ -52,6 +52,7 @@ type rulesRow struct {
 	TLS           bool    `json:"tls"`
 	TLSDays       int     `json:"tlsDays"`
 	Backups       bool    `json:"backups"`
+	Security      bool    `json:"security"`
 }
 
 // Load implements usecase.Repository.

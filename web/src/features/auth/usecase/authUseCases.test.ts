@@ -19,6 +19,7 @@ function setup(status: Partial<AuthStatus> = {}) {
     demoLogin: vi.fn().mockResolvedValue(session),
     logout: vi.fn().mockResolvedValue(undefined),
     changePassword: vi.fn().mockResolvedValue(session),
+    securityEvents: vi.fn().mockResolvedValue([]),
     sessions: vi.fn().mockResolvedValue([
       {
         id: 'a',
