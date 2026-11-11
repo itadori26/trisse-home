@@ -22,6 +22,10 @@ services:
       SYSTEM_DISK_PATHS: ${SYSTEM_DISK_PATHS:-System=/host/rootfs}
       # Docker module: only the read-only socket proxy, never the raw socket.
       DOCKER_PROXY_URL: http://docker-socket-proxy:2375
+      # Wake-on-LAN goes through the wol-relay service (profile "wol").
+      WOL_RELAY: ${WOL_RELAY:-host.docker.internal:9009}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       # Bind to a specific LAN address via BIND_ADDRESS to avoid exposing the
       # port on every interface of the host.
@@ -84,6 +88,27 @@ services:
     tmpfs: [/run, /tmp]
     security_opt: ["no-new-privileges:true"]
     networks: [docker-api]
+
+  # Optional, only started with COMPOSE_PROFILES=wol: re-broadcasts valid
+  # Wake-on-LAN magic packets into the LAN. It is the only service in the host
+  # network (broadcasts cannot leave a Docker bridge network); it has no access
+  # to data, Docker or secrets and ignores everything that is not a magic packet.
+  wol-relay:
+    image: trisse-home:local
+    container_name: trisse-home-wol-relay
+    profiles: [wol]
+    command: ["wol-relay"]
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      WOL_RELAY_LISTEN: ${WOL_RELAY_LISTEN:-:9009}
+      WOL_BROADCAST: ${WOL_BROADCAST:-255.255.255.255:9}
+    healthcheck:
+      disable: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on: [trisse-home]
 
 networks:
   default:

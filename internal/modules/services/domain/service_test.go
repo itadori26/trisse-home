@@ -40,3 +40,13 @@ func TestStatusFromResponse(t *testing.T) {
 		}
 	}
 }
+
+func TestServiceMAC(t *testing.T) {
+	s, _ := NewService("1", "NAS", "http://nas", "", "", "", false, 0)
+	if err := s.SetMAC("AA-BB-CC-DD-EE-FF"); err != nil || s.MAC != "aa:bb:cc:dd:ee:ff" {
+		t.Fatalf("%q %v", s.MAC, err)
+	}
+	if err := s.SetMAC("nope"); err == nil {
+		t.Fatal("invalid MAC accepted")
+	}
+}

@@ -15,6 +15,7 @@ type ServiceDTO struct {
 	Icon          string    `json:"icon"`
 	Description   string    `json:"description"`
 	SkipTLSVerify bool      `json:"skipTlsVerify"`
+	MAC           string    `json:"mac"`
 	Position      int       `json:"position"`
 	State         string    `json:"state" tstype:"'online' | 'offline' | 'unknown'"`
 	HTTPStatus    int       `json:"httpStatus"`
@@ -37,7 +38,7 @@ type LatencyPointDTO struct {
 func Service(v usecase.ServiceView) ServiceDTO {
 	dto := ServiceDTO{
 		ID: v.ID, Name: v.Name, URL: v.URL, CheckURL: v.CheckURL, Icon: v.Icon, Description: v.Description,
-		SkipTLSVerify: v.SkipTLSVerify, Position: v.Position, State: v.State, HTTPStatus: v.HTTPStatus,
+		SkipTLSVerify: v.SkipTLSVerify, MAC: v.MAC, Position: v.Position, State: v.State, HTTPStatus: v.HTTPStatus,
 		LatencyMs: v.LatencyMs, CheckedAt: v.CheckedAt, Error: v.Error, CertExpiresSoon: v.CertExpiresSoon,
 	}
 	if !v.CertExpiresAt.IsZero() {

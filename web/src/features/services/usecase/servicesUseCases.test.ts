@@ -15,6 +15,7 @@ const svc = (id: string): Service => ({
   error: '',
   certExpiresAt: null,
   certExpiresSoon: false,
+  mac: '',
 });
 
 function setup() {
@@ -26,6 +27,7 @@ function setup() {
     reorder: vi.fn().mockResolvedValue(undefined),
     checkNow: vi.fn(),
     history: vi.fn(),
+    wake: vi.fn(),
   } satisfies ServicesGateway;
   return { uc: new ServicesUseCases(gateway), gateway };
 }

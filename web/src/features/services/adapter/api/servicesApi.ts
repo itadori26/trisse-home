@@ -14,6 +14,7 @@ const toService = (d: ServiceDTO): Service => ({
   icon: d.icon,
   description: d.description,
   skipTlsVerify: d.skipTlsVerify,
+  mac: d.mac,
   position: d.position,
   state: d.state,
   httpStatus: d.httpStatus,
@@ -24,7 +25,7 @@ const toService = (d: ServiceDTO): Service => ({
   certExpiresSoon: d.certExpiresSoon,
 });
 
-const toDTO = (i: ServiceInput): ServiceInputDTO => ({ ...i });
+const toDTO = (i: ServiceInput): ServiceInputDTO => ({ ...i, mac: i.mac.trim() });
 
 /** ServicesGateway backed by the REST API. */
 export class ServicesApi implements ServicesGateway {
@@ -62,5 +63,9 @@ export class ServicesApi implements ServicesGateway {
         ps.map((p) => ({ at: new Date(p.at), latencyMs: p.latencyMs, online: p.online })),
       ]),
     );
+  }
+
+  wake(id: string): Promise<void> {
+    return this.http.post(`/api/services/${encodeURIComponent(id)}/wake`);
   }
 }

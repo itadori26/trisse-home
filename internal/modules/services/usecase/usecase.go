@@ -15,22 +15,22 @@ const maxParallelChecks = 8
 
 // ServiceInput carries the editable fields of a service.
 type ServiceInput struct {
-	Name, URL, CheckURL, Icon, Description string
-	SkipTLSVerify                          bool
+	Name, URL, CheckURL, Icon, Description, MAC string
+	SkipTLSVerify                               bool
 }
 
 // ServiceView is a service with its latest status.
 type ServiceView struct {
-	ID, Name, URL, CheckURL, Icon, Description string
-	SkipTLSVerify                              bool
-	Position                                   int
-	State                                      string
-	HTTPStatus                                 int
-	LatencyMs                                  int64
-	CheckedAt                                  time.Time
-	Error                                      string
-	CertExpiresAt                              time.Time
-	CertExpiresSoon                            bool
+	ID, Name, URL, CheckURL, Icon, Description, MAC string
+	SkipTLSVerify                                   bool
+	Position                                        int
+	State                                           string
+	HTTPStatus                                      int
+	LatencyMs                                       int64
+	CheckedAt                                       time.Time
+	Error                                           string
+	CertExpiresAt                                   time.Time
+	CertExpiresSoon                                 bool
 }
 
 // Services is the input port of the services module.
@@ -43,6 +43,13 @@ type Services interface {
 	CheckAll(ctx context.Context) error
 	// History returns the response time history per service ID.
 	History(ctx context.Context, hours int) (map[string][]LatencyPointView, error)
+	// Wake sends a Wake-on-LAN packet to the service's MAC address.
+	Wake(ctx context.Context, id string) error
+}
+
+// Waker sends Wake-on-LAN packets (output port).
+type Waker interface {
+	Wake(ctx context.Context, mac kernel.MAC) error
 }
 
 // Repository persists services (output port).
@@ -86,6 +93,7 @@ type Deps struct {
 	Status  StatusStore
 	Checker HealthChecker
 	History HistoryStore
+	Waker   Waker
 	// Observations receives the health of every check (e.g. for notifications).
 	Observations kernel.ObservationSink
 	Clock        kernel.Clock
@@ -117,6 +125,9 @@ func (uc *services) Create(ctx context.Context, in ServiceInput) (ServiceView, e
 		return ServiceView{}, fmt.Errorf("list services: %w", err)
 	}
 	s, err := domain.NewService(uc.d.IDs.NewID(), in.Name, in.URL, in.CheckURL, in.Icon, in.Description, in.SkipTLSVerify, len(list))
+	if err == nil {
+		err = s.SetMAC(in.MAC)
+	}
 	if err != nil {
 		return ServiceView{}, err
 	}
@@ -134,6 +145,9 @@ func (uc *services) Update(ctx context.Context, id string, in ServiceInput) (Ser
 		return ServiceView{}, err
 	}
 	s, err := domain.NewService(id, in.Name, in.URL, in.CheckURL, in.Icon, in.Description, in.SkipTLSVerify, old.Position)
+	if err == nil {
+		err = s.SetMAC(in.MAC)
+	}
 	if err != nil {
 		return ServiceView{}, err
 	}
@@ -243,10 +257,22 @@ func (uc *services) History(ctx context.Context, hours int) (map[string][]Latenc
 	return out, nil
 }
 
+// Wake implements Services.
+func (uc *services) Wake(ctx context.Context, id string) error {
+	s, err := uc.d.Repo.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if s.MAC == "" {
+		return domain.ErrNoMAC
+	}
+	return uc.d.Waker.Wake(ctx, s.MAC)
+}
+
 func (uc *services) view(s domain.Service) ServiceView {
 	v := ServiceView{
 		ID: s.ID, Name: s.Name, URL: s.URL, CheckURL: s.CheckURL, Icon: s.Icon, Description: s.Description,
-		SkipTLSVerify: s.SkipTLSVerify, Position: s.Position, State: string(domain.StateUnknown),
+		SkipTLSVerify: s.SkipTLSVerify, Position: s.Position, State: string(domain.StateUnknown), MAC: string(s.MAC),
 	}
 	if st, ok := uc.d.Status.Get(s.ID); ok {
 		v.State, v.HTTPStatus, v.LatencyMs, v.CheckedAt, v.Error = string(st.State), st.HTTPStatus, st.Latency.Milliseconds(), st.CheckedAt, st.Error

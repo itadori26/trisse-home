@@ -135,3 +135,31 @@ func TestServices(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+type fakeWaker struct{ woken []kernel.MAC }
+
+func (f *fakeWaker) Wake(_ context.Context, m kernel.MAC) error {
+	f.woken = append(f.woken, m)
+	return nil
+}
+
+func TestWake(t *testing.T) {
+	ctx := context.Background()
+	w := &fakeWaker{}
+	uc := NewServices(Deps{Repo: &memRepo{}, Status: &memStatus{m: map[string]domain.Status{}}, Checker: fakeChecker{}, History: &memHistory{}, Waker: w,
+		Observations: kernel.DiscardObservations{}, Clock: clk{}, IDs: &ids{}})
+	nas, err := uc.Create(ctx, ServiceInput{Name: "NAS", URL: "http://nas", MAC: "AA:BB:CC:DD:EE:FF"})
+	if err != nil || nas.MAC != "aa:bb:cc:dd:ee:ff" {
+		t.Fatalf("create: %+v %v", nas, err)
+	}
+	if err := uc.Wake(ctx, nas.ID); err != nil || len(w.woken) != 1 {
+		t.Fatalf("wake: %v %v", err, w.woken)
+	}
+	plain, _ := uc.Create(ctx, ServiceInput{Name: "Web", URL: "http://web"})
+	if err := uc.Wake(ctx, plain.ID); !errors.Is(err, kernel.ErrInvalid) {
+		t.Fatalf("wake without MAC: %v", err)
+	}
+	if _, err := uc.Create(ctx, ServiceInput{Name: "X", URL: "http://x", MAC: "bad"}); err == nil {
+		t.Fatal("invalid MAC accepted")
+	}
+}

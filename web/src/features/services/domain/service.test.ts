@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canWake,
   certificateDaysLeft,
   emptyServiceInput,
   isImageIcon,
@@ -21,6 +22,7 @@ const base: Service = {
   error: '',
   certExpiresAt: null,
   certExpiresSoon: false,
+  mac: '',
 };
 
 describe('services domain', () => {
@@ -41,5 +43,14 @@ describe('services domain', () => {
     const now = new Date('2026-11-11T00:00:00Z');
     expect(certificateDaysLeft({ certExpiresAt: new Date('2026-11-21T12:00:00Z') }, now)).toBe(10);
     expect(certificateDaysLeft({ certExpiresAt: null }, now)).toBeNull();
+  });
+  it('validates MAC addresses and offers wake only when not online', () => {
+    const input = { ...emptyServiceInput(), name: 'NAS', url: 'http://nas' };
+    expect(validateServiceInput({ ...input, mac: 'AA-BB-CC-DD-EE-FF' })).toBeNull();
+    expect(validateServiceInput({ ...input, mac: 'aabb.ccdd.eeff' })).toBeNull();
+    expect(validateServiceInput({ ...input, mac: 'aa:bb' })).toMatch(/MAC/);
+    expect(canWake({ mac: 'aa:bb:cc:dd:ee:ff', state: 'offline' })).toBe(true);
+    expect(canWake({ mac: 'aa:bb:cc:dd:ee:ff', state: 'online' })).toBe(false);
+    expect(canWake({ mac: '', state: 'offline' })).toBe(false);
   });
 });

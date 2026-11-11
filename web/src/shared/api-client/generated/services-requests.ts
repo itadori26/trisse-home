@@ -13,6 +13,7 @@ export interface ServiceInputDTO {
   icon: string;
   description: string;
   skipTlsVerify: boolean;
+  mac: string;
 }
 /**
  * OrderDTO is the body of PUT /api/services/order.

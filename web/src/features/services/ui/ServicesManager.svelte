@@ -33,6 +33,7 @@
       icon: s.icon,
       description: s.description,
       skipTlsVerify: s.skipTlsVerify,
+      mac: s.mac,
     };
   }
 
@@ -125,6 +126,14 @@
   >
   <label class="field"
     ><span>Description</span><input class="input" bind:value={form.description} maxlength="200" /></label
+  >
+  <label class="field"
+    ><span>MAC address for Wake-on-LAN (optional)</span><input
+      class="input"
+      bind:value={form.mac}
+      placeholder="aa:bb:cc:dd:ee:ff"
+      autocomplete="off"
+    /></label
   >
   <label
     ><input type="checkbox" bind:checked={form.skipTlsVerify} /> Accept self-signed certificates for the health

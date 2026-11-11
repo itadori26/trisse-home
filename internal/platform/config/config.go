@@ -40,9 +40,13 @@ type Config struct {
 	DockerActions           bool
 	DockerActionsContainers []string
 	DockerActionsProxyURL   string
-	HostProcPath            string
-	HostSysPath             string
-	DiskPaths               []string
+	// WolRelay is host:port of the Wake-on-LAN relay; empty sends
+	// WolBroadcast directly (host network / no Docker).
+	WolRelay     string
+	WolBroadcast string
+	HostProcPath string
+	HostSysPath  string
+	DiskPaths    []string
 	// SampleData fills a fresh installation with example widgets and data.
 	SampleData bool
 	// SampleWeather is the location of the example weather widget.
@@ -88,6 +92,8 @@ func Load(getenv func(string) string) (Config, error) {
 		DockerActions:           l.boolean("DOCKER_ACTIONS", false),
 		DockerActionsContainers: l.rawList("DOCKER_ACTIONS_CONTAINERS", ""),
 		DockerActionsProxyURL:   l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
+		WolRelay:                l.str("WOL_RELAY", ""),
+		WolBroadcast:            l.str("WOL_BROADCAST", "255.255.255.255:9"),
 		HostProcPath:            l.str("HOST_PROC", "/proc"),
 		HostSysPath:             l.str("HOST_SYS", "/sys"),
 		DiskPaths:               l.rawList("SYSTEM_DISK_PATHS", "/"),

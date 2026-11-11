@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -23,6 +24,9 @@ import (
 	"trisse-home/internal/platform/config"
 	"trisse-home/internal/platform/crypto"
 )
+
+// wolTarget receives the magic packets of the end-to-end test.
+var wolTarget net.PacketConn
 
 // flakyDown switches the /flaky endpoint of the fake upstream to 503.
 var flakyDown atomic.Bool
@@ -155,6 +159,12 @@ type obj = map[string]any
 
 func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) *httptest.Server {
 	t.Helper()
+	var err error
+	wolTarget, err = net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = wolTarget.Close() })
 	key := make([]byte, config.SecretKeyBytes)
 	_, _ = rand.Read(key)
 	cfg := config.Config{
@@ -162,6 +172,7 @@ func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) 
 		AllowedCIDRs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}, SessionTTL: time.Hour,
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
 		DockerActions: true, DockerActionsContainers: []string{"web"}, DockerActionsProxyURL: upstream,
+		WolBroadcast: wolTarget.LocalAddr().String(),
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
 		BackupDir:       filepath.Join(t.TempDir(), "backups"), BackupInterval: 24 * time.Hour, BackupRetention: 3,
@@ -294,6 +305,20 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodPost, "/api/services/check", nil, http.StatusOK, nil)
 	c.json(http.MethodGet, "/api/services", nil, http.StatusOK, nil)
 	c.do(http.MethodDelete, "/api/services/"+sID, nil, http.StatusNoContent)
+
+	// --- wake-on-lan: magic packet sent directly to WOL_BROADCAST ---
+	var nas obj
+	c.json(http.MethodPost, "/api/services", obj{"name": "NAS", "url": up.URL + "/flaky", "mac": "AA-BB-CC-DD-EE-FF"}, http.StatusCreated, &nas)
+	if nas["mac"] != "aa:bb:cc:dd:ee:ff" {
+		t.Fatalf("mac not normalised: %v", nas["mac"])
+	}
+	c.do(http.MethodPost, "/api/services/"+nas["id"].(string)+"/wake", nil, http.StatusNoContent)
+	buf := make([]byte, 200)
+	_ = wolTarget.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if n, _, err := wolTarget.ReadFrom(buf); err != nil || n != 102 {
+		t.Fatalf("magic packet not received: %d %v", n, err)
+	}
+	c.do(http.MethodDelete, "/api/services/"+nas["id"].(string), nil, http.StatusNoContent)
 
 	// --- notifications: a service going offline is pushed via ntfy ---
 	rules := obj{"services": true, "containers": true, "disk": true, "diskThreshold": 90, "tls": true, "tlsDays": 14, "backups": true}

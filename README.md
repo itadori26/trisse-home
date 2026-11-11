@@ -21,7 +21,7 @@ Architecture.
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Current weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), place search      |
 | **clock**      | Time and date, optionally in another time zone                                                        |
-| **services**   | Tiles for your services with online status, response time history and TLS certificate expiry warning  |
+| **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN |
 | **bookmarks**  | Links in folders with tags, filterable                                                                |
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
@@ -110,6 +110,30 @@ start it again.
 `sudo docker compose restart trisse-home` and use the new setup token from
 the log.
 
+## Wake-on-LAN (optional)
+
+Service tiles with a MAC address get a ⏻ button while the service is not online. Magic packets are broadcasts, and
+broadcasts cannot leave a Docker bridge network — so trisse-home stays in its own network and a tiny relay does
+the broadcasting. Enable it with one line in `.env`, then run `docker compose up -d` as usual:
+
+```sh
+COMPOSE_PROFILES=wol                 # or wol,docker-actions
+# WOL_BROADCAST=192.168.178.255:9    # optional, if 255.255.255.255 leaves through the wrong interface
+```
+
+The `wol-relay` service uses the same image (`trisse-home wol-relay`), runs in the host network, read-only and
+without capabilities, has no access to data, Docker or secrets, accepts nothing but valid magic packets on UDP
+port 9009 and is rate-limited. The port is reachable from your LAN, which only allows what every LAN device can
+do anyway: wake devices.
+
+| Setup | What to do |
+|---|---|
+| Docker Compose (default) | `COMPOSE_PROFILES=wol` |
+| Binary / container in host network | `WOL_RELAY=` (empty) — trisse-home broadcasts itself |
+| No extra container wanted | Enable directed broadcast forwarding on the host (`sysctl net.ipv4.conf.all.bc_forwarding=1` and `net.ipv4.conf.<lan-if>.bc_forwarding=1`), set `WOL_RELAY=` and `WOL_BROADCAST=<lan>.255:9` |
+
+The target device must have Wake-on-LAN enabled in its BIOS/UEFI and network driver.
+
 ## Docker actions (optional)
 
 The Docker widget can restart containers and show their last 200 log lines. This is **off by default** because a
@@ -166,6 +190,8 @@ service tiles are configured in the web interface.
 | `HOST_PROC`         | `/proc` (`/host/proc` in compose) | Host procfs for the system module.                                            |
 | `HOST_SYS`          | `/sys` (`/host/sys` in compose)   | Host sysfs (temperatures).                                                    |
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
+| `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |
+| `WOL_BROADCAST`     | `255.255.255.255:9`               | Broadcast address the magic packet is sent to (by the relay or directly).     |
 | `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
 | `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
 | `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |

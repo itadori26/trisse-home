@@ -1,7 +1,13 @@
 <script lang="ts">
   import { errorMessage } from '../../../shared/api-client/http';
   import Sparkline from '../../../shared/ui/Sparkline.svelte';
-  import { certificateDaysLeft, type LatencyPoint, type Service, statusText } from '../domain/service';
+  import {
+    canWake,
+    certificateDaysLeft,
+    type LatencyPoint,
+    type Service,
+    statusText,
+  } from '../domain/service';
   import type { ServicesUseCases } from '../usecase/servicesUseCases';
   import ServiceIcon from './ServiceIcon.svelte';
 
@@ -15,6 +21,18 @@
   const POLL_MS = 30_000;
   let list = $state<Service[]>([]);
   let history = $state<Record<string, LatencyPoint[]>>({});
+  let notice = $state('');
+
+  async function wake(s: Service) {
+    if (!confirm(`Send a Wake-on-LAN packet to "${s.name}"?`)) return;
+    try {
+      await services.wake(s.id);
+      notice = `Wake-up packet sent to ${s.name}.`;
+      error = '';
+    } catch (err) {
+      error = errorMessage(err);
+    }
+  }
   let error = $state('');
   const compact = $derived(config['compact'] === true);
 
@@ -36,6 +54,7 @@
 </script>
 
 {#if error}<p class="error">{error}</p>{/if}
+{#if notice}<p class="muted small" role="status">{notice}</p>{/if}
 {#if list.length === 0 && !error}
   <p class="muted">No services yet. Add them under Settings → Services.</p>
 {/if}
@@ -62,11 +81,34 @@
         {/if}
         <span class="dot {s.state}" aria-label={s.state}></span>
       </a>
+      {#if canWake(s)}
+        <button
+          class="btn btn-icon wake"
+          type="button"
+          title="Wake up (Wake-on-LAN)"
+          aria-label="Wake up {s.name}"
+          onclick={() => wake(s)}>⏻</button
+        >
+      {/if}
     </li>
   {/each}
 </ul>
 
 <style>
+  li {
+    position: relative;
+  }
+  .wake {
+    position: absolute;
+    right: 4px;
+    bottom: 2px;
+    padding: 0 4px;
+    font-size: 0.85em;
+    line-height: 1.2;
+  }
+  .small {
+    font-size: 0.8em;
+  }
   .tiles {
     list-style: none;
     margin: 0;

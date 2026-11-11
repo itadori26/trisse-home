@@ -441,6 +441,15 @@ paths:
       security: [{ session: [], csrf: [] }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Service" } } } } }
+  /api/services/{id}/wake:
+    post:
+      tags: [services]
+      summary: Send a Wake-on-LAN magic packet to the service's MAC address (directly or via the wol-relay)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Sent }
+        "400": { description: No MAC address stored }
+        "503": { description: The relay did not answer (profile "wol" not enabled) }
   /api/services/history:
     get:
       tags: [services]
@@ -965,6 +974,7 @@ components:
         icon: { type: string, description: Emoji, text or http(s) image URL }
         description: { type: string, maxLength: 200 }
         skipTlsVerify: { type: boolean }
+        mac: { type: string, description: "MAC address for Wake-on-LAN, normalised to aa:bb:cc:dd:ee:ff; empty for none" }
     Service:
       allOf:
         - $ref: "#/components/schemas/ServiceInput"

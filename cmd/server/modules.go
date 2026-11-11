@@ -30,6 +30,7 @@ import (
 	"trisse-home/internal/platform/crypto"
 	"trisse-home/internal/platform/httpclient"
 	"trisse-home/internal/platform/idgen"
+	"trisse-home/internal/platform/wol"
 	"trisse-home/internal/shared/kernel"
 )
 
@@ -80,6 +81,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"services", func() modules.Module {
 			return services.New(services.Deps{
 				DB: db, Clock: clk, IDs: ids, Observations: sink,
+				Waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
 				Client:         httpclient.New(httpclient.WithTimeout(healthCheckTimeout)),
 				InsecureClient: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
 			})

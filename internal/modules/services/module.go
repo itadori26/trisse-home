@@ -24,6 +24,7 @@ type Deps struct {
 	Clock          kernel.Clock
 	IDs            kernel.IDGenerator
 	Observations   kernel.ObservationSink
+	Waker          usecase.Waker
 }
 
 // Module wires the services rings and implements modules.Module.
@@ -38,7 +39,7 @@ type Module struct {
 func New(d Deps) *Module {
 	deps := usecase.Deps{
 		Repo: gateway.NewRepository(d.DB), Status: gateway.NewStatusStore(),
-		Checker: gateway.NewHTTPChecker(d.Client, d.InsecureClient), History: gateway.NewHistoryStore(d.DB), Observations: d.Observations, Clock: d.Clock, IDs: d.IDs,
+		Checker: gateway.NewHTTPChecker(d.Client, d.InsecureClient), History: gateway.NewHistoryStore(d.DB), Waker: d.Waker, Observations: d.Observations, Clock: d.Clock, IDs: d.IDs,
 	}
 	uc := usecase.NewServices(deps)
 	return &Module{uc: uc, seed: usecase.NewSeedSampleData(deps), handlers: controller.NewHandlers(uc)}
@@ -78,6 +79,7 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("PUT /api/services/order", h.Reorder)
 	r.Protected("PUT /api/services/{id}", h.Update)
 	r.Protected("DELETE /api/services/{id}", h.Delete)
+	r.Protected("POST /api/services/{id}/wake", h.Wake)
 }
 
 // Jobs implements modules.Module.

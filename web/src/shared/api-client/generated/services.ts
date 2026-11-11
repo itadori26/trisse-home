@@ -14,6 +14,7 @@ export interface ServiceDTO {
   icon: string;
   description: string;
   skipTlsVerify: boolean;
+  mac: string;
   position: number /* int */;
   state: 'online' | 'offline' | 'unknown';
   httpStatus: number /* int */;

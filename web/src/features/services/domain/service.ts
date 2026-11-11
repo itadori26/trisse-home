@@ -9,6 +9,8 @@ export interface ServiceInput {
   icon: string;
   description: string;
   skipTlsVerify: boolean;
+  /** MAC address for Wake-on-LAN, empty if none. */
+  mac: string;
 }
 
 /** A service tile with its latest health check. */
@@ -45,7 +47,15 @@ export const emptyServiceInput = (): ServiceInput => ({
   icon: '',
   description: '',
   skipTlsVerify: false,
+  mac: '',
 });
+
+const macPattern = /^([0-9a-f]{2}[:-]?){5}[0-9a-f]{2}$|^[0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4}$/i;
+
+/** Whether the tile offers a Wake-on-LAN button (only while not online). */
+export function canWake(s: Pick<Service, 'mac' | 'state'>): boolean {
+  return s.mac !== '' && s.state !== 'online';
+}
 
 /** Reports whether the icon should be rendered as an image. */
 export function isImageIcon(icon: string): boolean {
@@ -65,5 +75,7 @@ export function validateServiceInput(input: ServiceInput): string | null {
   if (!/^https?:\/\/\S+$/i.test(input.url.trim())) return 'The URL must start with http:// or https://.';
   if (input.checkUrl.trim() !== '' && !/^https?:\/\/\S+$/i.test(input.checkUrl.trim()))
     return 'The check URL must start with http:// or https://.';
+  if (input.mac.trim() !== '' && !macPattern.test(input.mac.trim()))
+    return 'The MAC address must look like aa:bb:cc:dd:ee:ff.';
   return null;
 }
