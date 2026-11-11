@@ -1,0 +1,12 @@
+# Build trisse-home from source instead of pulling the release image:
+#   docker compose -f compose.yaml -f compose.build.yaml up -d --build
+# Optionally pass a version label: VERSION=$(git rev-parse --short HEAD)
+services:
+  trisse-home:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+    image: trisse-home:local
+  wol-relay:
+    image: trisse-home:local

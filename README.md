@@ -83,7 +83,7 @@ cd trisse-home
 cp .env.example .env
 sed -i "s|^SECRET_KEY=.*|SECRET_KEY=$(openssl rand -base64 32)|" .env
 # optional: set BIND_ADDRESS to your server's LAN IP and adjust ALLOWED_CIDRS
-sudo docker compose up -d --build
+sudo docker compose up -d
 sudo docker compose logs trisse-home | grep setup_token
 ```
 
@@ -97,7 +97,22 @@ calendar, and a *Server* tab with service tiles, host metrics, Docker and
 AdGuard Home. Delete or change whatever you like; set `SAMPLE_DATA=false` to
 start with an almost empty page instead.
 
-**Updating:** `git pull && sudo docker compose build && sudo docker compose up -d`
+Images for `amd64` and `arm64` (e.g. Raspberry Pi) are published to
+`ghcr.io/itadori26/trisse-home` for every release. The repository is only
+needed for `compose.yaml` and the optional helper scripts.
+
+**Updating:** `git pull && sudo docker compose pull && sudo docker compose up -d`.
+With `TRISSE_HOME_VERSION=latest` (default) you always get the newest
+release; see the [releases and changelog](https://github.com/itadori26/trisse-home/releases).
+
+**Pinning and rollback:** set `TRISSE_HOME_VERSION=1.2.3` in `.env` and run
+`sudo docker compose up -d`. To roll back, set the previous version and run the
+same command — database migrations only ever add columns and tables, and a
+backup is created automatically every day (see *Backups*). Each release also
+has an SBOM attached and a build provenance attestation.
+
+**Building from source** (e.g. for development or an unreleased commit):
+`sudo docker compose -f compose.yaml -f compose.build.yaml up -d --build`.
 
 **Backup:** the app creates consistent database backups automatically
 (daily, 7 kept; see `BACKUP_*`) in `/data/backups` and offers them for

@@ -1,15 +1,13 @@
 # trisse-home - self-hosted personal start page.
 # Configuration lives in .env (see .env.example). Update with:
-#   sudo docker compose build && sudo docker compose up -d
+#   docker compose pull && docker compose up -d
+# Pin a release with TRISSE_HOME_VERSION=1.2.3 in .env (rollback = older version).
+# To build from source instead: docker compose -f compose.yaml -f compose.build.yaml up -d --build
 name: trisse-home
 
 services:
   trisse-home:
-    build:
-      context: .
-      args:
-        VERSION: ${VERSION:-dev}
-    image: trisse-home:local
+    image: ${TRISSE_HOME_IMAGE:-ghcr.io/itadori26/trisse-home}:${TRISSE_HOME_VERSION:-latest}
     container_name: trisse-home
     restart: unless-stopped
     env_file: .env
@@ -97,7 +95,7 @@ services:
   # network (broadcasts cannot leave a Docker bridge network); it has no access
   # to data, Docker or secrets and ignores everything that is not a magic packet.
   wol-relay:
-    image: trisse-home:local
+    image: ${TRISSE_HOME_IMAGE:-ghcr.io/itadori26/trisse-home}:${TRISSE_HOME_VERSION:-latest}
     container_name: trisse-home-wol-relay
     profiles: [wol]
     command: ["wol-relay"]

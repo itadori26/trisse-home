@@ -24,3 +24,18 @@ add the key to `en.ts` and the German text to `de.ts` and use it with
 `t('feature.key', { name })`. `npm run check` fails if a German text is
 missing, and a unit test verifies that placeholders match.
 
+
+## Releasing
+
+Releases follow [Semantic Versioning](https://semver.org) and are cut by the
+maintainer by pushing a tag on `main`:
+
+```sh
+git tag -a v1.2.0 -m v1.2.0 && git push origin v1.2.0
+```
+
+The release workflow builds `linux/amd64` and `linux/arm64` images, pushes
+`ghcr.io/itadori26/trisse-home:1.2.0`, `:1.2` and `:latest`, smoke-tests both
+architectures, attaches an SPDX SBOM and publishes release notes generated
+from the Conventional Commit messages (`scripts/release-notes.sh`, also usable
+locally to preview the notes).
