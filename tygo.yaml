@@ -112,3 +112,8 @@ packages:
     include_files: ["dto.go"]
   - path: "trisse-home/internal/modules/transit/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/transit.ts"
+  - path: "trisse-home/internal/modules/parcels/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/parcels.ts"
+  - path: "trisse-home/internal/modules/parcels/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/parcels-requests.ts"
+    include_files: ["dto.go"]

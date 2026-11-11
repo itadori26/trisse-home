@@ -21,6 +21,7 @@ import (
 	"trisse-home/internal/modules/notes"
 	"trisse-home/internal/modules/notifications"
 	"trisse-home/internal/modules/onboarding"
+	"trisse-home/internal/modules/parcels"
 	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
@@ -105,6 +106,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		}},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, client, clk) }},
+		{"parcels", func() modules.Module { return parcels.New(db, secrets, client, clk, ids) }},
 		{"transit", func() modules.Module { return transit.New(client, cfg.TransitAPIURL, clk) }},
 		{"shopping", func() modules.Module { return shopping.New(db, secrets, client, ids) }},
 		{"waste", func() modules.Module { return waste.New(db, client, clk, time.Local) }},

@@ -31,6 +31,7 @@ Architecture.
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
+| **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
 | **transit**    | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org)) |
 | **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
@@ -262,7 +263,8 @@ from Open-Meteo, weather warnings and the rain radar from the open data
 services of the Deutscher Wetterdienst (only for locations in Germany; the
 radar image is proxied, so the browser never contacts DWD) and departures
 from the community-run [Transitous](https://transitous.org) API (cached one
-minute per stop; please respect its fair-use policy or run your own MOTIS).
+minute per stop; please respect its fair-use policy or run your own MOTIS)
+and, with your API key, the DHL tracking API (hourly, undelivered parcels only).
 Nothing else leaves the server.
 
 The FRITZ!Box login uses HTTP digest authentication, which TR-064 defines with

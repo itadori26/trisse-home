@@ -279,8 +279,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 24 {
-		t.Fatalf("expected 24 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 25 {
+		t.Fatalf("expected 25 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -487,6 +487,15 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("warnings outside Germany: %v", noWarnings)
 	}
 	c.do(http.MethodGet, "/api/weather/radar?lat=48.86&lon=2.35", nil, http.StatusUnprocessableEntity)
+
+	// --- parcels: stored with a hint until a DHL key is configured ---
+	var parcel obj
+	c.json(http.MethodPost, "/api/parcels", obj{"trackingNumber": "0034 0434 1234 5678", "carrier": "dhl", "label": "Shoes"}, http.StatusCreated, &parcel)
+	if parcel["trackingNumber"] != "0034043412345678" || parcel["error"] == "" {
+		t.Fatalf("parcel: %v", parcel)
+	}
+	c.do(http.MethodPost, "/api/parcels", obj{"trackingNumber": "0034043412345678", "carrier": "hermes"}, http.StatusUnprocessableEntity)
+	c.do(http.MethodDelete, "/api/parcels/"+parcel["id"].(string), nil, http.StatusNoContent)
 
 	// --- transit departures ---
 	var stops []obj

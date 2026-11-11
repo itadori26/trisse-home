@@ -8,6 +8,7 @@ import { AdGuardWidget } from '../features/adguard';
 import { FritzBoxWidget } from '../features/fritzbox';
 import { NextcloudWidget } from '../features/nextcloud';
 import { ShoppingWidget } from '../features/shopping';
+import { ParcelsWidget } from '../features/parcels';
 import { TransitWidget, TransitWidgetSettings } from '../features/transit';
 import { WasteWidget } from '../features/waste';
 import { WireGuardWidget } from '../features/wireguard';
@@ -241,6 +242,15 @@ export const widgetDefinitions: WidgetDefinition[] = [
     },
     view: renderer(TransitWidget, (config, c) => ({ config, transit: c.transit })),
     settings: renderer(TransitWidgetSettings, (config, c) => ({ config, transit: c.transit })),
+  },
+  {
+    type: {
+      kind: 'parcels',
+      title: 'Parcels',
+      description: 'Track parcels (DHL) with their latest status.',
+      defaultSize: { w: 4, h: 4 },
+    },
+    view: renderer(ParcelsWidget, (_config, c) => ({ parcels: c.parcels })),
   },
   {
     type: {

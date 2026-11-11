@@ -787,6 +787,34 @@ paths:
       summary: WAN state, external IP, throughput (bytes/s via UPnP), link speed and recent calls (via TR-064); refreshed every 15 s, calls every 2 min
       responses: { "200": { description: OK }, "404": { description: Not configured } }
 
+  # ---------------------------------------------------------------- parcels
+  /api/parcels/settings:
+    get:
+      tags: [parcels]
+      summary: Tracking settings (the DHL API key is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [parcels]
+      summary: Save the DHL API key (encrypted; empty keeps the stored one) and how long delivered parcels stay visible
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { dhlApiKey: { type: string }, hideDeliveredDays: { type: integer, minimum: 0, maximum: 30 } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error } }
+  /api/parcels:
+    get:
+      tags: [parcels]
+      summary: Tracked parcels (undelivered first); refreshed hourly in the background
+      responses: { "200": { description: OK } }
+    post:
+      tags: [parcels]
+      summary: Track a parcel (carrier dhl); it is queried immediately when a key is configured
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { trackingNumber: { type: string }, carrier: { type: string, enum: [dhl] }, label: { type: string, maxLength: 60 } } } } } }
+      responses: { "201": { description: Created }, "409": { description: Too many parcels }, "422": { description: Validation error } }
+  /api/parcels/{id}:
+    delete:
+      tags: [parcels]
+      summary: Stop tracking a parcel
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted }, "404": { description: Not found } }
+
   # ---------------------------------------------------------------- transit
   /api/transit/stops:
     get:
