@@ -112,6 +112,26 @@ function totp(base32Secret: string, now = Date.now()): string {
   return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
 }
 
+test('quick search finds bookmarks with the keyboard', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  await page.keyboard.press('Control+k');
+  const box = page.getByRole('combobox', { name: /Search bookmarks/ });
+  await expect(box).toBeFocused();
+  await box.fill('docker docs');
+  await expect(page.getByRole('option', { name: /Docker documentation/ })).toHaveAttribute('aria-selected', 'true');
+  await box.fill('nothing-matches-this');
+  await expect(page.getByText(/No matches/)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(box).toBeHidden();
+
+  await page.keyboard.press('/');
+  await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toBeFocused();
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

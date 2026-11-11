@@ -5,6 +5,8 @@
   import { applyTheme } from '../shared/theme/theme';
   import type { Container } from './container';
   import DashboardPage from './DashboardPage.svelte';
+  import QuickSearch from './QuickSearch.svelte';
+  import { opensQuickSearch } from './quickSearch';
   import SettingsDialog from './SettingsDialog.svelte';
 
   /** Props of the authenticated application shell. */
@@ -22,6 +24,7 @@
   let modules = $state<Set<string> | null>(null);
   let widgetKinds = $state<Set<string>>(new Set());
   let touring = $state(false);
+  let quickSearch = $state(false);
 
   $effect(() => applyTheme(appearance.theme));
 
@@ -87,9 +90,25 @@
   init();
 </script>
 
+<svelte:window
+  onkeydown={(e) => {
+    if (!quickSearch && !settingsOpen && opensQuickSearch(e, e.target)) {
+      e.preventDefault();
+      quickSearch = true;
+    }
+  }}
+/>
+
 <header class="topbar">
   <strong class="brand">trisse-home</strong>
   <nav>
+    <button
+      class="btn btn-icon"
+      type="button"
+      aria-keyshortcuts="Control+K /"
+      title="Quick search (Ctrl+K or /)"
+      onclick={() => (quickSearch = true)}>Search <kbd>Ctrl K</kbd></button
+    >
     <button
       class="btn btn-icon"
       class:on={editing}
@@ -125,11 +144,27 @@
   />
 {/if}
 
+{#if quickSearch && modules}
+  <QuickSearch {container} {modules} onclose={() => (quickSearch = false)} />
+{/if}
+
 {#if touring}
   <Tour onfinish={finishTour} />
 {/if}
 
 <style>
+  kbd {
+    font-size: 0.7em;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0 4px;
+    margin-left: 4px;
+  }
+  @media (max-width: 600px) {
+    kbd {
+      display: none;
+    }
+  }
   .topbar {
     display: flex;
     align-items: center;
