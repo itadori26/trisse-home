@@ -34,7 +34,12 @@ func (h *Handlers) Guard(next http.Handler) http.Handler {
 		if res.Refreshed {
 			h.cookies.set(w, h.cookies.read(r), res.ExpiresAt)
 		}
-		ctx := usecase.WithClient(r.Context(), domain.NewClient(r.UserAgent(), clientKey(r)))
+		if err := h.uc.Authorizer.Authorize(r.Context(), res.Principal, r.Method, r.URL.Path); err != nil {
+			httpapi.WriteDomainError(w, r, err)
+			return
+		}
+		ctx := kernel.WithPrincipal(r.Context(), res.Principal)
+		ctx = usecase.WithClient(ctx, domain.NewClient(r.UserAgent(), clientKey(r)))
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

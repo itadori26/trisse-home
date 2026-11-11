@@ -1,4 +1,4 @@
-import type { AuthStatus, Session } from '../domain/auth';
+import type { AuthStatus, Guest, Session } from '../domain/auth';
 import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
@@ -7,7 +7,11 @@ import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
 export interface AuthGateway {
   status(): Promise<AuthStatus>;
   setup(setupToken: string, password: string): Promise<Session>;
-  login(password: string, code?: string): Promise<Session>;
+  login(password: string, code?: string, username?: string): Promise<Session>;
+  guests(): Promise<Guest[]>;
+  createGuest(name: string, password: string, tabs: string[]): Promise<Guest>;
+  updateGuest(id: string, tabs: string[], disabled: boolean, password: string): Promise<Guest>;
+  deleteGuest(id: string): Promise<void>;
   /** Only available on a demo instance. */
   demoLogin(): Promise<Session>;
   logout(): Promise<void>;

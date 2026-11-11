@@ -60,11 +60,11 @@ func TestCheckDatabase(t *testing.T) {
 	if err := CheckDatabase(ctx, db); err != nil {
 		t.Fatalf("empty database: %v", err)
 	}
-	_, _ = db.Exec(`CREATE TABLE auth_account (id INTEGER)`)
+	_, _ = db.Exec(`CREATE TABLE auth_accounts (id TEXT)`)
 	if err := CheckDatabase(ctx, db); err != nil {
 		t.Fatalf("no account yet: %v", err)
 	}
-	_, _ = db.Exec(`INSERT INTO auth_account VALUES (1)`)
+	_, _ = db.Exec(`INSERT INTO auth_accounts VALUES ('owner')`)
 	if err := CheckDatabase(ctx, db); err == nil {
 		t.Fatal("production database accepted")
 	}

@@ -13,27 +13,81 @@ type fakeClock struct{ now time.Time }
 
 func (c *fakeClock) Now() time.Time { return c.now }
 
+// fakeAccounts keeps the owner in account and guests by ID.
 type fakeAccounts struct {
 	account *domain.Account
+	guests  map[string]domain.Account
 }
 
-func (f *fakeAccounts) Get(context.Context) (domain.Account, error) {
-	if f.account == nil {
-		return domain.Account{}, domain.ErrAccountNotFound
+func (f *fakeAccounts) Get(_ context.Context, id string) (domain.Account, error) {
+	if id == domain.OwnerID {
+		if f.account == nil {
+			return domain.Account{}, domain.ErrAccountNotFound
+		}
+		return *f.account, nil
 	}
-	return *f.account, nil
+	g, ok := f.guests[id]
+	if !ok {
+		return domain.Account{}, domain.ErrGuestNotFound
+	}
+	return g, nil
+}
+
+func (f *fakeAccounts) FindByName(_ context.Context, name string) (domain.Account, error) {
+	for _, g := range f.guests {
+		if g.Name() == name {
+			return g, nil
+		}
+	}
+	return domain.Account{}, domain.ErrGuestNotFound
+}
+
+func (f *fakeAccounts) List(context.Context) ([]domain.Account, error) {
+	var out []domain.Account
+	if f.account != nil {
+		out = append(out, *f.account)
+	}
+	for _, g := range f.guests {
+		out = append(out, g)
+	}
+	return out, nil
 }
 
 func (f *fakeAccounts) Create(_ context.Context, a domain.Account) error {
-	if f.account != nil {
-		return domain.ErrAlreadySetUp
+	if a.IsOwner() {
+		if f.account != nil {
+			return domain.ErrAlreadySetUp
+		}
+		f.account = &a
+		return nil
 	}
-	f.account = &a
+	if _, err := f.FindByName(context.Background(), a.Name()); err == nil {
+		return domain.ErrGuestNameTaken
+	}
+	if f.guests == nil {
+		f.guests = map[string]domain.Account{}
+	}
+	f.guests[a.ID()] = a
 	return nil
 }
 
-func (f *fakeAccounts) Update(_ context.Context, a domain.Account) error { f.account = &a; return nil }
-func (f *fakeAccounts) Delete(context.Context) error                     { f.account = nil; return nil }
+func (f *fakeAccounts) Update(_ context.Context, a domain.Account) error {
+	if a.IsOwner() {
+		f.account = &a
+	} else {
+		f.guests[a.ID()] = a
+	}
+	return nil
+}
+
+func (f *fakeAccounts) Delete(_ context.Context, id string) error {
+	if id == domain.OwnerID {
+		f.account = nil
+	} else {
+		delete(f.guests, id)
+	}
+	return nil
+}
 
 type fakeSessions struct {
 	byHash map[domain.TokenHash]domain.Session
@@ -71,19 +125,28 @@ func (f *fakeSessions) DeleteAll(context.Context) error {
 	return nil
 }
 
-func (f *fakeSessions) ListActive(_ context.Context, now time.Time) ([]domain.Session, error) {
+func (f *fakeSessions) DeleteAllFor(_ context.Context, account string) error {
+	for h, s := range f.byHash {
+		if s.AccountID() == account {
+			delete(f.byHash, h)
+		}
+	}
+	return nil
+}
+
+func (f *fakeSessions) ListActive(_ context.Context, account string, now time.Time) ([]domain.Session, error) {
 	var out []domain.Session
 	for _, s := range f.byHash {
-		if !s.IsExpired(now) {
+		if s.AccountID() == account && !s.IsExpired(now) {
 			out = append(out, s)
 		}
 	}
 	return out, nil
 }
 
-func (f *fakeSessions) DeleteByPublicID(_ context.Context, id string) error {
+func (f *fakeSessions) DeleteByPublicID(_ context.Context, account, id string) error {
 	for h, s := range f.byHash {
-		if s.PublicID() == id {
+		if s.AccountID() == account && s.PublicID() == id {
 			delete(f.byHash, h)
 			return nil
 		}
@@ -91,10 +154,10 @@ func (f *fakeSessions) DeleteByPublicID(_ context.Context, id string) error {
 	return domain.ErrSessionNotListed
 }
 
-func (f *fakeSessions) DeleteAllExcept(_ context.Context, keep domain.TokenHash) (int64, error) {
+func (f *fakeSessions) DeleteAllExcept(_ context.Context, account string, keep domain.TokenHash) (int64, error) {
 	var n int64
-	for h := range f.byHash {
-		if h != keep {
+	for h, s := range f.byHash {
+		if s.AccountID() == account && h != keep {
 			delete(f.byHash, h)
 			n++
 		}

@@ -18,7 +18,7 @@ func TestSQLiteRepositories(t *testing.T) {
 	now := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
 
 	accounts := NewAccountRepository(db, prefixCipher{})
-	if _, err := accounts.Get(ctx); !errors.Is(err, domain.ErrAccountNotFound) {
+	if _, err := accounts.Get(ctx, domain.OwnerID); !errors.Is(err, domain.ErrAccountNotFound) {
 		t.Fatalf("expected not found, got %v", err)
 	}
 	a, _ := domain.NewAccount("hash1", now)
@@ -32,7 +32,7 @@ func TestSQLiteRepositories(t *testing.T) {
 	if err := accounts.Update(ctx, a); err != nil {
 		t.Fatal(err)
 	}
-	got, err := accounts.Get(ctx)
+	got, err := accounts.Get(ctx, domain.OwnerID)
 	if err != nil || got.PasswordHash() != "hash2" || !got.CreatedAt().Equal(now) {
 		t.Fatalf("round trip failed: %+v %v", got, err)
 	}
@@ -44,17 +44,17 @@ func TestSQLiteRepositories(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stored string
-	_ = db.QueryRowContext(ctx, `SELECT totp_secret_enc FROM auth_account`).Scan(&stored)
+	_ = db.QueryRowContext(ctx, `SELECT totp_secret_enc FROM auth_accounts WHERE id = 'owner'`).Scan(&stored)
 	if stored == "JBSWY3DPEHPK3PXP" || stored == "" {
 		t.Fatalf("totp secret not encrypted: %q", stored)
 	}
-	withTOTP, err := accounts.Get(ctx)
+	withTOTP, err := accounts.Get(ctx, domain.OwnerID)
 	if err != nil || !withTOTP.TOTPEnabled() || withTOTP.TwoFactor().LastStep != 42 || len(withTOTP.TwoFactor().RecoveryCodes) != 1 {
 		t.Fatalf("totp round trip: %+v %v", withTOTP.TwoFactor(), err)
 	}
 
 	sessions := NewSessionRepository(db)
-	s, _ := domain.NewSession(domain.HashToken("raw"), "pub1", "csrf", domain.NewClient("Firefox", "192.168.1.5"), now, time.Hour)
+	s, _ := domain.NewSession(domain.OwnerID, domain.HashToken("raw"), "pub1", "csrf", domain.NewClient("Firefox", "192.168.1.5"), now, time.Hour)
 	if err := sessions.Create(ctx, s); err != nil {
 		t.Fatal(err)
 	}
@@ -62,15 +62,15 @@ func TestSQLiteRepositories(t *testing.T) {
 	if err != nil || found.CSRFToken() != "csrf" || !found.ExpiresAt().Equal(now.Add(time.Hour)) || found.Client().UserAgent != "Firefox" || found.PublicID() != "pub1" {
 		t.Fatalf("find: %+v %v", found, err)
 	}
-	other, _ := domain.NewSession(domain.HashToken("raw2"), "pub2", "csrf2", domain.Client{}, now.Add(time.Minute), time.Hour)
+	other, _ := domain.NewSession(domain.OwnerID, domain.HashToken("raw2"), "pub2", "csrf2", domain.Client{}, now.Add(time.Minute), time.Hour)
 	_ = sessions.Create(ctx, other)
-	if active, _ := sessions.ListActive(ctx, now); len(active) != 2 || active[0].PublicID() != "pub2" {
+	if active, _ := sessions.ListActive(ctx, domain.OwnerID, now); len(active) != 2 || active[0].PublicID() != "pub2" {
 		t.Fatalf("list active: %v", active)
 	}
-	if err := sessions.DeleteByPublicID(ctx, "nope"); !errors.Is(err, domain.ErrSessionNotListed) {
+	if err := sessions.DeleteByPublicID(ctx, domain.OwnerID, "nope"); !errors.Is(err, domain.ErrSessionNotListed) {
 		t.Fatalf("expected not listed, got %v", err)
 	}
-	if n, err := sessions.DeleteAllExcept(ctx, s.TokenHash()); err != nil || n != 1 {
+	if n, err := sessions.DeleteAllExcept(ctx, domain.OwnerID, s.TokenHash()); err != nil || n != 1 {
 		t.Fatalf("delete all except: %d %v", n, err)
 	}
 	if n, err := sessions.DeleteExpired(ctx, now.Add(2*time.Hour)); err != nil || n != 1 {
@@ -143,5 +143,53 @@ func TestAttemptLimiterBackoff(t *testing.T) {
 	l.Reset("a")
 	if !l.Allow("a", now) {
 		t.Fatal("reset must unlock")
+	}
+}
+
+func TestGuestAccountsAndMigration(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.Open(t, "auth", Migrations())
+	now := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
+	accounts := NewAccountRepository(db, prefixCipher{})
+	owner, _ := domain.NewAccount("hash", now)
+	_ = accounts.Create(ctx, owner)
+	g, _ := domain.NewGuest("g1", "anna", "ghash", []string{"tab1"}, now)
+	if err := accounts.Create(ctx, g); err != nil {
+		t.Fatal(err)
+	}
+	dup, _ := domain.NewGuest("g2", "anna", "x", nil, now)
+	if err := accounts.Create(ctx, dup); !errors.Is(err, domain.ErrGuestNameTaken) {
+		t.Fatalf("duplicate name: %v", err)
+	}
+	got, err := accounts.FindByName(ctx, "anna")
+	if err != nil || got.ID() != "g1" || got.IsOwner() || len(got.Tabs()) != 1 {
+		t.Fatalf("%+v %v", got, err)
+	}
+	_ = got.SetGuestAccess([]string{"tab2", "tab3"}, true, now)
+	_ = accounts.Update(ctx, got)
+	again, _ := accounts.Get(ctx, "g1")
+	if !again.Disabled() || len(again.Tabs()) != 2 {
+		t.Fatalf("update: %+v", again)
+	}
+	if list, _ := accounts.List(ctx); len(list) != 2 || !list[0].IsOwner() {
+		t.Fatalf("list: %v", list)
+	}
+	sessions := NewSessionRepository(db)
+	gs, _ := domain.NewSession("g1", domain.HashToken("g"), "pg", "c", domain.Client{}, now, time.Hour)
+	os, _ := domain.NewSession(domain.OwnerID, domain.HashToken("o"), "po", "c", domain.Client{}, now, time.Hour)
+	_ = sessions.Create(ctx, gs)
+	_ = sessions.Create(ctx, os)
+	if l, _ := sessions.ListActive(ctx, "g1", now); len(l) != 1 || l[0].AccountID() != "g1" {
+		t.Fatalf("guest sessions: %v", l)
+	}
+	_ = sessions.DeleteAllFor(ctx, "g1")
+	if _, err := sessions.Find(ctx, os.TokenHash()); err != nil {
+		t.Fatal("owner session must survive")
+	}
+	if err := accounts.Delete(ctx, "g1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := accounts.Get(ctx, "g1"); !errors.Is(err, domain.ErrGuestNotFound) {
+		t.Fatalf("deleted guest: %v", err)
 	}
 }

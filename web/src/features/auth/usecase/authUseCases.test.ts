@@ -17,6 +17,10 @@ function setup(status: Partial<AuthStatus> = {}) {
     setup: vi.fn().mockResolvedValue(session),
     login: vi.fn().mockResolvedValue(session),
     demoLogin: vi.fn().mockResolvedValue(session),
+    guests: vi.fn().mockResolvedValue([]),
+    createGuest: vi.fn(),
+    updateGuest: vi.fn(),
+    deleteGuest: vi.fn(),
     logout: vi.fn().mockResolvedValue(undefined),
     changePassword: vi.fn().mockResolvedValue(session),
     securityEvents: vi.fn().mockResolvedValue([]),
@@ -56,6 +60,21 @@ describe('AuthUseCases', () => {
     expect(gateway.demoLogin).toHaveBeenCalled();
     expect(csrf.setCsrfToken).toHaveBeenCalledWith('csrf-1');
     expect(uc.demo).toBe(true);
+  });
+
+  it('validates new guests before calling the backend', async () => {
+    const { uc, gateway } = setup();
+    await expect(uc.createGuest('Not Valid', 'guest-password-1', 'guest-password-1', [])).rejects.toThrow();
+    await expect(uc.createGuest('anna', 'short', 'short', [])).rejects.toThrow();
+    expect(gateway.createGuest).not.toHaveBeenCalled();
+    await uc.createGuest(' Anna ', 'guest-password-1', 'guest-password-1', ['t1']);
+    expect(gateway.createGuest).toHaveBeenCalledWith('anna', 'guest-password-1', ['t1']);
+  });
+
+  it('remembers a guest session', async () => {
+    const { uc } = setup({ guest: true });
+    await uc.currentView();
+    expect(uc.guest).toBe(true);
   });
 
   it('stores the csrf token from the status', async () => {
@@ -103,8 +122,10 @@ describe('AuthUseCases', () => {
   it('sends the second factor only when given', async () => {
     const { uc, gateway } = setup();
     await uc.login('pw', ' ');
-    expect(gateway.login).toHaveBeenLastCalledWith('pw', undefined);
+    expect(gateway.login).toHaveBeenLastCalledWith('pw', undefined, undefined);
     await uc.login('pw', '123456');
-    expect(gateway.login).toHaveBeenLastCalledWith('pw', '123456');
+    expect(gateway.login).toHaveBeenLastCalledWith('pw', '123456', undefined);
+    await uc.login('pw', undefined, ' Anna ');
+    expect(gateway.login).toHaveBeenLastCalledWith('pw', undefined, 'anna');
   });
 });

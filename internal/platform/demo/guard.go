@@ -39,7 +39,7 @@ func CheckDatabase(ctx context.Context, db *sql.DB) error {
 		err := db.QueryRowContext(ctx, `SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&n)
 		return n > 0, err
 	}
-	hasAccounts, err := exists("auth_account")
+	hasAccounts, err := exists("auth_accounts")
 	if err != nil {
 		return fmt.Errorf("inspect database: %w", err)
 	}
@@ -47,7 +47,7 @@ func CheckDatabase(ctx context.Context, db *sql.DB) error {
 		return nil
 	}
 	var accounts int
-	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM auth_account`).Scan(&accounts); err != nil {
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM auth_accounts`).Scan(&accounts); err != nil {
 		return fmt.Errorf("inspect database: %w", err)
 	}
 	marked, err := exists(markerTable)

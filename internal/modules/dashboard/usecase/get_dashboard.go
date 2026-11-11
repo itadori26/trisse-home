@@ -3,8 +3,10 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"trisse-home/internal/modules/dashboard/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 // DefaultTabName is the name of the tab created on first use.
@@ -34,7 +36,10 @@ func (uc *getDashboard) Execute(ctx context.Context) (DashboardResponse, error) 
 	if err != nil {
 		return DashboardResponse{}, fmt.Errorf("list tabs: %w", err)
 	}
-	if len(tabs) == 0 {
+	// Guests only see the tabs the owner shared with them.
+	if p := kernel.PrincipalFrom(ctx); p.IsGuest() {
+		tabs = slices.DeleteFunc(tabs, func(t domain.Tab) bool { return !p.CanSeeTab(t.ID()) })
+	} else if len(tabs) == 0 {
 		tab, err := uc.seed(ctx)
 		if err != nil {
 			return DashboardResponse{}, err

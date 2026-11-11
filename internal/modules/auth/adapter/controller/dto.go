@@ -8,6 +8,8 @@ type SetupRequestDTO struct {
 
 // LoginRequestDTO is the body of POST /api/auth/login.
 type LoginRequestDTO struct {
+	// Username is empty for the owner.
+	Username string `json:"username,omitempty"`
 	Password string `json:"password"`
 	// Code is the TOTP or recovery code when two-factor authentication is enabled.
 	Code string `json:"code,omitempty"`
@@ -28,4 +30,12 @@ type DisableTwoFactorDTO struct {
 type ChangePasswordRequestDTO struct {
 	CurrentPassword string `json:"currentPassword"`
 	NewPassword     string `json:"newPassword"`
+}
+
+// GuestRequestDTO creates or updates a guest; an empty password keeps it.
+type GuestRequestDTO struct {
+	Name     string   `json:"name,omitempty"`
+	Password string   `json:"password,omitempty"`
+	Tabs     []string `json:"tabs"`
+	Disabled bool     `json:"disabled"`
 }

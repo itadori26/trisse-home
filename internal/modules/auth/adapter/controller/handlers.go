@@ -19,6 +19,8 @@ type UseCases struct {
 	Sessions       usecase.ManageSessions
 	TwoFactor      usecase.TwoFactor
 	SecurityLog    usecase.SecurityLog
+	Authorizer     usecase.Authorizer
+	Guests         usecase.Guests
 	// DemoLogin is nil unless the instance runs in demo mode.
 	DemoLogin usecase.DemoLogin
 }
@@ -72,7 +74,7 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	res, err := h.uc.Login.Execute(r.Context(), usecase.LoginRequest{Password: dto.Password, TOTPCode: dto.Code, ClientKey: clientKey(r), UserAgent: r.UserAgent()})
+	res, err := h.uc.Login.Execute(r.Context(), usecase.LoginRequest{Username: dto.Username, Password: dto.Password, TOTPCode: dto.Code, ClientKey: clientKey(r), UserAgent: r.UserAgent()})
 	h.respondWithSession(w, r, res, err)
 }
 
@@ -201,4 +203,53 @@ func (h *Handlers) SecurityEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpapi.WriteJSON(w, http.StatusOK, presenter.SecurityEvents(list))
+}
+
+// ListGuests handles GET /api/auth/guests.
+func (h *Handlers) ListGuests(w http.ResponseWriter, r *http.Request) {
+	list, err := h.uc.Guests.List(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Guests(list))
+}
+
+// CreateGuest handles POST /api/auth/guests.
+func (h *Handlers) CreateGuest(w http.ResponseWriter, r *http.Request) {
+	var dto GuestRequestDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	g, err := h.uc.Guests.Create(r.Context(), usecase.NewGuestRequest{Name: dto.Name, Password: dto.Password, Tabs: dto.Tabs})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.Guest(g))
+}
+
+// UpdateGuest handles PUT /api/auth/guests/{id}.
+func (h *Handlers) UpdateGuest(w http.ResponseWriter, r *http.Request) {
+	var dto GuestRequestDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	g, err := h.uc.Guests.Update(r.Context(), usecase.UpdateGuestRequest{ID: r.PathValue("id"), Tabs: dto.Tabs, Disabled: dto.Disabled, Password: dto.Password})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Guest(g))
+}
+
+// DeleteGuest handles DELETE /api/auth/guests/{id}.
+func (h *Handlers) DeleteGuest(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.Guests.Delete(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

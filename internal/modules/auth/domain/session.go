@@ -24,6 +24,7 @@ func HashToken(raw string) TokenHash {
 
 // Session is an authenticated browser session with a sliding expiry.
 type Session struct {
+	accountID   string
 	tokenHash   TokenHash
 	publicID    string
 	csrfToken   string
@@ -53,22 +54,25 @@ func NewClient(userAgent, ip string) Client {
 
 // NewSession starts a session that expires after ttl. publicID identifies
 // the session in the session overview; unlike the token hash it may be shown.
-func NewSession(tokenHash TokenHash, publicID, csrfToken string, client Client, now time.Time, ttl time.Duration) (Session, error) {
-	if tokenHash == "" || csrfToken == "" || publicID == "" {
+func NewSession(accountID string, tokenHash TokenHash, publicID, csrfToken string, client Client, now time.Time, ttl time.Duration) (Session, error) {
+	if accountID == "" || tokenHash == "" || csrfToken == "" || publicID == "" {
 		return Session{}, kernel.NewValidationError("session", "token, public id and csrf token are required")
 	}
 	if ttl <= 0 {
 		return Session{}, kernel.NewValidationError("ttl", "must be positive")
 	}
-	return Session{tokenHash: tokenHash, publicID: publicID, csrfToken: csrfToken, client: client,
+	return Session{accountID: accountID, tokenHash: tokenHash, publicID: publicID, csrfToken: csrfToken, client: client,
 		createdAt: now, expiresAt: now.Add(ttl), refreshedAt: now}, nil
 }
 
 // RestoreSession rebuilds a session from persisted state.
-func RestoreSession(tokenHash TokenHash, publicID, csrfToken string, client Client, createdAt, expiresAt, refreshedAt time.Time) Session {
-	return Session{tokenHash: tokenHash, publicID: publicID, csrfToken: csrfToken, client: client,
+func RestoreSession(accountID string, tokenHash TokenHash, publicID, csrfToken string, client Client, createdAt, expiresAt, refreshedAt time.Time) Session {
+	return Session{accountID: accountID, tokenHash: tokenHash, publicID: publicID, csrfToken: csrfToken, client: client,
 		createdAt: createdAt, expiresAt: expiresAt, refreshedAt: refreshedAt}
 }
+
+// AccountID returns the account the session belongs to.
+func (s Session) AccountID() string { return s.accountID }
 
 // PublicID returns the identifier shown in the session overview.
 func (s Session) PublicID() string { return s.publicID }

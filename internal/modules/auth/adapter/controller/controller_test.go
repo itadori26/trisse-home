@@ -12,6 +12,7 @@ import (
 	"trisse-home/internal/modules/auth/adapter/presenter"
 	"trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/auth/usecase"
+	"trisse-home/internal/shared/kernel"
 )
 
 type fakeLogin struct{ err error }
@@ -23,10 +24,15 @@ func (f fakeLogin) Execute(context.Context, usecase.LoginRequest) (usecase.Sessi
 type fakeAuth struct{ err error }
 
 func (f fakeAuth) Execute(_ context.Context, req usecase.AuthenticateRequest) (usecase.AuthenticateResponse, error) {
-	if f.err != nil || req.SessionToken != "tok" {
-		return usecase.AuthenticateResponse{}, domain.ErrSessionInvalid
+	switch {
+	case f.err != nil:
+		return usecase.AuthenticateResponse{}, f.err
+	case req.SessionToken == "tok":
+		return usecase.AuthenticateResponse{CSRFToken: "csrf", Principal: kernel.Principal{AccountID: "owner", Role: "owner"}}, nil
+	case req.SessionToken == "guest":
+		return usecase.AuthenticateResponse{CSRFToken: "csrf", Principal: kernel.Principal{AccountID: "g1", Role: "guest"}}, nil
 	}
-	return usecase.AuthenticateResponse{CSRFToken: "csrf"}, nil
+	return usecase.AuthenticateResponse{}, domain.ErrSessionInvalid
 }
 
 func TestLoginSetsHardenedCookie(t *testing.T) {
@@ -67,7 +73,7 @@ func TestSecureCookieUsesHostPrefix(t *testing.T) {
 }
 
 func TestGuard(t *testing.T) {
-	h := NewHandlers(UseCases{Authenticate: fakeAuth{}}, CookieConfig{})
+	h := NewHandlers(UseCases{Authenticate: fakeAuth{}, Authorizer: usecase.NewAuthorizer(nil)}, CookieConfig{})
 	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	guarded := h.Guard(next)
 	tests := []struct {
@@ -79,6 +85,8 @@ func TestGuard(t *testing.T) {
 		{"post without csrf", http.MethodPost, "tok", "", http.StatusForbidden},
 		{"post wrong csrf", http.MethodPost, "tok", "nope", http.StatusForbidden},
 		{"post with csrf", http.MethodPost, "tok", "csrf", http.StatusNoContent},
+		{"guest write denied", http.MethodPost, "guest", "csrf", http.StatusForbidden},
+		{"guest read outside scope denied", http.MethodGet, "guest", "", http.StatusForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

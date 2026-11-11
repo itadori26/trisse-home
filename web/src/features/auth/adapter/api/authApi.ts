@@ -7,16 +7,18 @@ import type {
   SessionInfoDTO,
   StatusDTO,
   TwoFactorStatusDTO,
+  GuestDTO,
   SecurityEventDTO,
 } from '../../../../shared/api-client/generated/auth';
 import type {
   ChangePasswordRequestDTO,
   DisableTwoFactorDTO,
+  GuestRequestDTO,
   LoginRequestDTO,
   SetupRequestDTO,
   TwoFactorCodeDTO,
 } from '../../../../shared/api-client/generated/auth-requests';
-import type { AuthStatus, Session } from '../../domain/auth';
+import type { AuthStatus, Guest, Session } from '../../domain/auth';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../../domain/twoFactor';
 import type { SecurityEvent } from '../../domain/securityEvent';
 import type { SessionInfo } from '../../domain/session';
@@ -38,6 +40,7 @@ export class AuthApi implements AuthGateway {
       authenticated: dto.authenticated,
       csrfToken: dto.csrfToken ?? null,
       demo: dto.demo,
+      guest: dto.role === 'guest',
     };
   }
 
@@ -50,8 +53,8 @@ export class AuthApi implements AuthGateway {
     return toSession(await this.http.post<SessionDTO>('/api/auth/setup', body));
   }
 
-  async login(password: string, code?: string): Promise<Session> {
-    const body: LoginRequestDTO = code ? { password, code } : { password };
+  async login(password: string, code?: string, username?: string): Promise<Session> {
+    const body: LoginRequestDTO = { password, ...(code ? { code } : {}), ...(username ? { username } : {}) };
     return toSession(await this.http.post<SessionDTO>('/api/auth/login', body));
   }
 
@@ -62,6 +65,24 @@ export class AuthApi implements AuthGateway {
   async changePassword(currentPassword: string, newPassword: string): Promise<Session> {
     const body: ChangePasswordRequestDTO = { currentPassword, newPassword };
     return toSession(await this.http.put<SessionDTO>('/api/auth/password', body));
+  }
+
+  async guests(): Promise<Guest[]> {
+    return (await this.http.get<GuestDTO[]>('/api/auth/guests')).map(toGuest);
+  }
+
+  async createGuest(name: string, password: string, tabs: string[]): Promise<Guest> {
+    const body: GuestRequestDTO = { name, password, tabs, disabled: false };
+    return toGuest(await this.http.post<GuestDTO>('/api/auth/guests', body));
+  }
+
+  async updateGuest(id: string, tabs: string[], disabled: boolean, password: string): Promise<Guest> {
+    const body: GuestRequestDTO = { tabs, disabled, ...(password ? { password } : {}) };
+    return toGuest(await this.http.put<GuestDTO>(`/api/auth/guests/${encodeURIComponent(id)}`, body));
+  }
+
+  deleteGuest(id: string): Promise<void> {
+    return this.http.delete(`/api/auth/guests/${encodeURIComponent(id)}`);
   }
 
   async securityEvents(): Promise<SecurityEvent[]> {
@@ -116,3 +137,5 @@ export class AuthApi implements AuthGateway {
     await this.http.post('/api/auth/totp/disable', body);
   }
 }
+
+const toGuest = (d: GuestDTO): Guest => ({ ...d, tabs: d.tabs ?? [], createdAt: new Date(d.createdAt) });

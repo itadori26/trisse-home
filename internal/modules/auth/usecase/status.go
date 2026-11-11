@@ -34,5 +34,9 @@ func (uc *getStatus) Execute(ctx context.Context, req StatusRequest) (StatusResp
 	if err != nil {
 		return StatusResponse{}, err
 	}
-	return StatusResponse{Authenticated: true, CSRFToken: s.CSRFToken()}, nil
+	a, err := uc.accounts.Get(ctx, s.AccountID())
+	if err != nil || a.Disabled() {
+		return StatusResponse{}, nil //nolint:nilerr // a session of a removed or disabled account is simply not signed in
+	}
+	return StatusResponse{Authenticated: true, CSRFToken: s.CSRFToken(), Role: string(a.Role()), Username: a.Name()}, nil
 }

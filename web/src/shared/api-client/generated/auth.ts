@@ -14,6 +14,11 @@ export interface StatusDTO {
    * Demo is true on a public demo instance (POST /api/auth/demo logs in).
    */
   demo: boolean;
+  /**
+   * Role ("owner" or "guest") and Username of the signed-in account.
+   */
+  role?: string;
+  username?: string;
 }
 /**
  * SessionDTO is returned after setup, login and password change. The session
@@ -72,4 +77,14 @@ export interface SecurityEventDTO {
   ip: string;
   userAgent: string;
   detail: string;
+}
+/**
+ * GuestDTO is a guest account in GET /api/auth/guests.
+ */
+export interface GuestDTO {
+  id: string;
+  name: string;
+  tabs: string[];
+  disabled: boolean;
+  createdAt: string /* RFC 3339 */;
 }

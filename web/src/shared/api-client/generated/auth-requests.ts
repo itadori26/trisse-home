@@ -14,6 +14,10 @@ export interface SetupRequestDTO {
  * LoginRequestDTO is the body of POST /api/auth/login.
  */
 export interface LoginRequestDTO {
+  /**
+   * Username is empty for the owner.
+   */
+  username?: string;
   password: string;
   /**
    * Code is the TOTP or recovery code when two-factor authentication is enabled.
@@ -39,4 +43,13 @@ export interface DisableTwoFactorDTO {
 export interface ChangePasswordRequestDTO {
   currentPassword: string;
   newPassword: string;
+}
+/**
+ * GuestRequestDTO creates or updates a guest; an empty password keeps it.
+ */
+export interface GuestRequestDTO {
+  name?: string;
+  password?: string;
+  tabs: string[];
+  disabled: boolean;
 }

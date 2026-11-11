@@ -14,3 +14,14 @@ var (
 	ErrSessionNotListed   = kernel.NewPublicError(kernel.ErrNotFound, "The session does not exist (anymore).")
 	ErrTooManyAttempts    = kernel.NewPublicError(kernel.ErrTooManyRequests, "Too many failed attempts. Please wait a few minutes.")
 )
+
+// Errors of guest accounts.
+var (
+	ErrOwnerNotAGuest  = kernel.NewPublicError(kernel.ErrInvalid, "The owner account is not a guest.")
+	ErrGuestNotFound   = kernel.NewPublicError(kernel.ErrNotFound, "The guest does not exist.")
+	ErrGuestNameTaken  = kernel.NewPublicError(kernel.ErrConflict, "A guest with this name already exists.")
+	ErrTooManyGuests   = kernel.NewPublicError(kernel.ErrInvalid, "There are already 20 guests.")
+	ErrAccountDisabled = kernel.NewPublicError(kernel.ErrForbidden, "This account is disabled.")
+	ErrOwnerOnly       = kernel.NewPublicError(kernel.ErrForbidden, "Only the owner can do this.")
+	ErrReadOnly        = kernel.NewPublicError(kernel.ErrForbidden, "Guests can only view this dashboard.")
+)

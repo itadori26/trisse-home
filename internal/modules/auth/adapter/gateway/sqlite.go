@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -11,17 +12,14 @@ import (
 	"trisse-home/internal/shared/sqlutil"
 )
 
-// singleAccountID is the fixed primary key of the only account row.
-const singleAccountID = 1
-
 // Cipher encrypts secrets before they are written to the database.
 type Cipher interface {
 	Encrypt(plaintext string) (string, error)
 	Decrypt(ciphertext string) (string, error)
 }
 
-// AccountRepository stores the account in SQLite. TOTP secrets are
-// encrypted, recovery codes are stored as hashes only.
+// AccountRepository stores accounts in SQLite. TOTP secrets are encrypted,
+// recovery codes are stored as hashes only.
 type AccountRepository struct {
 	db     *sql.DB
 	cipher Cipher
@@ -30,13 +28,6 @@ type AccountRepository struct {
 // NewAccountRepository returns a repository backed by db.
 func NewAccountRepository(db *sql.DB, cipher Cipher) *AccountRepository {
 	return &AccountRepository{db: db, cipher: cipher}
-}
-
-// accountRow is the persistence model of domain.Account.
-type accountRow struct {
-	passwordHash, createdAt, updatedAt string
-	secretEnc, pendingEnc              string
-	lastStep                           int64
 }
 
 func (r *AccountRepository) decrypt(enc string) (string, error) {
@@ -57,43 +48,118 @@ func (r *AccountRepository) encrypt(plain string) (string, error) {
 	return r.cipher.Encrypt(plain)
 }
 
-// Get implements usecase.AccountRepository.
-func (r *AccountRepository) Get(ctx context.Context) (domain.Account, error) {
-	var row accountRow
-	err := r.db.QueryRowContext(ctx,
-		`SELECT password_hash, created_at, updated_at, totp_secret_enc, totp_pending_enc, totp_last_step FROM auth_account WHERE id = ?`,
-		singleAccountID).Scan(&row.passwordHash, &row.createdAt, &row.updatedAt, &row.secretEnc, &row.pendingEnc, &row.lastStep)
-	if errors.Is(err, sql.ErrNoRows) {
-		return domain.Account{}, domain.ErrAccountNotFound
-	}
-	if err != nil {
-		return domain.Account{}, fmt.Errorf("select account: %w", err)
-	}
-	created, err := sqlutil.ParseTime(row.createdAt)
-	if err != nil {
+const accountColumns = `id, role, name, password_hash, created_at, updated_at, totp_secret_enc, totp_pending_enc, totp_last_step, disabled, tabs`
+
+// scan reads one account row without its recovery codes; callers load
+// them with withRecoveryCodes after the row set is closed (SQLite with a
+// single connection cannot run a second query while rows are open).
+func (r *AccountRepository) scan(sc interface{ Scan(...any) error }) (domain.Account, error) {
+	var id, role, name, hash, created, updated, secretEnc, pendingEnc, tabsJSON string
+	var lastStep int64
+	var disabled int
+	if err := sc.Scan(&id, &role, &name, &hash, &created, &updated, &secretEnc, &pendingEnc, &lastStep, &disabled, &tabsJSON); err != nil {
 		return domain.Account{}, err
 	}
-	updated, err := sqlutil.ParseTime(row.updatedAt)
+	createdAt, err := sqlutil.ParseTime(created)
 	if err != nil {
 		return domain.Account{}, err
 	}
-	a := domain.RestoreAccount(row.passwordHash, created, updated)
-	t := domain.TOTP{LastStep: row.lastStep}
-	if t.Secret, err = r.decrypt(row.secretEnc); err != nil {
+	updatedAt, err := sqlutil.ParseTime(updated)
+	if err != nil {
 		return domain.Account{}, err
 	}
-	if t.PendingSecret, err = r.decrypt(row.pendingEnc); err != nil {
+	var tabs []string
+	if err := json.Unmarshal([]byte(tabsJSON), &tabs); err != nil {
+		return domain.Account{}, fmt.Errorf("decode tabs: %w", err)
+	}
+	a := domain.RestoreAccount(id, domain.Role(role), name, hash, createdAt, updatedAt, disabled == 1, tabs)
+	t := domain.TOTP{LastStep: lastStep}
+	if t.Secret, err = r.decrypt(secretEnc); err != nil {
 		return domain.Account{}, err
 	}
-	if t.RecoveryCodes, err = r.recoveryCodes(ctx); err != nil {
+	if t.PendingSecret, err = r.decrypt(pendingEnc); err != nil {
 		return domain.Account{}, err
 	}
 	a.RestoreTwoFactor(t)
 	return a, nil
 }
 
-func (r *AccountRepository) recoveryCodes(ctx context.Context) ([]domain.TokenHash, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT code_hash FROM auth_recovery_codes ORDER BY code_hash`)
+func (r *AccountRepository) withRecoveryCodes(ctx context.Context, a domain.Account) (domain.Account, error) {
+	codes, err := r.recoveryCodes(ctx, a.ID())
+	if err != nil {
+		return domain.Account{}, err
+	}
+	t := a.TwoFactor()
+	t.RecoveryCodes = codes
+	a.RestoreTwoFactor(t)
+	return a, nil
+}
+
+const (
+	selectAccountByID   = `SELECT ` + accountColumns + ` FROM auth_accounts WHERE id = ?`
+	selectAccountByName = `SELECT ` + accountColumns + ` FROM auth_accounts WHERE name = ?`
+	selectAccounts      = `SELECT ` + accountColumns + ` FROM auth_accounts ORDER BY role = 'guest', name`
+)
+
+func (r *AccountRepository) one(ctx context.Context, query string, arg any, notFound error) (domain.Account, error) {
+	a, err := r.scan(r.db.QueryRowContext(ctx, query, arg))
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Account{}, notFound
+	}
+	if err != nil {
+		return domain.Account{}, fmt.Errorf("select account: %w", err)
+	}
+	return r.withRecoveryCodes(ctx, a)
+}
+
+// Get implements usecase.AccountRepository.
+func (r *AccountRepository) Get(ctx context.Context, id string) (domain.Account, error) {
+	notFound := domain.ErrGuestNotFound
+	if id == domain.OwnerID {
+		notFound = domain.ErrAccountNotFound
+	}
+	return r.one(ctx, selectAccountByID, id, notFound)
+}
+
+// FindByName implements usecase.AccountRepository.
+func (r *AccountRepository) FindByName(ctx context.Context, name string) (domain.Account, error) {
+	return r.one(ctx, selectAccountByName, name, domain.ErrGuestNotFound)
+}
+
+// List implements usecase.AccountRepository (owner first, then by name).
+func (r *AccountRepository) List(ctx context.Context) ([]domain.Account, error) {
+	out, err := r.listRows(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Recovery codes are loaded after the row set is closed.
+	for i, a := range out {
+		if out[i], err = r.withRecoveryCodes(ctx, a); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func (r *AccountRepository) listRows(ctx context.Context) ([]domain.Account, error) {
+	rows, err := r.db.QueryContext(ctx, selectAccounts)
+	if err != nil {
+		return nil, fmt.Errorf("query accounts: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.Account
+	for rows.Next() {
+		a, err := r.scan(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan account: %w", err)
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+func (r *AccountRepository) recoveryCodes(ctx context.Context, accountID string) ([]domain.TokenHash, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT code_hash FROM auth_recovery_codes WHERE account_id = ? ORDER BY code_hash`, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("query recovery codes: %w", err)
 	}
@@ -109,13 +175,22 @@ func (r *AccountRepository) recoveryCodes(ctx context.Context) ([]domain.TokenHa
 	return out, rows.Err()
 }
 
+func tabsJSON(a domain.Account) string {
+	b, _ := json.Marshal(a.Tabs()) // a slice of strings: cannot fail
+	return string(b)
+}
+
 // Create implements usecase.AccountRepository.
 func (r *AccountRepository) Create(ctx context.Context, a domain.Account) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO auth_account (id, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?)`,
-		singleAccountID, a.PasswordHash(), sqlutil.FormatTime(a.CreatedAt()), sqlutil.FormatTime(a.UpdatedAt()))
+		`INSERT INTO auth_accounts (id, role, name, password_hash, created_at, updated_at, disabled, tabs) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		a.ID(), string(a.Role()), a.Name(), a.PasswordHash(), sqlutil.FormatTime(a.CreatedAt()), sqlutil.FormatTime(a.UpdatedAt()),
+		sqlutil.BoolToInt(a.Disabled()), tabsJSON(a))
 	if sqlutil.IsUniqueViolation(err) {
-		return domain.ErrAlreadySetUp
+		if a.IsOwner() {
+			return domain.ErrAlreadySetUp
+		}
+		return domain.ErrGuestNameTaken
 	}
 	if err != nil {
 		return fmt.Errorf("insert account: %w", err)
@@ -123,7 +198,7 @@ func (r *AccountRepository) Create(ctx context.Context, a domain.Account) error 
 	return r.Update(ctx, a)
 }
 
-// Update implements usecase.AccountRepository; the account row and the
+// Update implements usecase.AccountRepository; the account row and its
 // recovery codes are written in one transaction.
 func (r *AccountRepository) Update(ctx context.Context, a domain.Account) error {
 	t := a.TwoFactor()
@@ -141,19 +216,21 @@ func (r *AccountRepository) Update(ctx context.Context, a domain.Account) error 
 	}
 	defer func() { _ = tx.Rollback() }()
 	res, err := tx.ExecContext(ctx,
-		`UPDATE auth_account SET password_hash = ?, updated_at = ?, totp_secret_enc = ?, totp_pending_enc = ?, totp_last_step = ? WHERE id = ?`,
-		a.PasswordHash(), sqlutil.FormatTime(a.UpdatedAt()), secretEnc, pendingEnc, t.LastStep, singleAccountID)
+		`UPDATE auth_accounts SET password_hash = ?, updated_at = ?, totp_secret_enc = ?, totp_pending_enc = ?, totp_last_step = ?,
+		 disabled = ?, tabs = ? WHERE id = ?`,
+		a.PasswordHash(), sqlutil.FormatTime(a.UpdatedAt()), secretEnc, pendingEnc, t.LastStep,
+		sqlutil.BoolToInt(a.Disabled()), tabsJSON(a), a.ID())
 	if err != nil {
 		return fmt.Errorf("update account: %w", err)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return domain.ErrAccountNotFound
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM auth_recovery_codes`); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM auth_recovery_codes WHERE account_id = ?`, a.ID()); err != nil {
 		return fmt.Errorf("clear recovery codes: %w", err)
 	}
 	for _, h := range t.RecoveryCodes {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO auth_recovery_codes (code_hash) VALUES (?)`, string(h)); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO auth_recovery_codes (account_id, code_hash) VALUES (?, ?)`, a.ID(), string(h)); err != nil {
 			return fmt.Errorf("insert recovery code: %w", err)
 		}
 	}
@@ -161,11 +238,11 @@ func (r *AccountRepository) Update(ctx context.Context, a domain.Account) error 
 }
 
 // Delete implements usecase.AccountRepository; the second factor goes with it.
-func (r *AccountRepository) Delete(ctx context.Context) error {
-	if _, err := r.db.ExecContext(ctx, `DELETE FROM auth_recovery_codes`); err != nil {
+func (r *AccountRepository) Delete(ctx context.Context, id string) error {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM auth_recovery_codes WHERE account_id = ?`, id); err != nil {
 		return fmt.Errorf("delete recovery codes: %w", err)
 	}
-	if _, err := r.db.ExecContext(ctx, `DELETE FROM auth_account`); err != nil {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM auth_accounts WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("delete account: %w", err)
 	}
 	return nil
@@ -180,9 +257,9 @@ func NewSessionRepository(db *sql.DB) *SessionRepository { return &SessionReposi
 // Create implements usecase.SessionRepository.
 func (r *SessionRepository) Create(ctx context.Context, s domain.Session) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO auth_sessions (token_hash, public_id, csrf_token, user_agent, client_ip, created_at, expires_at, refreshed_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		string(s.TokenHash()), s.PublicID(), s.CSRFToken(), s.Client().UserAgent, s.Client().IP, sqlutil.FormatTime(s.CreatedAt()),
+		`INSERT INTO auth_sessions (account_id, token_hash, public_id, csrf_token, user_agent, client_ip, created_at, expires_at, refreshed_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.AccountID(), string(s.TokenHash()), s.PublicID(), s.CSRFToken(), s.Client().UserAgent, s.Client().IP, sqlutil.FormatTime(s.CreatedAt()),
 		sqlutil.FormatTime(s.ExpiresAt()), sqlutil.FormatTime(s.RefreshedAt()))
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
@@ -190,11 +267,11 @@ func (r *SessionRepository) Create(ctx context.Context, s domain.Session) error 
 	return nil
 }
 
-const sessionColumns = `token_hash, public_id, csrf_token, user_agent, client_ip, created_at, expires_at, refreshed_at`
+const sessionColumns = `account_id, token_hash, public_id, csrf_token, user_agent, client_ip, created_at, expires_at, refreshed_at`
 
 func scanSession(sc interface{ Scan(...any) error }) (domain.Session, error) {
-	var hash, publicID, csrf, ua, ip, created, expires, refreshed string
-	if err := sc.Scan(&hash, &publicID, &csrf, &ua, &ip, &created, &expires, &refreshed); err != nil {
+	var account, hash, publicID, csrf, ua, ip, created, expires, refreshed string
+	if err := sc.Scan(&account, &hash, &publicID, &csrf, &ua, &ip, &created, &expires, &refreshed); err != nil {
 		return domain.Session{}, err
 	}
 	times := make([]time.Time, 3)
@@ -205,7 +282,7 @@ func scanSession(sc interface{ Scan(...any) error }) (domain.Session, error) {
 		}
 		times[i] = t
 	}
-	return domain.RestoreSession(domain.TokenHash(hash), publicID, csrf, domain.Client{UserAgent: ua, IP: ip}, times[0], times[1], times[2]), nil
+	return domain.RestoreSession(account, domain.TokenHash(hash), publicID, csrf, domain.Client{UserAgent: ua, IP: ip}, times[0], times[1], times[2]), nil
 }
 
 // Find implements usecase.SessionRepository.
@@ -221,8 +298,9 @@ func (r *SessionRepository) Find(ctx context.Context, hash domain.TokenHash) (do
 }
 
 // ListActive implements usecase.SessionRepository; most recently used first.
-func (r *SessionRepository) ListActive(ctx context.Context, now time.Time) ([]domain.Session, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM auth_sessions WHERE expires_at > ? ORDER BY refreshed_at DESC`, sqlutil.FormatTime(now))
+func (r *SessionRepository) ListActive(ctx context.Context, accountID string, now time.Time) ([]domain.Session, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT `+sessionColumns+` FROM auth_sessions WHERE account_id = ? AND expires_at > ? ORDER BY refreshed_at DESC`,
+		accountID, sqlutil.FormatTime(now))
 	if err != nil {
 		return nil, fmt.Errorf("query sessions: %w", err)
 	}
@@ -239,8 +317,8 @@ func (r *SessionRepository) ListActive(ctx context.Context, now time.Time) ([]do
 }
 
 // DeleteByPublicID implements usecase.SessionRepository.
-func (r *SessionRepository) DeleteByPublicID(ctx context.Context, publicID string) error {
-	res, err := r.db.ExecContext(ctx, `DELETE FROM auth_sessions WHERE public_id = ?`, publicID)
+func (r *SessionRepository) DeleteByPublicID(ctx context.Context, accountID, publicID string) error {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM auth_sessions WHERE account_id = ? AND public_id = ?`, accountID, publicID)
 	if err != nil {
 		return fmt.Errorf("delete session: %w", err)
 	}
@@ -251,8 +329,8 @@ func (r *SessionRepository) DeleteByPublicID(ctx context.Context, publicID strin
 }
 
 // DeleteAllExcept implements usecase.SessionRepository.
-func (r *SessionRepository) DeleteAllExcept(ctx context.Context, keep domain.TokenHash) (int64, error) {
-	res, err := r.db.ExecContext(ctx, `DELETE FROM auth_sessions WHERE token_hash <> ?`, string(keep))
+func (r *SessionRepository) DeleteAllExcept(ctx context.Context, accountID string, keep domain.TokenHash) (int64, error) {
+	res, err := r.db.ExecContext(ctx, `DELETE FROM auth_sessions WHERE account_id = ? AND token_hash <> ?`, accountID, string(keep))
 	if err != nil {
 		return 0, fmt.Errorf("delete sessions: %w", err)
 	}
@@ -274,6 +352,14 @@ func (r *SessionRepository) Update(ctx context.Context, s domain.Session) error 
 func (r *SessionRepository) Delete(ctx context.Context, hash domain.TokenHash) error {
 	if _, err := r.db.ExecContext(ctx, `DELETE FROM auth_sessions WHERE token_hash = ?`, string(hash)); err != nil {
 		return fmt.Errorf("delete session: %w", err)
+	}
+	return nil
+}
+
+// DeleteAllFor implements usecase.SessionRepository.
+func (r *SessionRepository) DeleteAllFor(ctx context.Context, accountID string) error {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM auth_sessions WHERE account_id = ?`, accountID); err != nil {
+		return fmt.Errorf("delete sessions: %w", err)
 	}
 	return nil
 }

@@ -707,6 +707,25 @@ export const en = {
   'auth.event.session_revoked': 'Session ended',
   'auth.event.external': 'Data change',
   'auth.event.other': 'Security event',
+  'auth.guest_name': 'Guest name',
+  'auth.sign_in_as_guest': 'Sign in as guest',
+  'auth.sign_in_as_owner': 'Sign in as owner',
+  'auth.guest_name_invalid': 'Use 2–32 lowercase letters, digits, dots, dashes or underscores.',
+  'settings.section.guests': 'Guests',
+  'auth.guests_hint':
+    'Guests sign in with their own name and password and can only view the tabs you share with them. They cannot change anything and never see settings or credentials. Note: a widget shows all data of its module — a shared notes widget reveals all notes.',
+  'auth.guest_disabled': 'disabled',
+  'auth.guest_tabs': 'Shared tabs',
+  'auth.guest_enable': 'Enable',
+  'auth.guest_disable': 'Disable',
+  'auth.guest_new_password': 'New password',
+  'auth.guest_new_password_for': 'New password for {name}',
+  'auth.guest_set_password': 'Set password',
+  'auth.guest_delete': 'Delete',
+  'auth.guest_delete_confirm': 'Delete the guest “{name}”?',
+  'auth.no_guests': 'No guests yet.',
+  'auth.new_guest': 'New guest',
+  'auth.create_guest': 'Create guest',
 } as const;
 
 /** Every message key. */

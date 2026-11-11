@@ -1,5 +1,5 @@
 import { t } from '../../../shared/i18n';
-import { type AuthView, validateNewPassword, viewFor } from '../domain/auth';
+import { type AuthView, type Guest, validGuestName, validateNewPassword, viewFor } from '../domain/auth';
 import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
@@ -19,11 +19,14 @@ export class AuthUseCases {
 
   /** True on a public demo instance (set by currentView). */
   demo = false;
+  /** True when a read-only guest is signed in (set by currentView). */
+  guest = false;
 
   /** Loads the status and returns the screen to show; a demo signs in automatically. */
   async currentView(): Promise<AuthView> {
     const status = await this.gateway.status();
     this.demo = status.demo;
+    this.guest = status.guest;
     if (status.csrfToken) this.csrf.setCsrfToken(status.csrfToken);
     if (status.demo && !status.authenticated && !status.setupRequired) {
       const session = await this.gateway.demoLogin();
@@ -42,10 +45,14 @@ export class AuthUseCases {
     this.csrf.setCsrfToken(session.csrfToken);
   }
 
-  /** Logs in with the password and, if two-factor authentication is enabled, a code. */
-  async login(password: string, code?: string): Promise<void> {
+  /**
+   * Logs in with the password and, if two-factor authentication is enabled,
+   * a code. Guests also give their name.
+   */
+  async login(password: string, code?: string, username?: string): Promise<void> {
     if (password === '') throw new ValidationError(t('auth.enter_password'));
-    const session = await this.gateway.login(password, code?.trim() || undefined);
+    const name = username?.trim().toLowerCase() || undefined;
+    const session = await this.gateway.login(password, code?.trim() || undefined, name);
     this.csrf.setCsrfToken(session.csrfToken);
   }
 
@@ -61,6 +68,33 @@ export class AuthUseCases {
     if (problem) throw new ValidationError(problem);
     const session = await this.gateway.changePassword(current, next);
     this.csrf.setCsrfToken(session.csrfToken);
+  }
+
+  /** Guest accounts (owner only). */
+  guests(): Promise<Guest[]> {
+    return this.gateway.guests();
+  }
+
+  /** Creates a read-only guest that sees the given tabs. */
+  async createGuest(name: string, password: string, confirmation: string, tabs: string[]): Promise<Guest> {
+    const n = name.trim().toLowerCase();
+    if (!validGuestName(n)) throw new ValidationError(t('auth.guest_name_invalid'));
+    const problem = validateNewPassword(password, confirmation);
+    if (problem) throw new ValidationError(problem);
+    return this.gateway.createGuest(n, password, tabs);
+  }
+
+  /** Changes shared tabs, the disabled flag and optionally the password. */
+  async updateGuest(guest: Guest, tabs: string[], disabled: boolean, password = ''): Promise<Guest> {
+    if (password !== '') {
+      const problem = validateNewPassword(password, password);
+      if (problem) throw new ValidationError(problem);
+    }
+    return this.gateway.updateGuest(guest.id, tabs, disabled, password);
+  }
+
+  deleteGuest(id: string): Promise<void> {
+    return this.gateway.deleteGuest(id);
   }
 
   /** The security log, newest first. */

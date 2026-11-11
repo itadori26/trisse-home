@@ -57,6 +57,8 @@ type Deps struct {
 	Log    *slog.Logger
 	// Alerts receives security alerts (new device, lockouts); may be nil.
 	Alerts kernel.AlertSink
+	// GuestScope maps a guest's tabs to the modules it may read; may be nil.
+	GuestScope usecase.GuestScope
 }
 
 // Module wires the auth rings and implements modules.Module.
@@ -100,7 +102,9 @@ func New(cfg Config, d Deps) (*Module, error) {
 		Setup:          usecase.NewSetupAccount(deps, gateway.NewSetupToken(token), observerFunc(cfg.OnAccountCreated)),
 		Login:          usecase.NewLogin(deps),
 		Logout:         usecase.NewLogout(sessions),
-		Authenticate:   usecase.NewAuthenticate(sessions, d.Clock, ttl),
+		Authenticate:   usecase.NewAuthenticate(sessions, accounts, d.Clock, ttl),
+		Authorizer:     usecase.NewAuthorizer(d.GuestScope),
+		Guests:         usecase.NewGuests(deps),
 		ChangePassword: usecase.NewChangePassword(deps),
 		Sessions:       usecase.NewManageSessions(sessions, d.Clock, events),
 		SecurityLog:    securityLog,
@@ -145,6 +149,10 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("POST /api/auth/totp/disable", m.handlers.DisableTwoFactor)
 	r.Protected("GET /api/auth/sessions", m.handlers.ListSessions)
 	r.Protected("GET /api/auth/events", m.handlers.SecurityEvents)
+	r.Protected("GET /api/auth/guests", m.handlers.ListGuests)
+	r.Protected("POST /api/auth/guests", m.handlers.CreateGuest)
+	r.Protected("PUT /api/auth/guests/{id}", m.handlers.UpdateGuest)
+	r.Protected("DELETE /api/auth/guests/{id}", m.handlers.DeleteGuest)
 	r.Protected("POST /api/auth/sessions/revoke-others", m.handlers.RevokeOtherSessions)
 	r.Protected("DELETE /api/auth/sessions/{id}", m.handlers.RevokeSession)
 }

@@ -54,7 +54,11 @@
       widgetKinds = info.widgetKinds;
       if (info.modules.has('appearance')) appearance = await container.appearance.load();
       // Wait a moment so the dashboard is rendered before the tour measures it.
-      if (info.modules.has('onboarding') && (await container.onboarding.shouldShowTour()))
+      if (
+        !container.auth.guest &&
+        info.modules.has('onboarding') &&
+        (await container.onboarding.shouldShowTour())
+      )
         setTimeout(startTour, 600);
     } catch (err) {
       error = errorMessage(err);
@@ -114,16 +118,18 @@
       title={t('app.quick_search_ctrl_k_or')}
       onclick={() => (quickSearch = true)}>{t('app.search')} <kbd>{t('app.ctrl_k')}</kbd></button
     >
-    <button
-      class="btn btn-icon"
-      class:on={editing}
-      type="button"
-      data-tour="edit"
-      aria-pressed={editing}
-      onclick={() => (editing = !editing)}
-    >
-      {editing ? t('app.done') : t('app.edit')}
-    </button>
+    {#if !container.auth.guest}
+      <button
+        class="btn btn-icon"
+        class:on={editing}
+        type="button"
+        data-tour="edit"
+        aria-pressed={editing}
+        onclick={() => (editing = !editing)}
+      >
+        {editing ? t('app.done') : t('app.edit')}
+      </button>
+    {/if}
     <button class="btn btn-icon" type="button" data-tour="settings" onclick={() => (settingsOpen = true)}
       >{t('app.settings')}</button
     >

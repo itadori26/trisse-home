@@ -231,6 +231,27 @@ paths:
         "204": { description: Disabled }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/guests:
+    get:
+      tags: [auth]
+      summary: List read-only guest accounts (owner only)
+      responses: { "200": { description: "List of {id, name, tabs, disabled, createdAt}" }, "403": { description: Not the owner } }
+    post:
+      tags: [auth]
+      summary: Create a guest with name, password and shared tab IDs (owner only)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string }, password: { type: string }, tabs: { type: array, items: { type: string } } } } } } }
+      responses: { "201": { description: Created }, "409": { description: Name taken }, "422": { description: Invalid name or password } }
+  /api/auth/guests/{id}:
+    put:
+      tags: [auth]
+      summary: Change shared tabs, disable/enable, or set a new password (empty keeps it); disabling or a new password ends the guest's sessions
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [auth]
+      summary: Delete a guest and its sessions
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted } }
   /api/auth/events:
     get:
       tags: [auth]

@@ -13,6 +13,9 @@
   let { auth, ondone }: Props = $props();
 
   let password = $state('');
+  let username = $state('');
+  /** Shows the name field for guest accounts. */
+  let asGuest = $state(false);
   let code = $state('');
   /** True once the server asked for the second factor. */
   let needsCode = $state(false);
@@ -24,7 +27,7 @@
     busy = true;
     error = '';
     try {
-      await auth.login(password, needsCode ? code : undefined);
+      await auth.login(password, needsCode ? code : undefined, asGuest ? username : undefined);
       password = code = '';
       ondone();
     } catch (err) {
@@ -41,6 +44,19 @@
 
 <AuthCard title="trisse-home" subtitle={needsCode ? t('auth.enter_code_hint') : t('auth.please_log_in')}>
   <form onsubmit={submit}>
+    {#if asGuest}
+      <label class="field" class:hidden={needsCode}>
+        <span>{t('auth.guest_name')}</span>
+        <input
+          class="input"
+          name="username"
+          autocomplete="username"
+          autocapitalize="none"
+          bind:value={username}
+          required
+        />
+      </label>
+    {/if}
     <label class="field" class:hidden={needsCode}>
       <span>{t('auth.password')}</span>
       <!-- svelte-ignore a11y_autofocus -->
@@ -73,6 +89,11 @@
     <button class="btn btn-primary" type="submit" disabled={busy}
       >{needsCode ? t('auth.verify') : t('auth.log_in')}</button
     >
+    {#if !needsCode}
+      <button class="btn btn-icon" type="button" onclick={() => ((asGuest = !asGuest), (error = ''))}
+        >{asGuest ? t('auth.sign_in_as_owner') : t('auth.sign_in_as_guest')}</button
+      >
+    {/if}
     {#if needsCode}
       <button
         class="btn btn-icon"

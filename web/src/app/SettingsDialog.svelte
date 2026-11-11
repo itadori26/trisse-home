@@ -10,7 +10,13 @@
   import { WasteSettings } from '../features/waste';
   import { WireGuardSettings } from '../features/wireguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
-  import { ChangePasswordForm, SecurityLog, SessionsList, TwoFactorSettings } from '../features/auth';
+  import {
+    ChangePasswordForm,
+    GuestsSettings,
+    SecurityLog,
+    SessionsList,
+    TwoFactorSettings,
+  } from '../features/auth';
   import { BackupSettings } from '../features/backup';
   import { BackupSourcesManager } from '../features/backupmonitor';
   import { NotificationSettings } from '../features/notifications';
@@ -55,9 +61,20 @@
     { id: 'backupmonitor', label: 'settings.section.backupmonitor', module: 'backupmonitor' },
     { id: 'account', label: 'settings.section.account' },
     { id: 'security-log', label: 'settings.section.security_log' },
+    { id: 'guests', label: 'settings.section.guests' },
     { id: 'about', label: 'settings.section.about', module: 'system' },
   ];
-  const visible = $derived(sections.filter((s) => !s.module || modules.has(s.module)));
+  /** Guests only manage their own account (ADR 0012). */
+  const guestSections = new Set(['account']);
+  const visible = $derived(
+    sections.filter(
+      (s) => (!s.module || modules.has(s.module)) && (!container.auth.guest || guestSections.has(s.id)),
+    ),
+  );
+  let guestTabs = $state<{ id: string; name: string }[]>([]);
+  $effect(() => {
+    if (!container.auth.guest) container.dashboard.load().then((tabs) => (guestTabs = tabs));
+  });
   let active = $state('');
   const current = $derived(active || visible[0]?.id || 'account');
 </script>
@@ -87,6 +104,8 @@
     {#if modules.has('bookmarks')}<BookmarkImport bookmarks={container.bookmarks} />{/if}
   {:else if current === 'security-log'}
     <SecurityLog auth={container.auth} />
+  {:else if current === 'guests'}
+    <GuestsSettings auth={container.auth} tabs={guestTabs} />
   {:else if current === 'about'}
     <AboutSettings system={container.system} />
   {:else if current === 'parcels'}

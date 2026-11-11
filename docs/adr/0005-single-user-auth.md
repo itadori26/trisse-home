@@ -1,6 +1,6 @@
 # 0005 – Single-user auth with setup token and sessions
 
-- Status: Accepted
+- Status: Accepted, single-user scope superseded by [ADR 0012](0012-owner-and-guest-roles.md)
 - Date: 2026-11-10
 
 ## Context

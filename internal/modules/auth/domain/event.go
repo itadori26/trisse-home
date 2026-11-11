@@ -22,6 +22,7 @@ const (
 	EventTwoFactorDisabled EventType = "two_factor_disabled"
 	EventRecoveryCodeUsed  EventType = "recovery_code_used"
 	EventSessionRevoked    EventType = "session_revoked"
+	EventGuestChanged      EventType = "guest_changed"
 	EventExternal          EventType = "external"
 )
 

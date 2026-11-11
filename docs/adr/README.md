@@ -17,3 +17,4 @@ that supersedes the old one.
 | [0008](0008-sample-data-on-setup.md)        | Sample data after the first setup             | Accepted |
 | [0010](0010-internationalisation.md)        | Internationalisation without a framework      | Accepted |
 | [0011](0011-lean-by-default.md)             | Lean by default: dependency policy and resource budgets | Accepted |
+| [0012](0012-owner-and-guest-roles.md)       | Owner and read-only guest accounts (supersedes the single-user scope of 0005) | Accepted |

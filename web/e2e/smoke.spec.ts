@@ -164,12 +164,45 @@ test('the UI follows a German browser language', async ({ browser }) => {
   const page = await context.newPage();
   await page.goto('/');
   await page.getByLabel('Passwort').fill(password);
-  await page.getByRole('button', { name: 'Anmelden' }).click();
+  await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Einstellungen' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Bearbeiten', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'de');
   await context.close();
+});
+
+test('a guest sees only the shared tab and cannot edit', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Guests', exact: true }).click();
+  const form = page.locator('form.new');
+  await form.getByLabel('Guest name').fill('anna');
+  await form.getByLabel('Password (at least 12 characters)').fill('guest-password-1');
+  await form.getByLabel('Repeat password').fill('guest-password-1');
+  await form.getByLabel('Home', { exact: true }).check();
+  await page.getByRole('button', { name: 'Create guest' }).click();
+  await expect(page.getByText('anna', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Log out' }).click();
+
+  await page.getByRole('button', { name: 'Sign in as guest' }).click();
+  await page.getByLabel('Guest name').fill('anna');
+  await page.getByLabel('Password').fill('guest-password-1');
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Home', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Server', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Guests', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Log out' }).click();
+  await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
 });
 
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {

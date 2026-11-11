@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/auth/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 type logout struct{ sessions SessionRepository }
@@ -27,13 +28,14 @@ func (uc *logout) Execute(ctx context.Context, req LogoutRequest) error {
 
 type authenticate struct {
 	sessions SessionRepository
+	accounts AccountRepository
 	clock    Clock
 	ttl      time.Duration
 }
 
 // NewAuthenticate returns the Authenticate use case.
-func NewAuthenticate(sessions SessionRepository, clock Clock, ttl SessionTTL) Authenticate {
-	return &authenticate{sessions: sessions, clock: clock, ttl: ttl.Duration()}
+func NewAuthenticate(sessions SessionRepository, accounts AccountRepository, clock Clock, ttl SessionTTL) Authenticate {
+	return &authenticate{sessions: sessions, accounts: accounts, clock: clock, ttl: ttl.Duration()}
 }
 
 // Execute implements Authenticate and extends sliding sessions.
@@ -43,13 +45,23 @@ func (uc *authenticate) Execute(ctx context.Context, req AuthenticateRequest) (A
 	if err != nil {
 		return AuthenticateResponse{}, err
 	}
+	// The account is loaded on every request so that disabling a guest or
+	// changing its tabs takes effect immediately.
+	a, err := uc.accounts.Get(ctx, s.AccountID())
+	if errors.Is(err, domain.ErrGuestNotFound) || errors.Is(err, domain.ErrAccountNotFound) || (err == nil && a.Disabled()) {
+		_ = uc.sessions.Delete(ctx, s.TokenHash())
+		return AuthenticateResponse{}, domain.ErrSessionInvalid
+	}
+	if err != nil {
+		return AuthenticateResponse{}, fmt.Errorf("load account: %w", err)
+	}
 	refreshed := s.Refresh(now, uc.ttl)
 	if refreshed {
 		if err := uc.sessions.Update(ctx, s); err != nil {
 			return AuthenticateResponse{}, fmt.Errorf("refresh session: %w", err)
 		}
 	}
-	return AuthenticateResponse{CSRFToken: s.CSRFToken(), ExpiresAt: s.ExpiresAt(), Refreshed: refreshed}, nil
+	return AuthenticateResponse{CSRFToken: s.CSRFToken(), ExpiresAt: s.ExpiresAt(), Refreshed: refreshed, Principal: principalOf(a)}, nil
 }
 
 type changePassword struct{ deps Deps }
@@ -64,7 +76,7 @@ func (uc *changePassword) Execute(ctx context.Context, req ChangePasswordRequest
 	if !uc.deps.Limiter.Allow(req.ClientKey, now) {
 		return SessionResponse{}, domain.ErrTooManyAttempts
 	}
-	account, err := uc.deps.Accounts.Get(ctx)
+	account, err := uc.deps.Accounts.Get(ctx, me(ctx))
 	if err != nil {
 		return SessionResponse{}, err
 	}
@@ -73,7 +85,7 @@ func (uc *changePassword) Execute(ctx context.Context, req ChangePasswordRequest
 		return SessionResponse{}, fmt.Errorf("verify password: %w", err)
 	}
 	if !ok {
-		uc.deps.Events.loginFailed(ctx, domain.OwnerID, domain.NewClient(req.UserAgent, req.ClientKey), uc.deps.Limiter.RecordFailure(req.ClientKey, now))
+		uc.deps.Events.loginFailed(ctx, account.ID(), domain.NewClient(req.UserAgent, req.ClientKey), uc.deps.Limiter.RecordFailure(req.ClientKey, now))
 		return SessionResponse{}, domain.ErrInvalidCredentials
 	}
 	password, err := domain.NewPassword(req.NewPassword)
@@ -90,13 +102,13 @@ func (uc *changePassword) Execute(ctx context.Context, req ChangePasswordRequest
 	if err := uc.deps.Accounts.Update(ctx, account); err != nil {
 		return SessionResponse{}, fmt.Errorf("update account: %w", err)
 	}
-	if err := uc.deps.Sessions.DeleteAll(ctx); err != nil {
+	if err := uc.deps.Sessions.DeleteAllFor(ctx, account.ID()); err != nil {
 		return SessionResponse{}, fmt.Errorf("revoke sessions: %w", err)
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
 	client := domain.NewClient(req.UserAgent, req.ClientKey)
-	uc.deps.Events.record(ctx, domain.EventPasswordChanged, domain.OwnerID, client, "")
-	return uc.deps.issuer().issue(ctx, client)
+	uc.deps.Events.record(ctx, domain.EventPasswordChanged, account.ID(), client, "")
+	return uc.deps.issuer().issue(ctx, account.ID(), client)
 }
 
 type resetAccount struct {
@@ -114,7 +126,7 @@ func (uc *resetAccount) Execute(ctx context.Context) error {
 	if err := uc.sessions.DeleteAll(ctx); err != nil {
 		return fmt.Errorf("delete sessions: %w", err)
 	}
-	if err := uc.accounts.Delete(ctx); err != nil && !errors.Is(err, domain.ErrAccountNotFound) {
+	if err := uc.accounts.Delete(ctx, domain.OwnerID); err != nil && !errors.Is(err, domain.ErrAccountNotFound) {
 		return fmt.Errorf("delete account: %w", err)
 	}
 	return nil
@@ -152,7 +164,7 @@ func NewManageSessions(sessions SessionRepository, clock Clock, events *Recorder
 
 // List implements ManageSessions; the caller's session is marked as current.
 func (uc *manageSessions) List(ctx context.Context, currentToken string) ([]SessionView, error) {
-	list, err := uc.sessions.ListActive(ctx, uc.clock.Now())
+	list, err := uc.sessions.ListActive(ctx, me(ctx), uc.clock.Now())
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
 	}
@@ -169,19 +181,23 @@ func (uc *manageSessions) List(ctx context.Context, currentToken string) ([]Sess
 
 // Revoke implements ManageSessions.
 func (uc *manageSessions) Revoke(ctx context.Context, _ string, sessionID string) error {
-	if err := uc.sessions.DeleteByPublicID(ctx, sessionID); err != nil {
+	if err := uc.sessions.DeleteByPublicID(ctx, me(ctx), sessionID); err != nil {
 		return err
 	}
-	uc.events.record(ctx, domain.EventSessionRevoked, domain.OwnerID, domain.Client{}, "")
+	uc.events.record(ctx, domain.EventSessionRevoked, me(ctx), domain.Client{}, "")
 	return nil
 }
 
 // RevokeOthers implements ManageSessions: every session except the caller's ends.
 func (uc *manageSessions) RevokeOthers(ctx context.Context, currentToken string) (int64, error) {
-	n, err := uc.sessions.DeleteAllExcept(ctx, domain.HashToken(currentToken))
+	n, err := uc.sessions.DeleteAllExcept(ctx, me(ctx), domain.HashToken(currentToken))
 	if err != nil {
 		return 0, fmt.Errorf("revoke sessions: %w", err)
 	}
-	uc.events.record(ctx, domain.EventLogoutEverywhere, domain.OwnerID, domain.Client{}, fmt.Sprintf("%d sessions", n))
+	uc.events.record(ctx, domain.EventLogoutEverywhere, me(ctx), domain.Client{}, fmt.Sprintf("%d sessions", n))
 	return n, nil
+}
+
+func principalOf(a domain.Account) kernel.Principal {
+	return kernel.Principal{AccountID: a.ID(), Role: string(a.Role()), Tabs: a.Tabs()}
 }

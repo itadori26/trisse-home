@@ -13,6 +13,9 @@ type StatusDTO struct {
 	CSRFToken     string `json:"csrfToken,omitempty"`
 	// Demo is true on a public demo instance (POST /api/auth/demo logs in).
 	Demo bool `json:"demo"`
+	// Role ("owner" or "guest") and Username of the signed-in account.
+	Role     string `json:"role,omitempty"`
+	Username string `json:"username,omitempty"`
 }
 
 // SessionDTO is returned after setup, login and password change. The session
@@ -24,7 +27,7 @@ type SessionDTO struct {
 
 // Status maps a StatusResponse to its DTO.
 func Status(r usecase.StatusResponse) StatusDTO {
-	return StatusDTO{SetupRequired: r.SetupRequired, Authenticated: r.Authenticated, CSRFToken: r.CSRFToken}
+	return StatusDTO{SetupRequired: r.SetupRequired, Authenticated: r.Authenticated, CSRFToken: r.CSRFToken, Role: r.Role, Username: r.Username}
 }
 
 // Session maps a SessionResponse to its DTO.
@@ -90,6 +93,27 @@ func SecurityEvents(list []usecase.SecurityEventView) []SecurityEventDTO {
 	out := make([]SecurityEventDTO, 0, len(list))
 	for _, e := range list {
 		out = append(out, SecurityEventDTO(e))
+	}
+	return out
+}
+
+// GuestDTO is a guest account in GET /api/auth/guests.
+type GuestDTO struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Tabs      []string  `json:"tabs"`
+	Disabled  bool      `json:"disabled"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// Guest maps one guest.
+func Guest(g usecase.GuestView) GuestDTO { return GuestDTO(g) }
+
+// Guests maps the guest list.
+func Guests(list []usecase.GuestView) []GuestDTO {
+	out := make([]GuestDTO, 0, len(list))
+	for _, g := range list {
+		out = append(out, Guest(g))
 	}
 	return out
 }

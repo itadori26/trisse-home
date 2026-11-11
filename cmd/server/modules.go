@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"slices"
 	"time"
 
 	"trisse-home/internal/modules"
@@ -60,6 +61,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	client, secrets := out.client, out.secrets
 	registry := &modules.Registry{}
 	alerts := &alertRelay{}
+	scope := &guestScope{registry: registry}
 
 	authModule, err := auth.New(
 		auth.Config{
@@ -67,7 +69,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			OnAccountCreated: func(ctx context.Context) { onAccountCreated(ctx, cfg, log, registry) },
 			Demo:             cfg.DemoMode,
 		},
-		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log, Alerts: alerts},
+		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log, Alerts: alerts, GuestScope: scope},
 	)
 	if err != nil {
 		return nil, nil, err
@@ -139,7 +141,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 
 	kinds := append(append([]string{}, frontendOnlyWidgetKinds...), registry.WidgetKinds()...)
 	sample := dashboard.SampleWeather{Label: cfg.SampleWeather.Name, Lat: cfg.SampleWeather.Lat, Lon: cfg.SampleWeather.Lon}
-	registry.Register(dashboard.New(db, ids, kinds, sample))
+	dash := dashboard.New(db, ids, kinds, sample)
+	registry.Register(dash)
+	scope.dashboard = dash
 	return authModule, registry, nil
 }
 
@@ -220,4 +224,31 @@ func (a *alertRelay) Alert(ctx context.Context, al kernel.Alert) {
 	if a.target != nil {
 		a.target.Alert(ctx, al)
 	}
+}
+
+// guestScope implements the auth module's GuestScope port: the modules a
+// guest may read are those whose widgets are on the guest's tabs.
+type guestScope struct {
+	registry  *modules.Registry
+	dashboard *dashboard.Module
+}
+
+// ModulesForTabs implements auth's usecase.GuestScope.
+func (g *guestScope) ModulesForTabs(ctx context.Context, tabs []string) (map[string]bool, error) {
+	out := map[string]bool{}
+	if g.dashboard == nil || len(tabs) == 0 {
+		return out, nil
+	}
+	kinds, err := g.dashboard.WidgetKindsOnTabs(ctx, tabs)
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range g.registry.All() {
+		for _, k := range m.WidgetKinds() {
+			if slices.Contains(kinds, k) {
+				out[m.Name()] = true
+			}
+		}
+	}
+	return out, nil
 }

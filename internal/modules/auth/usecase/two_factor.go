@@ -12,8 +12,7 @@ import (
 
 // Labels shown in authenticator apps.
 const (
-	totpIssuer  = "trisse-home"
-	totpAccount = "owner"
+	totpIssuer = "trisse-home"
 )
 
 // checkSecondFactor verifies a TOTP or recovery code and updates the replay
@@ -27,7 +26,7 @@ func (d Deps) checkSecondFactor(ctx context.Context, a *domain.Account, code str
 		if err := a.UseRecoveryCode(code); err != nil {
 			return err
 		}
-		d.Events.record(ctx, domain.EventRecoveryCodeUsed, domain.OwnerID, domain.Client{}, "")
+		d.Events.record(ctx, domain.EventRecoveryCodeUsed, a.ID(), domain.Client{}, "")
 		return nil
 	}
 	step, ok := d.OTP.Verify(a.TwoFactor().Secret, code, now)
@@ -44,7 +43,7 @@ func NewTwoFactor(deps Deps) TwoFactor { return &twoFactor{deps: deps} }
 
 // Status implements TwoFactor.
 func (uc *twoFactor) Status(ctx context.Context) (TwoFactorStatus, error) {
-	a, err := uc.deps.Accounts.Get(ctx)
+	a, err := uc.deps.Accounts.Get(ctx, me(ctx))
 	if err != nil {
 		return TwoFactorStatus{}, err
 	}
@@ -54,7 +53,7 @@ func (uc *twoFactor) Status(ctx context.Context) (TwoFactorStatus, error) {
 // Start implements TwoFactor: a new secret is stored as pending until it is
 // confirmed with a valid code, so a half-finished setup never locks the user out.
 func (uc *twoFactor) Start(ctx context.Context) (TwoFactorEnrollment, error) {
-	a, err := uc.deps.Accounts.Get(ctx)
+	a, err := uc.deps.Accounts.Get(ctx, me(ctx))
 	if err != nil {
 		return TwoFactorEnrollment{}, err
 	}
@@ -68,12 +67,12 @@ func (uc *twoFactor) Start(ctx context.Context) (TwoFactorEnrollment, error) {
 	if err := uc.deps.Accounts.Update(ctx, a); err != nil {
 		return TwoFactorEnrollment{}, fmt.Errorf("update account: %w", err)
 	}
-	return TwoFactorEnrollment{Secret: secret, URI: uc.deps.OTP.ProvisioningURI(secret, totpAccount, totpIssuer)}, nil
+	return TwoFactorEnrollment{Secret: secret, URI: uc.deps.OTP.ProvisioningURI(secret, a.Name(), totpIssuer)}, nil
 }
 
 // Confirm implements TwoFactor and returns the recovery codes (shown once).
 func (uc *twoFactor) Confirm(ctx context.Context, code string) ([]string, error) {
-	a, err := uc.deps.Accounts.Get(ctx)
+	a, err := uc.deps.Accounts.Get(ctx, me(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +98,7 @@ func (uc *twoFactor) Confirm(ctx context.Context, code string) ([]string, error)
 	if err := uc.deps.Accounts.Update(ctx, a); err != nil {
 		return nil, fmt.Errorf("update account: %w", err)
 	}
-	uc.deps.Events.record(ctx, domain.EventTwoFactorEnabled, domain.OwnerID, domain.Client{}, "")
+	uc.deps.Events.record(ctx, domain.EventTwoFactorEnabled, a.ID(), domain.Client{}, "")
 	return codes, nil
 }
 
@@ -109,7 +108,7 @@ func (uc *twoFactor) Disable(ctx context.Context, req DisableTwoFactorRequest) e
 	if !uc.deps.Limiter.Allow(req.ClientKey, now) {
 		return domain.ErrTooManyAttempts
 	}
-	a, err := uc.deps.Accounts.Get(ctx)
+	a, err := uc.deps.Accounts.Get(ctx, me(ctx))
 	if err != nil {
 		return err
 	}
@@ -121,12 +120,12 @@ func (uc *twoFactor) Disable(ctx context.Context, req DisableTwoFactorRequest) e
 		return fmt.Errorf("verify password: %w", err)
 	}
 	if !ok {
-		uc.deps.Events.loginFailed(ctx, domain.OwnerID, domain.Client{}, uc.deps.Limiter.RecordFailure(req.ClientKey, now))
+		uc.deps.Events.loginFailed(ctx, a.ID(), domain.Client{}, uc.deps.Limiter.RecordFailure(req.ClientKey, now))
 		return domain.ErrInvalidCredentials
 	}
 	if err := uc.deps.checkSecondFactor(ctx, &a, req.Code, now); err != nil {
 		if errors.Is(err, domain.ErrInvalidTOTPCode) {
-			uc.deps.Events.loginFailed(ctx, domain.OwnerID, domain.Client{}, uc.deps.Limiter.RecordFailure(req.ClientKey, now))
+			uc.deps.Events.loginFailed(ctx, a.ID(), domain.Client{}, uc.deps.Limiter.RecordFailure(req.ClientKey, now))
 		}
 		return err
 	}
@@ -137,6 +136,6 @@ func (uc *twoFactor) Disable(ctx context.Context, req DisableTwoFactorRequest) e
 		return fmt.Errorf("update account: %w", err)
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
-	uc.deps.Events.record(ctx, domain.EventTwoFactorDisabled, domain.OwnerID, domain.Client{}, "")
+	uc.deps.Events.record(ctx, domain.EventTwoFactorDisabled, a.ID(), domain.Client{}, "")
 	return nil
 }

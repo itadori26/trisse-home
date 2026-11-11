@@ -76,5 +76,5 @@ func (uc *setupAccount) Execute(ctx context.Context, req SetupRequest) (SessionR
 	uc.observer.AccountCreated(ctx)
 	client := domain.NewClient(req.UserAgent, req.ClientKey)
 	uc.deps.Events.loginSucceeded(ctx, domain.OwnerID, client, "setup")
-	return uc.deps.issuer().issue(ctx, client)
+	return uc.deps.issuer().issue(ctx, domain.OwnerID, client)
 }
