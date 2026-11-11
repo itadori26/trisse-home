@@ -18,6 +18,7 @@ type Deps struct {
 	Clock    Clock
 	TTL      SessionTTL
 	IDs      kernel.IDGenerator
+	OTP      OneTimePasswords
 }
 
 func (d Deps) issuer() sessionIssuer {

@@ -1,5 +1,6 @@
 import { type AuthView, validateNewPassword, viewFor } from '../domain/auth';
 import type { SessionInfo } from '../domain/session';
+import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
 import type { AuthGateway, CsrfTokenStore } from './ports';
 
 /** Error for input rejected before it reaches the backend. */
@@ -31,10 +32,10 @@ export class AuthUseCases {
     this.csrf.setCsrfToken(session.csrfToken);
   }
 
-  /** Logs in with the password. */
-  async login(password: string): Promise<void> {
+  /** Logs in with the password and, if two-factor authentication is enabled, a code. */
+  async login(password: string, code?: string): Promise<void> {
     if (password === '') throw new ValidationError('Please enter your password.');
-    const session = await this.gateway.login(password);
+    const session = await this.gateway.login(password, code?.trim() || undefined);
     this.csrf.setCsrfToken(session.csrfToken);
   }
 
@@ -67,5 +68,29 @@ export class AuthUseCases {
   /** Signs out every other device; returns how many sessions ended. */
   revokeOtherSessions(): Promise<number> {
     return this.gateway.revokeOtherSessions();
+  }
+
+  twoFactorStatus(): Promise<TwoFactorStatus> {
+    return this.gateway.twoFactorStatus();
+  }
+
+  /** Starts connecting an authenticator app; 2FA is active only after confirmation. */
+  startTwoFactor(): Promise<TwoFactorEnrollment> {
+    return this.gateway.startTwoFactor();
+  }
+
+  /** Confirms the setup with a code and returns the one-time recovery codes. */
+  confirmTwoFactor(code: string): Promise<string[]> {
+    const c = code.replace(/\s/g, '');
+    if (!/^\d{6}$/.test(c))
+      return Promise.reject(new ValidationError('Please enter the 6-digit code from your app.'));
+    return this.gateway.confirmTwoFactor(c);
+  }
+
+  disableTwoFactor(password: string, code: string): Promise<void> {
+    if (password === '' || code.trim() === '') {
+      return Promise.reject(new ValidationError('Password and a current code are required.'));
+    }
+    return this.gateway.disableTwoFactor(password, code.trim());
   }
 }

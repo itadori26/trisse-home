@@ -106,6 +106,23 @@ type SetupObserver interface {
 	AccountCreated(ctx context.Context)
 }
 
+// OneTimePasswords implements TOTP (RFC 6238) and recovery codes.
+type OneTimePasswords interface {
+	NewSecret() (string, error)
+	ProvisioningURI(secret, account, issuer string) string
+	// Verify returns the time step of a valid code.
+	Verify(secret, code string, now time.Time) (int64, bool)
+	NewRecoveryCode() (string, error)
+}
+
+// TwoFactor manages the second login factor (input port).
+type TwoFactor interface {
+	Status(ctx context.Context) (TwoFactorStatus, error)
+	Start(ctx context.Context) (TwoFactorEnrollment, error)
+	Confirm(ctx context.Context, code string) ([]string, error)
+	Disable(ctx context.Context, req DisableTwoFactorRequest) error
+}
+
 // AttemptLimiter throttles repeated failed attempts per key (client IP).
 type AttemptLimiter interface {
 	Allow(key string, now time.Time) bool

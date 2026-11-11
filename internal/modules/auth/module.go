@@ -50,6 +50,8 @@ type Deps struct {
 	Hasher usecase.PasswordHasher
 	Tokens usecase.TokenGenerator
 	IDs    kernel.IDGenerator
+	OTP    usecase.OneTimePasswords
+	Cipher gateway.Cipher
 	Log    *slog.Logger
 }
 
@@ -74,12 +76,12 @@ func New(cfg Config, d Deps) (*Module, error) {
 		}
 		token = generated
 	}
-	accounts := gateway.NewAccountRepository(d.DB)
+	accounts := gateway.NewAccountRepository(d.DB, d.Cipher)
 	sessions := gateway.NewSessionRepository(d.DB)
 	ttl := usecase.SessionTTL(cfg.SessionTTL)
 	deps := usecase.Deps{
 		Accounts: accounts, Sessions: sessions, Hasher: d.Hasher, Tokens: d.Tokens,
-		Limiter: gateway.NewAttemptLimiter(maxFailedAttempts, failedAttemptsWindow), Clock: d.Clock, TTL: ttl, IDs: d.IDs,
+		Limiter: gateway.NewAttemptLimiter(maxFailedAttempts, failedAttemptsWindow), Clock: d.Clock, TTL: ttl, IDs: d.IDs, OTP: d.OTP,
 	}
 	status := usecase.NewGetStatus(accounts, sessions, d.Clock)
 	uc := controller.UseCases{
@@ -90,6 +92,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 		Authenticate:   usecase.NewAuthenticate(sessions, d.Clock, ttl),
 		ChangePassword: usecase.NewChangePassword(deps),
 		Sessions:       usecase.NewManageSessions(sessions, d.Clock),
+		TwoFactor:      usecase.NewTwoFactor(deps),
 	}
 	return &Module{
 		handlers:   controller.NewHandlers(uc, controller.CookieConfig{Secure: cfg.CookieSecure}),
@@ -114,6 +117,10 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Public("POST /api/auth/login", m.handlers.Login)
 	r.Protected("POST /api/auth/logout", m.handlers.Logout)
 	r.Protected("PUT /api/auth/password", m.handlers.ChangePassword)
+	r.Protected("GET /api/auth/totp", m.handlers.TwoFactorStatus)
+	r.Protected("POST /api/auth/totp/setup", m.handlers.StartTwoFactor)
+	r.Protected("POST /api/auth/totp/confirm", m.handlers.ConfirmTwoFactor)
+	r.Protected("POST /api/auth/totp/disable", m.handlers.DisableTwoFactor)
 	r.Protected("GET /api/auth/sessions", m.handlers.ListSessions)
 	r.Protected("POST /api/auth/sessions/revoke-others", m.handlers.RevokeOtherSessions)
 	r.Protected("DELETE /api/auth/sessions/{id}", m.handlers.RevokeSession)

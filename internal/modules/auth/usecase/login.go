@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"trisse-home/internal/modules/auth/domain"
@@ -32,6 +33,17 @@ func (uc *login) Execute(ctx context.Context, req LoginRequest) (SessionResponse
 	if !ok {
 		uc.deps.Limiter.RecordFailure(req.ClientKey, now)
 		return SessionResponse{}, domain.ErrInvalidCredentials
+	}
+	if account.TOTPEnabled() {
+		if err := uc.deps.checkSecondFactor(&account, req.TOTPCode, now); err != nil {
+			if errors.Is(err, domain.ErrInvalidTOTPCode) {
+				uc.deps.Limiter.RecordFailure(req.ClientKey, now)
+			}
+			return SessionResponse{}, err
+		}
+		if err := uc.deps.Accounts.Update(ctx, account); err != nil {
+			return SessionResponse{}, fmt.Errorf("update account: %w", err)
+		}
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
 	return uc.deps.issuer().issue(ctx, domain.NewClient(req.UserAgent, req.ClientKey))

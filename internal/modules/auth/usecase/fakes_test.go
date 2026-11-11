@@ -168,7 +168,7 @@ func newEnv() *env {
 	}
 	e.deps = Deps{
 		Accounts: e.accounts, Sessions: e.sessions, Hasher: fakeHasher{}, Tokens: &seqTokens{},
-		Limiter: e.limiter, Clock: e.clock, TTL: SessionTTL(24 * time.Hour), IDs: &seqIDs{},
+		Limiter: e.limiter, Clock: e.clock, TTL: SessionTTL(24 * time.Hour), IDs: &seqIDs{}, OTP: &fakeOTP{},
 	}
 	return e
 }

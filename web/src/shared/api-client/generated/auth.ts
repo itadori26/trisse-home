@@ -37,3 +37,23 @@ export interface SessionInfoDTO {
 export interface RevokedDTO {
   revoked: number /* int64 */;
 }
+/**
+ * TwoFactorStatusDTO is returned by GET /api/auth/totp.
+ */
+export interface TwoFactorStatusDTO {
+  enabled: boolean;
+  recoveryCodesLeft: number /* int */;
+}
+/**
+ * EnrollmentDTO is returned by POST /api/auth/totp/setup; uri is encoded as QR code.
+ */
+export interface EnrollmentDTO {
+  secret: string;
+  uri: string;
+}
+/**
+ * RecoveryCodesDTO is returned once by POST /api/auth/totp/confirm.
+ */
+export interface RecoveryCodesDTO {
+  codes: string[];
+}

@@ -143,6 +143,39 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Onboarding" } } } }
 
+  /api/auth/totp:
+    get:
+      tags: [auth]
+      summary: Two-factor authentication status
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, recoveryCodesLeft: { type: integer } } } } } }
+  /api/auth/totp/setup:
+    post:
+      tags: [auth]
+      summary: Start connecting an authenticator app (secret is pending until confirmed)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { secret: { type: string }, uri: { type: string, description: otpauth:// URI for the QR code } } } } } }
+        "409": { description: Already enabled, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/auth/totp/confirm:
+    post:
+      tags: [auth]
+      summary: Confirm with a code; enables 2FA and returns 10 one-time recovery codes (shown once)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { codes: { type: array, items: { type: string } } } } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/auth/totp/disable:
+    post:
+      tags: [auth]
+      summary: Turn off 2FA (requires password and a current or recovery code)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [password, code], properties: { password: { type: string }, code: { type: string } } } } } }
+      responses:
+        "204": { description: Disabled }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /api/auth/sessions:
     get:
       tags: [auth]
@@ -731,7 +764,12 @@ components:
       properties:
         setupToken: { type: string }
         password: { type: string, minLength: 12, maxLength: 256 }
-    LoginRequest: { type: object, required: [password], properties: { password: { type: string } } }
+    LoginRequest:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string }
+        code: { type: string, description: TOTP or recovery code; required when 2FA is enabled (otherwise 422 with field "totpCode") }
     ChangePasswordRequest:
       type: object
       required: [currentPassword, newPassword]

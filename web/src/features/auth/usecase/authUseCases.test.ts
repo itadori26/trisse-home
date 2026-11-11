@@ -34,6 +34,10 @@ function setup(status: Partial<AuthStatus> = {}) {
     ]),
     revokeSession: vi.fn(),
     revokeOtherSessions: vi.fn(),
+    twoFactorStatus: vi.fn(),
+    startTwoFactor: vi.fn(),
+    confirmTwoFactor: vi.fn().mockResolvedValue(['a']),
+    disableTwoFactor: vi.fn(),
   };
   const csrf = { setCsrfToken: vi.fn() };
   return { uc: new AuthUseCases(gateway, csrf), gateway, csrf };
@@ -73,5 +77,20 @@ describe('AuthUseCases', () => {
   it('lists the current session first', async () => {
     const { uc } = setup();
     expect((await uc.sessions()).map((s) => s.id)).toEqual(['b', 'a']);
+  });
+
+  it('validates the confirmation code locally', async () => {
+    const { uc, gateway } = setup();
+    await expect(uc.confirmTwoFactor('12')).rejects.toBeInstanceOf(ValidationError);
+    await uc.confirmTwoFactor('123 456');
+    expect(gateway.confirmTwoFactor).toHaveBeenCalledWith('123456');
+  });
+
+  it('sends the second factor only when given', async () => {
+    const { uc, gateway } = setup();
+    await uc.login('pw', ' ');
+    expect(gateway.login).toHaveBeenLastCalledWith('pw', undefined);
+    await uc.login('pw', '123456');
+    expect(gateway.login).toHaveBeenLastCalledWith('pw', '123456');
   });
 });

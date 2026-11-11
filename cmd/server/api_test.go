@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"trisse-home/internal/platform/config"
+	"trisse-home/internal/platform/crypto"
 )
 
 // fakeUpstream emulates every external system the modules talk to.
@@ -362,6 +363,33 @@ func TestAPIEndToEnd(t *testing.T) {
 	}
 	other.do(http.MethodGet, "/api/dashboard", nil, http.StatusUnauthorized)
 	c.do(http.MethodDelete, "/api/auth/sessions/unknown", nil, http.StatusNotFound)
+
+	// --- two-factor authentication ---
+	var enrollment obj
+	c.json(http.MethodPost, "/api/auth/totp/setup", nil, http.StatusOK, &enrollment)
+	code, err := crypto.TOTP{}.Code(enrollment["secret"].(string), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var recovery struct {
+		Codes []string `json:"codes"`
+	}
+	c.json(http.MethodPost, "/api/auth/totp/confirm", obj{"code": code}, http.StatusOK, &recovery)
+	if len(recovery.Codes) != 10 {
+		t.Fatalf("expected 10 recovery codes, got %v", recovery.Codes)
+	}
+	second := newClient(t, srv.URL)
+	if body := string(second.do(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-123"}, http.StatusUnprocessableEntity)); !strings.Contains(body, `"field":"totpCode"`) {
+		t.Fatalf("login without second factor: %s", body)
+	}
+	second.do(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-123", "code": "000000"}, http.StatusUnauthorized)
+	second.json(http.MethodPost, "/api/auth/login", obj{"password": "e2e-password-123", "code": recovery.Codes[0]}, http.StatusOK, nil)
+	var tfStatus obj
+	c.json(http.MethodGet, "/api/auth/totp", nil, http.StatusOK, &tfStatus)
+	if tfStatus["enabled"] != true || tfStatus["recoveryCodesLeft"] != float64(9) {
+		t.Fatalf("totp status: %v", tfStatus)
+	}
+	c.do(http.MethodPost, "/api/auth/totp/disable", obj{"password": "e2e-password-123", "code": recovery.Codes[1]}, http.StatusNoContent)
 
 	// --- password change, logout, login ---
 	var changed obj

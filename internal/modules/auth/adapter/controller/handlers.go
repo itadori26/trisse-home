@@ -17,6 +17,7 @@ type UseCases struct {
 	Authenticate   usecase.Authenticate
 	ChangePassword usecase.ChangePassword
 	Sessions       usecase.ManageSessions
+	TwoFactor      usecase.TwoFactor
 }
 
 // Handlers serves the auth endpoints.
@@ -60,7 +61,7 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	res, err := h.uc.Login.Execute(r.Context(), usecase.LoginRequest{Password: dto.Password, ClientKey: clientKey(r), UserAgent: r.UserAgent()})
+	res, err := h.uc.Login.Execute(r.Context(), usecase.LoginRequest{Password: dto.Password, TOTPCode: dto.Code, ClientKey: clientKey(r), UserAgent: r.UserAgent()})
 	h.respondWithSession(w, r, res, err)
 }
 
@@ -114,6 +115,58 @@ func (h *Handlers) RevokeOtherSessions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpapi.WriteJSON(w, http.StatusOK, presenter.RevokedDTO{Revoked: n})
+}
+
+// TwoFactorStatus handles GET /api/auth/totp.
+func (h *Handlers) TwoFactorStatus(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.TwoFactor.Status(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.TwoFactorStatusDTO{Enabled: res.Enabled, RecoveryCodesLeft: res.RecoveryCodesLeft})
+}
+
+// StartTwoFactor handles POST /api/auth/totp/setup.
+func (h *Handlers) StartTwoFactor(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.TwoFactor.Start(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	httpapi.WriteJSON(w, http.StatusOK, presenter.EnrollmentDTO{Secret: res.Secret, URI: res.URI})
+}
+
+// ConfirmTwoFactor handles POST /api/auth/totp/confirm.
+func (h *Handlers) ConfirmTwoFactor(w http.ResponseWriter, r *http.Request) {
+	var dto TwoFactorCodeDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	codes, err := h.uc.TwoFactor.Confirm(r.Context(), dto.Code)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	httpapi.WriteJSON(w, http.StatusOK, presenter.RecoveryCodesDTO{Codes: codes})
+}
+
+// DisableTwoFactor handles POST /api/auth/totp/disable.
+func (h *Handlers) DisableTwoFactor(w http.ResponseWriter, r *http.Request) {
+	var dto DisableTwoFactorDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	err := h.uc.TwoFactor.Disable(r.Context(), usecase.DisableTwoFactorRequest{Password: dto.Password, Code: dto.Code, ClientKey: clientKey(r)})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handlers) respondWithSession(w http.ResponseWriter, r *http.Request, res usecase.SessionResponse, err error) {

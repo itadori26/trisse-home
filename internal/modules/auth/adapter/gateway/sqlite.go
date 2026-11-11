@@ -14,42 +14,99 @@ import (
 // singleAccountID is the fixed primary key of the only account row.
 const singleAccountID = 1
 
-// AccountRepository stores the account in SQLite.
-type AccountRepository struct{ db *sql.DB }
+// Cipher encrypts secrets before they are written to the database.
+type Cipher interface {
+	Encrypt(plaintext string) (string, error)
+	Decrypt(ciphertext string) (string, error)
+}
+
+// AccountRepository stores the account in SQLite. TOTP secrets are
+// encrypted, recovery codes are stored as hashes only.
+type AccountRepository struct {
+	db     *sql.DB
+	cipher Cipher
+}
 
 // NewAccountRepository returns a repository backed by db.
-func NewAccountRepository(db *sql.DB) *AccountRepository { return &AccountRepository{db: db} }
+func NewAccountRepository(db *sql.DB, cipher Cipher) *AccountRepository {
+	return &AccountRepository{db: db, cipher: cipher}
+}
 
 // accountRow is the persistence model of domain.Account.
 type accountRow struct {
 	passwordHash, createdAt, updatedAt string
+	secretEnc, pendingEnc              string
+	lastStep                           int64
 }
 
-func (r accountRow) toDomain() (domain.Account, error) {
-	created, err := sqlutil.ParseTime(r.createdAt)
-	if err != nil {
-		return domain.Account{}, err
+func (r *AccountRepository) decrypt(enc string) (string, error) {
+	if enc == "" {
+		return "", nil
 	}
-	updated, err := sqlutil.ParseTime(r.updatedAt)
+	plain, err := r.cipher.Decrypt(enc)
 	if err != nil {
-		return domain.Account{}, err
+		return "", fmt.Errorf("decrypt totp secret (was SECRET_KEY changed?): %w", err)
 	}
-	return domain.RestoreAccount(r.passwordHash, created, updated), nil
+	return plain, nil
+}
+
+func (r *AccountRepository) encrypt(plain string) (string, error) {
+	if plain == "" {
+		return "", nil
+	}
+	return r.cipher.Encrypt(plain)
 }
 
 // Get implements usecase.AccountRepository.
 func (r *AccountRepository) Get(ctx context.Context) (domain.Account, error) {
 	var row accountRow
 	err := r.db.QueryRowContext(ctx,
-		`SELECT password_hash, created_at, updated_at FROM auth_account WHERE id = ?`, singleAccountID).
-		Scan(&row.passwordHash, &row.createdAt, &row.updatedAt)
+		`SELECT password_hash, created_at, updated_at, totp_secret_enc, totp_pending_enc, totp_last_step FROM auth_account WHERE id = ?`,
+		singleAccountID).Scan(&row.passwordHash, &row.createdAt, &row.updatedAt, &row.secretEnc, &row.pendingEnc, &row.lastStep)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Account{}, domain.ErrAccountNotFound
 	}
 	if err != nil {
 		return domain.Account{}, fmt.Errorf("select account: %w", err)
 	}
-	return row.toDomain()
+	created, err := sqlutil.ParseTime(row.createdAt)
+	if err != nil {
+		return domain.Account{}, err
+	}
+	updated, err := sqlutil.ParseTime(row.updatedAt)
+	if err != nil {
+		return domain.Account{}, err
+	}
+	a := domain.RestoreAccount(row.passwordHash, created, updated)
+	t := domain.TOTP{LastStep: row.lastStep}
+	if t.Secret, err = r.decrypt(row.secretEnc); err != nil {
+		return domain.Account{}, err
+	}
+	if t.PendingSecret, err = r.decrypt(row.pendingEnc); err != nil {
+		return domain.Account{}, err
+	}
+	if t.RecoveryCodes, err = r.recoveryCodes(ctx); err != nil {
+		return domain.Account{}, err
+	}
+	a.RestoreTwoFactor(t)
+	return a, nil
+}
+
+func (r *AccountRepository) recoveryCodes(ctx context.Context) ([]domain.TokenHash, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT code_hash FROM auth_recovery_codes ORDER BY code_hash`)
+	if err != nil {
+		return nil, fmt.Errorf("query recovery codes: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.TokenHash
+	for rows.Next() {
+		var h string
+		if err := rows.Scan(&h); err != nil {
+			return nil, fmt.Errorf("scan recovery code: %w", err)
+		}
+		out = append(out, domain.TokenHash(h))
+	}
+	return out, rows.Err()
 }
 
 // Create implements usecase.AccountRepository.
@@ -63,25 +120,51 @@ func (r *AccountRepository) Create(ctx context.Context, a domain.Account) error 
 	if err != nil {
 		return fmt.Errorf("insert account: %w", err)
 	}
-	return nil
+	return r.Update(ctx, a)
 }
 
-// Update implements usecase.AccountRepository.
+// Update implements usecase.AccountRepository; the account row and the
+// recovery codes are written in one transaction.
 func (r *AccountRepository) Update(ctx context.Context, a domain.Account) error {
-	res, err := r.db.ExecContext(ctx,
-		`UPDATE auth_account SET password_hash = ?, updated_at = ? WHERE id = ?`,
-		a.PasswordHash(), sqlutil.FormatTime(a.UpdatedAt()), singleAccountID)
+	t := a.TwoFactor()
+	secretEnc, err := r.encrypt(t.Secret)
+	if err != nil {
+		return fmt.Errorf("encrypt totp secret: %w", err)
+	}
+	pendingEnc, err := r.encrypt(t.PendingSecret)
+	if err != nil {
+		return fmt.Errorf("encrypt totp secret: %w", err)
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.ExecContext(ctx,
+		`UPDATE auth_account SET password_hash = ?, updated_at = ?, totp_secret_enc = ?, totp_pending_enc = ?, totp_last_step = ? WHERE id = ?`,
+		a.PasswordHash(), sqlutil.FormatTime(a.UpdatedAt()), secretEnc, pendingEnc, t.LastStep, singleAccountID)
 	if err != nil {
 		return fmt.Errorf("update account: %w", err)
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
 		return domain.ErrAccountNotFound
 	}
-	return nil
+	if _, err := tx.ExecContext(ctx, `DELETE FROM auth_recovery_codes`); err != nil {
+		return fmt.Errorf("clear recovery codes: %w", err)
+	}
+	for _, h := range t.RecoveryCodes {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO auth_recovery_codes (code_hash) VALUES (?)`, string(h)); err != nil {
+			return fmt.Errorf("insert recovery code: %w", err)
+		}
+	}
+	return tx.Commit()
 }
 
-// Delete implements usecase.AccountRepository.
+// Delete implements usecase.AccountRepository; the second factor goes with it.
 func (r *AccountRepository) Delete(ctx context.Context) error {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM auth_recovery_codes`); err != nil {
+		return fmt.Errorf("delete recovery codes: %w", err)
+	}
 	if _, err := r.db.ExecContext(ctx, `DELETE FROM auth_account`); err != nil {
 		return fmt.Errorf("delete account: %w", err)
 	}

@@ -15,6 +15,23 @@ export interface SetupRequestDTO {
  */
 export interface LoginRequestDTO {
   password: string;
+  /**
+   * Code is the TOTP or recovery code when two-factor authentication is enabled.
+   */
+  code?: string;
+}
+/**
+ * TwoFactorCodeDTO is the body of POST /api/auth/totp/confirm.
+ */
+export interface TwoFactorCodeDTO {
+  code: string;
+}
+/**
+ * DisableTwoFactorDTO is the body of POST /api/auth/totp/disable.
+ */
+export interface DisableTwoFactorDTO {
+  password: string;
+  code: string;
 }
 /**
  * ChangePasswordRequestDTO is the body of PUT /api/auth/password.

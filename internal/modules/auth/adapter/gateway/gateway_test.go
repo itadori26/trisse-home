@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,7 +16,7 @@ func TestSQLiteRepositories(t *testing.T) {
 	db := dbtest.Open(t, "auth", Migrations())
 	now := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
 
-	accounts := NewAccountRepository(db)
+	accounts := NewAccountRepository(db, prefixCipher{})
 	if _, err := accounts.Get(ctx); !errors.Is(err, domain.ErrAccountNotFound) {
 		t.Fatalf("expected not found, got %v", err)
 	}
@@ -33,6 +34,22 @@ func TestSQLiteRepositories(t *testing.T) {
 	got, err := accounts.Get(ctx)
 	if err != nil || got.PasswordHash() != "hash2" || !got.CreatedAt().Equal(now) {
 		t.Fatalf("round trip failed: %+v %v", got, err)
+	}
+
+	// Two-factor state round trip; the secret must be stored encrypted.
+	_ = got.StartTOTPEnrollment("JBSWY3DPEHPK3PXP")
+	_ = got.ConfirmTOTP(42, []string{"abcd-efgh"})
+	if err := accounts.Update(ctx, got); err != nil {
+		t.Fatal(err)
+	}
+	var stored string
+	_ = db.QueryRowContext(ctx, `SELECT totp_secret_enc FROM auth_account`).Scan(&stored)
+	if stored == "JBSWY3DPEHPK3PXP" || stored == "" {
+		t.Fatalf("totp secret not encrypted: %q", stored)
+	}
+	withTOTP, err := accounts.Get(ctx)
+	if err != nil || !withTOTP.TOTPEnabled() || withTOTP.TwoFactor().LastStep != 42 || len(withTOTP.TwoFactor().RecoveryCodes) != 1 {
+		t.Fatalf("totp round trip: %+v %v", withTOTP.TwoFactor(), err)
 	}
 
 	sessions := NewSessionRepository(db)
@@ -90,3 +107,9 @@ func TestSetupToken(t *testing.T) {
 		t.Fatal("verification wrong")
 	}
 }
+
+// prefixCipher is a reversible stand-in for AES-GCM.
+type prefixCipher struct{}
+
+func (prefixCipher) Encrypt(s string) (string, error) { return "enc:" + s, nil }
+func (prefixCipher) Decrypt(s string) (string, error) { return strings.TrimPrefix(s, "enc:"), nil }

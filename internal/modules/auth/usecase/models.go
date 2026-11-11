@@ -26,8 +26,28 @@ type SetupRequest struct {
 // rate limiting (usually its IP address).
 type LoginRequest struct {
 	Password  string
+	TOTPCode  string
 	ClientKey string
 	UserAgent string
+}
+
+// TwoFactorStatus describes the second factor.
+type TwoFactorStatus struct {
+	Enabled           bool
+	RecoveryCodesLeft int
+}
+
+// TwoFactorEnrollment is shown while setting up the authenticator app.
+type TwoFactorEnrollment struct {
+	Secret string
+	URI    string
+}
+
+// DisableTwoFactorRequest requires the password and a current code.
+type DisableTwoFactorRequest struct {
+	Password  string
+	Code      string
+	ClientKey string
 }
 
 // LogoutRequest is the input of Logout.

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { AdGuardSettings } from '../features/adguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
-  import { ChangePasswordForm, SessionsList } from '../features/auth';
+  import { ChangePasswordForm, SessionsList, TwoFactorSettings } from '../features/auth';
   import { BackupSettings } from '../features/backup';
   import { FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
@@ -70,6 +70,8 @@
       <p class="muted">Shows the most important features of trisse-home step by step.</p>
       <button class="btn" type="button" onclick={onrestarttour}>Restart the tour</button>
     {/if}
+    <h3>Two-factor authentication</h3>
+    <TwoFactorSettings auth={container.auth} />
     <h3>Active sessions</h3>
     <SessionsList auth={container.auth} />
     <h3>Change password</h3>

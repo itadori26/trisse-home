@@ -54,3 +54,20 @@ func Sessions(vs []usecase.SessionView) []SessionInfoDTO {
 	}
 	return out
 }
+
+// TwoFactorStatusDTO is returned by GET /api/auth/totp.
+type TwoFactorStatusDTO struct {
+	Enabled           bool `json:"enabled"`
+	RecoveryCodesLeft int  `json:"recoveryCodesLeft"`
+}
+
+// EnrollmentDTO is returned by POST /api/auth/totp/setup; uri is encoded as QR code.
+type EnrollmentDTO struct {
+	Secret string `json:"secret"`
+	URI    string `json:"uri"`
+}
+
+// RecoveryCodesDTO is returned once by POST /api/auth/totp/confirm.
+type RecoveryCodesDTO struct {
+	Codes []string `json:"codes"`
+}

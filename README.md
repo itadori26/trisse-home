@@ -148,7 +148,10 @@ service tiles are configured in the web interface.
   IPs are logged so the list can be tuned. Do **not** forward the port on
   your router — use a VPN (e.g. WireGuard) for remote access.
 - Single user, Argon2id password hash, login rate limiting (5 attempts per
-  15 minutes per IP).
+  15 minutes per IP), optional two-factor authentication (TOTP, RFC 6238)
+  with ten one-time recovery codes; the TOTP secret is encrypted at rest,
+  recovery codes are stored hashed and reused codes are rejected.
+- Session overview under Settings → Account to sign out other devices.
 - Session cookie `HttpOnly` + `SameSite=Strict`; CSRF protection via a
   per-session token **and** `Sec-Fetch-Site`/`Origin` checks.
 - Strict Content-Security-Policy (`script-src 'self'`), Markdown sanitised
