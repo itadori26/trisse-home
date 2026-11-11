@@ -4,6 +4,7 @@
   import { NextcloudSettings } from '../features/nextcloud';
   import { ShoppingSettings, suggestListUrl } from '../features/shopping';
   import { ParcelsSettings } from '../features/parcels';
+  import { TransferSettings } from '../features/transfer';
   import { WasteSettings } from '../features/waste';
   import { WireGuardSettings } from '../features/wireguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
@@ -11,7 +12,7 @@
   import { BackupSettings } from '../features/backup';
   import { BackupSourcesManager } from '../features/backupmonitor';
   import { NotificationSettings } from '../features/notifications';
-  import { FoldersManager } from '../features/bookmarks';
+  import { BookmarkImport, FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
   import { SearchSettings } from '../features/search';
@@ -46,6 +47,7 @@
     { id: 'waste', label: 'Waste', module: 'waste' },
     { id: 'shopping', label: 'Shopping list', module: 'shopping' },
     { id: 'parcels', label: 'Parcels', module: 'parcels' },
+    { id: 'transfer', label: 'Import & export', module: 'transfer' },
     { id: 'notifications', label: 'Notifications', module: 'notifications' },
     { id: 'backups', label: 'Backups', module: 'backup' },
     { id: 'backupmonitor', label: 'Backup monitoring', module: 'backupmonitor' },
@@ -76,6 +78,9 @@
     <FoldersManager bookmarks={container.bookmarks} />
   {:else if current === 'calendar'}
     <CalendarSettings calendar={container.calendar} />
+  {:else if current === 'transfer'}
+    <TransferSettings transfer={container.transfer} />
+    {#if modules.has('bookmarks')}<BookmarkImport bookmarks={container.bookmarks} />{/if}
   {:else if current === 'parcels'}
     <ParcelsSettings parcels={container.parcels} />
   {:else if current === 'shopping'}

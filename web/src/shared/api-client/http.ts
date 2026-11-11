@@ -28,6 +28,8 @@ export interface HttpClient {
   put<T>(path: string, body?: unknown): Promise<T>;
   patch<T>(path: string, body?: unknown): Promise<T>;
   delete<T = void>(path: string): Promise<T>;
+  /** POSTs a raw text body such as an uploaded HTML file. */
+  postText<T>(path: string, text: string, contentType: string): Promise<T>;
 }
 
 /** fetch-based HttpClient that adds the CSRF header and parses error envelopes. */
@@ -57,16 +59,19 @@ export class FetchHttpClient implements HttpClient {
   delete<T = void>(path: string): Promise<T> {
     return this.request<T>('DELETE', path);
   }
+  postText<T>(path: string, text: string, contentType: string): Promise<T> {
+    return this.request<T>('POST', path, text, contentType);
+  }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async request<T>(method: string, path: string, body?: unknown, rawType?: string): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' };
-    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (body !== undefined) headers['Content-Type'] = rawType ?? 'application/json';
     if (method !== 'GET' && this.csrfToken) headers[CSRF_HEADER] = this.csrfToken;
     const res = await fetch(path, {
       method,
       headers,
       credentials: 'same-origin',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : rawType ? String(body) : JSON.stringify(body),
     });
     if (res.status === 204) return undefined as T;
     const payload: unknown = await res.json().catch(() => undefined);

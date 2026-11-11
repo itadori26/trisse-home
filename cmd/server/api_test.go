@@ -279,8 +279,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 25 {
-		t.Fatalf("expected 25 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 26 {
+		t.Fatalf("expected 26 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -593,6 +593,54 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodPost, "/api/calendar/events", newEvent, http.StatusCreated, nil)
 	newEvent["calendarUrl"] = "https://elsewhere.example/cal/"
 	c.do(http.MethodPost, "/api/calendar/events", newEvent, http.StatusUnprocessableEntity)
+
+	// --- browser bookmark import (Netscape HTML) ---
+	html := `<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p><DT><H3>Imported</H3><DL><p>` +
+		`<DT><A HREF="https://imported.example/" TAGS="a,b">Imported link</A></DL><p><DT><A HREF="javascript:x">No</A></DL>`
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/bookmarks/import", strings.NewReader(html))
+	req.Header.Set("Content-Type", "text/html")
+	req.Header.Set("X-CSRF-Token", c.csrf)
+	res, err := c.http.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var imported obj
+	_ = json.NewDecoder(res.Body).Decode(&imported)
+	_ = res.Body.Close()
+	if res.StatusCode != http.StatusOK || imported["created"] != float64(1) || imported["skippedInvalid"] != float64(1) || imported["foldersCreated"] != float64(1) {
+		t.Fatalf("bookmark import: %d %v", res.StatusCode, imported)
+	}
+
+	// --- export / import ---
+	var export struct {
+		Format   string                     `json:"format"`
+		Version  int                        `json:"version"`
+		Sections map[string]json.RawMessage `json:"sections"`
+	}
+	c.json(http.MethodGet, "/api/transfer/export", nil, http.StatusOK, &export)
+	if export.Format != "trisse-home-export" || export.Sections["notes"] == nil || export.Sections["dashboard"] == nil {
+		t.Fatalf("export: %v", export)
+	}
+	if strings.Contains(string(c.do(http.MethodGet, "/api/transfer/export", nil, http.StatusOK)), "e2e-password") {
+		t.Fatal("export contains a secret")
+	}
+	var notesBefore []obj
+	c.json(http.MethodGet, "/api/notes", nil, http.StatusOK, &notesBefore)
+	c.json(http.MethodPost, "/api/notes", obj{"title": "added after export", "body": "x"}, http.StatusCreated, nil)
+	var result struct {
+		Imported []string          `json:"imported"`
+		Failed   map[string]string `json:"failed"`
+	}
+	c.json(http.MethodPost, "/api/transfer/import", export, http.StatusOK, &result)
+	if len(result.Failed) != 0 || len(result.Imported) != len(export.Sections) {
+		t.Fatalf("import: %+v", result)
+	}
+	var notesAfter []obj
+	c.json(http.MethodGet, "/api/notes", nil, http.StatusOK, &notesAfter)
+	if len(notesAfter) != len(notesBefore) {
+		t.Fatalf("import did not restore notes: %d vs %d", len(notesAfter), len(notesBefore))
+	}
+	c.do(http.MethodPost, "/api/transfer/import", obj{"format": "other", "version": 1}, http.StatusUnprocessableEntity)
 
 	// --- sessions ---
 	other := newClient(t, srv.URL)

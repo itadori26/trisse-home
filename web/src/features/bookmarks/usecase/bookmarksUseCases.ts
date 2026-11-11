@@ -23,6 +23,15 @@ export interface BookmarksGateway {
   createFolder(name: string): Promise<Folder>;
   renameFolder(id: string, name: string): Promise<Folder>;
   deleteFolder(id: string): Promise<void>;
+  importHtml(html: string): Promise<BookmarkImportResult>;
+}
+
+/** Result of a browser bookmark import. */
+export interface BookmarkImportResult {
+  created: number;
+  skippedInvalid: number;
+  skippedExists: number;
+  foldersCreated: number;
 }
 
 /** Application logic of the bookmarks feature. */
@@ -54,5 +63,12 @@ export class BookmarksUseCases {
 
   deleteFolder(id: string): Promise<void> {
     return this.gateway.deleteFolder(id);
+  }
+
+  /** Imports a browser bookmark export (HTML). */
+  importHtml(html: string): Promise<BookmarkImportResult> {
+    if (!/<a\s/i.test(html))
+      return Promise.reject(new Error('No bookmarks found. Please export your bookmarks as HTML.'));
+    return this.gateway.importHtml(html);
   }
 }

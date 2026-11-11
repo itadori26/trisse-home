@@ -14,6 +14,7 @@ import (
 // Module wires the search rings and implements modules.Module.
 type Module struct {
 	modules.Base
+	modules.Transferable
 	handlers *controller.Handlers
 	seed     usecase.SeedSampleData
 }
@@ -21,7 +22,7 @@ type Module struct {
 // New builds the search module.
 func New(db *sql.DB) *Module {
 	repo := gateway.NewRepository(db)
-	return &Module{handlers: controller.NewHandlers(usecase.NewSearcher(repo)), seed: usecase.NewSeedSampleData(repo)}
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, handlers: controller.NewHandlers(usecase.NewSearcher(repo)), seed: usecase.NewSeedSampleData(repo)}
 }
 
 // SeedSampleData implements modules.Seeder.

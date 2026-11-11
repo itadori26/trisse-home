@@ -16,6 +16,7 @@ import (
 // Module wires the dashboard rings and implements modules.Module.
 type Module struct {
 	modules.Base
+	modules.Transferable
 	handlers *controller.Handlers
 	seed     usecase.SeedSampleData
 }
@@ -32,7 +33,7 @@ func New(db *sql.DB, ids kernel.IDGenerator, widgetKinds []string, weather Sampl
 	repo := gateway.NewRepository(db)
 	deps := usecase.Deps{Tabs: repo, Widgets: repo, Templates: repo, Kinds: gateway.NewKindCatalog(widgetKinds), IDs: ids}
 	weatherConfig, _ := json.Marshal(map[string]any{"lat": weather.Lat, "lon": weather.Lon, "label": weather.Label, "days": 4}) // plain map, cannot fail
-	return &Module{
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables},
 		handlers: controller.NewHandlers(usecase.NewGetDashboard(deps), usecase.NewManageTabs(deps), usecase.NewManageWidgets(deps),
 			usecase.NewManageTemplates(deps)),
 		seed: usecase.NewSeedSampleData(deps, usecase.SampleLayout(string(weatherConfig))),

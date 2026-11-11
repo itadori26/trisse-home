@@ -19,6 +19,7 @@ const refreshInterval = 6 * time.Hour
 // Module wires the waste rings and implements modules.Module.
 type Module struct {
 	modules.Base
+	modules.Transferable
 	uc       usecase.Waste
 	handlers *controller.Handlers
 }
@@ -26,7 +27,7 @@ type Module struct {
 // New builds the waste module; floating ICS times are interpreted in loc.
 func New(db *sql.DB, client *http.Client, clock kernel.Clock, loc *time.Location) *Module {
 	uc := usecase.NewWaste(gateway.NewSettingsRepository(db), gateway.NewICSSource(client, loc), clock)
-	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, uc: uc, handlers: controller.NewHandlers(uc)}
 }
 
 // Name implements modules.Module.
