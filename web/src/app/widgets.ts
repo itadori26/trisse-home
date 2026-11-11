@@ -5,6 +5,7 @@
  */
 import type { Component } from 'svelte';
 import { AdGuardWidget } from '../features/adguard';
+import { NextcloudWidget } from '../features/nextcloud';
 import { BackupStatusWidget } from '../features/backupmonitor';
 import { BookmarksWidget, BookmarksWidgetSettings } from '../features/bookmarks';
 import { CalendarWidget, CalendarWidgetSettings } from '../features/calendar';
@@ -166,6 +167,15 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(AdGuardWidget, (_config, c) => ({ adguard: c.adguard })),
+  },
+  {
+    type: {
+      kind: 'nextcloud',
+      title: 'Nextcloud',
+      description: 'Version, your quota and server status of your Nextcloud.',
+      defaultSize: { w: 4, h: 3 },
+    },
+    view: renderer(NextcloudWidget, (_config, c) => ({ nextcloud: c.nextcloud })),
   },
   {
     type: {

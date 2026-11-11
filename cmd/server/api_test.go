@@ -71,6 +71,16 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /containers/web/logs", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "started\nlistening on :80\n")
 	})
+	mux.HandleFunc("GET /status.php", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"installed":true,"maintenance":false,"versionstring":"30.0.2"}`)
+	})
+	mux.HandleFunc("GET /ocs/v1.php/cloud/users/anna", func(w http.ResponseWriter, r *http.Request) {
+		if _, p, _ := r.BasicAuth(); p != "app-pw" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `{"ocs":{"meta":{"statuscode":100},"data":{"quota":{"used":250,"free":750,"quota":1000}}}}`)
+	})
 	mux.HandleFunc("GET /control/stats", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"num_dns_queries":100,"num_blocked_filtering":25,"avg_processing_time":0.002,"top_blocked_domains":[{"ads.example":7}]}`)
 	})
@@ -220,8 +230,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 18 {
-		t.Fatalf("expected 18 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 19 {
+		t.Fatalf("expected 19 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -419,6 +429,16 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodGet, "/api/docker/containers/web/logs", nil, http.StatusOK, &logs)
 	if len(logs.Lines) != 2 || logs.Lines[1] != "listening on :80" {
 		t.Fatalf("docker logs: %v", logs)
+	}
+
+	// --- nextcloud (no serverinfo app on the fake: degrades gracefully) ---
+	c.do(http.MethodGet, "/api/nextcloud/status", nil, http.StatusNotFound)
+	c.do(http.MethodPut, "/api/nextcloud/settings", obj{"url": up.URL, "username": "anna", "appPassword": "wrong"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/nextcloud/settings", obj{"url": up.URL, "username": "anna", "appPassword": "app-pw"}, http.StatusOK, nil)
+	var nc obj
+	c.json(http.MethodGet, "/api/nextcloud/status", nil, http.StatusOK, &nc)
+	if nc["version"] != "30.0.2" || nc["server"] != nil || nc["serverHint"] == "" || nc["quota"].(obj)["percent"] != float64(25) {
+		t.Fatalf("nextcloud: %v", nc)
 	}
 
 	// --- adguard ---

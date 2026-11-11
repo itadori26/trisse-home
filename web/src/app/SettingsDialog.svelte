@@ -1,5 +1,6 @@
 <script lang="ts">
   import { AdGuardSettings } from '../features/adguard';
+  import { NextcloudSettings } from '../features/nextcloud';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
   import { ChangePasswordForm, SessionsList, TwoFactorSettings } from '../features/auth';
   import { BackupSettings } from '../features/backup';
@@ -34,6 +35,7 @@
     { id: 'folders', label: 'Bookmark folders', module: 'bookmarks' },
     { id: 'calendar', label: 'Calendar', module: 'calendar' },
     { id: 'adguard', label: 'AdGuard', module: 'adguard' },
+    { id: 'nextcloud', label: 'Nextcloud', module: 'nextcloud' },
     { id: 'notifications', label: 'Notifications', module: 'notifications' },
     { id: 'backups', label: 'Backups', module: 'backup' },
     { id: 'backupmonitor', label: 'Backup monitoring', module: 'backupmonitor' },
@@ -64,6 +66,8 @@
     <FoldersManager bookmarks={container.bookmarks} />
   {:else if current === 'calendar'}
     <CalendarSettings calendar={container.calendar} />
+  {:else if current === 'nextcloud'}
+    <NextcloudSettings nextcloud={container.nextcloud} />
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
   {:else if current === 'notifications'}

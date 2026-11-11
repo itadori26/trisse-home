@@ -30,6 +30,7 @@ Architecture.
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
+| **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
