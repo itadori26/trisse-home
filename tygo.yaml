@@ -105,3 +105,8 @@ packages:
   - path: "trisse-home/internal/modules/waste/adapter/controller"
     output_path: "web/src/shared/api-client/generated/waste-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/shopping/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/shopping.ts"
+  - path: "trisse-home/internal/modules/shopping/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/shopping-requests.ts"
+    include_files: ["dto.go"]

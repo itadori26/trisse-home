@@ -71,6 +71,33 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /containers/web/logs", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "started\nlistening on :80\n")
 	})
+	tasks := map[string]string{}
+	var tasksMu sync.Mutex
+	mux.HandleFunc("/dav/tasks/", func(w http.ResponseWriter, r *http.Request) {
+		tasksMu.Lock()
+		defer tasksMu.Unlock()
+		name := strings.TrimPrefix(r.URL.Path, "/dav/tasks/")
+		switch r.Method {
+		case "REPORT":
+			w.WriteHeader(http.StatusMultiStatus)
+			var b strings.Builder
+			b.WriteString(`<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">`)
+			for n, data := range tasks {
+				b.WriteString(`<d:response><d:href>/dav/tasks/` + n + `</d:href><d:propstat><d:prop><c:calendar-data>` + data + `</c:calendar-data></d:prop></d:propstat></d:response>`)
+			}
+			b.WriteString(`</d:multistatus>`)
+			_, _ = io.WriteString(w, b.String())
+		case http.MethodGet:
+			_, _ = io.WriteString(w, tasks[name])
+		case http.MethodPut:
+			body, _ := io.ReadAll(r.Body)
+			tasks[name] = string(body)
+			w.WriteHeader(http.StatusCreated)
+		case http.MethodDelete:
+			delete(tasks, name)
+			w.WriteHeader(http.StatusNoContent)
+		}
+	})
 	mux.HandleFunc("GET /abfall.ics", func(w http.ResponseWriter, _ *http.Request) {
 		tomorrow := time.Now().AddDate(0, 0, 1).Format("20060102")
 		_, _ = io.WriteString(w, "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:w1\r\nSUMMARY:Biotonne\r\nDTSTART;VALUE=DATE:"+tomorrow+
@@ -244,8 +271,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 22 {
-		t.Fatalf("expected 22 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 23 {
+		t.Fatalf("expected 23 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -453,6 +480,19 @@ func TestAPIEndToEnd(t *testing.T) {
 	if len(waste.Types) != 1 || waste.Types[0]["daysUntil"] != float64(1) || waste.Types[0]["icon"] != "🍂" || len(waste.Types[0]["dates"].([]any)) != 3 {
 		t.Fatalf("waste: %+v", waste)
 	}
+
+	// --- shopping list on a CalDAV task list ---
+	c.json(http.MethodPut, "/api/shopping/settings", obj{"listUrl": up.URL + "/dav/tasks/", "username": "me", "password": "pw"}, http.StatusOK, nil)
+	var milk obj
+	c.json(http.MethodPost, "/api/shopping/items", obj{"summary": "Milk"}, http.StatusCreated, &milk)
+	c.do(http.MethodPut, "/api/shopping/items/"+milk["id"].(string), obj{"done": true}, http.StatusNoContent)
+	var shoppingItems []obj
+	c.json(http.MethodGet, "/api/shopping/items", nil, http.StatusOK, &shoppingItems)
+	if len(shoppingItems) != 1 || shoppingItems[0]["done"] != true {
+		t.Fatalf("shopping: %v", shoppingItems)
+	}
+	c.do(http.MethodPut, "/api/shopping/items/..%2Fsecret.ics", obj{"done": true}, http.StatusNotFound)
+	c.json(http.MethodPost, "/api/shopping/clear-completed", nil, http.StatusOK, nil)
 
 	// --- fritzbox: not configured until saved ---
 	c.do(http.MethodGet, "/api/fritzbox/status", nil, http.StatusNotFound)

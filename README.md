@@ -30,6 +30,7 @@ Architecture.
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
+| **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
 | **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
 | **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |

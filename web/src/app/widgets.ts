@@ -7,6 +7,7 @@ import type { Component } from 'svelte';
 import { AdGuardWidget } from '../features/adguard';
 import { FritzBoxWidget } from '../features/fritzbox';
 import { NextcloudWidget } from '../features/nextcloud';
+import { ShoppingWidget } from '../features/shopping';
 import { WasteWidget } from '../features/waste';
 import { WireGuardWidget } from '../features/wireguard';
 import { BackupStatusWidget } from '../features/backupmonitor';
@@ -206,6 +207,15 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 3, h: 3 },
     },
     view: renderer(WasteWidget, (_config, c) => ({ waste: c.waste })),
+  },
+  {
+    type: {
+      kind: 'shopping',
+      title: 'Shopping list',
+      description: 'Shared shopping list stored in a CalDAV task list.',
+      defaultSize: { w: 3, h: 4 },
+    },
+    view: renderer(ShoppingWidget, (_config, c) => ({ shopping: c.shopping })),
   },
   {
     type: {
