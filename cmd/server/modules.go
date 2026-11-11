@@ -107,7 +107,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		{"backupmonitor", func() modules.Module {
 			return backupmonitor.New(backupmonitor.Deps{DB: db, Tokens: crypto.RandomTokens{}, Clock: clk, IDs: ids, Observations: sink})
 		}},
-		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, time.Local) }},
+		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
 	}
 	for _, m := range optional {
 		if cfg.ModuleEnabled(m.name) {

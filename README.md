@@ -26,7 +26,7 @@ Architecture.
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
-| **calendar**   | Upcoming events from CalDAV calendars, e.g. Nextcloud (recurring events supported)                    |
+| **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host, with a 24 h history               |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |

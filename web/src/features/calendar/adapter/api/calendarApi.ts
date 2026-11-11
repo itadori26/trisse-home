@@ -1,6 +1,9 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
 import type { AgendaDTO, EventDTO, SettingsDTO } from '../../../../shared/api-client/generated/calendar';
-import type { SettingsInputDTO } from '../../../../shared/api-client/generated/calendar-requests';
+import type {
+  NewEventDTO,
+  SettingsInputDTO,
+} from '../../../../shared/api-client/generated/calendar-requests';
 import { type CalendarEvent, type CalendarSettings, parseLocalDate } from '../../domain/calendar';
 import type { Agenda, CalendarGateway } from '../../usecase/calendarUseCases';
 
@@ -29,5 +32,13 @@ export class CalendarApi implements CalendarGateway {
   async events(days: number): Promise<Agenda> {
     const d = await this.http.get<AgendaDTO>(`/api/calendar/events?days=${days}`);
     return { events: d.events.map(toEvent), error: d.error };
+  }
+  async range(from: Date, to: Date): Promise<Agenda> {
+    const q = new URLSearchParams({ from: from.toISOString(), to: to.toISOString() });
+    const d = await this.http.get<AgendaDTO>(`/api/calendar/events?${q}`);
+    return { events: d.events.map(toEvent), error: d.error };
+  }
+  async create(input: NewEventDTO): Promise<CalendarEvent> {
+    return toEvent(await this.http.post<EventDTO>('/api/calendar/events', input));
   }
 }

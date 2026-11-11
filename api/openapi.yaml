@@ -827,11 +827,36 @@ paths:
   /api/calendar/events:
     get:
       tags: [calendar]
-      summary: Upcoming events (cached, refreshed every 15 minutes)
-      parameters: [{ name: days, in: query, schema: { type: integer, minimum: 1, maximum: 31, default: 7 } }]
+      summary: Upcoming events (cached, refreshed every 15 minutes) or, with from/to, the events of a period of at most 42 days (month view)
+      parameters:
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 31, default: 7 } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Agenda" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { description: Invalid period, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    post:
+      tags: [calendar]
+      summary: Create an event in one of the configured calendars (CalDAV PUT with If-None-Match)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [calendarUrl, summary, start, end]
+              properties:
+                calendarUrl: { type: string, description: One of the configured calendar URLs }
+                summary: { type: string, maxLength: 200 }
+                location: { type: string, maxLength: 200 }
+                allDay: { type: boolean }
+                start: { type: string, description: "RFC 3339 instant, or YYYY-MM-DD for all-day events" }
+                end: { type: string, description: "RFC 3339 instant, or YYYY-MM-DD (inclusive) for all-day events" }
+      responses:
+        "201": { description: Created }
+        "422": { description: Validation error or unknown calendar, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "503": { description: The calendar server rejected the event, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
 
 components:
   securitySchemes:

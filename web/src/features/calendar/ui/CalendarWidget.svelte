@@ -2,6 +2,8 @@
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { type AgendaDay, groupByDay, parseCalendarConfig } from '../domain/calendar';
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
+  import MonthView from './MonthView.svelte';
+  import QuickAddEvent from './QuickAddEvent.svelte';
 
   /** Props of the calendar widget. */
   interface Props {
@@ -17,8 +19,11 @@
   let warning = $state('');
   let error = $state('');
   let unconfigured = $state(false);
+  let adding = $state(false);
+  let reload = $state(0);
 
   $effect(() => {
+    void reload;
     const c = cfg;
     const load = () =>
       calendar
@@ -55,25 +60,45 @@
 {:else if error && !loaded}
   <p class="error">{error}</p>
 {:else}
-  {#if warning}<p class="error small">{warning}</p>{/if}
-  {#each days as day (day.key)}
-    <section>
-      <h4>{dayLabel(day.date)}</h4>
-      <ul>
-        {#each day.events as e (e.uid + e.start.getTime())}
-          <li title={[e.location, e.calendar].filter(Boolean).join(' · ')}>
-            <span class="time">{e.allDay ? 'all day' : time(e.start)}</span>
-            <span class="summary">{e.summary}</span>
-          </li>
-        {/each}
-      </ul>
-    </section>
+  <button
+    class="btn btn-icon add"
+    type="button"
+    title="New event"
+    aria-label="New event"
+    onclick={() => (adding = true)}>+</button
+  >
+  {#if cfg.view === 'month'}
+    <MonthView {calendar} {reload} />
   {:else}
-    {#if loaded}<p class="muted">No events in the next {cfg.days} days.</p>{/if}
-  {/each}
+    {#if warning}<p class="error small">{warning}</p>{/if}
+    {#each days as day (day.key)}
+      <section>
+        <h4>{dayLabel(day.date)}</h4>
+        <ul>
+          {#each day.events as e (e.uid + e.start.getTime())}
+            <li title={[e.location, e.calendar].filter(Boolean).join(' · ')}>
+              <span class="time">{e.allDay ? 'all day' : time(e.start)}</span>
+              <span class="summary">{e.summary}</span>
+            </li>
+          {/each}
+        </ul>
+      </section>
+    {:else}
+      {#if loaded}<p class="muted">No events in the next {cfg.days} days.</p>{/if}
+    {/each}
+  {/if}
+{/if}
+{#if adding}
+  <QuickAddEvent {calendar} onclose={() => (adding = false)} oncreated={() => reload++} />
 {/if}
 
 <style>
+  .add {
+    float: right;
+    margin: -4px 0 0 var(--space-1);
+    padding: 0 6px;
+    line-height: 1.3;
+  }
   h4 {
     margin: var(--space-2) 0 var(--space-1);
     font-size: 0.8em;

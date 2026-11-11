@@ -46,13 +46,18 @@ func Settings(v usecase.SettingsView) SettingsDTO {
 func Agenda(r usecase.AgendaResponse) AgendaDTO {
 	dto := AgendaDTO{UpdatedAt: r.UpdatedAt, Error: r.Error, Events: make([]EventDTO, 0, len(r.Events))}
 	for _, e := range r.Events {
-		ev := EventDTO{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: e.Calendar, AllDay: e.AllDay}
-		if e.AllDay {
-			ev.Start, ev.End = e.Start.Format(time.DateOnly), e.End.Format(time.DateOnly)
-		} else {
-			ev.Start, ev.End = e.Start.Format(time.RFC3339), e.End.Format(time.RFC3339)
-		}
-		dto.Events = append(dto.Events, ev)
+		dto.Events = append(dto.Events, Event(e))
 	}
 	return dto
+}
+
+// Event maps one EventView; all-day events use dates, timed events RFC 3339.
+func Event(e usecase.EventView) EventDTO {
+	ev := EventDTO{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: e.Calendar, AllDay: e.AllDay}
+	if e.AllDay {
+		ev.Start, ev.End = e.Start.Format(time.DateOnly), e.End.Format(time.DateOnly)
+	} else {
+		ev.Start, ev.End = e.Start.Format(time.RFC3339), e.End.Format(time.RFC3339)
+	}
+	return ev
 }

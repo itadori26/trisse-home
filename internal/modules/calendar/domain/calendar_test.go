@@ -40,3 +40,27 @@ func TestSortAndEndsAfter(t *testing.T) {
 		t.Fatal("EndsAfter wrong")
 	}
 }
+
+func TestNewEventAndRange(t *testing.T) {
+	day := time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC)
+	if _, err := NewEvent("u", " ", "", day, day.Add(time.Hour), false); err == nil {
+		t.Fatal("empty title accepted")
+	}
+	if _, err := NewEvent("u", "x", "", day, day, false); err == nil {
+		t.Fatal("zero length accepted")
+	}
+	e, err := NewEvent("u", " Dentist ", " Main St ", day.Add(9*time.Hour), day.Add(10*time.Hour), false)
+	if err != nil || e.Summary != "Dentist" || e.Location != "Main St" {
+		t.Fatalf("%+v %v", e, err)
+	}
+	if e, err := NewEvent("u", "Trip", "", day.Add(5*time.Hour), day.AddDate(0, 0, 2), true); err != nil || !e.Start.Equal(day) {
+		t.Fatalf("all-day %+v %v", e, err)
+	}
+	if CheckRange(day, day.AddDate(0, 0, 42)) != nil || CheckRange(day, day.AddDate(0, 0, 43)) == nil || CheckRange(day, day) == nil {
+		t.Fatal("range check wrong")
+	}
+	s := Settings{CalendarURLs: []string{"https://c/cal/home/"}}
+	if !s.Contains("https://c/cal/home") || s.Contains("https://c/cal/other/") {
+		t.Fatal("contains wrong")
+	}
+}

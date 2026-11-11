@@ -88,6 +88,15 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
 	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPut && r.Header.Get("If-None-Match") == "*" && strings.HasSuffix(r.URL.Path, ".ics") {
+			body, _ := io.ReadAll(r.Body)
+			if !strings.Contains(string(body), "SUMMARY:Haircut") {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			w.WriteHeader(http.StatusCreated)
+			return
+		}
 		if r.Method != "REPORT" {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
@@ -472,6 +481,18 @@ func TestAPIEndToEnd(t *testing.T) {
 	if len(agenda.Events) != 1 || agenda.Events[0]["summary"] != "Dentist" {
 		t.Fatalf("calendar: %+v", agenda)
 	}
+	from := time.Now().Add(-48 * time.Hour).UTC().Format(time.RFC3339)
+	to := time.Now().Add(30 * 24 * time.Hour).UTC().Format(time.RFC3339)
+	c.json(http.MethodGet, "/api/calendar/events?from="+from+"&to="+to, nil, http.StatusOK, &agenda)
+	if len(agenda.Events) != 1 {
+		t.Fatalf("calendar range: %+v", agenda)
+	}
+	c.do(http.MethodGet, "/api/calendar/events?from="+from+"&to="+time.Now().AddDate(0, 3, 0).UTC().Format(time.RFC3339), nil, http.StatusUnprocessableEntity)
+	newEvent := obj{"calendarUrl": up.URL + "/dav/calendars/me/personal/", "summary": "Haircut", "allDay": false,
+		"start": time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339), "end": time.Now().Add(25 * time.Hour).UTC().Format(time.RFC3339)}
+	c.json(http.MethodPost, "/api/calendar/events", newEvent, http.StatusCreated, nil)
+	newEvent["calendarUrl"] = "https://elsewhere.example/cal/"
+	c.do(http.MethodPost, "/api/calendar/events", newEvent, http.StatusUnprocessableEntity)
 
 	// --- sessions ---
 	other := newClient(t, srv.URL)
