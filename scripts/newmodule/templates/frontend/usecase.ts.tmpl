@@ -1,0 +1,27 @@
+import { type {{.Pascal}}Item, validateTitle } from '../domain/{{.Name}}';
+
+/** Output port: {{.Title}} backend. */
+export interface {{.Pascal}}Gateway {
+  list(): Promise<{{.Pascal}}Item[]>;
+  add(title: string): Promise<{{.Pascal}}Item>;
+  remove(id: string): Promise<void>;
+}
+
+/** Application logic of the {{.Title}} feature. */
+export class {{.Pascal}}UseCases {
+  constructor(private readonly gateway: {{.Pascal}}Gateway) {}
+
+  list(): Promise<{{.Pascal}}Item[]> {
+    return this.gateway.list();
+  }
+
+  /** Adds an item; blank input is ignored. */
+  async add(title: string): Promise<{{.Pascal}}Item | null> {
+    if (validateTitle(title) === 'empty') return null;
+    return this.gateway.add(title.trim());
+  }
+
+  remove(id: string): Promise<void> {
+    return this.gateway.remove(id);
+  }
+}

@@ -1,0 +1,12 @@
+import { describe, expect, it, vi } from 'vitest';
+import { {{.Pascal}}UseCases, type {{.Pascal}}Gateway } from './{{.Name}}UseCases';
+
+describe('{{.Pascal}}UseCases', () => {
+  it('ignores blank input', async () => {
+    const gateway = { list: vi.fn(), add: vi.fn(), remove: vi.fn() } satisfies {{.Pascal}}Gateway;
+    const uc = new {{.Pascal}}UseCases(gateway);
+    expect(await uc.add('  ')).toBeNull();
+    await uc.add(' First ');
+    expect(gateway.add).toHaveBeenCalledWith('First');
+  });
+});

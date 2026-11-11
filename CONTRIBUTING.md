@@ -16,6 +16,23 @@ Thanks for your interest in trisse-home!
    `make generate` and commit the generated TypeScript types.
 6. Significant decisions get an ADR in `docs/adr/`.
 
+## Adding a module
+
+Scaffold a complete module with one command:
+
+```sh
+make new-module NAME=recipes TITLE="Recipes"
+```
+
+This creates `internal/modules/recipes` (domain, use case, gateway with a
+migration, presenter, controller, module wiring, all with tests) and
+`web/src/features/recipes` (domain, use case, API adapter, widget, tests),
+registers the module in `cmd/server/modules.go`, the frontend container and
+widget list, `tygo.yaml` and both message catalogues, and regenerates the
+TypeScript types. The result passes `make ci` unchanged; then replace the
+example `Item` entity with your own model. The insertion points are marked
+with `scaffold:` comments — keep them when editing those files.
+
 ## UI texts and translations
 
 Every text shown in the UI comes from the message catalogues in

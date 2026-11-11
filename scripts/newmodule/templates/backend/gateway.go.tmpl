@@ -1,0 +1,93 @@
+// Package gateway stores {{.Title}} items in SQLite.
+//
+// Ring: Interface Adapters.
+package gateway
+
+import (
+	"context"
+	"database/sql"
+	"embed"
+	"errors"
+	"fmt"
+	"io/fs"
+
+	"trisse-home/internal/modules/{{.Name}}/domain"
+	"trisse-home/internal/shared/sqlutil"
+)
+
+//go:embed migrations/*.sql
+var migrationFiles embed.FS
+
+// Migrations returns the module's SQL migrations.
+func Migrations() fs.FS {
+	sub, _ := fs.Sub(migrationFiles, "migrations") // embedded directory, cannot fail
+	return sub
+}
+
+// TransferTables are the tables included in data exports (no secrets).
+var TransferTables = []sqlutil.Table{{"{{"}}Name: "{{.Name}}_items"{{"}}"}}
+
+// Repository implements usecase.Repository.
+type Repository struct{ db *sql.DB }
+
+// NewRepository returns a repository backed by db.
+func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
+
+func scan(sc interface{ Scan(...any) error }) (domain.Item, error) {
+	var it domain.Item
+	var created string
+	if err := sc.Scan(&it.ID, &it.Title, &created); err != nil {
+		return it, err
+	}
+	var err error
+	it.CreatedAt, err = sqlutil.ParseTime(created)
+	return it, err
+}
+
+// List implements usecase.Repository.
+func (r *Repository) List(ctx context.Context) ([]domain.Item, error) {
+	rows, err := r.db.QueryContext(ctx, `SELECT id, title, created_at FROM {{.Name}}_items ORDER BY created_at`)
+	if err != nil {
+		return nil, fmt.Errorf("query items: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.Item
+	for rows.Next() {
+		it, err := scan(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan item: %w", err)
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
+}
+
+// Get implements usecase.Repository.
+func (r *Repository) Get(ctx context.Context, id string) (domain.Item, error) {
+	it, err := scan(r.db.QueryRowContext(ctx, `SELECT id, title, created_at FROM {{.Name}}_items WHERE id = ?`, id))
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Item{}, domain.ErrItemNotFound
+	}
+	if err != nil {
+		return domain.Item{}, fmt.Errorf("select item: %w", err)
+	}
+	return it, nil
+}
+
+// Save implements usecase.Repository (upsert).
+func (r *Repository) Save(ctx context.Context, it domain.Item) error {
+	_, err := r.db.ExecContext(ctx, `INSERT INTO {{.Name}}_items (id, title, created_at) VALUES (?, ?, ?)
+		ON CONFLICT (id) DO UPDATE SET title = excluded.title`, it.ID, it.Title, sqlutil.FormatTime(it.CreatedAt))
+	if err != nil {
+		return fmt.Errorf("upsert item: %w", err)
+	}
+	return nil
+}
+
+// Delete implements usecase.Repository.
+func (r *Repository) Delete(ctx context.Context, id string) error {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM {{.Name}}_items WHERE id = ?`, id); err != nil {
+		return fmt.Errorf("delete item: %w", err)
+	}
+	return nil
+}

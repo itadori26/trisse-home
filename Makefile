@@ -86,3 +86,8 @@ logs: ## Follow the application logs
 .PHONY: clean
 clean: ## Remove build output
 	rm -rf bin coverage.out internal/platform/webui/dist/assets internal/platform/webui/dist/index.html
+
+new-module: ## Scaffold a new module: make new-module NAME=recipes [TITLE="Recipes"]
+	go run ./scripts/newmodule -name "$(NAME)" -title "$(TITLE)"
+	$(MAKE) generate
+	cd web && npx prettier --log-level warn --write src

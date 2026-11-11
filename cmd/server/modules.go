@@ -118,6 +118,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 			return backupmonitor.New(backupmonitor.Deps{DB: db, Tokens: crypto.RandomTokens{}, Clock: clk, IDs: ids, Observations: sink})
 		}},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
+		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {
 		if cfg.ModuleEnabled(m.name) {

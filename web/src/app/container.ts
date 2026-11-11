@@ -56,6 +56,7 @@ export interface Container {
   transit: TransitUseCases;
   parcels: ParcelsUseCases;
   transfer: TransferUseCases;
+  // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
   backup: BackupUseCases;
@@ -91,6 +92,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     transit: new TransitUseCases(new TransitApi(http)),
     parcels: new ParcelsUseCases(new ParcelsApi(http)),
     transfer: new TransferUseCases(new TransferApi(http)),
+    // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),
     backup: new BackupUseCases(new BackupApi(http)),

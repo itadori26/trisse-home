@@ -1,0 +1,28 @@
+package gateway
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"trisse-home/internal/modules/{{.Name}}/domain"
+	"trisse-home/internal/platform/database/dbtest"
+)
+
+func TestRepository(t *testing.T) {
+	ctx := context.Background()
+	repo := NewRepository(dbtest.Open(t, "{{.Name}}", Migrations()))
+	it, _ := domain.NewItem("1", "First", time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC))
+	if err := repo.Save(ctx, it); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.Get(ctx, "1")
+	if err != nil || got.Title != "First" || !got.CreatedAt.Equal(it.CreatedAt) {
+		t.Fatalf("%+v %v", got, err)
+	}
+	_ = repo.Delete(ctx, "1")
+	if _, err := repo.Get(ctx, "1"); !errors.Is(err, domain.ErrItemNotFound) {
+		t.Fatalf("expected not found, got %v", err)
+	}
+}

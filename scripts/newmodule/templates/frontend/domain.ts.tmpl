@@ -1,0 +1,17 @@
+/** An item of the {{.Title}} feature (example entity, replace as needed). */
+export interface {{.Pascal}}Item {
+  id: string;
+  title: string;
+  createdAt: Date;
+}
+
+/** Maximum title length; mirrors the backend. */
+export const MAX_TITLE_LENGTH = 200;
+
+/** Validates a title and returns an error message key or null. */
+export function validateTitle(title: string): 'empty' | 'too_long' | null {
+  const t = title.trim();
+  if (t === '') return 'empty';
+  if ([...t].length > MAX_TITLE_LENGTH) return 'too_long';
+  return null;
+}
