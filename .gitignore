@@ -1,7 +1,7 @@
 # Local configuration and data
 .env
 data/
-wireguard/
+/wireguard/
 *.db
 *.db-shm
 *.db-wal
