@@ -16,9 +16,11 @@
     modules: Set<string>;
     appearance: Appearance;
     onappearance: (a: Appearance) => void;
+    /** Restarts the guided tour; omitted when the onboarding module is disabled. */
+    onrestarttour?: () => void;
     onclose: () => void;
   }
-  let { container, modules, appearance, onappearance, onclose }: Props = $props();
+  let { container, modules, appearance, onappearance, onrestarttour, onclose }: Props = $props();
 
   type Section = { id: string; label: string; module?: string };
   const sections: Section[] = [
@@ -59,6 +61,11 @@
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
   {:else}
+    {#if onrestarttour}
+      <h3>Guided tour</h3>
+      <p class="muted">Shows the most important features of trisse-home step by step.</p>
+      <button class="btn" type="button" onclick={onrestarttour}>Restart the tour</button>
+    {/if}
     <h3>Change password</h3>
     <ChangePasswordForm auth={container.auth} />
   {/if}

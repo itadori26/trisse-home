@@ -132,7 +132,7 @@
     white-space: nowrap;
   }
   .tag {
-    font-size: 0.75rem;
+    font-size: 0.75em;
     color: var(--color-text-muted);
   }
   .edit {

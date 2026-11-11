@@ -11,6 +11,7 @@ import { CalendarApi, CalendarUseCases } from '../features/calendar';
 import { DashboardApi, DashboardUseCases } from '../features/dashboard';
 import { DockerApi, DockerUseCases } from '../features/docker';
 import { NotesApi, NotesUseCases } from '../features/notes';
+import { OnboardingApi, OnboardingUseCases } from '../features/onboarding';
 import { RssApi, RssUseCases } from '../features/rss';
 import { SearchApi, SearchUseCases } from '../features/search';
 import { ServicesApi, ServicesUseCases } from '../features/services';
@@ -37,6 +38,7 @@ export interface Container {
   docker: DockerUseCases;
   adguard: AdGuardUseCases;
   calendar: CalendarUseCases;
+  onboarding: OnboardingUseCases;
   /** Loads which backend modules and widget kinds are enabled. */
   enabledModules(): Promise<{ modules: Set<string>; widgetKinds: Set<string> }>;
 }
@@ -60,6 +62,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     docker: new DockerUseCases(new DockerApi(http)),
     adguard: new AdGuardUseCases(new AdGuardApi(http)),
     calendar: new CalendarUseCases(new CalendarApi(http)),
+    onboarding: new OnboardingUseCases(new OnboardingApi(http)),
     async enabledModules() {
       const info = await http.get<InfoResponse>('/api/modules');
       return { modules: new Set(info.modules), widgetKinds: new Set(info.widgetKinds) };

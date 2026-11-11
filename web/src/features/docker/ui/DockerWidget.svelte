@@ -54,13 +54,13 @@
     display: flex;
     gap: var(--space-3);
     margin: 0 0 var(--space-2);
-    font-size: 0.85rem;
+    font-size: 0.85em;
   }
   .alert {
     color: var(--color-danger);
   }
   .small {
-    font-size: 0.75rem;
+    font-size: 0.75em;
   }
   .list {
     list-style: none;

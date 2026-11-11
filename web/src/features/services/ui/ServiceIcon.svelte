@@ -18,8 +18,8 @@
 <style>
   img,
   .glyph {
-    width: 28px;
-    height: 28px;
+    width: clamp(24px, 1.8em, 48px);
+    height: clamp(24px, 1.8em, 48px);
     flex: none;
   }
   img {

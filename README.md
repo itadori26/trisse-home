@@ -31,6 +31,7 @@ Architecture.
 | **docker**     | Container status and health via a read-only Docker socket proxy                                       |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **appearance** | Light/dark/system theme, accent color, background image, custom CSS                                  |
+| **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
 | **auth**       | First-run setup, login, sessions, password change (always enabled)                                    |
 
 ## Architecture in brief

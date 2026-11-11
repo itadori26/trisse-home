@@ -45,7 +45,7 @@
       {/if}
     </header>
   {/if}
-  <div class="content">{@render children()}</div>
+  <div class="content"><div class="body">{@render children()}</div></div>
 </article>
 
 <style>
@@ -82,14 +82,35 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* The content area is a size container: widgets size text and layout
+     relative to their own box (cqi/cqh/cqmin, @container widget …) instead
+     of the viewport, so they scale when the widget is resized. */
   .content {
     flex: 1;
     min-height: 0;
     overflow: auto;
     padding: var(--space-2) var(--space-3) var(--space-3);
+    container: widget / size;
+  }
+  .body {
+    height: 100%;
+    font-size: clamp(0.85rem, 0.7rem + 1.2cqmin, 1.3rem);
   }
   .chromeless .content {
     padding: 0;
     overflow: visible;
+  }
+  .chromeless .body {
+    height: 100%;
+  }
+  /* Stacked on phones the height comes from the content, so only the width
+     can be used as container size. */
+  @media (max-width: 720px) {
+    .content {
+      container-type: inline-size;
+    }
+    .body {
+      height: auto;
+    }
   }
 </style>

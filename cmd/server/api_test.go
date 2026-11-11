@@ -174,8 +174,19 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 14 {
-		t.Fatalf("expected 14 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 15 {
+		t.Fatalf("expected 15 modules, got %d: %v", n, info)
+	}
+
+	// --- onboarding ---
+	var tour obj
+	c.json(http.MethodGet, "/api/onboarding", nil, http.StatusOK, &tour)
+	if tour["completed"] != false {
+		t.Fatalf("tour must be pending after setup: %v", tour)
+	}
+	c.json(http.MethodPut, "/api/onboarding", obj{"completed": true}, http.StatusOK, &tour)
+	if tour["completed"] != true {
+		t.Fatalf("tour not completed: %v", tour)
 	}
 
 	// --- dashboard ---

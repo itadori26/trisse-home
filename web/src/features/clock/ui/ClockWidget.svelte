@@ -30,15 +30,19 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    container-type: inline-size;
+    text-align: center;
   }
   .time {
-    font-size: clamp(1.6rem, 18cqi, 4rem);
+    font-size: clamp(1.6rem, min(19cqi, 42cqh), 10rem);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     line-height: 1.1;
   }
   .date {
     color: var(--color-text-muted);
+    font-size: clamp(0.8rem, min(5.5cqi, 9cqh), 2rem);
+  }
+  .label {
+    font-size: clamp(0.75rem, min(4cqi, 7cqh), 1.4rem);
   }
 </style>
