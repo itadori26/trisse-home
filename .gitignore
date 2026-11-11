@@ -20,3 +20,6 @@ web/playwright-report/
 .idea/
 .vscode/
 *.swp
+
+# Binary built in the repository root (go build ./cmd/server)
+/server
