@@ -193,3 +193,31 @@ func TestGuestAccountsAndMigration(t *testing.T) {
 		t.Fatalf("deleted guest: %v", err)
 	}
 }
+
+func TestTokenRepository(t *testing.T) {
+	ctx := context.Background()
+	repo := NewTokenRepository(dbtest.Open(t, "auth", Migrations()))
+	now := time.Date(2026, 3, 1, 8, 0, 0, 0, time.UTC)
+	tok, _ := domain.NewAPIToken("t1", "Shortcuts", domain.HashToken("th_x"), []string{"todos:write", "notes:read"}, now, now.AddDate(0, 0, 30))
+	if err := repo.Create(ctx, tok); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.FindByHash(ctx, domain.HashToken("th_x"))
+	if err != nil || got.Name != "Shortcuts" || len(got.Scopes) != 2 || !got.ExpiresAt.Equal(now.AddDate(0, 0, 30)) || !got.LastUsedAt.IsZero() {
+		t.Fatalf("%+v %v", got, err)
+	}
+	got.RecordUse(now.Add(time.Hour), "10.0.0.5")
+	_ = repo.UpdateUse(ctx, got)
+	if list, _ := repo.List(ctx); len(list) != 1 || list[0].LastUsedIP != "10.0.0.5" {
+		t.Fatalf("list: %+v", list)
+	}
+	if _, err := repo.FindByHash(ctx, domain.HashToken("nope")); !errors.Is(err, domain.ErrSessionInvalid) {
+		t.Fatalf("unknown hash: %v", err)
+	}
+	if err := repo.Delete(ctx, "t1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Delete(ctx, "t1"); !errors.Is(err, domain.ErrTokenNotFound) {
+		t.Fatalf("second delete: %v", err)
+	}
+}

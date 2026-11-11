@@ -1,3 +1,4 @@
+import type { ApiToken } from '../domain/apiToken';
 import type { AuthStatus, Guest, Session } from '../domain/auth';
 import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
@@ -12,6 +13,9 @@ export interface AuthGateway {
   createGuest(name: string, password: string, tabs: string[]): Promise<Guest>;
   updateGuest(id: string, tabs: string[], disabled: boolean, password: string): Promise<Guest>;
   deleteGuest(id: string): Promise<void>;
+  apiTokens(): Promise<ApiToken[]>;
+  createApiToken(name: string, scopes: string[], expiresInDays: number): Promise<string>;
+  revokeApiToken(id: string): Promise<void>;
   /** Only available on a demo instance. */
   demoLogin(): Promise<Session>;
   logout(): Promise<void>;

@@ -88,3 +88,22 @@ export interface GuestDTO {
   disabled: boolean;
   createdAt: string /* RFC 3339 */;
 }
+/**
+ * TokenDTO describes an API token without its secret.
+ */
+export interface TokenDTO {
+  id: string;
+  name: string;
+  scopes: string[];
+  createdAt: string /* RFC 3339 */;
+  expiresAt?: string /* RFC 3339 */;
+  lastUsedAt?: string /* RFC 3339 */;
+  lastUsedIp: string;
+}
+/**
+ * CreatedTokenDTO is returned once after creation.
+ */
+export interface CreatedTokenDTO {
+  TokenDTO: TokenDTO;
+  token: string;
+}

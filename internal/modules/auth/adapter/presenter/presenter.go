@@ -117,3 +117,47 @@ func Guests(list []usecase.GuestView) []GuestDTO {
 	}
 	return out
 }
+
+// TokenDTO describes an API token without its secret.
+type TokenDTO struct {
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Scopes     []string   `json:"scopes"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	ExpiresAt  *time.Time `json:"expiresAt"`
+	LastUsedAt *time.Time `json:"lastUsedAt"`
+	LastUsedIP string     `json:"lastUsedIp"`
+}
+
+// CreatedTokenDTO is returned once after creation.
+type CreatedTokenDTO struct {
+	TokenDTO
+	Token string `json:"token"`
+}
+
+func optional(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
+}
+
+// Token maps one token.
+func Token(t usecase.TokenView) TokenDTO {
+	return TokenDTO{ID: t.ID, Name: t.Name, Scopes: t.Scopes, CreatedAt: t.CreatedAt, ExpiresAt: optional(t.ExpiresAt),
+		LastUsedAt: optional(t.LastUsedAt), LastUsedIP: t.LastUsedIP}
+}
+
+// Tokens maps the token list.
+func Tokens(list []usecase.TokenView) []TokenDTO {
+	out := make([]TokenDTO, 0, len(list))
+	for _, t := range list {
+		out = append(out, Token(t))
+	}
+	return out
+}
+
+// CreatedToken maps a new token including its secret.
+func CreatedToken(t usecase.CreatedToken) CreatedTokenDTO {
+	return CreatedTokenDTO{TokenDTO: Token(t.TokenView), Token: t.Token}
+}

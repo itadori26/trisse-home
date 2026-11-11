@@ -53,3 +53,11 @@ export interface GuestRequestDTO {
   tabs: string[];
   disabled: boolean;
 }
+/**
+ * TokenRequestDTO creates an API token; ExpiresInDays 0 means never.
+ */
+export interface TokenRequestDTO {
+  name: string;
+  scopes: string[];
+  expiresInDays: number /* int */;
+}

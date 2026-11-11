@@ -105,6 +105,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 		Authenticate:   usecase.NewAuthenticate(sessions, accounts, d.Clock, ttl),
 		Authorizer:     usecase.NewAuthorizer(d.GuestScope),
 		Guests:         usecase.NewGuests(deps),
+		APITokens:      usecase.NewAPITokens(deps, gateway.NewTokenRepository(d.DB)),
 		ChangePassword: usecase.NewChangePassword(deps),
 		Sessions:       usecase.NewManageSessions(sessions, d.Clock, events),
 		SecurityLog:    securityLog,
@@ -149,6 +150,9 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("POST /api/auth/totp/disable", m.handlers.DisableTwoFactor)
 	r.Protected("GET /api/auth/sessions", m.handlers.ListSessions)
 	r.Protected("GET /api/auth/events", m.handlers.SecurityEvents)
+	r.Protected("GET /api/auth/tokens", m.handlers.ListTokens)
+	r.Protected("POST /api/auth/tokens", m.handlers.CreateToken)
+	r.Protected("DELETE /api/auth/tokens/{id}", m.handlers.RevokeToken)
 	r.Protected("GET /api/auth/guests", m.handlers.ListGuests)
 	r.Protected("POST /api/auth/guests", m.handlers.CreateGuest)
 	r.Protected("PUT /api/auth/guests/{id}", m.handlers.UpdateGuest)

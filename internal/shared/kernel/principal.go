@@ -14,7 +14,12 @@ type Principal struct {
 	Role string
 	// Tabs are the dashboard tabs a guest may see (empty for the owner).
 	Tabs []string
+	// Scopes of an API token such as "todos:write" (Role "token").
+	Scopes []string
 }
+
+// IsToken reports whether the request is authenticated by an API token.
+func (p Principal) IsToken() bool { return p.Role == "token" }
 
 // IsGuest reports whether the principal is a read-only guest.
 func (p Principal) IsGuest() bool { return p.Role == "guest" }

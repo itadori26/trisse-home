@@ -22,6 +22,10 @@ const labels: Record<string, MessageKey> = {
   recovery_code_used: 'auth.event.recovery_code_used',
   session_revoked: 'auth.event.session_revoked',
   external: 'auth.event.external',
+  guest_changed: 'auth.event.guest_changed',
+  token_created: 'auth.event.token_created',
+  token_revoked: 'auth.event.token_revoked',
+  token_used: 'auth.event.token_used',
 };
 
 /** Message key for an event type; unknown types fall back to a generic label. */

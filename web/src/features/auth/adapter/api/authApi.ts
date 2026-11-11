@@ -6,7 +6,9 @@ import type {
   SessionDTO,
   SessionInfoDTO,
   StatusDTO,
+  TokenDTO,
   TwoFactorStatusDTO,
+  CreatedTokenDTO,
   GuestDTO,
   SecurityEventDTO,
 } from '../../../../shared/api-client/generated/auth';
@@ -16,8 +18,10 @@ import type {
   GuestRequestDTO,
   LoginRequestDTO,
   SetupRequestDTO,
+  TokenRequestDTO,
   TwoFactorCodeDTO,
 } from '../../../../shared/api-client/generated/auth-requests';
+import type { ApiToken } from '../../domain/apiToken';
 import type { AuthStatus, Guest, Session } from '../../domain/auth';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../../domain/twoFactor';
 import type { SecurityEvent } from '../../domain/securityEvent';
@@ -85,6 +89,19 @@ export class AuthApi implements AuthGateway {
     return this.http.delete(`/api/auth/guests/${encodeURIComponent(id)}`);
   }
 
+  async apiTokens(): Promise<ApiToken[]> {
+    return (await this.http.get<TokenDTO[]>('/api/auth/tokens')).map(toApiToken);
+  }
+
+  async createApiToken(name: string, scopes: string[], expiresInDays: number): Promise<string> {
+    const body: TokenRequestDTO = { name, scopes, expiresInDays };
+    return (await this.http.post<CreatedTokenDTO>('/api/auth/tokens', body)).token;
+  }
+
+  revokeApiToken(id: string): Promise<void> {
+    return this.http.delete(`/api/auth/tokens/${encodeURIComponent(id)}`);
+  }
+
   async securityEvents(): Promise<SecurityEvent[]> {
     const list = await this.http.get<SecurityEventDTO[]>('/api/auth/events');
     return list.map((e) => ({
@@ -139,3 +156,11 @@ export class AuthApi implements AuthGateway {
 }
 
 const toGuest = (d: GuestDTO): Guest => ({ ...d, tabs: d.tabs ?? [], createdAt: new Date(d.createdAt) });
+
+const toApiToken = (d: TokenDTO): ApiToken => ({
+  ...d,
+  scopes: d.scopes ?? [],
+  createdAt: new Date(d.createdAt),
+  expiresAt: d.expiresAt ? new Date(d.expiresAt) : null,
+  lastUsedAt: d.lastUsedAt ? new Date(d.lastUsedAt) : null,
+});

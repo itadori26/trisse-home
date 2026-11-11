@@ -21,6 +21,7 @@ type UseCases struct {
 	SecurityLog    usecase.SecurityLog
 	Authorizer     usecase.Authorizer
 	Guests         usecase.Guests
+	APITokens      usecase.APITokens
 	// DemoLogin is nil unless the instance runs in demo mode.
 	DemoLogin usecase.DemoLogin
 }
@@ -248,6 +249,40 @@ func (h *Handlers) UpdateGuest(w http.ResponseWriter, r *http.Request) {
 // DeleteGuest handles DELETE /api/auth/guests/{id}.
 func (h *Handlers) DeleteGuest(w http.ResponseWriter, r *http.Request) {
 	if err := h.uc.Guests.Delete(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ListTokens handles GET /api/auth/tokens.
+func (h *Handlers) ListTokens(w http.ResponseWriter, r *http.Request) {
+	list, err := h.uc.APITokens.List(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Tokens(list))
+}
+
+// CreateToken handles POST /api/auth/tokens; the token is returned once.
+func (h *Handlers) CreateToken(w http.ResponseWriter, r *http.Request) {
+	var dto TokenRequestDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	t, err := h.uc.APITokens.Create(r.Context(), usecase.NewTokenRequest{Name: dto.Name, Scopes: dto.Scopes, ExpiresInDays: dto.ExpiresInDays})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.CreatedToken(t))
+}
+
+// RevokeToken handles DELETE /api/auth/tokens/{id}.
+func (h *Handlers) RevokeToken(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.APITokens.Revoke(r.Context(), r.PathValue("id")); err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}

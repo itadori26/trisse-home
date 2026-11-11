@@ -1,4 +1,5 @@
 import { t } from '../../../shared/i18n';
+import type { ApiToken } from '../domain/apiToken';
 import { type AuthView, type Guest, validGuestName, validateNewPassword, viewFor } from '../domain/auth';
 import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
@@ -95,6 +96,22 @@ export class AuthUseCases {
 
   deleteGuest(id: string): Promise<void> {
     return this.gateway.deleteGuest(id);
+  }
+
+  /** Personal API tokens (owner only). */
+  apiTokens(): Promise<ApiToken[]> {
+    return this.gateway.apiTokens();
+  }
+
+  /** Creates a token and returns its secret, which is shown only once. */
+  async createApiToken(name: string, scopes: string[], expiresInDays: number): Promise<string> {
+    if (name.trim() === '') throw new ValidationError(t('auth.token_name_required'));
+    if (scopes.length === 0) throw new ValidationError(t('auth.token_scope_required'));
+    return this.gateway.createApiToken(name.trim(), scopes, Math.max(0, Math.round(expiresInDays) || 0));
+  }
+
+  revokeApiToken(id: string): Promise<void> {
+    return this.gateway.revokeApiToken(id);
   }
 
   /** The security log, newest first. */

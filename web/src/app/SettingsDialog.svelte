@@ -11,6 +11,7 @@
   import { WireGuardSettings } from '../features/wireguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
   import {
+    ApiTokensSettings,
     ChangePasswordForm,
     GuestsSettings,
     SecurityLog,
@@ -62,6 +63,7 @@
     { id: 'account', label: 'settings.section.account' },
     { id: 'security-log', label: 'settings.section.security_log' },
     { id: 'guests', label: 'settings.section.guests' },
+    { id: 'tokens', label: 'settings.section.tokens' },
     { id: 'about', label: 'settings.section.about', module: 'system' },
   ];
   /** Guests only manage their own account (ADR 0012). */
@@ -104,6 +106,8 @@
     {#if modules.has('bookmarks')}<BookmarkImport bookmarks={container.bookmarks} />{/if}
   {:else if current === 'security-log'}
     <SecurityLog auth={container.auth} />
+  {:else if current === 'tokens'}
+    <ApiTokensSettings auth={container.auth} {modules} />
   {:else if current === 'guests'}
     <GuestsSettings auth={container.auth} tabs={guestTabs} />
   {:else if current === 'about'}

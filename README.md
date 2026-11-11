@@ -66,7 +66,7 @@ Not sure whether trisse-home is the right fit? See the
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
 | **notifications** | Push messages via [ntfy](https://ntfy.sh) for offline services, containers, full disks, expiring certificates and failed backups |
 | **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
-| **auth**       | First-run setup, login with two-factor authentication, session overview with sign-out per device, password change, security log with ntfy alerts on new devices and lockouts (exponential backoff), read-only guest accounts with shared tabs ([ADR 0012](docs/adr/0012-owner-and-guest-roles.md)) — always enabled |
+| **auth**       | First-run setup, login with two-factor authentication, session overview with sign-out per device, password change, security log with ntfy alerts on new devices and lockouts (exponential backoff), read-only guest accounts with shared tabs ([ADR 0012](docs/adr/0012-owner-and-guest-roles.md)), scoped [API tokens](docs/api-tokens.md) for automations — always enabled |
 
 ## Architecture in brief
 

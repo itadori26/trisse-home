@@ -39,3 +39,10 @@ type GuestRequestDTO struct {
 	Tabs     []string `json:"tabs"`
 	Disabled bool     `json:"disabled"`
 }
+
+// TokenRequestDTO creates an API token; ExpiresInDays 0 means never.
+type TokenRequestDTO struct {
+	Name          string   `json:"name"`
+	Scopes        []string `json:"scopes"`
+	ExpiresInDays int      `json:"expiresInDays"`
+}

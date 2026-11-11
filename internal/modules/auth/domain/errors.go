@@ -25,3 +25,10 @@ var (
 	ErrOwnerOnly       = kernel.NewPublicError(kernel.ErrForbidden, "Only the owner can do this.")
 	ErrReadOnly        = kernel.NewPublicError(kernel.ErrForbidden, "Guests can only view this dashboard.")
 )
+
+// Errors of API tokens.
+var (
+	ErrTokenNotFound = kernel.NewPublicError(kernel.ErrNotFound, "The token does not exist.")
+	ErrTooManyTokens = kernel.NewPublicError(kernel.ErrInvalid, "There are already 50 tokens.")
+	ErrTokenScope    = kernel.NewPublicError(kernel.ErrForbidden, "The token is not allowed to do this.")
+)

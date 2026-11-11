@@ -190,6 +190,12 @@ func NewAuthorizer(scope GuestScope) Authorizer { return &authorizer{scope: scop
 // Authorize implements Authorizer: the owner may do everything, guests what
 // domain.GuestMayAccess allows.
 func (uc *authorizer) Authorize(ctx context.Context, p kernel.Principal, method, path string) error {
+	if p.IsToken() {
+		if !domain.TokenMayAccess(p.Scopes, method, path) {
+			return domain.ErrTokenScope
+		}
+		return nil
+	}
 	if !p.IsGuest() {
 		return nil
 	}
