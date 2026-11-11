@@ -674,6 +674,22 @@ export const en = {
   'system.up_to_date': 'You are running the latest release.',
   'settings.section.about': 'About',
   'app.demo_banner': 'Demo: try everything — changes are reset regularly, integrations show sample data.',
+  'common.copy': 'Copy',
+  'common.copied': 'Copied ✓',
+  'common.why_extra_step': 'Why is this an extra step?',
+  'wireguard.setup_snippet': 'Set up the export on the host',
+  'wireguard.stack_dir': 'trisse-home directory on the host',
+  'wireguard.container': 'WireGuard container',
+  'wireguard.container_host': 'empty: wg runs on the host',
+  'wireguard.snippet_invalid': 'Use an absolute path and a plain container name.',
+  'services.wol_setup': 'Enable Wake-on-LAN on the server',
+  'services.wol_how': 'How trisse-home runs',
+  'services.wol_relay': 'Docker Compose (relay container)',
+  'services.wol_host_network': 'Binary or host network (no relay)',
+  'services.wol_broadcast': 'Broadcast address (optional)',
+  'services.wol_broadcast_invalid': 'Use the form 192.168.178.255:9.',
+  'services.wol_docker_actions': 'Docker actions are enabled as well',
+  'services.wol_snippet_hint': 'Add these lines to .env and run docker compose up -d.',
 } as const;
 
 /** Every message key. */
