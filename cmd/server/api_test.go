@@ -71,6 +71,11 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /containers/web/logs", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "started\nlistening on :80\n")
 	})
+	mux.HandleFunc("GET /abfall.ics", func(w http.ResponseWriter, _ *http.Request) {
+		tomorrow := time.Now().AddDate(0, 0, 1).Format("20060102")
+		_, _ = io.WriteString(w, "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:w1\r\nSUMMARY:Biotonne\r\nDTSTART;VALUE=DATE:"+tomorrow+
+			"\r\nRRULE:FREQ=WEEKLY;INTERVAL=2\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")
+	})
 	mux.HandleFunc("GET /status.php", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"installed":true,"maintenance":false,"versionstring":"30.0.2"}`)
 	})
@@ -239,8 +244,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 21 {
-		t.Fatalf("expected 21 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 22 {
+		t.Fatalf("expected 22 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -438,6 +443,15 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodGet, "/api/docker/containers/web/logs", nil, http.StatusOK, &logs)
 	if len(logs.Lines) != 2 || logs.Lines[1] != "listening on :80" {
 		t.Fatalf("docker logs: %v", logs)
+	}
+
+	// --- waste: ICS subscription with a recurring rule ---
+	c.do(http.MethodGet, "/api/waste/upcoming", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/waste/settings", obj{"url": up.URL + "/abfall.ics", "rules": []obj{}}, http.StatusOK, nil)
+	var waste struct{ Types []obj }
+	c.json(http.MethodGet, "/api/waste/upcoming", nil, http.StatusOK, &waste)
+	if len(waste.Types) != 1 || waste.Types[0]["daysUntil"] != float64(1) || waste.Types[0]["icon"] != "🍂" || len(waste.Types[0]["dates"].([]any)) != 3 {
+		t.Fatalf("waste: %+v", waste)
 	}
 
 	// --- fritzbox: not configured until saved ---

@@ -6,6 +6,7 @@
 import { AdGuardApi, AdGuardUseCases } from '../features/adguard';
 import { FritzBoxApi, FritzBoxUseCases } from '../features/fritzbox';
 import { NextcloudApi, NextcloudUseCases } from '../features/nextcloud';
+import { WasteApi, WasteUseCases } from '../features/waste';
 import { WireGuardApi, WireGuardUseCases } from '../features/wireguard';
 import { AppearanceApi, AppearanceUseCases } from '../features/appearance';
 import { AuthApi, AuthUseCases } from '../features/auth';
@@ -46,6 +47,7 @@ export interface Container {
   nextcloud: NextcloudUseCases;
   fritzbox: FritzBoxUseCases;
   wireguard: WireGuardUseCases;
+  waste: WasteUseCases;
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
   backup: BackupUseCases;
@@ -76,6 +78,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     nextcloud: new NextcloudUseCases(new NextcloudApi(http)),
     fritzbox: new FritzBoxUseCases(new FritzBoxApi(http)),
     wireguard: new WireGuardUseCases(new WireGuardApi(http)),
+    waste: new WasteUseCases(new WasteApi(http)),
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),
     backup: new BackupUseCases(new BackupApi(http)),

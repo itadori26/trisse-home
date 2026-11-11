@@ -2,6 +2,7 @@
   import { AdGuardSettings } from '../features/adguard';
   import { FritzBoxSettings } from '../features/fritzbox';
   import { NextcloudSettings } from '../features/nextcloud';
+  import { WasteSettings } from '../features/waste';
   import { WireGuardSettings } from '../features/wireguard';
   import { type Appearance, AppearanceSettings } from '../features/appearance';
   import { ChangePasswordForm, SessionsList, TwoFactorSettings } from '../features/auth';
@@ -40,6 +41,7 @@
     { id: 'nextcloud', label: 'Nextcloud', module: 'nextcloud' },
     { id: 'fritzbox', label: 'FRITZ!Box', module: 'fritzbox' },
     { id: 'wireguard', label: 'WireGuard', module: 'wireguard' },
+    { id: 'waste', label: 'Waste', module: 'waste' },
     { id: 'notifications', label: 'Notifications', module: 'notifications' },
     { id: 'backups', label: 'Backups', module: 'backup' },
     { id: 'backupmonitor', label: 'Backup monitoring', module: 'backupmonitor' },
@@ -70,6 +72,8 @@
     <FoldersManager bookmarks={container.bookmarks} />
   {:else if current === 'calendar'}
     <CalendarSettings calendar={container.calendar} />
+  {:else if current === 'waste'}
+    <WasteSettings waste={container.waste} />
   {:else if current === 'wireguard'}
     <WireGuardSettings wireguard={container.wireguard} />
   {:else if current === 'fritzbox'}

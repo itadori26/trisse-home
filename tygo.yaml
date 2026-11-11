@@ -100,3 +100,8 @@ packages:
   - path: "trisse-home/internal/modules/wireguard/adapter/controller"
     output_path: "web/src/shared/api-client/generated/wireguard-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/waste/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/waste.ts"
+  - path: "trisse-home/internal/modules/waste/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/waste-requests.ts"
+    include_files: ["dto.go"]

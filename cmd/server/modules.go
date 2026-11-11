@@ -26,6 +26,7 @@ import (
 	"trisse-home/internal/modules/services"
 	"trisse-home/internal/modules/system"
 	"trisse-home/internal/modules/todos"
+	"trisse-home/internal/modules/waste"
 	"trisse-home/internal/modules/weather"
 	"trisse-home/internal/modules/wireguard"
 	"trisse-home/internal/platform/clock"
@@ -102,6 +103,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, secrets *cryp
 		}},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, client, clk) }},
+		{"waste", func() modules.Module { return waste.New(db, client, clk, time.Local) }},
 		{"wireguard", func() modules.Module { return wireguard.New(db, cfg.WireGuardDir, clk) }},
 		{"fritzbox", func() modules.Module { return fritzbox.New(db, secrets, client, clk, time.Local) }},
 		{"backupmonitor", func() modules.Module {

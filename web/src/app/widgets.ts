@@ -7,6 +7,7 @@ import type { Component } from 'svelte';
 import { AdGuardWidget } from '../features/adguard';
 import { FritzBoxWidget } from '../features/fritzbox';
 import { NextcloudWidget } from '../features/nextcloud';
+import { WasteWidget } from '../features/waste';
 import { WireGuardWidget } from '../features/wireguard';
 import { BackupStatusWidget } from '../features/backupmonitor';
 import { BookmarksWidget, BookmarksWidgetSettings } from '../features/bookmarks';
@@ -196,6 +197,15 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 4, h: 3 },
     },
     view: renderer(WireGuardWidget, (_config, c) => ({ wireguard: c.wireguard })),
+  },
+  {
+    type: {
+      kind: 'waste',
+      title: 'Waste collection',
+      description: 'Next collection dates from your municipality’s ICS calendar.',
+      defaultSize: { w: 3, h: 3 },
+    },
+    view: renderer(WasteWidget, (_config, c) => ({ waste: c.waste })),
   },
   {
     type: {

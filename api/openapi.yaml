@@ -773,6 +773,23 @@ paths:
       summary: WAN state, external IP, throughput (bytes/s via UPnP), link speed and recent calls (via TR-064); refreshed every 15 s, calls every 2 min
       responses: { "200": { description: OK }, "404": { description: Not configured } }
 
+  # ---------------------------------------------------------------- waste
+  /api/waste/settings:
+    get:
+      tags: [waste]
+      summary: ICS subscription and custom rules
+      responses: { "200": { description: OK } }
+    put:
+      tags: [waste]
+      summary: Load (test) and save the ICS subscription (https, http or webcal) and rules
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, rules: { type: array, maxItems: 20, items: { type: object, properties: { match: { type: string }, label: { type: string }, color: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }, icon: { type: string } } } } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error or calendar not loadable } }
+  /api/waste/upcoming:
+    get:
+      tags: [waste]
+      summary: Next three dates per waste type, ordered by the next collection (refreshed every 6 hours)
+      responses: { "200": { description: OK }, "404": { description: Not configured } }
+
   # ---------------------------------------------------------------- wireguard
   /api/wireguard/peers:
     get:
