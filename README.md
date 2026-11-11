@@ -31,6 +31,7 @@ Architecture.
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
+| **transit**    | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org)) |
 | **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
 | **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
@@ -211,6 +212,7 @@ service tiles are configured in the web interface.
 | `HOST_PROC`         | `/proc` (`/host/proc` in compose) | Host procfs for the system module.                                            |
 | `HOST_SYS`          | `/sys` (`/host/sys` in compose)   | Host sysfs (temperatures).                                                    |
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
+| `TRANSIT_API_URL`   | `https://api.transitous.org`      | MOTIS API for departures; point it to your own MOTIS instance if you like.    |
 | `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
 | `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |
 | `WOL_BROADCAST`     | `255.255.255.255:9`               | Broadcast address the magic packet is sent to (by the relay or directly).     |
@@ -258,8 +260,10 @@ ntfy server. This is intended behaviour, so static analysis reports these as
 configure them (session + CSRF protection, IP allowlist). Weather data comes
 from Open-Meteo, weather warnings and the rain radar from the open data
 services of the Deutscher Wetterdienst (only for locations in Germany; the
-radar image is proxied, so the browser never contacts DWD). Nothing else
-leaves the server.
+radar image is proxied, so the browser never contacts DWD) and departures
+from the community-run [Transitous](https://transitous.org) API (cached one
+minute per stop; please respect its fair-use policy or run your own MOTIS).
+Nothing else leaves the server.
 
 The FRITZ!Box login uses HTTP digest authentication, which TR-064 defines with
 MD5. Static analysis flags this as weak password hashing; the password is not

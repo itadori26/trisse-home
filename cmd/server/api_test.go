@@ -98,6 +98,14 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 			w.WriteHeader(http.StatusNoContent)
 		}
 	})
+	mux.HandleFunc("GET /api/v1/geocode", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `[{"type":"STOP","id":"de:03403:16750","name":"Oldenburg Hbf","lat":53.14,"lon":8.22}]`)
+	})
+	mux.HandleFunc("GET /api/v1/stoptimes", func(w http.ResponseWriter, _ *http.Request) {
+		planned := time.Now().Add(5 * time.Minute).UTC().Format(time.RFC3339)
+		expected := time.Now().Add(8 * time.Minute).UTC().Format(time.RFC3339)
+		_, _ = io.WriteString(w, `{"stopTimes":[{"place":{"departure":"`+expected+`","scheduledDeparture":"`+planned+`","track":"A"},"mode":"BUS","realTime":true,"headsign":"Bümmerstede","routeShortName":"304"}]}`)
+	})
 	mux.HandleFunc("GET /abfall.ics", func(w http.ResponseWriter, _ *http.Request) {
 		tomorrow := time.Now().AddDate(0, 0, 1).Format("20060102")
 		_, _ = io.WriteString(w, "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:w1\r\nSUMMARY:Biotonne\r\nDTSTART;VALUE=DATE:"+tomorrow+
@@ -223,7 +231,7 @@ func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) 
 		AllowedCIDRs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}, SessionTTL: time.Hour,
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
 		DockerActions: true, DockerActionsContainers: []string{"web"}, DockerActionsProxyURL: upstream,
-		WolBroadcast: wolTarget.LocalAddr().String(),
+		WolBroadcast: wolTarget.LocalAddr().String(), TransitAPIURL: upstream,
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
 		BackupDir:       filepath.Join(t.TempDir(), "backups"), BackupInterval: 24 * time.Hour, BackupRetention: 3,
@@ -271,8 +279,8 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	var info obj
 	c.json(http.MethodGet, "/api/modules", nil, http.StatusOK, &info)
-	if n := len(info["modules"].([]any)); n != 23 {
-		t.Fatalf("expected 23 modules, got %d: %v", n, info)
+	if n := len(info["modules"].([]any)); n != 24 {
+		t.Fatalf("expected 24 modules, got %d: %v", n, info)
 	}
 
 	// --- backups ---
@@ -479,6 +487,15 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("warnings outside Germany: %v", noWarnings)
 	}
 	c.do(http.MethodGet, "/api/weather/radar?lat=48.86&lon=2.35", nil, http.StatusUnprocessableEntity)
+
+	// --- transit departures ---
+	var stops []obj
+	c.json(http.MethodGet, "/api/transit/stops?q=Oldenburg", nil, http.StatusOK, &stops)
+	var deps []obj
+	c.json(http.MethodGet, "/api/transit/departures?stop="+stops[0]["id"].(string)+"&n=5", nil, http.StatusOK, &deps)
+	if len(deps) != 1 || deps[0]["delayMinutes"] != float64(3) {
+		t.Fatalf("transit: %v", deps)
+	}
 
 	// --- waste: ICS subscription with a recurring rule ---
 	c.do(http.MethodGet, "/api/waste/upcoming", nil, http.StatusNotFound)

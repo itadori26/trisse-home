@@ -8,6 +8,7 @@ import { AdGuardWidget } from '../features/adguard';
 import { FritzBoxWidget } from '../features/fritzbox';
 import { NextcloudWidget } from '../features/nextcloud';
 import { ShoppingWidget } from '../features/shopping';
+import { TransitWidget, TransitWidgetSettings } from '../features/transit';
 import { WasteWidget } from '../features/waste';
 import { WireGuardWidget } from '../features/wireguard';
 import { BackupStatusWidget } from '../features/backupmonitor';
@@ -230,6 +231,16 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 3, h: 4 },
     },
     view: renderer(ShoppingWidget, (_config, c) => ({ shopping: c.shopping })),
+  },
+  {
+    type: {
+      kind: 'transit',
+      title: 'Departures',
+      description: 'Next public transport departures of a stop with real-time delays.',
+      defaultSize: { w: 4, h: 4 },
+    },
+    view: renderer(TransitWidget, (config, c) => ({ config, transit: c.transit })),
+    settings: renderer(TransitWidgetSettings, (config, c) => ({ config, transit: c.transit })),
   },
   {
     type: {

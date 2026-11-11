@@ -42,6 +42,8 @@ type Config struct {
 	DockerActionsProxyURL   string
 	// WolRelay is host:port of the Wake-on-LAN relay; empty sends
 	// WolBroadcast directly (host network / no Docker).
+	// TransitAPIURL is the MOTIS API for departures (default Transitous).
+	TransitAPIURL string
 	// WireGuardDir contains the export of scripts/wireguard-export.sh.
 	WireGuardDir string
 	WolRelay     string
@@ -96,6 +98,7 @@ func Load(getenv func(string) string) (Config, error) {
 		DockerActionsProxyURL:   l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
 		WolRelay:                l.str("WOL_RELAY", ""),
 		WireGuardDir:            l.str("WIREGUARD_DIR", ""),
+		TransitAPIURL:           l.str("TRANSIT_API_URL", "https://api.transitous.org"),
 		WolBroadcast:            l.str("WOL_BROADCAST", "255.255.255.255:9"),
 		HostProcPath:            l.str("HOST_PROC", "/proc"),
 		HostSysPath:             l.str("HOST_SYS", "/sys"),

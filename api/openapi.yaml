@@ -787,6 +787,22 @@ paths:
       summary: WAN state, external IP, throughput (bytes/s via UPnP), link speed and recent calls (via TR-064); refreshed every 15 s, calls every 2 min
       responses: { "200": { description: OK }, "404": { description: Not configured } }
 
+  # ---------------------------------------------------------------- transit
+  /api/transit/stops:
+    get:
+      tags: [transit]
+      summary: Search stops (MOTIS geocoding, default Transitous)
+      parameters: [{ name: q, in: query, required: true, schema: { type: string, minLength: 2 } }]
+      responses: { "200": { description: OK }, "503": { description: Provider not reachable } }
+  /api/transit/departures:
+    get:
+      tags: [transit]
+      summary: Next departures of a stop with real-time delay; cached one minute per stop
+      parameters:
+        - { name: stop, in: query, required: true, schema: { type: string } }
+        - { name: n, in: query, schema: { type: integer, minimum: 1, maximum: 20, default: 1 } }
+      responses: { "200": { description: OK }, "422": { description: Invalid stop }, "503": { description: Provider not reachable } }
+
   # ---------------------------------------------------------------- shopping
   /api/shopping/settings:
     get:
