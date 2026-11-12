@@ -20,6 +20,7 @@ type Module struct {
 	handlers  *controller.Handlers
 	seed      usecase.SeedSampleData
 	reminders usecase.SendDueReminders
+	list      usecase.ListTodos
 }
 
 // reminderInterval is how often due reminders are checked (#68).
@@ -40,9 +41,10 @@ func (m *Module) SeedSampleData(ctx context.Context) error { return m.seed.Execu
 // notifications module, kind "reminder") in the server's time zone.
 func New(db *sql.DB, clock kernel.Clock, ids kernel.IDGenerator, alerts kernel.AlertSink) *Module {
 	d := usecase.Deps{Repo: gateway.NewRepository(db), Clock: clock, IDs: ids, Location: time.Local, Alerts: alerts}
+	list := usecase.NewListTodos(d)
 	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, seed: usecase.NewSeedSampleData(d),
-		reminders: usecase.NewSendDueReminders(d), handlers: controller.NewHandlers(controller.UseCases{
-			List: usecase.NewListTodos(d), Create: usecase.NewCreateTodo(d), Update: usecase.NewUpdateTodo(d),
+		reminders: usecase.NewSendDueReminders(d), list: list, handlers: controller.NewHandlers(controller.UseCases{
+			List: list, Create: usecase.NewCreateTodo(d), Update: usecase.NewUpdateTodo(d),
 			Delete: usecase.NewDeleteTodo(d), ClearCompleted: usecase.NewClearCompleted(d),
 		})}
 }
@@ -64,4 +66,10 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("POST /api/todos/clear-completed", h.ClearCompleted)
 	r.Protected("PUT /api/todos/{id}", h.Update)
 	r.Protected("DELETE /api/todos/{id}", h.Delete)
+}
+
+// OpenTodos returns the open to-dos (read access for the briefing, wired
+// in the composition root – ADR 0016).
+func (m *Module) OpenTodos(ctx context.Context) ([]usecase.TodoView, error) {
+	return m.list.Execute(ctx, false)
 }

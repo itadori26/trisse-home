@@ -48,6 +48,7 @@ Not sure whether trisse-home is the right fit? See the
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering); full-text search with highlighting (also in the quick search), `[[wiki links]]` with backlinks, version history with diff and restore |
 | **todos**      | To-do list with due dates and overdue highlighting, recurring to-dos (daily, weekly on weekdays, monthly, N days after completion) and reminders via the notification channels |
 | **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
+| **briefing**   | Daily briefing widget: weather warnings, failures since yesterday evening, offline services, due to-dos, appointments and waste collection at a glance (sections orderable, each optional); optional daily push at a set time ([ADR 0016](docs/adr/0016-cross-module-read-models.md)) |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |

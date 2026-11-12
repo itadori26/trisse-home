@@ -39,6 +39,7 @@ tags:
   - name: docker
   - name: adguard
   - name: calendar
+  - name: briefing
   - name: platform
 
 paths:
@@ -1005,6 +1006,33 @@ paths:
       tags: [speedtest]
       summary: Latest result and history in Mbit/s and ms (?hours=24|168, default 168; cached, refreshed every 10 minutes)
       responses: { "200": { description: "{latest, history, updatedAt, error}" }, "404": { description: Not configured } }
+
+  # ---------------------------------------------------------------- briefing
+  /api/briefing:
+    get:
+      tags: [briefing]
+      summary: "Today's briefing (#52): enabled, non-empty sections in the configured order – weather warnings, incidents since 18:00 yesterday, offline services, due/overdue to-dos, appointments and waste collection until the end of tomorrow"
+      responses:
+        "200":
+          description: "{sections: [{kind, items: [{text, detail, at, severity}], more}], unavailable: [kind], at}"
+  /api/briefing/settings:
+    get:
+      tags: [briefing]
+      summary: Section layout, daily push schedule and weather location; available lists sections whose source module is enabled
+      responses: { "200": { description: "{layout: [{kind, enabled}], pushOn, pushAt, pushDays, skipEmpty, lat, lon, available}" } }
+    put:
+      tags: [briefing]
+      summary: Save layout, push schedule (off by default; HH:MM, weekdays 0–6, empty = every day) and location
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/briefing/send:
+    post:
+      tags: [briefing]
+      summary: Push the briefing now through the notification channels (#70)
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Sent }, "503": { description: Notifications are disabled } }
 
   # ---------------------------------------------------------------- timeline
   /api/timeline:

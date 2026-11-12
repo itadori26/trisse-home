@@ -8,6 +8,7 @@ import (
 	"trisse-home/internal/modules"
 	"trisse-home/internal/modules/weather/adapter/controller"
 	"trisse-home/internal/modules/weather/adapter/gateway"
+	"trisse-home/internal/modules/weather/domain"
 	"trisse-home/internal/modules/weather/usecase"
 	"trisse-home/internal/shared/kernel"
 )
@@ -21,6 +22,7 @@ type Module struct {
 	uc       usecase.Weather
 	handlers *controller.Handlers
 	alerts   *controller.AlertHandlers
+	warnings usecase.Alerts
 }
 
 // New builds the weather module. client is used for Open-Meteo requests.
@@ -28,7 +30,8 @@ func New(client *http.Client, clock kernel.Clock) *Module {
 	provider := gateway.NewOpenMeteo(client, gateway.DefaultForecastURL, gateway.DefaultGeocodingURL, "en")
 	uc := usecase.NewWeather(provider, gateway.NewMemoryCache(), clock)
 	dwd := gateway.NewDWD(client, gateway.DefaultDWDWFS, gateway.DefaultDWDWMS)
-	return &Module{uc: uc, handlers: controller.NewHandlers(uc), alerts: controller.NewAlertHandlers(usecase.NewAlerts(dwd, dwd, clock))}
+	alerts := usecase.NewAlerts(dwd, dwd, clock)
+	return &Module{uc: uc, handlers: controller.NewHandlers(uc), alerts: controller.NewAlertHandlers(alerts), warnings: alerts}
 }
 
 // Name implements modules.Module.
@@ -50,4 +53,10 @@ func (m *Module) Jobs() []modules.Job {
 	return []modules.Job{{Name: "weather.refresh", Interval: refreshInterval, Run: func(ctx context.Context) error {
 		return m.uc.RefreshAll(ctx)
 	}}}
+}
+
+// Warnings returns the active weather warnings for a location (read
+// access for the briefing, ADR 0016).
+func (m *Module) Warnings(ctx context.Context, lat, lon float64) ([]domain.Warning, error) {
+	return m.warnings.Warnings(ctx, lat, lon)
 }

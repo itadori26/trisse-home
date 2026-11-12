@@ -118,6 +118,7 @@
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
       class="cell"
+      data-widget-id={it.id}
       class:active={preview && gesture?.id === it.id}
       tabindex={editing ? 0 : undefined}
       role={editing ? 'group' : undefined}

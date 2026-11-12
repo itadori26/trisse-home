@@ -80,6 +80,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Bitte zuerst das Abrufen von Titeln und Icons in den Lesezeichen-Einstellungen aktivieren.',
   // Enable the link check in the bookmark settings first.
   srv_f8405f015011b4d0: 'Bitte zuerst die Linkprüfung in den Lesezeichen-Einstellungen aktivieren.',
+  // Enter a time like 07:00.
+  srv_45cc329a438ca49f: 'Bitte eine Uhrzeit wie 07:00 eingeben.',
   // Every widget may appear only once.
   srv_cd8384030060ee99: 'Jedes Widget darf nur einmal vorkommen.',
   // Each registry may only be listed once.
@@ -112,6 +114,9 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_4cd4b235493d7de0: 'Bezeichnungen dürfen höchstens 40 Zeichen lang sein.',
   // Latitude and longitude are required.
   srv_9d350adc128ef832: 'Breiten- und Längengrad sind erforderlich.',
+  // Latitude must be between -90 and 90, longitude between -180 and 180.
+  srv_7ef0897648a1c97c:
+    'Der Breitengrad muss zwischen -90 und 90 liegen, der Längengrad zwischen -180 und 180.',
   // Login failed: {detail}
   srv_53c1eb17a03496b2: 'Anmeldung fehlgeschlagen: {detail}',
   // Missing or invalid CSRF token.
@@ -136,6 +141,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_7f26dde75768b4ec: 'Es ist kein externes Backup-Ziel eingerichtet.',
   // No waste calendar is configured yet.
   srv_d1f1feb231209e5a: 'Es ist noch kein Abfallkalender eingerichtet.',
+  // Notifications are not enabled.
+  srv_777fe9a31de38b1d: 'Benachrichtigungen sind nicht aktiviert.',
   // Only the owner can do this.
   srv_67f0ba90e3a4e5b4: 'Das kann nur der Besitzer.',
   // Only the owner can restore backups in the browser.
@@ -524,6 +531,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_ed3a053401c9b56a: 'Benutzername und Passwort sind erforderlich.',
   // Wake-on-LAN is disabled in the demo.
   srv_eceee41d79cdfdb2: 'Wake-on-LAN ist in der Demo deaktiviert.',
+  // Weekdays are 0 (Sunday) to 6.
+  srv_40623194d868a5f0: 'Wochentage sind 0 (Sonntag) bis 6.',
   // You are already subscribed to this feed.
   srv_d6a88cffb18a9963: 'Du hast diesen Feed bereits abonniert.',
   // Your session has expired. Please log in again.
