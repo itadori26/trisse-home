@@ -1632,7 +1632,20 @@ components:
       properties:
         title: { type: string, maxLength: 300 }
         due: { type: string, description: YYYY-MM-DD or empty }
-        done: { type: boolean }
+        done: { type: boolean, description: "Completing a recurring to-do creates its next occurrence" }
+        repeat: { $ref: "#/components/schemas/TodoRepeat", description: Omit to keep the stored rule }
+        reminder: { $ref: "#/components/schemas/TodoReminder", description: Omit to keep the stored reminder }
+    TodoRepeat:
+      type: object
+      properties:
+        kind: { type: string, enum: ["", daily, weekly, monthly, after], description: '"" = no repeat; "after" = N days after completion' }
+        every: { type: integer, minimum: 1, maximum: 365 }
+        days: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, description: Weekdays of weekly rules (0 = Sunday) }
+    TodoReminder:
+      type: object
+      properties:
+        at: { type: string, example: "08:00", description: 'HH:MM; "" = no reminder (needs a due date). Sent once as a "reminder" notification.' }
+        daysBefore: { type: integer, minimum: 0, maximum: 30 }
     Todo:
       type: object
       properties:
@@ -1643,6 +1656,8 @@ components:
         overdue: { type: boolean }
         position: { type: integer }
         completedAt: { type: string }
+        repeat: { $ref: "#/components/schemas/TodoRepeat" }
+        reminder: { $ref: "#/components/schemas/TodoReminder" }
     Feed:
       type: object
       properties:

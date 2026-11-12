@@ -11,6 +11,30 @@ export interface TodoInputDTO {
   title: string;
   due: string;
   done: boolean;
+  /**
+   * Repeat and Reminder are optional; when omitted the stored values are
+   * kept (#68).
+   */
+  repeat?: RepeatDTO;
+  reminder?: ReminderDTO;
+}
+/**
+ * RepeatDTO is a recurrence: kind "" (none), "daily", "weekly", "monthly"
+ * or "after" (days after completion); days are weekdays (0 = Sunday) of
+ * weekly rules.
+ */
+export interface RepeatDTO {
+  kind: string;
+  every: number /* int */;
+  days: number /* int */[];
+}
+/**
+ * ReminderDTO is a reminder at a time ("HH:MM", "" = none) on the due date
+ * or some days before.
+ */
+export interface ReminderDTO {
+  at: string;
+  daysBefore: number /* int */;
 }
 /**
  * ClearedDTO is returned by POST /api/todos/clear-completed.

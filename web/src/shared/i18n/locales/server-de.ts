@@ -16,6 +16,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_cf47637ff80f03dc: 'Eine Notiz braucht einen Titel oder etwas Text.',
   // A password or access token is required for new registries.
   srv_865d0fdde8c133ca: 'Für neue Registries ist ein Passwort oder Zugriffstoken erforderlich.',
+  // A reminder needs a due date.
+  srv_fc8a2589829c3428: 'Eine Erinnerung braucht ein Fälligkeitsdatum.',
   // A shortcut with this keyword already exists.
   srv_76a5625367cbe997: 'Es gibt bereits ein Kürzel mit diesem Schlüsselwort.',
   // Actions are not enabled for this container (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).
@@ -164,6 +166,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_e9295c1002fdd2ba: 'Bitte gültige Empfängeradressen eingeben, durch Kommas getrennt.',
   // Quiet hours need a start and an end such as 22:00 and 07:00.
   srv_04eab3a4b4f8b837: 'Ruhezeiten brauchen einen Beginn und ein Ende, z. B. 22:00 und 07:00.',
+  // Reminders need a time like 08:00 and at most 30 days before the due date.
+  srv_33507329e3cf1562: 'Erinnerungen brauchen eine Uhrzeit wie 08:00 und höchstens 30 Tage vor dem Fälligkeitsdatum.',
+  // Repeat every 1–365 days, weeks or months; weekly repeats need at least one weekday.
+  srv_5f173b47eee5e70d: 'Wiederholung alle 1–365 Tage, Wochen oder Monate; wöchentliche Wiederholungen brauchen mindestens einen Wochentag.',
   // Rules need weekdays 0–6, times like 07:30 and networks like 192.168.178.0/24.
   srv_560f31f8940f8cfc: 'Regeln brauchen Wochentage 0–6, Uhrzeiten wie 07:30 und Netze wie 192.168.178.0/24.',
   // Session not found.
