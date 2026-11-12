@@ -3,3 +3,4 @@ export { DockerApi } from './adapter/api/dockerApi';
 export { DockerUseCases } from './usecase/dockerUseCases';
 export { default as DockerWidget } from './ui/DockerWidget.svelte';
 export { default as DockerWidgetSettings } from './ui/DockerWidgetSettings.svelte';
+export { default as ImageUpdateSettings } from './ui/ImageUpdateSettings.svelte';

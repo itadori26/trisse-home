@@ -62,3 +62,22 @@ func TestNtfySender(t *testing.T) {
 		t.Fatal("expected error for 404")
 	}
 }
+
+func TestChannelSecretIsEncrypted(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.Open(t, "notifications", Migrations())
+	repo := NewChannelRepository(db, prefixCipher{})
+	c := domain.Channel{ID: "1", Kind: domain.ChannelGotify, Name: "G", Enabled: true, URL: "https://g.example", Secret: "app-token", MinSeverity: domain.SeverityWarning, Types: []string{"service"}}
+	if err := repo.Save(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	var config, secret string
+	_ = db.QueryRowContext(ctx, `SELECT config, secret_enc FROM notification_channels`).Scan(&config, &secret)
+	if strings.Contains(config, "app-token") || secret == "" || secret == "app-token" {
+		t.Fatalf("secret stored in plain text: %s / %s", config, secret)
+	}
+	list, err := repo.List(ctx)
+	if err != nil || len(list) != 1 || list[0].Secret != "app-token" || list[0].URL != c.URL || list[0].Types[0] != "service" {
+		t.Fatalf("%+v %v", list, err)
+	}
+}

@@ -24,6 +24,8 @@ services:
       WOL_RELAY: ${WOL_RELAY:-host.docker.internal:9009}
       # WireGuard widget: export of scripts/wireguard-export.sh (read-only).
       WIREGUARD_DIR: /wireguard
+      # Disk health widget: export of scripts/smart-export.sh (read-only).
+      DISKHEALTH_DIR: /smart
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -36,6 +38,7 @@ services:
       - /sys:/host/sys:ro
       - /:/host/rootfs:ro
       - ./wireguard:/wireguard:ro
+      - ./smart:/smart:ro
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
@@ -50,6 +53,9 @@ services:
     restart: unless-stopped
     environment:
       CONTAINERS: 1
+      # Image update hints (#107): GET /images/{id}/json for repo digests
+      # and labels; still read-only because POST is 0.
+      IMAGES: 1
       POST: 0
       INFO: 0
       IMAGES: 0

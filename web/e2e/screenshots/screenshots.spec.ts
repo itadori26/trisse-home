@@ -42,6 +42,13 @@ for (const v of variants) {
       await expect(page.getByText(/CPU \(\d+ cores\)/)).toBeVisible({ timeout: 15_000 });
       await settle(page);
       await page.screenshot({ path: `${outDir}/server-${v.name}.png`, fullPage: true });
+      // Widget picker (#104).
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await page.getByRole('button', { name: '+ Add widget' }).click();
+      await expect(page.getByRole('searchbox', { name: 'Search widgets…' })).toBeFocused();
+      await page.screenshot({ path: `${outDir}/picker-${v.name}.png` });
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Done', exact: true }).click();
     }
   });
 }

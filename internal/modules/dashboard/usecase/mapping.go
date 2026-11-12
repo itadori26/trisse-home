@@ -12,7 +12,11 @@ func toWidgetResponse(w domain.Widget) WidgetResponse {
 }
 
 func toTabResponse(t domain.Tab, widgets []domain.Widget) TabResponse {
-	res := TabResponse{ID: t.ID(), Name: t.Name(), Position: t.Position(), Background: t.Background(), Widgets: []WidgetResponse{}}
+	res := TabResponse{ID: t.ID(), Name: t.Name(), Position: t.Position(), Background: t.Background(), Widgets: []WidgetResponse{}, Rules: []RuleView{}}
+	for _, r := range t.Rules() {
+		from, to := r.Range()
+		res.Rules = append(res.Rules, RuleView{Days: r.Days(), From: from, To: to, Networks: r.Networks()})
+	}
 	for _, w := range widgets {
 		if w.TabID() == t.ID() {
 			res.Widgets = append(res.Widgets, toWidgetResponse(w))

@@ -14,6 +14,8 @@ type LatencyPoint struct {
 	At        time.Time
 	LatencyMs float64
 	Online    bool
+	// Maintenance marks checks during a maintenance window (#81).
+	Maintenance bool
 }
 
 // DownsampleLatency averages consecutive points into at most maxPoints

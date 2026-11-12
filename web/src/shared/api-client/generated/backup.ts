@@ -16,3 +16,17 @@ export interface FileDTO {
   size: number /* int64 */;
   createdAt: string /* RFC 3339 */;
 }
+
+//////////
+// source: remote.go
+
+/**
+ * RemoteSettingsDTO is the off-site target; the password is never returned.
+ */
+export interface RemoteSettingsDTO {
+  configured: boolean;
+  url: string;
+  username: string;
+  hasPassword: boolean;
+  retention: number /* int */;
+}

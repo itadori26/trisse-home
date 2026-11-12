@@ -12,6 +12,16 @@ func env(m map[string]string) func(string) string {
 	return func(k string) string { return m[k] }
 }
 
+func TestMetricsNeedAToken(t *testing.T) {
+	if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "METRICS_ENABLED": "true", "METRICS_TOKEN": "short"})); err == nil {
+		t.Fatal("short token accepted")
+	}
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "METRICS_ENABLED": "true", "METRICS_TOKEN": strings.Repeat("a", 32)}))
+	if err != nil || !cfg.MetricsEnabled {
+		t.Fatalf("%v", err)
+	}
+}
+
 func TestLoadDefaults(t *testing.T) {
 	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey}))
 	if err != nil {

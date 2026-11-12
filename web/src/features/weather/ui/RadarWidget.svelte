@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { t } from '../../../shared/i18n';
   import { parseWeatherConfig, radarKey } from '../domain/weather';
   import type { WeatherUseCases } from '../usecase/weatherUseCases';
@@ -9,17 +10,18 @@
     config: Record<string, unknown>;
   }
   let { weather, config }: Props = $props();
+  const poll = usePolling();
 
   const cfg = $derived(parseWeatherConfig(config));
   let key = $state(radarKey(new Date()));
   let failed = $state(false);
 
   $effect(() => {
-    const timer = setInterval(() => {
+    // A new key reloads the radar image; paused while the page is hidden.
+    return poll(async () => {
       key = radarKey(new Date());
       failed = false;
     }, 60_000);
-    return () => clearInterval(timer);
   });
 </script>
 

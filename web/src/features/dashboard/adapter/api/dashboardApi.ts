@@ -12,9 +12,10 @@ import type {
   TabBackgroundDTO,
   TabNameDTO,
   TabOrderDTO,
+  TabRulesDTO,
   WidgetConfigDTO,
 } from '../../../../shared/api-client/generated/dashboard-requests';
-import type { Tab, TabTemplate, Widget, WidgetConfig } from '../../domain/dashboard';
+import type { Dashboard, Tab, TabRule, TabTemplate, Widget, WidgetConfig } from '../../domain/dashboard';
 import type { LayoutItem, Rect } from '../../domain/layout';
 import type { DashboardGateway } from '../../usecase/ports';
 
@@ -34,6 +35,12 @@ const toTab = (dto: TabDTO): Tab => ({
   name: dto.name,
   position: dto.position,
   background: dto.background ?? '',
+  rules: (dto.rules ?? []).map((r) => ({
+    days: r.days ?? [],
+    from: r.from,
+    to: r.to,
+    networks: r.networks ?? [],
+  })),
   widgets: dto.widgets.map(toWidget),
 });
 
@@ -41,9 +48,9 @@ const toTab = (dto: TabDTO): Tab => ({
 export class DashboardApi implements DashboardGateway {
   constructor(private readonly http: HttpClient) {}
 
-  async load(): Promise<Tab[]> {
+  async load(): Promise<Dashboard> {
     const dto = await this.http.get<DashboardDTO>('/api/dashboard');
-    return dto.tabs.map(toTab);
+    return { tabs: dto.tabs.map(toTab), defaultTabId: dto.defaultTabId ?? '' };
   }
 
   async createTab(name: string): Promise<Tab> {
@@ -93,6 +100,11 @@ export class DashboardApi implements DashboardGateway {
     return toTab(
       await this.http.put<TabDTO>(`/api/dashboard/tabs/${encodeURIComponent(tabId)}/background`, body),
     );
+  }
+
+  async setRules(tabId: string, rules: TabRule[]): Promise<Tab> {
+    const body: TabRulesDTO = { rules };
+    return toTab(await this.http.put<TabDTO>(`/api/dashboard/tabs/${encodeURIComponent(tabId)}/rules`, body));
   }
 
   async listTemplates(): Promise<TabTemplate[]> {

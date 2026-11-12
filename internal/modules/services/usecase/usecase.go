@@ -45,6 +45,10 @@ type Services interface {
 	History(ctx context.Context, hours int) (map[string][]LatencyPointView, error)
 	// Wake sends a Wake-on-LAN packet to the service's MAC address.
 	Wake(ctx context.Context, id string) error
+	// Uptime summarises every service over 24 h, 7, 30 and 90 days (#81).
+	Uptime(ctx context.Context) ([]UptimeView, error)
+	// Incidents lists outages, newest first; empty serviceID = all services.
+	Incidents(ctx context.Context, serviceID string, limit int) ([]domain.Incident, error)
 }
 
 // Waker sends Wake-on-LAN packets (output port).
@@ -98,12 +102,27 @@ type Deps struct {
 	Observations kernel.ObservationSink
 	Clock        kernel.Clock
 	IDs          kernel.IDGenerator
+	// Uptime keeps aggregates and incidents; nil disables them (#81).
+	Uptime UptimeStore
+	// Maintenance mutes planned downtime; may be nil.
+	Maintenance MaintenanceReader
+	// Location is the time zone of the daily aggregates.
+	Location *time.Location
 }
 
-type services struct{ d Deps }
+type services struct {
+	d      Deps
+	mu     sync.Mutex
+	tracks map[string]domain.IncidentTrack
+}
 
 // NewServices returns the services use cases.
-func NewServices(d Deps) Services { return &services{d: d} }
+func NewServices(d Deps) Services {
+	if d.Location == nil {
+		d.Location = time.UTC
+	}
+	return &services{d: d, tracks: map[string]domain.IncidentTrack{}}
+}
 
 // List implements Services.
 func (uc *services) List(ctx context.Context) ([]ServiceView, error) {
@@ -206,6 +225,9 @@ func (uc *services) CheckAll(ctx context.Context) error {
 	if err := uc.d.History.PruneBefore(ctx, uc.d.Clock.Now().Add(-domain.HistoryRetention)); err != nil {
 		return fmt.Errorf("prune history: %w", err)
 	}
+	if err := uc.pruneUptime(ctx, uc.d.Clock.Now()); err != nil {
+		return err
+	}
 	sem := make(chan struct{}, maxParallelChecks)
 	var wg sync.WaitGroup
 	for _, s := range list {
@@ -230,8 +252,11 @@ func (uc *services) check(ctx context.Context, s domain.Service) {
 		uc.d.Observations.Observe(ctx, kernel.Observation{Kind: "tls", Key: s.ID, Label: s.Name, Healthy: true, Value: days,
 			Detail: "The certificate expires on " + st.CertExpiresAt.Format("2006-01-02") + "."})
 	}
+	online := st.State == domain.StateOnline
+	maintenance := uc.d.Maintenance != nil && uc.d.Maintenance.UnderMaintenance(ctx, "service", s.ID, s.Name, now)
 	// History is best effort: a failed write must not hide the live status.
-	_ = uc.d.History.Add(ctx, domain.LatencyPoint{ServiceID: s.ID, At: now, LatencyMs: float64(st.Latency.Milliseconds()), Online: st.State == domain.StateOnline})
+	_ = uc.d.History.Add(ctx, domain.LatencyPoint{ServiceID: s.ID, At: now, LatencyMs: float64(st.Latency.Milliseconds()), Online: online, Maintenance: maintenance})
+	uc.recordUptime(ctx, s, online, st.Error, now, maintenance)
 }
 
 // History implements Services.

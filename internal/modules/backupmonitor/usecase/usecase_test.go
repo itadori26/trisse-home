@@ -58,24 +58,24 @@ func TestMonitor(t *testing.T) {
 	ids := &seq{}
 	uc := NewMonitor(Deps{Repo: &memRepo{m: map[string]domain.Source{}}, Tokens: ids, Clock: c, IDs: ids, Observations: rec})
 
-	created, err := uc.Create(ctx, SourceInput{Name: "NAS", MaxAge: 24 * time.Hour})
+	created, err := uc.Create(ctx, SourceInput{Name: "NAS", Schedule: domain.Schedule{MaxAge: 24 * time.Hour}})
 	if err != nil || created.Token == "" || created.Source.State != "waiting" {
 		t.Fatalf("create: %+v %v", created, err)
 	}
-	if err := uc.Ping(ctx, "wrong", true, ""); !errors.Is(err, domain.ErrSourceNotFound) {
+	if err := uc.Ping(ctx, "wrong", PingSuccess, ""); !errors.Is(err, domain.ErrSourceNotFound) {
 		t.Fatalf("wrong token accepted: %v", err)
 	}
-	if err := uc.Ping(ctx, created.Token, false, "disk full"); err != nil {
+	if err := uc.Ping(ctx, created.Token, PingFail, "disk full"); err != nil {
 		t.Fatal(err)
 	}
 	if len(rec.obs) != 1 || rec.obs[0].Healthy || rec.obs[0].Kind != "backup" {
 		t.Fatalf("observation %+v", rec.obs)
 	}
 	rotated, _ := uc.RotateToken(ctx, created.Source.ID)
-	if err := uc.Ping(ctx, created.Token, true, ""); !errors.Is(err, domain.ErrSourceNotFound) {
+	if err := uc.Ping(ctx, created.Token, PingSuccess, ""); !errors.Is(err, domain.ErrSourceNotFound) {
 		t.Fatal("old token still valid after rotation")
 	}
-	if err := uc.Ping(ctx, rotated.Token, true, "done"); err != nil {
+	if err := uc.Ping(ctx, rotated.Token, PingSuccess, "done"); err != nil {
 		t.Fatal(err)
 	}
 	list, _ := uc.List(ctx)

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { intlLocale, t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { type AgendaDay, groupByDay, parseCalendarConfig } from '../domain/calendar';
@@ -12,6 +13,7 @@
     config: Record<string, unknown>;
   }
   let { calendar, config }: Props = $props();
+  const poll = usePolling();
 
   const POLL_MS = 5 * 60 * 1000;
   const cfg = $derived(parseCalendarConfig(config));
@@ -38,10 +40,9 @@
         .catch((err) => {
           unconfigured = err instanceof ApiError && err.status === 404;
           error = errorMessage(err);
+          throw err;
         });
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+    return poll(load, POLL_MS);
   });
 
   const dayLabel = (d: Date) => {

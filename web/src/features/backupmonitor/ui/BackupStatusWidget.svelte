@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { ago, type BackupSource } from '../domain/source';
@@ -9,6 +10,7 @@
     backupMonitor: BackupMonitorUseCases;
   }
   let { backupMonitor }: Props = $props();
+  const poll = usePolling();
 
   const POLL_MS = 60_000;
   let sources = $state<BackupSource[]>([]);
@@ -20,10 +22,11 @@
       backupMonitor
         .list()
         .then((s) => ((sources = s), (now = new Date()), (error = '')))
-        .catch((err) => (error = errorMessage(err)));
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+        .catch((err) => {
+          error = errorMessage(err);
+          throw err;
+        });
+    return poll(load, POLL_MS);
   });
 
   const labels = {
@@ -31,6 +34,7 @@
     overdue: 'backupmonitor.state.overdue',
     failed: 'backupmonitor.state.failed',
     waiting: 'backupmonitor.state.waiting',
+    running: 'backupmonitor.state.running',
   } as const;
 </script>
 
@@ -80,6 +84,9 @@
     border-radius: 50%;
     flex: none;
     background: var(--color-text-muted);
+  }
+  .dot.running {
+    background: var(--color-accent);
   }
   .dot.ok {
     background: var(--color-success);

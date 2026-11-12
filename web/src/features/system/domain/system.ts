@@ -12,9 +12,29 @@ export interface SystemSnapshot {
   load: [number, number, number];
   memory: Usage;
   swap: Usage;
-  disks: { label: string; usage: Usage }[];
+  disks: { label: string; usage: Usage; forecast: DiskForecast | null }[];
   uptimeSeconds: number;
   temperature: number;
+}
+
+/** When a file system is full (#108); null before the first aggregate. */
+export interface DiskForecast {
+  status: 'filling' | 'flat' | 'insufficient';
+  daysUntilFull: number;
+  bytesPerDay: number;
+  confidence: number;
+}
+
+/** Regression window and warning threshold of the disk forecast. */
+export interface ForecastSettings {
+  windowDays: number;
+  alertDays: number;
+}
+
+/** Whole days until full, or null when there is no forecast to show. */
+export function daysUntilFull(f: DiskForecast | null): number | null {
+  if (!f || f.status !== 'filling') return null;
+  return Math.max(0, Math.round(f.daysUntilFull));
 }
 
 /** Normalised load: 1-minute load per CPU in percent (100 = fully busy). */

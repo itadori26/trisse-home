@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
-  import { type BackupSource, type CreatedSource, pingExamples } from '../domain/source';
+  import { type BackupSource, type CreatedSource, type SourceSchedule, pingExamples } from '../domain/source';
   import type { BackupMonitorUseCases } from '../usecase/backupMonitorUseCases';
 
   /** Props of the backup source management section. */
@@ -13,7 +13,8 @@
   let sources = $state<BackupSource[]>([]);
   let created = $state<CreatedSource | null>(null);
   let name = $state('');
-  let maxAgeHours = $state(26);
+  let schedule = $state<SourceSchedule>({ kind: 'backup', maxAgeHours: 26, cron: '', graceMinutes: 30 });
+  let useCron = $state(false);
   let error = $state('');
 
   async function run(action: () => Promise<unknown>) {
@@ -49,7 +50,11 @@
     <li>
       <span class="name"
         >{s.name}
-        <span class="muted">{t('backupmonitor.max_h', { maxAgeHours: s.maxAgeHours, state: s.state })}</span
+        <span class="muted"
+          >{s.kind === 'check' ? t('backupmonitor.kind_check') : t('backupmonitor.kind_backup')} ·
+          {s.cron ? s.cron : t('backupmonitor.every_h', { hours: s.maxAgeHours })}{#if s.graceMinutes}
+            · {t('backupmonitor.grace_short', { minutes: s.graceMinutes })}{/if}
+          · {t(`backupmonitor.state.${s.state}`)}</span
         ></span
       >
       <button
@@ -76,7 +81,7 @@
   onsubmit={(e) => {
     e.preventDefault();
     run(async () => {
-      created = await backupMonitor.create(name, maxAgeHours);
+      created = await backupMonitor.create(name, { ...schedule, cron: useCron ? schedule.cron : '' });
       name = '';
     });
   }}
@@ -89,15 +94,43 @@
     required
     maxlength="60"
   />
+  <select class="input" bind:value={schedule.kind} aria-label={t('backupmonitor.kind')}>
+    <option value="backup">{t('backupmonitor.kind_backup')}</option>
+    <option value="check">{t('backupmonitor.kind_check')}</option>
+  </select>
+  <select class="input" bind:value={useCron} aria-label={t('backupmonitor.schedule')}>
+    <option value={false}>{t('backupmonitor.schedule_interval')}</option>
+    <option value={true}>{t('backupmonitor.schedule_cron')}</option>
+  </select>
+  {#if useCron}
+    <input
+      class="input cron"
+      bind:value={schedule.cron}
+      placeholder="0 3 * * *"
+      aria-label={t('backupmonitor.cron')}
+      required
+    />
+  {:else}
+    <label class="hours"
+      ><input
+        class="input"
+        type="number"
+        min="1"
+        max="1440"
+        bind:value={schedule.maxAgeHours}
+        aria-label={t('backupmonitor.maximum_age_in_hours')}
+      /> h</label
+    >
+  {/if}
   <label class="hours"
-    ><input
+    >+<input
       class="input"
       type="number"
-      min="1"
-      max="1440"
-      bind:value={maxAgeHours}
-      aria-label={t('backupmonitor.maximum_age_in_hours')}
-    /> h</label
+      min="0"
+      max="10080"
+      bind:value={schedule.graceMinutes}
+      aria-label={t('backupmonitor.grace_minutes')}
+    /> min</label
   >
   <button class="btn" type="submit">{t('backupmonitor.add')}</button>
 </form>
@@ -117,8 +150,13 @@
   }
   .add {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
     align-items: center;
+  }
+  .cron {
+    width: 9rem;
+    font-family: monospace;
   }
   .hours {
     display: flex;

@@ -4,6 +4,8 @@
   import { formatBytes } from '../../../shared/ui/format';
   import { type BackupFile, downloadUrl } from '../domain/backup';
   import type { BackupUseCases } from '../usecase/backupUseCases';
+  import OffsiteSettings from './OffsiteSettings.svelte';
+  import RestoreForm from './RestoreForm.svelte';
 
   /** Props of the backup settings section. */
   interface Props {
@@ -61,6 +63,9 @@
     <li class="muted">{t('backup.no_backups_yet')}</li>
   {/each}
 </ul>
+
+<OffsiteSettings {backups} />
+<RestoreForm {backups} local={files} />
 
 <style>
   .list {
