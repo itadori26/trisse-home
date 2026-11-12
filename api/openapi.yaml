@@ -1272,13 +1272,15 @@ paths:
   /api/adguard/settings:
     get:
       tags: [adguard]
-      summary: Connection settings (the password is never returned)
+      summary: Connection settings of AdGuard Home or Pi-hole (the password is never returned)
+      parameters: [{ name: provider, in: query, schema: { type: string, enum: [adguard, pihole], default: adguard } }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardSettings" } } } }
     put:
       tags: [adguard]
       summary: Test and save the connection (empty password keeps the stored one)
       security: [{ session: [], csrf: [] }]
+      parameters: [{ name: provider, in: query, schema: { type: string, enum: [adguard, pihole], default: adguard } }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardSettingsInput" } } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardSettings" } } } }
@@ -1286,7 +1288,8 @@ paths:
   /api/adguard/stats:
     get:
       tags: [adguard]
-      summary: Cached statistics (refreshed every minute)
+      summary: Cached statistics of AdGuard Home or Pi-hole (refreshed every minute)
+      parameters: [{ name: provider, in: query, schema: { type: string, enum: [adguard, pihole], default: adguard } }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardStats" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
@@ -1686,18 +1689,26 @@ components:
         error: { type: string }
     AdGuardSettings:
       type: object
-      properties: { configured: { type: boolean }, url: { type: string }, username: { type: string }, hasPassword: { type: boolean } }
+      properties:
+        provider: { type: string, enum: [adguard, pihole] }
+        configured: { type: boolean }
+        url: { type: string }
+        username: { type: string, description: Empty for Pi-hole }
+        hasPassword: { type: boolean }
     AdGuardSettingsInput:
       type: object
-      required: [url, username, password]
-      properties: { url: { type: string }, username: { type: string }, password: { type: string, description: Empty keeps the stored password } }
+      required: [url]
+      properties:
+        url: { type: string }
+        username: { type: string, description: Required for AdGuard Home, ignored for Pi-hole }
+        password: { type: string, description: "Empty keeps the stored password; Pi-hole without a password needs none" }
     AdGuardStats:
       type: object
       properties:
         queries: { type: integer }
         blocked: { type: integer }
         blockedPercent: { type: number }
-        avgProcessingMs: { type: number }
+        avgProcessingMs: { type: [number, "null"], description: Null for Pi-hole, which does not report it }
         protectionEnabled: { type: boolean }
         topBlocked: { type: array, items: { type: object, properties: { domain: { type: string }, count: { type: integer } } } }
         updatedAt: { type: string, format: date-time }

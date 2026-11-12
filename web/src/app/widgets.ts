@@ -355,7 +355,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
     type: {
       kind: 'adguard',
       category: 'network',
-      keywords: ['dns', 'ads', 'blocking', 'werbung'],
+      keywords: ['dns', 'ads', 'blocking', 'werbung', 'pihole', 'pi-hole'],
       get title() {
         return t('widget.adguard.title');
       },
@@ -367,7 +367,11 @@ export const widgetDefinitions: WidgetDefinition[] = [
     icon: 'shield',
     view: lazy(
       () => import('../features/adguard/ui/AdGuardWidget.svelte'),
-      (_config, c) => ({ adguard: c.adguard }),
+      (config, c) => ({ config, adguard: c.adguard }),
+    ),
+    settings: lazy(
+      () => import('../features/adguard/ui/AdGuardWidgetSettings.svelte'),
+      (config) => ({ config }),
     ),
   },
   {

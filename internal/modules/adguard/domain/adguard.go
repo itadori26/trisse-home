@@ -8,27 +8,64 @@ import (
 	"trisse-home/internal/shared/kernel"
 )
 
-// ErrNotConfigured is returned while no AdGuard instance is configured.
-var ErrNotConfigured = kernel.NewPublicError(kernel.ErrNotFound, "AdGuard Home is not configured yet.")
+// Provider is a DNS filter the module can read statistics from (#83).
+type Provider string
 
-// Settings are the connection details of AdGuard Home.
+// Supported providers.
+const (
+	ProviderAdGuard Provider = "adguard"
+	ProviderPiHole  Provider = "pihole"
+)
+
+// Providers lists every supported provider.
+var Providers = []Provider{ProviderAdGuard, ProviderPiHole}
+
+// ParseProvider maps a request value to a provider; empty means AdGuard
+// Home, which keeps widgets and API clients from before #83 working.
+func ParseProvider(raw string) (Provider, error) {
+	switch p := Provider(strings.TrimSpace(raw)); p {
+	case "":
+		return ProviderAdGuard, nil
+	case ProviderAdGuard, ProviderPiHole:
+		return p, nil
+	}
+	return "", kernel.NewValidationError("provider", "Unknown DNS filter, use adguard or pihole.")
+}
+
+// ErrNotConfigured is returned while the provider is not configured.
+var ErrNotConfigured = kernel.NewPublicError(kernel.ErrNotFound, "This DNS filter is not configured yet.")
+
+// Settings are the connection details of a DNS filter.
 type Settings struct {
+	Provider Provider
 	URL      string
+	// Username is only used by AdGuard Home.
 	Username string
+	// Password is the AdGuard Home password or the Pi-hole (app) password;
+	// Pi-hole without a password needs none.
 	Password string
 }
 
-// NewSettings validates and normalises the settings.
-func NewSettings(rawURL, username, password string) (Settings, error) {
+// NewSettings validates and normalises the settings of a provider.
+func NewSettings(p Provider, rawURL, username, password string) (Settings, error) {
 	rawURL = strings.TrimRight(strings.TrimSpace(rawURL), "/")
 	u, err := url.Parse(rawURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return Settings{}, kernel.NewValidationError("url", "The URL must look like http://192.168.1.2:3000.")
 	}
-	if strings.TrimSpace(username) == "" || password == "" {
-		return Settings{}, kernel.NewValidationError("username", "Username and password are required.")
+	s := Settings{Provider: p, URL: rawURL, Password: password}
+	switch p {
+	case ProviderAdGuard:
+		if strings.TrimSpace(username) == "" || password == "" {
+			return Settings{}, kernel.NewValidationError("username", "Username and password are required.")
+		}
+		s.Username = strings.TrimSpace(username)
+	case ProviderPiHole:
+		// Pi-hole v6 authenticates with a password only.
+	default:
+		return Settings{}, kernel.NewValidationError("provider", "Unknown DNS filter, use adguard or pihole.")
 	}
-	return Settings{URL: rawURL, Username: strings.TrimSpace(username), Password: password}, nil
+	return s, nil
 }
 
 // BlockedDomain is a domain with its number of queries.
@@ -37,13 +74,16 @@ type BlockedDomain struct {
 	Count  int
 }
 
-// Stats is a snapshot of AdGuard Home statistics.
+// Stats is a provider-neutral snapshot of DNS filter statistics.
 type Stats struct {
-	Queries           int
-	Blocked           int
-	AvgProcessingTime time.Duration
-	ProtectionEnabled bool
-	TopBlocked        []BlockedDomain
+	Queries int
+	Blocked int
+	// AvgProcessingTime is zero when the provider does not report it
+	// (Pi-hole); HasAvgProcessingTime tells both cases apart.
+	AvgProcessingTime    time.Duration
+	HasAvgProcessingTime bool
+	ProtectionEnabled    bool
+	TopBlocked           []BlockedDomain
 }
 
 // BlockedPercent returns the share of blocked queries.
@@ -53,3 +93,6 @@ func (s Stats) BlockedPercent() float64 {
 	}
 	return float64(s.Blocked) / float64(s.Queries) * 100
 }
+
+// TopBlockedLimit is the number of top blocked domains shown.
+const TopBlockedLimit = 5
