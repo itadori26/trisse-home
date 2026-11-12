@@ -38,6 +38,11 @@ contents:
     file_info:
       mode: 0755
 
+  - src: ./packaging/lib/env.sh
+    dst: /usr/lib/trisse-home/env.sh
+    file_info:
+      mode: 0644
+
   - src: ./packaging/lib/trisse-home-setup-info
     dst: /usr/lib/trisse-home/trisse-home-setup-info
     file_info:
