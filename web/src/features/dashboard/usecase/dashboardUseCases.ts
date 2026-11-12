@@ -1,8 +1,11 @@
 import {
+  type Dashboard,
   reorder,
   type Tab,
+  type TabRule,
   type TabTemplate,
   validateBackground,
+  validateRules,
   validateTabName,
   type Widget,
   type WidgetConfig,
@@ -22,8 +25,13 @@ export class DashboardUseCases {
 
   /** Loads all tabs with their widgets, sorted by position. */
   async load(): Promise<Tab[]> {
-    const tabs = await this.gateway.load();
-    return [...tabs].sort((a, b) => a.position - b.position);
+    return (await this.open()).tabs;
+  }
+
+  /** Loads the dashboard with the tab whose rules match now (#71). */
+  async open(): Promise<Dashboard> {
+    const { tabs, defaultTabId } = await this.gateway.load();
+    return { tabs: [...tabs].sort((a, b) => a.position - b.position), defaultTabId };
   }
 
   /** Creates a tab after validating its name. */
@@ -92,6 +100,19 @@ export class DashboardUseCases {
     const problem = validateBackground(background);
     if (problem) throw new DashboardValidationError(problem);
     return this.gateway.setBackground(tabId, background.trim());
+  }
+
+  /** Sets the rules that open a tab by default (#71). */
+  async setRules(tabId: string, rules: TabRule[]): Promise<Tab> {
+    const clean = rules.map((r) => ({
+      days: [...new Set(r.days)].sort((a, b) => a - b),
+      from: r.from.trim(),
+      to: r.to.trim(),
+      networks: r.networks.map((n) => n.trim()).filter((n) => n !== ''),
+    }));
+    const problem = validateRules(clean);
+    if (problem) throw new DashboardValidationError(problem);
+    return this.gateway.setRules(tabId, clean);
   }
 
   listTemplates(): Promise<TabTemplate[]> {

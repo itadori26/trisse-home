@@ -110,7 +110,6 @@ func (uc *manageTabs) persistOrder(ctx context.Context, tabs []domain.Tab) error
 	return nil
 }
 
-// SetBackground implements ManageTabs.
 // SetRules implements ManageTabs.
 func (uc *manageTabs) SetRules(ctx context.Context, tabID string, in []domain.RuleInput) (TabResponse, error) {
 	rules, err := domain.NewTabRules(in)
@@ -132,6 +131,7 @@ func (uc *manageTabs) SetRules(ctx context.Context, tabID string, in []domain.Ru
 	return toTabResponse(tab, widgets), nil
 }
 
+// SetBackground implements ManageTabs.
 func (uc *manageTabs) SetBackground(ctx context.Context, tabID, background string) (TabResponse, error) {
 	tab, err := uc.deps.Tabs.GetTab(ctx, tabID)
 	if err != nil {

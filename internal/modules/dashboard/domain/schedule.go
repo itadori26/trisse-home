@@ -11,11 +11,10 @@ import (
 
 // Limits of tab rules (#71).
 const (
-	MaxTabRules      = 10
-	MaxRuleNetworks  = 10
-	minutesPerDay    = 24 * 60
-	ruleTimeLayout   = "15:04"
-	ruleErrorMessage = "Rules need weekdays 0–6, times like 07:30 and networks like 192.168.178.0/24."
+	MaxTabRules     = 10
+	MaxRuleNetworks = 10
+	minutesPerDay   = 24 * 60
+	ruleTimeLayout  = "15:04"
 )
 
 // TabRule opens a tab by default on certain weekdays, in a time range
@@ -50,7 +49,7 @@ func NewTabRules(in []RuleInput) ([]TabRule, error) {
 		return nil, kernel.NewValidationError("rules", "At most 10 rules per tab are supported.")
 	}
 	out := make([]TabRule, 0, len(in))
-	invalid := kernel.NewValidationError("rules", ruleErrorMessage)
+	invalid := kernel.NewValidationError("rules", "Rules need weekdays 0–6, times like 07:30 and networks like 192.168.178.0/24.")
 	for _, r := range in {
 		var rule TabRule
 		for _, d := range r.Days {

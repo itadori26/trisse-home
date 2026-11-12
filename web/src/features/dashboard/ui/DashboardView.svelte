@@ -6,12 +6,19 @@
   import Modal from '../../../shared/ui/Modal.svelte';
   import type { IconName } from '../../../shared/ui/icons/paths';
   import WidgetPicker from './WidgetPicker.svelte';
-  import type { Tab, Widget, WidgetConfig, WidgetType } from '../domain/dashboard';
+  import {
+    initialTabId,
+    type Tab,
+    type Widget,
+    type WidgetConfig,
+    type WidgetType,
+  } from '../domain/dashboard';
   import type { LayoutItem } from '../domain/layout';
   import type { DashboardUseCases } from '../usecase/dashboardUseCases';
   import Grid from './Grid.svelte';
   import NewTabDialog from './NewTabDialog.svelte';
   import TabBar from './TabBar.svelte';
+  import TabRulesDialog from './TabRulesDialog.svelte';
   import TextPrompt from './TextPrompt.svelte';
   import WidgetFrame from './WidgetFrame.svelte';
 
@@ -36,6 +43,8 @@
   let { uc, editing, widgetTypes, widgetIcon, content, settings, hasSettings, chromeless }: Props = $props();
 
   const ACTIVE_TAB_KEY = 'trisse-home.activeTab';
+  // A tab picked by hand wins over rules until the browser is closed (#71).
+  const MANUAL_TAB_KEY = 'trisse-home.manualTab';
 
   let tabs = $state<Tab[]>([]);
   let activeId = $state('');
@@ -46,6 +55,7 @@
     | { kind: 'new-tab' }
     | { kind: 'rename-tab'; tab: Tab }
     | { kind: 'background'; tab: Tab }
+    | { kind: 'rules'; tab: Tab }
     | { kind: 'template'; tab: Tab }
     | { kind: 'settings'; widget: Widget }
     | null
@@ -55,9 +65,9 @@
   const titles = $derived(new Map(widgetTypes.map((t) => [t.kind, t.title])));
   const available = $derived(new Set(widgetTypes.map((t) => t.kind)));
 
-  function readStoredTab(): string {
+  function readStored(storage: () => Storage, key: string): string {
     try {
-      return localStorage.getItem(ACTIVE_TAB_KEY) ?? '';
+      return storage().getItem(key) ?? '';
     } catch {
       return '';
     }
@@ -73,6 +83,7 @@
     activeId = id;
     try {
       localStorage.setItem(ACTIVE_TAB_KEY, id);
+      sessionStorage.setItem(MANUAL_TAB_KEY, id);
     } catch {
       // storage may be unavailable (private mode); the selection is just not remembered
     }
@@ -89,9 +100,16 @@
 
   async function load() {
     await run(async () => {
-      tabs = await uc.load();
-      const stored = readStoredTab();
-      activeId = tabs.some((t) => t.id === stored) ? stored : (tabs[0]?.id ?? '');
+      const dashboard = await uc.open();
+      tabs = dashboard.tabs;
+      activeId = initialTabId(
+        tabs.map((t) => t.id),
+        {
+          manual: readStored(() => sessionStorage, MANUAL_TAB_KEY),
+          byRule: dashboard.defaultTabId,
+          lastUsed: readStored(() => localStorage, ACTIVE_TAB_KEY),
+        },
+      );
     });
     loaded = true;
   }
@@ -315,6 +333,7 @@
     ondelete={deleteTab}
     onmove={moveTab}
     onbackground={(tab) => (dialog = { kind: 'background', tab })}
+    onrules={(tab) => (dialog = { kind: 'rules', tab })}
     ontemplate={(tab) => (dialog = { kind: 'template', tab })}
   />
 
@@ -395,6 +414,16 @@
     onsubmit={async (url) => {
       const updated = await uc.setBackground(tab.id, url);
       replaceTab({ ...tab, background: updated.background });
+    }}
+  />
+{:else if dialog?.kind === 'rules'}
+  {@const tab = dialog.tab}
+  <TabRulesDialog
+    {tab}
+    onclose={() => (dialog = null)}
+    onsubmit={async (rules) => {
+      const updated = await uc.setRules(tab.id, rules);
+      replaceTab({ ...tab, rules: updated.rules });
     }}
   />
 {:else if dialog?.kind === 'template'}

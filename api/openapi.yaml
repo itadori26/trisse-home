@@ -450,7 +450,7 @@ paths:
   /api/dashboard:
     get:
       tags: [dashboard]
-      summary: All tabs with their widgets (creates a default tab on first use)
+      summary: All tabs with their widgets and the default tab by rules (creates a default tab on first use)
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Dashboard" } } } }
   /api/dashboard/tabs:
@@ -519,6 +519,19 @@ paths:
       security: [{ session: [], csrf: [] }]
       requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { background: { type: string } } } } } }
       responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" }, "422": { description: Invalid URL } }
+  /api/dashboard/tabs/{id}/rules:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Set the rules that open a tab by default (at most 10; the first tab with a matching rule wins)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [rules], properties: { rules: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/TabRule" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
   /api/dashboard/templates:
     get:
       tags: [dashboard]
@@ -1419,7 +1432,20 @@ components:
     IdList: { type: object, required: [ids], properties: { ids: { type: array, items: { type: string } } } }
     TabName: { type: object, required: [name], properties: { name: { type: string, maxLength: 40 } } }
     TabOrder: { type: object, required: [tabIds], properties: { tabIds: { type: array, items: { type: string } } } }
-    Dashboard: { type: object, required: [tabs], properties: { tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } } } }
+    Dashboard:
+      type: object
+      required: [tabs, defaultTabId]
+      properties:
+        tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } }
+        defaultTabId: { type: string, description: 'Tab whose rules match the server time and the client address; "" = keep the last used tab' }
+    TabRule:
+      type: object
+      description: Opens a tab by default. Empty parts always match; a range like 22:00–02:00 runs over midnight and belongs to the weekday it starts on.
+      properties:
+        days: { type: array, maxItems: 7, items: { type: integer, minimum: 0, maximum: 6 }, description: Weekdays, 0 = Sunday }
+        from: { type: string, example: "07:00", description: HH:MM, empty together with `to` = whole day }
+        to: { type: string, example: "09:30" }
+        networks: { type: array, maxItems: 10, items: { type: string, example: 192.168.178.0/24 }, description: CIDR ranges matched against the client address }
     Tab:
       type: object
       required: [id, name, position, widgets]
@@ -1427,6 +1453,8 @@ components:
         id: { type: string }
         name: { type: string }
         position: { type: integer }
+        background: { type: string }
+        rules: { type: array, items: { $ref: "#/components/schemas/TabRule" } }
         widgets: { type: array, items: { $ref: "#/components/schemas/Widget" } }
     Rect:
       type: object
