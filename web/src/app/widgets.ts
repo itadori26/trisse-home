@@ -583,6 +583,25 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (_config, c) => ({ speedtest: c.speedtest }),
     ),
   },
+  {
+    type: {
+      kind: 'gamedeals',
+      category: 'information',
+      keywords: ['steam', 'epic', 'games', 'spiele', 'sale', 'free'],
+      get title() {
+        return t('widget.gamedeals.title');
+      },
+      get description() {
+        return t('widget.gamedeals.description');
+      },
+      defaultSize: { w: 4, h: 5 },
+    },
+    icon: 'cart',
+    view: lazy(
+      () => import('../features/gamedeals/ui/GameDealsWidget.svelte'),
+      (_config, c) => ({ gamedeals: c.gamedeals }),
+    ),
+  },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];
 
