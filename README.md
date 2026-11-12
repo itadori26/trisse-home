@@ -163,10 +163,10 @@ trisse-home as a hardened systemd service — no Docker needed:
 
 ```sh
 sudo apt install ./trisse-home_<version>_$(dpkg --print-architecture).deb
-sudo journalctl -u trisse-home | grep setup_token
+sudo trisse-home-setup-token   # address and one-time setup token
 ```
 
-`SECRET_KEY` is generated on the first start; configuration lives in
+`SECRET_KEY` and the setup token are generated on the first start; configuration lives in
 `/etc/trisse-home/trisse-home.env`, data in `/var/lib/trisse-home`. Details,
 updates and moving from Docker: [docs/native-install.md](docs/native-install.md).
 

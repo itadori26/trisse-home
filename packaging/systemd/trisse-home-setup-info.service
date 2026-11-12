@@ -1,0 +1,17 @@
+[Unit]
+Description=Show the trisse-home setup token on the console and boot partition
+Documentation=https://github.com/itadori26/trisse-home/blob/main/docs/native-install.md
+After=trisse-home.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/trisse-home/trisse-home-setup-info
+# Writes only the issue snippet and the boot partition file; needs root to
+# read the token and to write there.
+ProtectSystem=strict
+ReadWritePaths=-/etc/issue.d -/boot/firmware
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
