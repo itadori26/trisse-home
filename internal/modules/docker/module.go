@@ -1,6 +1,9 @@
 package docker
 
 import (
+	"context"
+	"database/sql"
+	"io/fs"
 	"net/http"
 	"time"
 
@@ -14,6 +17,10 @@ import (
 
 const refreshInterval = 20 * time.Second
 
+// updateCheckInterval: the job runs hourly; each image is asked at its
+// registry at most every 6 hours (domain.UpdateCheckInterval).
+const updateCheckInterval = time.Hour
+
 // Config configures the docker module.
 type Config struct {
 	// ProxyURL points to the read-only docker-socket-proxy.
@@ -23,14 +30,21 @@ type Config struct {
 	Actions           bool
 	ActionsContainers []string
 	ActionsProxyURL   string
+	// DB and Cipher store the image update hints (#107); Registry is the
+	// HTTP client for registry requests (only when the user enabled them).
+	DB       *sql.DB
+	Cipher   gateway.Cipher
+	Registry *http.Client
 }
 
 // Module wires the docker rings and implements modules.Module.
 type Module struct {
 	modules.Base
 	uc       usecase.Containers
+	updates  usecase.ImageUpdates
 	handlers *controller.Handlers
 	actions  *controller.ActionHandlers
+	upd      *controller.UpdateHandlers
 }
 
 // New builds the docker module.
@@ -39,8 +53,15 @@ func New(client *http.Client, cfg Config, sink kernel.ObservationSink, clock ker
 	uc := usecase.NewContainers(read, sink, clock)
 	policy := domain.ActionPolicy{Enabled: cfg.Actions, Allowed: cfg.ActionsContainers}
 	actions := usecase.NewActions(policy, gateway.NewAPI(client, cfg.ActionsProxyURL), read, uc.Refresh)
-	return &Module{uc: uc, handlers: controller.NewHandlers(uc), actions: controller.NewActionHandlers(actions)}
+	store := gateway.NewUpdateStore(cfg.DB, cfg.Cipher)
+	updates := usecase.NewImageUpdates(usecase.UpdateDeps{Images: read, Registry: gateway.NewRegistry(cfg.Registry),
+		Cache: store, Settings: store, Sink: sink, Clock: clock})
+	return &Module{uc: uc, updates: updates, handlers: controller.NewHandlers(uc), actions: controller.NewActionHandlers(actions),
+		upd: controller.NewUpdateHandlers(updates)}
 }
+
+// Migrations implements modules.Module.
+func (m *Module) Migrations() fs.FS { return gateway.Migrations() }
 
 // Name implements modules.Module.
 func (m *Module) Name() string { return "docker" }
@@ -54,9 +75,36 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/docker/actions", m.actions.Capabilities)
 	r.Protected("POST /api/docker/containers/{name}/restart", m.actions.Restart)
 	r.Protected("GET /api/docker/containers/{name}/logs", m.actions.Logs)
+	r.Protected("GET /api/docker/updates", m.upd.List)
+	r.Protected("GET /api/docker/updates/settings", m.upd.Settings)
+	r.Protected("PUT /api/docker/updates/settings", m.upd.SaveSettings)
 }
 
 // Jobs implements modules.Module.
 func (m *Module) Jobs() []modules.Job {
-	return []modules.Job{{Name: "docker.refresh", Interval: refreshInterval, Run: m.uc.Refresh}}
+	return []modules.Job{
+		{Name: "docker.refresh", Interval: refreshInterval, Run: m.uc.Refresh},
+		// Does nothing until the update check is enabled.
+		{Name: "docker.image-updates", Interval: updateCheckInterval, Run: m.updates.Check},
+	}
+}
+
+// Metrics implements kernel.MetricSource (#109): container counts and the
+// state per container.
+func (m *Module) Metrics(ctx context.Context) []kernel.MetricSample {
+	res, err := m.uc.List(ctx)
+	if err != nil {
+		return nil
+	}
+	const help = "Number of containers by state."
+	out := []kernel.MetricSample{
+		kernel.Gauge("trisse_containers", help, float64(res.Running), kernel.Label{Name: "state", Value: "running"}),
+		kernel.Gauge("trisse_containers", help, float64(res.Stopped), kernel.Label{Name: "state", Value: "stopped"}),
+		kernel.Gauge("trisse_containers", help, float64(res.Unhealthy), kernel.Label{Name: "state", Value: "unhealthy"}),
+	}
+	for _, c := range res.Containers {
+		out = append(out, kernel.Gauge("trisse_container_running", "Whether the container is running (1) or not (0).",
+			kernel.Bool(c.State == "running"), kernel.Label{Name: "container", Value: c.Name}))
+	}
+	return out
 }

@@ -47,6 +47,19 @@ type TabBackgroundDTO struct {
 	Background string `json:"background"`
 }
 
+// TabRuleDTO is one default-tab rule (#71).
+type TabRuleDTO struct {
+	Days     []int    `json:"days"`
+	From     string   `json:"from"`
+	To       string   `json:"to"`
+	Networks []string `json:"networks"`
+}
+
+// TabRulesDTO is the body of PUT /api/dashboard/tabs/{id}/rules.
+type TabRulesDTO struct {
+	Rules []TabRuleDTO `json:"rules"`
+}
+
 // SaveTemplateDTO is the body of POST /api/dashboard/templates.
 type SaveTemplateDTO struct {
 	TabID string `json:"tabId"`

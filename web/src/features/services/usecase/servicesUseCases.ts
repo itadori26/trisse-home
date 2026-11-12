@@ -1,3 +1,4 @@
+import type { Incident, ServiceUptime } from '../domain/uptime';
 import { type LatencyPoint, type Service, type ServiceInput, validateServiceInput } from '../domain/service';
 
 /** Output port: services backend. */
@@ -9,6 +10,8 @@ export interface ServicesGateway {
   reorder(ids: string[]): Promise<void>;
   checkNow(): Promise<Service[]>;
   history(hours: number): Promise<Record<string, LatencyPoint[]>>;
+  uptime(): Promise<ServiceUptime[]>;
+  incidents(serviceId: string, limit: number): Promise<Incident[]>;
   wake(id: string): Promise<void>;
 }
 
@@ -60,5 +63,15 @@ export class ServicesUseCases {
   /** Sends a Wake-on-LAN packet to the service's MAC address. */
   wake(id: string): Promise<void> {
     return this.gateway.wake(id);
+  }
+
+  /** Uptime of every service (24 h, 7, 30, 90 days and daily bars). */
+  uptime(): Promise<ServiceUptime[]> {
+    return this.gateway.uptime();
+  }
+
+  /** Recent outages of one service, or of all when serviceId is empty. */
+  incidents(serviceId = '', limit = 20): Promise<Incident[]> {
+    return this.gateway.incidents(serviceId, limit);
   }
 }

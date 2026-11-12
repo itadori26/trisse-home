@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/netip"
 	"slices"
 	"testing"
+	"time"
 
 	"trisse-home/internal/modules/dashboard/domain"
 )
@@ -262,5 +264,66 @@ func TestTemplatesAndBackground(t *testing.T) {
 	}
 	if err := tpls.Delete(ctx, "nope"); err == nil {
 		t.Fatal("unknown template deleted")
+	}
+}
+
+type fixedClock time.Time
+
+func (c fixedClock) Now() time.Time { return time.Time(c) }
+
+func TestDefaultTabRules(t *testing.T) {
+	deps, _ := newDeps()
+	tabs := NewManageTabs(deps)
+	home, _ := tabs.Create(ctx, CreateTabRequest{Name: "Home"})
+	evening, _ := tabs.Create(ctx, CreateTabRequest{Name: "Evening"})
+	if _, err := tabs.SetRules(ctx, evening.ID, []domain.RuleInput{{Days: []int{9}}}); err == nil {
+		t.Fatal("invalid rule accepted")
+	}
+	if _, err := tabs.SetRules(ctx, "nope", nil); !errors.Is(err, domain.ErrTabNotFound) {
+		t.Fatalf("unknown tab: %v", err)
+	}
+	res, err := tabs.SetRules(ctx, evening.ID, []domain.RuleInput{
+		{From: "18:00", To: "01:00"},
+		{Networks: []string{"10.13.13.0/24"}},
+	})
+	if err != nil || len(res.Rules) != 2 || res.Rules[0].From != "18:00" || res.Rules[1].Networks[0] != "10.13.13.0/24" {
+		t.Fatalf("set rules: %+v %v", res, err)
+	}
+
+	// Thursday 12 November 2026, evaluated in the configured location.
+	cet := time.FixedZone("CET", 3600)
+	resolve := func(utc time.Time, ip string) string {
+		t.Helper()
+		d := deps
+		d.Clock, d.Location = fixedClock(utc), cet
+		var addr netip.Addr
+		if ip != "" {
+			addr = netip.MustParseAddr(ip)
+		}
+		got, err := NewGetDashboard(d).ExecuteFor(ctx, addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got.DefaultTabID
+	}
+	if got := resolve(time.Date(2026, 11, 12, 17, 30, 0, 0, time.UTC), ""); got != evening.ID {
+		t.Fatalf("18:30 local must open the evening tab, got %q", got)
+	}
+	if got := resolve(time.Date(2026, 11, 12, 16, 30, 0, 0, time.UTC), ""); got != "" {
+		t.Fatalf("17:30 local has no matching rule, got %q", got)
+	}
+	if got := resolve(time.Date(2026, 11, 12, 12, 0, 0, 0, time.UTC), "10.13.13.5"); got != evening.ID {
+		t.Fatalf("VPN client, got %q", got)
+	}
+	// Order resolves conflicts: a matching rule on the first tab wins.
+	if _, err := tabs.SetRules(ctx, home.ID, []domain.RuleInput{{}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolve(time.Date(2026, 11, 12, 17, 30, 0, 0, time.UTC), ""); got != home.ID {
+		t.Fatalf("first tab must win, got %q", got)
+	}
+	// Without a clock no default tab is resolved.
+	if got, _ := NewGetDashboard(deps).Execute(ctx); got.DefaultTabID != "" {
+		t.Fatalf("no clock, got %q", got.DefaultTabID)
 	}
 }

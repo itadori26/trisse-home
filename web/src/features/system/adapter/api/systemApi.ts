@@ -1,7 +1,15 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { PointDTO, SnapshotDTO, VersionDTO } from '../../../../shared/api-client/generated/system';
-import type { UpdateCheckDTO } from '../../../../shared/api-client/generated/system-requests';
-import type { HistoryPoint, SystemSnapshot, VersionInfo } from '../../domain/system';
+import type {
+  ForecastSettingsDTO,
+  PointDTO,
+  SnapshotDTO,
+  VersionDTO,
+} from '../../../../shared/api-client/generated/system';
+import type {
+  ForecastSettingsDTO as ForecastSettingsInputDTO,
+  UpdateCheckDTO,
+} from '../../../../shared/api-client/generated/system-requests';
+import type { ForecastSettings, HistoryPoint, SystemSnapshot, VersionInfo } from '../../domain/system';
 import type { SystemGateway } from '../../usecase/systemUseCases';
 
 /** SystemGateway backed by the REST API. */
@@ -16,7 +24,7 @@ export class SystemApi implements SystemGateway {
       load: [d.load[0] ?? 0, d.load[1] ?? 0, d.load[2] ?? 0],
       memory: d.memory,
       swap: d.swap,
-      disks: d.disks,
+      disks: d.disks.map((x) => ({ label: x.label, usage: x.usage, forecast: x.forecast ?? null })),
       uptimeSeconds: d.uptimeSeconds,
       temperature: d.temperature,
     };
@@ -34,6 +42,15 @@ export class SystemApi implements SystemGateway {
   async setUpdateCheck(enabled: boolean): Promise<VersionInfo> {
     const body: UpdateCheckDTO = { enabled };
     return toVersion(await this.http.put<VersionDTO>('/api/system/update-check', body));
+  }
+
+  forecastSettings(): Promise<ForecastSettings> {
+    return this.http.get<ForecastSettingsDTO>('/api/system/forecast-settings');
+  }
+
+  saveForecastSettings(s: ForecastSettings): Promise<ForecastSettings> {
+    const body: ForecastSettingsInputDTO = s;
+    return this.http.put<ForecastSettingsDTO>('/api/system/forecast-settings', body);
   }
 }
 

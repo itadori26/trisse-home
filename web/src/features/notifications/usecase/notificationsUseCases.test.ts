@@ -13,6 +13,13 @@ describe('NotificationsUseCases', () => {
       sendTest: vi.fn(async () => {
         calls.push('test');
       }),
+      channels: vi.fn(),
+      saveChannel: vi.fn(),
+      deleteChannel: vi.fn(),
+      testChannel: vi.fn(),
+      maintenance: vi.fn(),
+      startMaintenance: vi.fn(),
+      endMaintenance: vi.fn(),
     } satisfies NotificationsGateway;
     const rules = {
       services: true,
@@ -30,10 +37,18 @@ describe('NotificationsUseCases', () => {
       topic: ' t ',
       token: '',
       rules,
+      policy: { severities: {}, quiet: { enabled: false, start: '22:00', end: '07:00', days: [] } },
     });
     expect(calls).toEqual(['save', 'test']);
     expect(gateway.save).toHaveBeenCalledWith(
       expect.objectContaining({ serverUrl: 'https://ntfy.sh', topic: 't' }),
     );
+  });
+
+  it('parses the maintenance scope and starts at least one minute', async () => {
+    const startMaintenance = vi.fn();
+    const uc = new NotificationsUseCases({ startMaintenance } as unknown as NotificationsGateway);
+    await uc.startMaintenance(' service:NAS , ,container:nginx ', 0.2, ' update ');
+    expect(startMaintenance).toHaveBeenCalledWith(['service:NAS', 'container:nginx'], 1, 'update');
   });
 });

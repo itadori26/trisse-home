@@ -1,7 +1,10 @@
 <script lang="ts">
-  import { AboutSettings } from '../features/system';
+  import { TimelineSettings } from '../features/timeline';
+  import { AboutSettings, ForecastSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
+  import { SpeedtestSettings } from '../features/speedtest';
+  import { ImageUpdateSettings } from '../features/docker';
   import { FritzBoxSettings } from '../features/fritzbox';
   import { NextcloudSettings } from '../features/nextcloud';
   import { ShoppingSettings, suggestListUrl } from '../features/shopping';
@@ -51,6 +54,8 @@
     { id: 'folders', label: 'settings.section.bookmark_folders', module: 'bookmarks' },
     { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
     { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
+    { id: 'speedtest', label: 'settings.section.speedtest', module: 'speedtest' },
+    { id: 'docker-updates', label: 'settings.section.docker_updates', module: 'docker' },
     { id: 'nextcloud', label: 'settings.section.nextcloud', module: 'nextcloud' },
     { id: 'fritzbox', label: 'settings.section.fritzbox', module: 'fritzbox' },
     { id: 'wireguard', label: 'settings.section.wireguard', module: 'wireguard' },
@@ -59,12 +64,14 @@
     { id: 'parcels', label: 'settings.section.parcels', module: 'parcels' },
     { id: 'transfer', label: 'settings.section.transfer', module: 'transfer' },
     { id: 'notifications', label: 'settings.section.notifications', module: 'notifications' },
+    { id: 'timeline', label: 'settings.section.timeline', module: 'timeline' },
     { id: 'backups', label: 'settings.section.backups', module: 'backup' },
     { id: 'backupmonitor', label: 'settings.section.backupmonitor', module: 'backupmonitor' },
     { id: 'account', label: 'settings.section.account' },
     { id: 'security-log', label: 'settings.section.security_log' },
     { id: 'guests', label: 'settings.section.guests' },
     { id: 'tokens', label: 'settings.section.tokens' },
+    { id: 'forecast', label: 'settings.section.forecast', module: 'system' },
     { id: 'about', label: 'settings.section.about', module: 'system' },
   ];
   /** Guests only manage their own account (ADR 0012). */
@@ -111,6 +118,10 @@
     <ApiTokensSettings auth={container.auth} {modules} />
   {:else if current === 'guests'}
     <GuestsSettings auth={container.auth} tabs={guestTabs} />
+  {:else if current === 'timeline'}
+    <TimelineSettings timeline={container.timeline} />
+  {:else if current === 'forecast'}
+    <ForecastSettings system={container.system} />
   {:else if current === 'about'}
     <AboutSettings system={container.system} />
   {:else if current === 'parcels'}
@@ -133,6 +144,10 @@
     <FritzBoxSettings fritzbox={container.fritzbox} />
   {:else if current === 'nextcloud'}
     <NextcloudSettings nextcloud={container.nextcloud} />
+  {:else if current === 'docker-updates'}
+    <ImageUpdateSettings docker={container.docker} />
+  {:else if current === 'speedtest'}
+    <SpeedtestSettings speedtest={container.speedtest} />
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
   {:else if current === 'notifications'}

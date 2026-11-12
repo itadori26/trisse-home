@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"net/netip"
+	"time"
 
 	"trisse-home/internal/modules/dashboard/domain"
 	"trisse-home/internal/shared/kernel"
@@ -13,6 +15,8 @@ import (
 // on first use.
 type GetDashboard interface {
 	Execute(ctx context.Context) (DashboardResponse, error)
+	// ExecuteFor also resolves the default tab for a client address (#71).
+	ExecuteFor(ctx context.Context, client netip.Addr) (DashboardResponse, error)
 }
 
 // ManageTabs creates, renames, deletes and reorders tabs.
@@ -23,6 +27,8 @@ type ManageTabs interface {
 	Reorder(ctx context.Context, req ReorderTabsRequest) error
 	// SetBackground sets the tab's background image ("" = global one).
 	SetBackground(ctx context.Context, tabID, background string) (TabResponse, error)
+	// SetRules sets the rules that open the tab by default (#71).
+	SetRules(ctx context.Context, tabID string, rules []domain.RuleInput) (TabResponse, error)
 }
 
 // ManageWidgets adds, configures, places and removes widgets.
@@ -87,4 +93,8 @@ type Deps struct {
 	Templates TemplateRepository
 	Kinds     KindCatalog
 	IDs       kernel.IDGenerator
+	// Clock and Location evaluate default-tab rules (#71); without a clock
+	// no default tab is resolved.
+	Clock    kernel.Clock
+	Location *time.Location
 }

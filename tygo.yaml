@@ -58,6 +58,9 @@ packages:
     output_path: "web/src/shared/api-client/generated/system.ts"
   - path: "trisse-home/internal/modules/docker/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/docker.ts"
+  - path: "trisse-home/internal/modules/docker/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/docker-requests.ts"
+    include_files: ["dto.go"]
   - path: "trisse-home/internal/modules/adguard/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/adguard.ts"
   - path: "trisse-home/internal/modules/adguard/adapter/controller"
@@ -75,6 +78,9 @@ packages:
     include_files: ["dto.go"]
   - path: "trisse-home/internal/modules/backup/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/backup.ts"
+  - path: "trisse-home/internal/modules/backup/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/backup-requests.ts"
+    include_files: ["dto.go"]
   - path: "trisse-home/internal/modules/notifications/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/notifications.ts"
   - path: "trisse-home/internal/modules/notifications/adapter/controller"
@@ -122,4 +128,16 @@ packages:
     include_files: ["dto.go"]
   - path: "trisse-home/internal/modules/system/adapter/controller"
     output_path: "web/src/shared/api-client/generated/system-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/diskhealth/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/diskhealth.ts"
+  - path: "trisse-home/internal/modules/speedtest/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/speedtest.ts"
+  - path: "trisse-home/internal/modules/speedtest/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/speedtest-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/timeline/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/timeline.ts"
+  - path: "trisse-home/internal/modules/timeline/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/timeline-requests.ts"
     include_files: ["dto.go"]

@@ -35,3 +35,25 @@ export interface LatencyPointDTO {
   latencyMs: number /* float64 */;
   online: boolean;
 }
+/**
+ * UptimeDTO summarises one service; percentages are null without data.
+ */
+export interface UptimeDTO {
+  serviceId: string;
+  day?: number /* float64 */;
+  week?: number /* float64 */;
+  month?: number /* float64 */;
+  quarter?: number /* float64 */;
+  days: (number /* float64 */ | undefined)[];
+}
+/**
+ * IncidentDTO is one outage.
+ */
+export interface IncidentDTO {
+  id: string;
+  serviceId: string;
+  start: string /* RFC 3339 */;
+  end?: string /* RFC 3339 */;
+  durationSeconds: number /* float64 */;
+  cause: string;
+}

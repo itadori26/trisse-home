@@ -11,6 +11,9 @@ describe('DockerUseCases', () => {
         .mockResolvedValue({ enabled: true, containers: ['homarr'] }),
       restart: vi.fn(),
       logs: vi.fn(),
+      updates: vi.fn(),
+      updateSettings: vi.fn(),
+      saveUpdateSettings: vi.fn(),
     } satisfies DockerGateway;
     const uc = new DockerUseCases(gateway);
     await expect(uc.actions()).rejects.toThrow('offline');

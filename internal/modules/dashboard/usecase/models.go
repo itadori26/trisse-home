@@ -3,6 +3,15 @@ package usecase
 // DashboardResponse lists all tabs in order.
 type DashboardResponse struct {
 	Tabs []TabResponse
+	// DefaultTabID is the tab whose rules match now ("" = last used, #71).
+	DefaultTabID string
+}
+
+// RuleView is a default-tab rule at the use case boundary.
+type RuleView struct {
+	Days     []int
+	From, To string
+	Networks []string
 }
 
 // TabResponse describes one tab and its widgets.
@@ -11,6 +20,7 @@ type TabResponse struct {
 	Name       string
 	Position   int
 	Background string
+	Rules      []RuleView
 	Widgets    []WidgetResponse
 }
 

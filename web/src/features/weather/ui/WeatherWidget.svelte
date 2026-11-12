@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import {
@@ -17,6 +18,7 @@
     config: Record<string, unknown>;
   }
   let { weather, config }: Props = $props();
+  const poll = usePolling();
 
   /** The backend refreshes every 15 minutes; polling more often is pointless. */
   const POLL_MS = 10 * 60 * 1000;
@@ -37,11 +39,12 @@
       return weather
         .forecast(c)
         .then((f) => ((forecast = f), (error = '')))
-        .catch((err) => (error = errorMessage(err)));
+        .catch((err) => {
+          error = errorMessage(err);
+          throw err;
+        });
     };
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+    return poll(load, POLL_MS);
   });
 
   const weekday = (d: Date) => d.toLocaleDateString(intlLocale(), { weekday: 'short' });

@@ -18,5 +18,7 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    // Catalogues load lazily (#116); tests start like the app, after loading.
+    setupFiles: ['src/test-setup.ts'],
   },
 });
