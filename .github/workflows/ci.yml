@@ -166,7 +166,11 @@ jobs:
           sudo apt-get install -y ./dist/trisse-home_*_amd64.deb
           for i in $(seq 30); do curl -fsS http://127.0.0.1:8090/healthz >/dev/null && break; sleep 1; done
           curl -fsS http://127.0.0.1:8090/healthz
+          # Type=notify: "active" means the binary sent READY=1.
           systemctl is-active trisse-home
+          test "$(systemctl show -p Type --value trisse-home)" = notify
+          sleep 2
+          test "$(systemctl show -p WatchdogTimestampMonotonic --value trisse-home)" -gt 0
           sudo journalctl -u trisse-home --no-pager | grep -q setup_token
           test "$(sudo stat -c '%U:%G %a' /etc/trisse-home/secret.env)" = "root:trisse-home 640"
       - name: Check the unit and its sandbox (exposure must stay at or below 2.0)

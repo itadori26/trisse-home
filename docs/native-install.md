@@ -73,6 +73,15 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 ReadWritePaths=/mnt/usb/trisse-home
 ```
 
+## Robustness
+
+- **Watchdog:** the service reports readiness to systemd and pings its
+  watchdog every 30 seconds while the database answers. If it hangs, systemd
+  restarts it after 60 seconds (`WatchdogSec=`).
+- **Power loss:** SQLite runs in WAL mode with `synchronous=NORMAL`. After a
+  sudden power cut the database is always consistent; at worst the last
+  change before the cut is lost. Daily backups cover the rest.
+
 ## Update and rollback
 
 Install the newer package the same way; configuration, key and data are kept

@@ -25,6 +25,7 @@ import (
 	"trisse-home/internal/platform/middleware"
 	"trisse-home/internal/platform/router"
 	"trisse-home/internal/platform/scheduler"
+	"trisse-home/internal/platform/sdnotify"
 	"trisse-home/internal/platform/spa"
 	"trisse-home/internal/platform/webui"
 	"trisse-home/internal/platform/wol"
@@ -139,7 +140,21 @@ func serve() error {
 	}
 	sched.Start(ctx)
 	defer sched.Wait()
-	return httpserver.Run(ctx, a.cfg.ListenAddr, newHandler(a), a.cfg.ShutdownTimeout, a.log)
+
+	// Under systemd (native package, Raspberry Pi image) report readiness and
+	// feed the watchdog while the database answers; a no-op everywhere else.
+	notifier := sdnotify.FromEnv(os.Getenv, os.Getpid())
+	go sdnotify.RunWatchdog(ctx, notifier, a.db.PingContext, a.log)
+	return httpserver.Run(ctx, a.cfg.ListenAddr, newHandler(a), a.cfg.ShutdownTimeout, a.log,
+		httpserver.WithReadyHook(func() { logNotifyError(a.log, notifier.Ready()) }),
+		httpserver.WithStoppingHook(func() { logNotifyError(a.log, notifier.Stopping()) }),
+	)
+}
+
+func logNotifyError(log *slog.Logger, err error) {
+	if err != nil {
+		log.Warn("systemd notification failed", "err", err)
+	}
 }
 
 // newHandler builds the router with all module routes and the middleware chain.
