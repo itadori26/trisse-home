@@ -39,5 +39,8 @@
     "dompurify": "^3.4.17",
     "marked": "^18.2.0",
     "qrcode-generator": "^2.0.4"
+  },
+  "overrides": {
+    "minimatch": "^11.0.8"
   }
 }
