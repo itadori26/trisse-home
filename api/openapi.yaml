@@ -38,6 +38,7 @@ tags:
   - name: system
   - name: docker
   - name: adguard
+  - name: arr
   - name: calendar
   - name: platform
 
@@ -1291,6 +1292,58 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardStats" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
 
+  # ---------------------------------------------------------------- arr
+  /api/arr/instances:
+    get:
+      tags: [arr]
+      summary: Configured Sonarr, Radarr and Prowlarr instances (API keys are never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ArrInstance" } } } } }
+    post:
+      tags: [arr]
+      summary: Add an instance (URL, API key and app type are checked via system/status)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ArrInstanceInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ArrInstance" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/arr/instances/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [arr]
+      summary: Update an instance; an empty API key keeps the stored one
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ArrInstanceInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ArrInstance" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [arr]
+      summary: Delete an instance
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/arr/overview:
+    get:
+      tags: [arr]
+      summary: Upcoming releases (14 days), queue, health and missing counts of all instances (cached for a minute)
+      responses:
+        "200":
+          description: OK; unreachable instances are listed in errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upcoming: { type: array, items: { type: object, properties: { instance: { type: string }, title: { type: string }, detail: { type: string }, date: { type: string, format: date-time }, hasFile: { type: boolean } } } }
+                  queue: { type: array, items: { type: object, properties: { instance: { type: string }, title: { type: string }, status: { type: string }, progress: { type: number }, timeLeftSeconds: { type: integer }, error: { type: string } } } }
+                  health: { type: array, items: { type: object, properties: { instance: { type: string }, severity: { type: string, enum: [notice, warning, error] }, message: { type: string } } } }
+                  missing: { type: object, additionalProperties: { type: integer } }
+                  errors: { type: array, items: { type: string } }
+        "404": { description: No instance configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+
   # ---------------------------------------------------------------- calendar
   /api/calendar/settings:
     get:
@@ -1684,6 +1737,17 @@ components:
         unhealthy: { type: integer }
         updatedAt: { type: string, format: date-time }
         error: { type: string }
+    ArrInstance:
+      type: object
+      properties: { id: { type: string }, app: { type: string, enum: [sonarr, radarr, prowlarr] }, name: { type: string }, url: { type: string } }
+    ArrInstanceInput:
+      type: object
+      required: [app, url]
+      properties:
+        app: { type: string, enum: [sonarr, radarr, prowlarr] }
+        name: { type: string, maxLength: 40, description: Defaults to the app name }
+        url: { type: string }
+        apiKey: { type: string, description: Required when adding; empty keeps the stored key }
     AdGuardSettings:
       type: object
       properties: { configured: { type: boolean }, url: { type: string }, username: { type: string }, hasPassword: { type: boolean } }
