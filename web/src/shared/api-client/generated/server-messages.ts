@@ -156,6 +156,7 @@ export const serverMessages = {
   srv_066ea148faee11ae: "The period must be positive and at most 42 days long.",
   srv_6566f488a34e8fc3: "The port must be between 1 and 65535.",
   srv_d5d2cea1e1d1fa8d: "The rain radar is only available for Germany.",
+  srv_2367e29c6edb5841: "The retention must be between 1 and 365 days.",
   srv_088ff184c130f97e: "The row is out of range.",
   srv_657058c57c5faf46: "The search query is too long.",
   srv_b828d9f84cec079a: "The search query must not be empty.",

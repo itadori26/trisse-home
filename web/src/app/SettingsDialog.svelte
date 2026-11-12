@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { TimelineSettings } from '../features/timeline';
   import { AboutSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
@@ -59,6 +60,7 @@
     { id: 'parcels', label: 'settings.section.parcels', module: 'parcels' },
     { id: 'transfer', label: 'settings.section.transfer', module: 'transfer' },
     { id: 'notifications', label: 'settings.section.notifications', module: 'notifications' },
+    { id: 'timeline', label: 'settings.section.timeline', module: 'timeline' },
     { id: 'backups', label: 'settings.section.backups', module: 'backup' },
     { id: 'backupmonitor', label: 'settings.section.backupmonitor', module: 'backupmonitor' },
     { id: 'account', label: 'settings.section.account' },
@@ -111,6 +113,8 @@
     <ApiTokensSettings auth={container.auth} {modules} />
   {:else if current === 'guests'}
     <GuestsSettings auth={container.auth} tabs={guestTabs} />
+  {:else if current === 'timeline'}
+    <TimelineSettings timeline={container.timeline} />
   {:else if current === 'about'}
     <AboutSettings system={container.system} />
   {:else if current === 'parcels'}

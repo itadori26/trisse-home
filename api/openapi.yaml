@@ -807,6 +807,22 @@ paths:
         "204": { description: Deleted }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  # ---------------------------------------------------------------- timeline
+  /api/timeline:
+    get:
+      tags: [timeline]
+      summary: Timeline events, newest first (?source=&severity=info|warning|critical&before=<RFC 3339>&limit=)
+      responses: { "200": { description: "List of {id, at, source, severity, subject, message}" } }
+  /api/timeline/settings:
+    get:
+      tags: [timeline]
+      summary: Retention of the timeline in days
+      responses: { "200": { description: OK } }
+    put:
+      tags: [timeline]
+      summary: Set the retention (1-365 days)
+      responses: { "200": { description: OK }, "422": { description: Invalid } }
+
   # ---------------------------------------------------------------- todos
   /api/todos:
     get:

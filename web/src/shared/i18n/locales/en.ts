@@ -848,6 +848,26 @@ export const en = {
   'services.uptime_bars': 'Daily uptime of {name} in the last 30 days',
   'services.incident_ongoing': 'ongoing',
   'services.no_incidents': 'No outages recorded.',
+  'timeline.source.service': 'Services',
+  'timeline.source.container': 'Containers',
+  'timeline.source.backup': 'Backups',
+  'timeline.source.check': 'Heartbeat checks',
+  'timeline.source.tls': 'Certificates',
+  'timeline.source.disk': 'Disk space',
+  'timeline.source.diskhealth': 'Disk health',
+  'timeline.source.security': 'Security',
+  'widget.timeline.title': 'Timeline',
+  'widget.timeline.description':
+    'What happened when: outages, recoveries, backups, certificates and sign-ins.',
+  'timeline.source': 'Source',
+  'timeline.severity': 'Importance',
+  'timeline.all_sources': 'All sources',
+  'timeline.all_severities': 'Any importance',
+  'timeline.empty': 'Nothing happened yet.',
+  'timeline.settings_hint':
+    'The timeline records state changes of services, containers, backups, checks, certificates and disks as well as security alerts.',
+  'timeline.retention': 'Keep events for … days',
+  'settings.section.timeline': 'Timeline',
 } as const;
 
 /** Every message key. */

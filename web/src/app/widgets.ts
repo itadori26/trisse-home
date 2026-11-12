@@ -23,6 +23,7 @@ import { NotesWidget, NotesWidgetSettings } from '../features/notes';
 import { RssWidget, RssWidgetSettings } from '../features/rss';
 import { SearchWidget, SearchWidgetSettings } from '../features/search';
 import { ServicesWidget, StatusOverviewWidget } from '../features/services';
+import { TimelineWidget } from '../features/timeline';
 import { SystemWidget } from '../features/system';
 import { TodosWidget, TodosWidgetSettings } from '../features/todos';
 import { RadarWidget, WeatherSettings, WeatherWidget } from '../features/weather';
@@ -358,6 +359,19 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 4, h: 3 },
     },
     view: renderer(BackupStatusWidget, (_config, c) => ({ backupMonitor: c.backupMonitor })),
+  },
+  {
+    type: {
+      kind: 'timeline',
+      get title() {
+        return t('widget.timeline.title');
+      },
+      get description() {
+        return t('widget.timeline.description');
+      },
+      defaultSize: { w: 4, h: 5 },
+    },
+    view: renderer(TimelineWidget, (config, c) => ({ config, timeline: c.timeline })),
   },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];

@@ -630,6 +630,12 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("security log: %v", events)
 	}
 
+	// --- timeline (#74) ---
+	var tl []obj
+	c.json(http.MethodGet, "/api/timeline?limit=5", nil, http.StatusOK, &tl)
+	c.do(http.MethodPut, "/api/timeline/settings", obj{"retentionDays": 0}, http.StatusUnprocessableEntity)
+	c.do(http.MethodPut, "/api/timeline/settings", obj{"retentionDays": 14}, http.StatusOK)
+
 	// --- version and update check (off by default, no outbound request) ---
 	var ver obj
 	c.json(http.MethodGet, "/api/system/version", nil, http.StatusOK, &ver)

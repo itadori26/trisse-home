@@ -320,6 +320,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_6566f488a34e8fc3: 'Der Port muss zwischen 1 und 65535 liegen.',
   // The rain radar is only available for Germany.
   srv_d5d2cea1e1d1fa8d: 'Das Regenradar ist nur für Deutschland verfügbar.',
+  // The retention must be between 1 and 365 days.
+  srv_2367e29c6edb5841: 'Die Aufbewahrungsdauer muss zwischen 1 und 365 Tagen liegen.',
   // The row is out of range.
   srv_088ff184c130f97e: 'Die Zeile liegt außerhalb des Bereichs.',
   // The search query is too long.

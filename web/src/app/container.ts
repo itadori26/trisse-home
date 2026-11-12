@@ -15,6 +15,8 @@ import { ParcelsApi } from '../features/parcels/adapter/api/parcelsApi';
 import { ParcelsUseCases } from '../features/parcels/usecase/parcelsUseCases';
 import { TransferApi } from '../features/transfer/adapter/api/transferApi';
 import { TransferUseCases } from '../features/transfer/usecase/transferUseCases';
+import { TimelineApi } from '../features/timeline/adapter/api/timelineApi';
+import { TimelineUseCases } from '../features/timeline/usecase/timelineUseCases';
 import { TransitApi } from '../features/transit/adapter/api/transitApi';
 import { TransitUseCases } from '../features/transit/usecase/transitUseCases';
 import { WasteApi } from '../features/waste/adapter/api/wasteApi';
@@ -83,6 +85,7 @@ export interface Container {
   transit: TransitUseCases;
   parcels: ParcelsUseCases;
   transfer: TransferUseCases;
+  timeline: TimelineUseCases;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -119,6 +122,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     transit: new TransitUseCases(new TransitApi(http)),
     parcels: new ParcelsUseCases(new ParcelsApi(http)),
     transfer: new TransferUseCases(new TransferApi(http)),
+    timeline: new TimelineUseCases(new TimelineApi(http)),
     // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),

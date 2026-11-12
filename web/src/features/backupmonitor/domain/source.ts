@@ -50,7 +50,7 @@ export function pingExamples(pingUrl: string): string {
 /** Rough client-side check of a cron expression (the server validates fully). */
 export function looksLikeCron(expr: string): boolean {
   const e = expr.trim();
-  return /^@(hourly|daily|midnight|weekly|monthly)$/i.test(e) || /^([\d*,\/-]+\s+){4}[\d*,\/-]+$/.test(e);
+  return /^@(hourly|daily|midnight|weekly|monthly)$/i.test(e) || /^([\d*,/-]+\s+){4}[\d*,/-]+$/.test(e);
 }
 
 /** "3 h ago", "2 d ago" or "never". */

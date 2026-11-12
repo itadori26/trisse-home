@@ -29,6 +29,7 @@ import (
 	"trisse-home/internal/modules/services"
 	"trisse-home/internal/modules/shopping"
 	"trisse-home/internal/modules/system"
+	"trisse-home/internal/modules/timeline"
 	"trisse-home/internal/modules/todos"
 	"trisse-home/internal/modules/transfer"
 	"trisse-home/internal/modules/transit"
@@ -82,15 +83,23 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 
 	// Notifications are built first: monitoring modules report observations
 	// to them, or to a sink that discards them when the module is disabled.
-	var sink kernel.ObservationSink = kernel.DiscardObservations{}
+	// The timeline records the same observations and alerts (#74).
+	sinks := observationFanOut{}
 	var maintenance maintenanceReader
 	if cfg.ModuleEnabled("notifications") {
 		n := notifications.New(db, secrets, client, clk, ids)
 		registry.Register(n)
-		sink = n
-		alerts.target = n
+		sinks = append(sinks, n)
+		alerts.targets = append(alerts.targets, n)
 		maintenance = n
 	}
+	if cfg.ModuleEnabled("timeline") {
+		tl := timeline.New(db, clk, ids)
+		registry.Register(tl)
+		sinks = append(sinks, tl)
+		alerts.targets = append(alerts.targets, tl)
+	}
+	var sink kernel.ObservationSink = sinks
 
 	optional := []struct {
 		name  string
@@ -223,12 +232,23 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 
 // alertRelay forwards security alerts of the auth module (built first) to
 // the notifications module once that exists; without it alerts are dropped.
-type alertRelay struct{ target kernel.AlertSink }
+type alertRelay struct{ targets []kernel.AlertSink }
 
 // Alert implements kernel.AlertSink.
 func (a *alertRelay) Alert(ctx context.Context, al kernel.Alert) {
-	if a.target != nil {
-		a.target.Alert(ctx, al)
+	for _, t := range a.targets {
+		t.Alert(ctx, al)
+	}
+}
+
+// observationFanOut sends every observation to all consumers
+// (notifications, timeline); empty when both are disabled.
+type observationFanOut []kernel.ObservationSink
+
+// Observe implements kernel.ObservationSink.
+func (f observationFanOut) Observe(ctx context.Context, o kernel.Observation) {
+	for _, s := range f {
+		s.Observe(ctx, o)
 	}
 }
 
