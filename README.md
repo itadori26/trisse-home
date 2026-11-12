@@ -44,7 +44,7 @@ Not sure whether trisse-home is the right fit? See the
 | **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
 | **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded) |
-| **bookmarks**  | Links in folders with tags, filterable                                                                |
+| **bookmarks**  | Links in folders with tags, filterable; opt-in: title and favicon fetched on add (icons stored locally) and a weekly link check with a "broken links" filter |
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
 | **todos**      | To-do list with due dates and overdue highlighting, recurring to-dos (daily, weekly on weekdays, monthly, N days after completion) and reminders via the notification channels |
 | **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
@@ -387,6 +387,13 @@ radar image is proxied, so the browser never contacts DWD) and departures
 from the community-run [Transitous](https://transitous.org) API (cached one
 minute per stop; please respect its fair-use policy or run your own MOTIS)
 and, with your API key, the DHL tracking API (hourly, undelivered parcels only).
+If you enable it in the bookmark settings (off by default), the server also
+requests your bookmarked pages themselves: once when a bookmark is added (title
+and favicon, at most 512 KB per page and 64 KB per icon) and once a week for the
+link check. These requests time out after 8 seconds, follow at most five
+redirects and never connect to loopback, link-local (including cloud metadata
+addresses), unspecified or multicast addresses; LAN addresses stay allowed
+because home-server bookmarks point there on purpose.
 If you enable the update check (Settings → About), the GitHub releases API is
 asked for the latest version at most once a day.
 Nothing else leaves the server.
