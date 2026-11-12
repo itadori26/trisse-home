@@ -9,7 +9,7 @@ promise — contributions can move anything forward.
 | [v1.0 – Stable & safe](https://github.com/itadori26/trisse-home/milestone/1) | Release pipeline, vulnerability scanning, security model, backups off-site, security event log, disk health, notification rules, resource budgets | in progress |
 | [v1.1 – Everyday UX](https://github.com/itadori26/trisse-home/milestone/2) | Quick capture and actions, recurring to-dos, notes with links and history, mobile layout per tab, undo/redo, keyboard shortcuts, single sign-on, imports from other dashboards, accessibility | planned |
 | [v1.2 – Widgets & insights](https://github.com/itadori26/trisse-home/milestone/3) | Generic JSON widget, uptime statistics, event timeline, Pi-hole and Proxmox, more notification channels, config as code, API tokens, guest accounts | planned |
-| [Backlog](https://github.com/itadori26/trisse-home/milestone/4) | Ideas without a date: more integrations (see [#91](https://github.com/itadori26/trisse-home/issues/91)), kiosk mode, passkeys, local AI summaries, fun widgets | ideas |
+| [Backlog](https://github.com/itadori26/trisse-home/milestone/4) | Ideas without a date: more integrations (see [#91](https://github.com/itadori26/trisse-home/issues/91)), kiosk mode, passkeys, local AI summaries, fun widgets, Raspberry Pi appliance image ([#130](https://github.com/itadori26/trisse-home/issues/130)) | ideas |
 
 - **What changed:** see the [releases and changelog](https://github.com/itadori26/trisse-home/releases),
   generated from Conventional Commits for every version.
