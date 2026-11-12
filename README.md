@@ -49,7 +49,7 @@ Not sure whether trisse-home is the right fit? See the
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
 | **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
-| **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
+| **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported), and read-only ICS/webcal subscriptions (timetables, fixtures, holidays) with colour and refresh interval; quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view; opt-in image update hints (digest compared with the registry at most every 6 h, optional newer version tags, release notes link, notification) |
 | **adguard**    | AdGuard Home statistics                                                                               |
@@ -390,7 +390,7 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
+RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 (only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
 ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can

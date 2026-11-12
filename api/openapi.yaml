@@ -1338,6 +1338,38 @@ paths:
       responses:
         "201": { description: Created }
         "422": { description: Validation error or unknown calendar, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/calendar/subscriptions:
+    get:
+      tags: [calendar]
+      summary: ICS subscriptions (#98); the URL is never returned, only a hint without path and query
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CalendarSubscription" } } } } }
+    post:
+      tags: [calendar]
+      summary: Add an ICS subscription (the feed is loaded once to test it)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscriptionInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscription" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/calendar/subscriptions/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [calendar]
+      summary: Update a subscription; an empty URL keeps the stored one
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscriptionInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscription" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [calendar]
+      summary: Delete a subscription
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
         "503": { description: The calendar server rejected the event, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
 
 components:
@@ -1702,6 +1734,22 @@ components:
         topBlocked: { type: array, items: { type: object, properties: { domain: { type: string }, count: { type: integer } } } }
         updatedAt: { type: string, format: date-time }
         error: { type: string }
+    CalendarSubscription:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        urlHint: { type: string, example: "https://calendar.example.com/…" }
+        color: { type: string, example: "#3b6ef5" }
+        refreshMinutes: { type: integer }
+    CalendarSubscriptionInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 60 }
+        url: { type: string, description: "https://, http:// or webcal://; required when adding" }
+        color: { type: string, description: "#rrggbb, default #3b6ef5" }
+        refreshMinutes: { type: integer, minimum: 15, maximum: 1440, default: 60 }
     CalendarSettings:
       type: object
       properties:
@@ -1727,7 +1775,8 @@ components:
               uid: { type: string }
               summary: { type: string }
               location: { type: string }
-              calendar: { type: string }
+              calendar: { type: string, description: CalDAV collection or subscription name }
+              color: { type: string, description: "Subscription colour (#rrggbb); empty for CalDAV calendars" }
               start: { type: string, description: RFC 3339, or YYYY-MM-DD for all-day events }
               end: { type: string, description: RFC 3339, or YYYY-MM-DD (exclusive) for all-day events }
               allDay: { type: boolean }

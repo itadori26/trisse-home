@@ -154,7 +154,8 @@ export const en = {
     'Nextcloud: open the calendar app, click “…” next to a calendar → “Copy private link”, and use that URL. Create an app password under Settings → Security.',
   'calendar.username': 'Username',
   'calendar.app_password': 'App password {value}',
-  'calendar.connect_a_caldav_calendar_under_settings': 'Connect a CalDAV calendar under Settings → Calendar.',
+  'calendar.connect_a_caldav_calendar_under_settings':
+    'Connect a CalDAV calendar or add an ICS subscription under Settings → Calendar.',
   'calendar.no_events_in_the_next_days': 'No events in the next {days} days.',
   'calendar.new_event': 'New event',
   'calendar.view': 'View',
@@ -1060,6 +1061,23 @@ export const en = {
   'quick.prefix_todo': 'Prefix for to-dos',
   'quick.prefix_note': 'Prefix for notes',
   'quick.prefix_bookmark': 'Prefix for bookmarks',
+  'calendar.subscriptions': 'ICS subscriptions',
+  'calendar.subscriptions_hint':
+    'Read-only calendars from an .ics or webcal:// link, e.g. a university timetable, sports fixtures or public holidays. The link is stored encrypted because it often contains a private token.',
+  'calendar.subscription_name': 'Name',
+  'calendar.subscription_url': 'ICS URL',
+  'calendar.subscription_url_keep': 'ICS URL (leave empty to keep {hint})',
+  'calendar.subscription_color': 'Colour',
+  'calendar.subscription_refresh': 'Refresh',
+  'calendar.refresh_minutes': 'every {n} min',
+  'calendar.refresh_hours': 'every {n} h',
+  'calendar.add_subscription': 'Add subscription',
+  'calendar.edit_subscription': 'Edit {name}',
+  'calendar.delete_subscription': 'Delete {name}',
+  'calendar.subscription_name_required': 'Please enter a name.',
+  'calendar.subscription_url_invalid': 'The ICS URL must start with https://, http:// or webcal://.',
+  'calendar.quick_add_needs_caldav':
+    'New events are saved in a CalDAV calendar; ICS subscriptions are read-only. Connect one under Settings → Calendar.',
 } as const;
 
 /** Every message key. */
