@@ -1,7 +1,7 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
 import type { PointDTO, SnapshotDTO, VersionDTO } from '../../../../shared/api-client/generated/system';
 import type { UpdateCheckDTO } from '../../../../shared/api-client/generated/system-requests';
-import type { HistoryPoint, SystemSnapshot, VersionInfo } from '../../domain/system';
+import { parseInstallMethod, type HistoryPoint, type SystemSnapshot, type VersionInfo } from '../../domain/system';
 import type { SystemGateway } from '../../usecase/systemUseCases';
 
 /** SystemGateway backed by the REST API. */
@@ -39,6 +39,7 @@ export class SystemApi implements SystemGateway {
 
 const toVersion = (d: VersionDTO): VersionInfo => ({
   current: d.current,
+  installMethod: parseInstallMethod(d.installMethod),
   checkEnabled: d.checkEnabled,
   latest: d.latest ? { ...d.latest, publishedAt: new Date(d.latest.publishedAt) } : null,
   updateAvailable: d.updateAvailable,

@@ -57,4 +57,5 @@ export interface VersionDTO {
   checkEnabled: boolean;
   latest?: ReleaseDTO;
   updateAvailable: boolean;
+  installMethod: string;
 }

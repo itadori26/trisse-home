@@ -9,6 +9,7 @@ import (
 	"trisse-home/internal/modules"
 	"trisse-home/internal/modules/system/adapter/controller"
 	"trisse-home/internal/modules/system/adapter/gateway"
+	"trisse-home/internal/modules/system/domain"
 	"trisse-home/internal/modules/system/usecase"
 	"trisse-home/internal/shared/kernel"
 )
@@ -25,6 +26,8 @@ type Config struct {
 	// when the user enabled the update check).
 	Version string
 	Client  *http.Client
+	// InstallMethod (INSTALL_METHOD) selects the update hint.
+	InstallMethod string
 }
 
 // updateCheckJobInterval: the use case itself limits lookups to once a day.
@@ -43,7 +46,7 @@ type Module struct {
 func New(cfg Config, db *sql.DB, sink kernel.ObservationSink, clock kernel.Clock) *Module {
 	host := gateway.NewHost(cfg.ProcPath, cfg.SysPath, gateway.ParseDiskMounts(cfg.DiskPaths))
 	uc := usecase.NewMonitor(host, gateway.NewHistoryStore(db), sink, clock)
-	versions := usecase.NewVersions(cfg.Version, gateway.NewGitHubReleases(cfg.Client, gateway.DefaultReleasesURL), gateway.NewUpdateSettings(db), clock)
+	versions := usecase.NewVersions(cfg.Version, domain.ParseInstallMethod(cfg.InstallMethod), gateway.NewGitHubReleases(cfg.Client, gateway.DefaultReleasesURL), gateway.NewUpdateSettings(db), clock)
 	return &Module{uc: uc, versions: versions, handlers: controller.NewHandlers(uc), version: controller.NewVersionHandlers(versions)}
 }
 

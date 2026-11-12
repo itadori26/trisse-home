@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"trisse-home/internal/modules/system/domain"
 )
 
 type fakeReleases struct {
@@ -32,8 +34,11 @@ func (c *stepClock) Now() time.Time { return c.t }
 func TestVersions(t *testing.T) {
 	ctx := context.Background()
 	src, set, clk := &fakeReleases{}, &memUpdateSettings{}, &stepClock{t: time.Unix(1_800_000_000, 0)}
-	uc := NewVersions("1.2.0", src, set, clk)
+	uc := NewVersions("1.2.0", domain.InstallAppliance, src, set, clk)
 	info, _ := uc.Info(ctx)
+	if info.InstallMethod != domain.InstallAppliance {
+		t.Fatalf("install method %q", info.InstallMethod)
+	}
 	if info.Current != "1.2.0" || info.Latest != nil || src.calls != 0 {
 		t.Fatal("no outbound request while the check is disabled")
 	}
@@ -50,7 +55,7 @@ func TestVersions(t *testing.T) {
 	if info, err := uc.Info(ctx); err != nil || src.calls != 2 || !info.UpdateAvailable {
 		t.Fatalf("stale lookup failure must keep the last result: %+v %v", info, err)
 	}
-	dev := NewVersions("dev", src, set, clk)
+	dev := NewVersions("dev", domain.InstallUnknown, src, set, clk)
 	if info, _ := dev.Info(ctx); info.UpdateAvailable {
 		t.Fatal("development builds never show an update hint")
 	}

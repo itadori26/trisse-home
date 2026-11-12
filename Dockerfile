@@ -26,7 +26,8 @@ FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /out/trisse-home /trisse-home
 COPY --from=build --chown=65532:65532 /out/data /data
 ENV DATABASE_PATH=/data/trisse-home.db \
-    LISTEN_ADDR=:8090
+    LISTEN_ADDR=:8090 \
+    INSTALL_METHOD=docker
 EXPOSE 8090
 VOLUME ["/data"]
 USER nonroot:nonroot

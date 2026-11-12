@@ -670,6 +670,9 @@ export const en = {
   'system.update_check_hint':
     'Off by default. When enabled, the server asks the GitHub API for the latest release at most once a day.',
   'system.update_available': 'Version {version} is available.',
+  'system.update_how_docker': 'Update with: docker compose pull && docker compose up -d',
+  'system.update_how_package': 'Update with: sudo apt update && sudo apt upgrade (or install the new .deb).',
+  'system.update_how_appliance': 'Updates are installed automatically every night.',
   'system.release_notes': 'Release notes',
   'system.up_to_date': 'You are running the latest release.',
   'settings.section.about': 'About',

@@ -315,6 +315,7 @@ service tiles are configured in the web interface.
 | `PASSWORD_LOGIN` | `true` | `false` disables the owner's password login once SSO is configured. |
 | `SSO_REQUIRE_2FA` | `false` | Also ask for the local TOTP code after SSO. |
 | `PUBLIC_URL` | empty | Public `https://` origin (e.g. `https://home.example.org`); enables passkeys. WebAuthn does not work on plain `http://<ip>`. |
+| `INSTALL_METHOD` | set by the image, the package and the Pi image | `docker`, `package` or `appliance`; selects the update hint in the settings. |
 | `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
 | `SAMPLE_FEEDS`      | Go Blog, Hacker News              | Example feeds, comma separated.                                              |
 
