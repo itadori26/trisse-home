@@ -41,6 +41,7 @@ import (
 	"trisse-home/internal/platform/clock"
 	"trisse-home/internal/platform/config"
 	"trisse-home/internal/platform/crypto"
+	"trisse-home/internal/platform/database"
 	"trisse-home/internal/platform/demo"
 	"trisse-home/internal/platform/httpclient"
 	"trisse-home/internal/platform/idgen"
@@ -154,7 +155,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}
 	}
 	if cfg.ModuleEnabled("backup") && !cfg.DemoMode {
-		b, err := backup.New(backup.Config{Dir: cfg.BackupDir, Interval: cfg.BackupInterval, Retention: cfg.BackupRetention}, db, clk)
+		b, err := backup.New(backup.Config{Dir: cfg.BackupDir, Interval: cfg.BackupInterval, Retention: cfg.BackupRetention,
+			Cipher: secrets, Client: client, Alerts: alerts, Log: log,
+			Swapper: database.NewRestorer(cfg.DatabasePath, backup.MaxRestoreBytes), Reauth: authModule, Restart: requestRestart}, db, clk)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -65,7 +65,7 @@ Not sure whether trisse-home is the right fit? See the
 | **transfer**   | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)     |
 | **quick search** | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web |
 | **appearance** | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS |
-| **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
+| **backup**     | Automatic, consistent database backups with retention; download in the settings; optional off-site copies to WebDAV/Nextcloud with their own retention; guided restore (password + 2FA, validated before the swap) |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
 | **notifications** | Push messages via [ntfy](https://ntfy.sh), Gotify, webhooks (HMAC-signed) or e-mail for offline services, containers, full disks, expiring certificates, failed backups and security events; importance per type, quiet hours with a morning summary and maintenance windows |
 | **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
@@ -143,16 +143,23 @@ has an SBOM attached and a build provenance attestation.
 (daily, 7 kept; see `BACKUP_*`) in `/data/backups` and offers them for
 download under Settings → Backups. Keep `SECRET_KEY` separately; without it
 stored integration passwords cannot be decrypted. To copy the backups off the
-volume:
+volume, add an **off-site target** under Settings → Backups (any WebDAV folder,
+e.g. Nextcloud with an app password): every new backup is uploaded there as well
+and pruned by its own retention; failed uploads are reported via notifications.
+Or copy them by hand:
 
 ```sh
 sudo docker run --rm -v trisse-home-data:/data -v "$PWD":/backup alpine \
   cp -r /data/backups /backup/
 ```
 
-**Restore:** stop the stack, replace `/data/trisse-home.db` in the volume
-with a backup file (and remove `trisse-home.db-wal`/`-shm` if present), then
-start it again.
+**Restore:** Settings → Backups → *Restore a backup*: pick a local or off-site
+backup or upload a file, re-enter your password (and 2FA code). trisse-home
+checks the file (SQLite integrity, a trisse-home schema not newer than the running
+version), keeps the current database as `trisse-home.db.before-restore` and
+restarts; Docker starts it again with the restored data. Without the web UI: stop
+the stack, replace `/data/trisse-home.db` in the volume with a backup file (and
+remove `trisse-home.db-wal`/`-shm` if present), then start it again.
 
 **Forgot the password?**
 `sudo docker compose exec trisse-home /trisse-home reset-account`, then
@@ -369,7 +376,7 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, Speedtest Tracker (every 10 minutes), the registries of your running images
+RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 (only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
 ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can

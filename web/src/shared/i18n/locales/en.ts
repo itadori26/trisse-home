@@ -954,6 +954,32 @@ export const en = {
   'docker_updates.status.pinned': 'Pinned digest',
   'docker_updates.status.local': 'Built locally',
   'docker_updates.status.error': 'Check failed',
+  'backup.offsite': 'Off-site copy (WebDAV, e.g. Nextcloud)',
+  'backup.offsite_hint':
+    'Each new backup is also uploaded to this folder. Use an app password; it is stored encrypted. Failures are reported via notifications.',
+  'backup.webdav_url': 'WebDAV folder URL',
+  'backup.username': 'User name',
+  'backup.password': 'App password {value}',
+  'backup.remote_retention': 'Keep … backups off-site',
+  'backup.test_connection': 'Test connection',
+  'backup.connection_ok': 'The folder is reachable and writable.',
+  'backup.disable_offsite': 'Stop off-site copies',
+  'backup.remote_backups': 'Off-site backups',
+  'backup.restore': 'Restore a backup',
+  'backup.restore_hint':
+    'The current data is replaced and trisse-home restarts (Docker starts it again automatically). The previous database is kept as trisse-home.db.before-restore. Backups from a newer version cannot be restored.',
+  'backup.restore_source': 'Backup',
+  'backup.source_upload': 'Upload a file',
+  'backup.source_local': 'Local: {date}',
+  'backup.source_remote': 'Off-site: {date}',
+  'backup.backup_file': 'Backup file (.db)',
+  'backup.confirm_password': 'Your password',
+  'backup.confirm_code': 'Two-factor code (if enabled)',
+  'backup.restore_now': 'Restore and restart',
+  'backup.restore_confirm': 'Replace all current data with this backup?',
+  'backup.restoring': 'Restoring…',
+  'backup.restarting':
+    'The backup is being restored; trisse-home restarts. The page reloads in a few seconds.',
 } as const;
 
 /** Every message key. */

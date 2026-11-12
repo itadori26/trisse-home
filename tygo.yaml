@@ -78,6 +78,9 @@ packages:
     include_files: ["dto.go"]
   - path: "trisse-home/internal/modules/backup/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/backup.ts"
+  - path: "trisse-home/internal/modules/backup/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/backup-requests.ts"
+    include_files: ["dto.go"]
   - path: "trisse-home/internal/modules/notifications/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/notifications.ts"
   - path: "trisse-home/internal/modules/notifications/adapter/controller"

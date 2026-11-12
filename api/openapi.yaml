@@ -231,6 +231,55 @@ paths:
       responses:
         "200": { description: SQLite database, content: { application/vnd.sqlite3: { schema: { type: string, format: binary } } } }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/backups/remote:
+    get:
+      tags: [backup]
+      summary: Off-site backups in the WebDAV folder, newest first
+      responses: { "200": { description: List of backup files }, "404": { description: No target configured } }
+  /api/backups/remote/settings:
+    get:
+      tags: [backup]
+      summary: Off-site target (the password is never returned)
+      responses: { "200": { description: "{configured, url, username, hasPassword, retention}" } }
+    put:
+      tags: [backup]
+      summary: Test and save the WebDAV target; an empty password keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, username: { type: string }, password: { type: string }, retention: { type: integer, minimum: 1, maximum: 365 } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid or not usable } }
+    delete:
+      tags: [backup]
+      summary: Stop off-site copies (remote files are kept)
+      responses: { "204": { description: Removed } }
+  /api/backups/remote/test:
+    post:
+      tags: [backup]
+      summary: Check that the folder exists and is writable (writes and deletes a small test file)
+      responses: { "204": { description: Usable }, "422": { description: Not usable } }
+  /api/backups/restore:
+    post:
+      tags: [backup]
+      summary: Restore a backup and restart (owner only; password and 2FA code are re-checked)
+      description: >
+        multipart/form-data with password, code, source (local | remote | upload), name (local/remote) and, last, file
+        (upload). The file is validated (integrity, trisse-home schema not newer than the running version) before the
+        swap is scheduled; the previous database is kept as trisse-home.db.before-restore.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                password: { type: string }
+                code: { type: string }
+                source: { type: string, enum: [local, remote, upload] }
+                name: { type: string }
+                file: { type: string, format: binary }
+      responses:
+        "202": { description: Restore scheduled, the server restarts }
+        "401": { description: Wrong password or code }
+        "403": { description: Guests and API tokens cannot restore }
+        "422": { description: Not a valid or too new backup }
 
   # ---------------------------------------------------------------- onboarding
   /api/onboarding:

@@ -85,6 +85,19 @@ the public peer status into a directory that is mounted read-only into
 trisse-home. The script is short enough to read in a minute:
 [`scripts/wireguard-export.sh`](../scripts/wireguard-export.sh).
 
+### Backup restore
+
+Restoring replaces every piece of data, so `POST /api/backups/restore` is
+owner-only (no guests, no API tokens), needs the password and — when enabled —
+a fresh 2FA code again (rate-limited and logged like a login), and validates the
+file with SQLite's integrity check and the schema version before anything is
+replaced. The swap happens on the next start, before the database is opened;
+the previous database stays next to it as `trisse-home.db.before-restore`.
+Off-site copies go to the WebDAV folder you configure; its password is
+encrypted with `SECRET_KEY`. The backups themselves contain your data (secrets
+stay encrypted with `SECRET_KEY`, passwords only as hashes), so use a folder only
+you can read.
+
 ### Prometheus metrics
 
 `GET /metrics` exists only with `METRICS_ENABLED=true`. It needs a bearer

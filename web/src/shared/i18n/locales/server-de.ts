@@ -41,6 +41,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_c40eff143d7c40cd: 'Es können höchstens {max} Lesezeichen auf einmal importiert werden.',
   // Between 1 and 365 backups can be kept.
   srv_4bba6d234928bd07: 'Es können zwischen 1 und 365 Backups aufbewahrt werden.',
+  // Choose a backup file.
+  srv_56aef011f47cdbeb: 'Bitte eine Backup-Datei auswählen.',
   // Choose at least one scope.
   srv_c2c503807749b722: 'Bitte mindestens einen Bereich wählen.',
   // Choose between 0 (never) and 3650 days.
@@ -119,10 +121,14 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_2e56580cd044b5c5: 'Keine Lesezeichen gefunden. Bitte exportiere deine Lesezeichen im Browser als HTML.',
   // No calendar is configured yet.
   srv_92fe9be68e4fbeb4: 'Es ist noch kein Kalender eingerichtet.',
+  // No off-site backup target is configured.
+  srv_7f26dde75768b4ec: 'Es ist kein externes Backup-Ziel eingerichtet.',
   // No waste calendar is configured yet.
   srv_d1f1feb231209e5a: 'Es ist noch kein Abfallkalender eingerichtet.',
   // Only the owner can do this.
   srv_67f0ba90e3a4e5b4: 'Das kann nur der Besitzer.',
+  // Only the owner can restore backups in the browser.
+  srv_2fa2f3b7606fee5e: 'Nur der Besitzer kann Backups im Browser wiederherstellen.',
   // Passkeys need HTTPS and PUBLIC_URL (see the README).
   srv_b90b21f1d731b4f6: 'Passkeys brauchen HTTPS und PUBLIC_URL (siehe README).',
   // Password login is disabled. Use single sign-on.
@@ -191,6 +197,11 @@ export const serverDe: Record<ServerMessageKey, string> = {
   // The Wake-on-LAN relay did not answer. Is COMPOSE_PROFILES=wol set (see README)?
   srv_7bd9cc89bdd1560a:
     'Das Wake-on-LAN-Relay hat nicht geantwortet. Ist COMPOSE_PROFILES=wol gesetzt (siehe README)?',
+  // The WebDAV URL must look like https://cloud.example.org/remote.php/dav/files/USER/Backups/.
+  srv_aa51a8ab465628a7:
+    'Die WebDAV-URL muss wie https://cloud.example.org/remote.php/dav/files/BENUTZER/Backups/ aussehen.',
+  // The WebDAV target is not usable: {detail}
+  srv_91c4369358de2268: 'Das WebDAV-Ziel ist nicht nutzbar: {detail}',
   // The accent color must look like #3b6ef5.
   srv_1c9c8a99006c73fe: 'Die Akzentfarbe muss wie #3b6ef5 aussehen.',
   // The account has already been set up.
@@ -201,12 +212,19 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_1f91f70c0f8f35da: 'Der Authentifizierungscode ist falsch.',
   // The background image must be an http(s) URL.
   srv_28004c9379be9be3: 'Das Hintergrundbild muss eine http(s)-URL sein.',
+  // The backup could not be received: {detail}
+  srv_ad9909a46d053d7b: 'Das Backup konnte nicht empfangen werden: {detail}',
   // The backup does not exist.
   srv_1a3955e489757321: 'Das Backup existiert nicht.',
   // The backup interval must be at least one hour.
   srv_0fd566747f1cd503: 'Das Backup-Intervall muss mindestens eine Stunde betragen.',
+  // The backup is damaged (integrity check failed).
+  srv_678e4dc426de200a: 'Das Backup ist beschädigt (Integritätsprüfung fehlgeschlagen).',
   // The backup source does not exist.
   srv_24356b769e2a8258: 'Die Backup-Quelle existiert nicht.',
+  // The backup was made by a newer version of trisse-home. Update first, then restore it.
+  srv_5b20a69f346d31d3:
+    'Das Backup stammt von einer neueren trisse-home-Version. Bitte zuerst aktualisieren und dann wiederherstellen.',
   // The bookmark does not exist.
   srv_781f5105c04c646b: 'Das Lesezeichen existiert nicht.',
   // The calendar server is not reachable.
@@ -253,6 +271,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_0371382a6f62f53f: 'Die Datei konnte nicht gelesen werden (max. 8 MB).',
   // The file is larger than 16 MB.
   srv_e7cb725c138134cc: 'Die Datei ist größer als 16 MB.',
+  // The file is not a trisse-home backup.
+  srv_2dd869ff96b4bc7a: 'Die Datei ist kein trisse-home-Backup.',
   // The file is not valid JSON.
   srv_b8c878135ee917b1: 'Die Datei ist kein gültiges JSON.',
   // The folder does not exist.
@@ -328,6 +348,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_81c618d3f04032a6: 'Die ntfy-Server-URL muss mit http:// oder https:// beginnen.',
   // The ntfy server could not be reached: {detail}
   srv_d77d58a4fac3d674: 'Der ntfy-Server ist nicht erreichbar: {detail}',
+  // The off-site backup could not be downloaded: {detail}
+  srv_d294e91217ac56a4: 'Das externe Backup konnte nicht heruntergeladen werden: {detail}',
+  // The off-site backups could not be listed: {detail}
+  srv_3b42f48d84e45ed3: 'Die externen Backups konnten nicht aufgelistet werden: {detail}',
   // The owner account is not a guest.
   srv_a8aed831e812c028: 'Das Besitzerkonto ist kein Gast.',
   // The parcel does not exist.
@@ -373,6 +397,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   // The sign-in took too long or was started elsewhere. Please try again.
   srv_a9878acf59444198:
     'Die Anmeldung hat zu lange gedauert oder wurde woanders begonnen. Bitte erneut versuchen.',
+  // The source must be local, remote or upload.
+  srv_7054f9e52efbae1e: 'Die Quelle muss local, remote oder upload sein.',
   // The tab does not exist.
   srv_7e608cff024ed2a8: 'Der Tab existiert nicht.',
   // The tab has too many widgets for a template.
@@ -463,6 +489,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   // Use a cron expression with five fields, e.g. 0 3 * * * (daily at 03:00).
   srv_564c3b1fecfb1093:
     'Bitte einen Cron-Ausdruck mit fünf Feldern verwenden, z. B. 0 3 * * * (täglich um 03:00).',
+  // User name and password (or app password) are required.
+  srv_1c73ff4160f4ee94: 'Benutzername und Passwort (oder App-Passwort) sind erforderlich.',
   // Username and app password are required.
   srv_8fe21afcca496dfb: 'Benutzername und App-Passwort sind erforderlich.',
   // Username and password are required.

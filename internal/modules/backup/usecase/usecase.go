@@ -47,11 +47,25 @@ type backups struct {
 	snap   Snapshotter
 	store  Store
 	clock  kernel.Clock
+	after  func(ctx context.Context, f FileView)
+}
+
+// Option configures the backup use cases.
+type Option func(*backups)
+
+// WithAfterBackup registers a hook called after each successful backup,
+// e.g. the off-site upload (#46).
+func WithAfterBackup(fn func(ctx context.Context, f FileView)) Option {
+	return func(b *backups) { b.after = fn }
 }
 
 // NewBackups returns the backup use cases.
-func NewBackups(policy domain.Policy, snap Snapshotter, store Store, clock kernel.Clock) Backups {
-	return &backups{policy: policy, snap: snap, store: store, clock: clock}
+func NewBackups(policy domain.Policy, snap Snapshotter, store Store, clock kernel.Clock, opts ...Option) Backups {
+	b := &backups{policy: policy, snap: snap, store: store, clock: clock}
+	for _, o := range opts {
+		o(b)
+	}
+	return b
 }
 
 func toView(f domain.File) FileView {
@@ -92,6 +106,9 @@ func (uc *backups) BackupNow(ctx context.Context) (FileView, error) {
 		return FileView{}, err
 	}
 	_ = rc.Close()
+	if uc.after != nil {
+		uc.after(ctx, toView(f))
+	}
 	return toView(f), nil
 }
 

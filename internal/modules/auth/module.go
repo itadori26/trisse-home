@@ -120,6 +120,7 @@ type Module struct {
 	purge      usecase.PurgeExpiredSessions
 	reset      usecase.ResetAccount
 	security   usecase.SecurityLog
+	confirm    usecase.ConfirmIdentity
 	setup      usecase.SetupAccount
 	tokens     usecase.TokenGenerator
 	demo       bool
@@ -177,6 +178,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 		purge:      usecase.NewPurgeExpiredSessions(sessions, d.Clock),
 		reset:      usecase.NewResetAccount(accounts, sessions),
 		security:   securityLog,
+		confirm:    usecase.NewConfirmIdentity(deps),
 		setup:      uc.Setup,
 		tokens:     d.Tokens,
 		demo:       cfg.Demo,
@@ -279,6 +281,12 @@ func (m *Module) PrepareDemo(ctx context.Context) error {
 		return fmt.Errorf("create demo account: %w", err)
 	}
 	return nil
+}
+
+// ConfirmIdentity re-checks the password and, if enabled, a 2FA code of
+// the signed-in account; used by other modules before dangerous actions.
+func (m *Module) ConfirmIdentity(ctx context.Context, password, code, clientKey string) error {
+	return m.confirm.Confirm(ctx, password, code, clientKey)
 }
 
 // Audit implements kernel.AuditSink for other modules (e.g. data import).
