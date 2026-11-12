@@ -21,3 +21,14 @@ type OrderDTO struct {
 func (d ServiceInputDTO) toInput() usecase.ServiceInput {
 	return usecase.ServiceInput{Name: d.Name, URL: d.URL, CheckURL: d.CheckURL, Icon: d.Icon, Description: d.Description, SkipTLSVerify: d.SkipTLSVerify, MAC: d.MAC}
 }
+
+// DiscoveryInputDTO is the body of PUT /api/services/discovery.
+type DiscoveryInputDTO struct {
+	Enabled         bool   `json:"enabled"`
+	IntervalMinutes int    `json:"intervalMinutes"`
+	Rule            string `json:"rule" tstype:"'labels' | 'manual'"`
+}
+
+func (d DiscoveryInputDTO) toInput() usecase.DiscoveryInput {
+	return usecase.DiscoveryInput(d)
+}

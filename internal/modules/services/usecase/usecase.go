@@ -31,6 +31,9 @@ type ServiceView struct {
 	Error                                           string
 	CertExpiresAt                                   time.Time
 	CertExpiresSoon                                 bool
+	// Container is set for discovered tiles; Hidden ones lost their container.
+	Container string
+	Hidden    bool
 }
 
 // Services is the input port of the services module.
@@ -170,10 +173,15 @@ func (uc *services) Update(ctx context.Context, id string, in ServiceInput) (Ser
 	if err != nil {
 		return ServiceView{}, err
 	}
+	// A manual edit keeps the link to the container; with the merge rule
+	// "manual wins" the next sync then leaves the tile alone.
+	s.Container, s.Hidden, s.Edited = old.Container, old.Hidden, old.Container != ""
 	if err := uc.d.Repo.Update(ctx, s); err != nil {
 		return ServiceView{}, fmt.Errorf("update service: %w", err)
 	}
-	uc.check(ctx, s)
+	if !s.Hidden {
+		uc.check(ctx, s)
+	}
 	return uc.view(s), nil
 }
 
@@ -231,6 +239,9 @@ func (uc *services) CheckAll(ctx context.Context) error {
 	sem := make(chan struct{}, maxParallelChecks)
 	var wg sync.WaitGroup
 	for _, s := range list {
+		if s.Hidden {
+			continue // its container is gone; an offline alert would be noise
+		}
 		wg.Add(1)
 		sem <- struct{}{}
 		go func() {
@@ -298,6 +309,7 @@ func (uc *services) view(s domain.Service) ServiceView {
 	v := ServiceView{
 		ID: s.ID, Name: s.Name, URL: s.URL, CheckURL: s.CheckURL, Icon: s.Icon, Description: s.Description,
 		SkipTLSVerify: s.SkipTLSVerify, Position: s.Position, State: string(domain.StateUnknown), MAC: string(s.MAC),
+		Container: s.Container, Hidden: s.Hidden,
 	}
 	if st, ok := uc.d.Status.Get(s.ID); ok {
 		v.State, v.HTTPStatus, v.LatencyMs, v.CheckedAt, v.Error = string(st.State), st.HTTPStatus, st.Latency.Milliseconds(), st.CheckedAt, st.Error

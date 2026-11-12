@@ -874,6 +874,25 @@ export const de: Record<MessageKey, string> = {
   'services.uptime_bars': 'Tägliche Verfügbarkeit von {name} in den letzten 30 Tagen',
   'services.incident_ongoing': 'dauert an',
   'services.no_incidents': 'Keine Störungen erfasst.',
+  'services.discovery.title': 'Docker-Autodiscovery',
+  'services.discovery.hint':
+    'Container mit diesen Labels erscheinen automatisch als Kachel. Homepage-Labels (homepage.name, homepage.href, …) funktionieren ebenfalls; trisse-home.enable: false überspringt einen Container.',
+  'services.discovery.unavailable':
+    'Die Autodiscovery liest Container-Labels über das Docker-Modul. Aktiviere es, um diese Funktion zu nutzen.',
+  'services.discovery.enabled': 'Automatisch abgleichen',
+  'services.discovery.interval': 'Intervall in Minuten',
+  'services.discovery.rule': 'Wenn eine erkannte Kachel bearbeitet wurde',
+  'services.discovery.rule_labels': 'Labels gewinnen beim nächsten Abgleich',
+  'services.discovery.rule_manual': 'Meine Änderungen behalten',
+  'services.discovery.sync_now': 'Jetzt abgleichen',
+  'services.discovery.last_result':
+    'Letzter Abgleich {time}: {created} hinzugefügt, {updated} aktualisiert, {hidden} ausgeblendet.',
+  'services.discovery.last_error': 'Letzter Abgleich {time} fehlgeschlagen: {error}',
+  'services.discovery.skipped': '{count} Container wegen ungültiger Labels übersprungen.',
+  'services.discovery.invalid_interval': 'Das Intervall muss zwischen 1 und 1440 Minuten liegen.',
+  'services.discovered': 'Aus Container {container}',
+  'services.hidden_hint':
+    'Container {container} ist weg: Die Kachel ist auf dem Dashboard ausgeblendet, bis er wieder da ist.',
   'timeline.source.service': 'Dienste',
   'timeline.source.container': 'Container',
   'timeline.source.backup': 'Backups',
