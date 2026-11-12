@@ -1,7 +1,12 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
 import type { PointDTO, SnapshotDTO, VersionDTO } from '../../../../shared/api-client/generated/system';
 import type { UpdateCheckDTO } from '../../../../shared/api-client/generated/system-requests';
-import { parseInstallMethod, type HistoryPoint, type SystemSnapshot, type VersionInfo } from '../../domain/system';
+import {
+  parseInstallMethod,
+  type HistoryPoint,
+  type SystemSnapshot,
+  type VersionInfo,
+} from '../../domain/system';
 import type { SystemGateway } from '../../usecase/systemUseCases';
 
 /** SystemGateway backed by the REST API. */
