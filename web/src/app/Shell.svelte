@@ -2,12 +2,10 @@
   import MaintenanceBanner from '../features/notifications/ui/MaintenanceBanner.svelte';
   import { setLanguage, t } from '../shared/i18n';
   import { type Appearance, cssVariables, defaultAppearance } from '../features/appearance';
-  import { Tour } from '../features/onboarding';
   import { errorMessage } from '../shared/api-client/http';
   import { applyTheme } from '../shared/theme/theme';
   import type { Container } from './container';
   import DashboardPage from './DashboardPage.svelte';
-  import QuickSearch from './QuickSearch.svelte';
   import { opensQuickSearch } from './quickSearch';
 
   /** Props of the authenticated application shell. */
@@ -165,11 +163,15 @@
 {/if}
 
 {#if quickSearch && modules}
-  <QuickSearch {container} {modules} onclose={() => (quickSearch = false)} />
+  {#await import('./QuickSearch.svelte') then { default: QuickSearch }}
+    <QuickSearch {container} {modules} onclose={() => (quickSearch = false)} />
+  {/await}
 {/if}
 
 {#if touring}
-  <Tour onfinish={finishTour} />
+  {#await import('../features/onboarding/ui/Tour.svelte') then { default: Tour }}
+    <Tour onfinish={finishTour} />
+  {/await}
 {/if}
 
 <style>

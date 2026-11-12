@@ -1,6 +1,7 @@
 <script lang="ts">
   import { DashboardView, type Widget, type WidgetConfig } from '../features/dashboard';
   import type { Container } from './container';
+  import LazyComponent from './LazyComponent.svelte';
   import { definitionFor, widgetDefinitions } from './widgets';
 
   /** Props of the dashboard page. */
@@ -25,15 +26,16 @@
   {#snippet content(widget: Widget)}
     {@const def = definitionFor(widget.kind)}
     {#if def}
-      {@const View = def.view.component}
-      <View {...def.view.props(widget.config, container)} />
+      <LazyComponent renderer={def.view} props={def.view.props(widget.config, container)} />
     {/if}
   {/snippet}
   {#snippet settings(widget: Widget, save: (config: WidgetConfig) => Promise<void>)}
     {@const def = definitionFor(widget.kind)}
     {#if def?.settings}
-      {@const Settings = def.settings.component}
-      <Settings {...def.settings.props(widget.config, container)} onsave={save} />
+      <LazyComponent
+        renderer={def.settings}
+        props={{ ...def.settings.props(widget.config, container), onsave: save }}
+      />
     {/if}
   {/snippet}
 </DashboardView>

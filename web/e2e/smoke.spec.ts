@@ -205,6 +205,32 @@ test('a guest sees only the shared tab and cannot edit', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
 });
 
+test('every widget kind loads its lazy chunk (#116)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  const status = await (await page.request.get('/api/auth/status')).json();
+  const headers = { 'X-CSRF-Token': status.csrfToken as string };
+  const { widgetKinds } = await (await page.request.get('/api/modules')).json();
+  const tab = await (
+    await page.request.post('/api/dashboard/tabs', { headers, data: { name: 'All widgets' } })
+  ).json();
+  for (const [i, kind] of (widgetKinds as string[]).entries()) {
+    const res = await page.request.post(`/api/dashboard/tabs/${tab.id}/widgets`, {
+      headers,
+      data: { kind, x: (i % 3) * 4, y: Math.floor(i / 3) * 4, w: 4, h: 4 },
+    });
+    expect(res.ok(), kind).toBeTruthy();
+  }
+
+  await page.reload();
+  await page.getByRole('button', { name: 'All widgets' }).click();
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText('This widget could not be loaded.')).toHaveCount(0);
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

@@ -980,6 +980,9 @@ export const en = {
   'backup.restoring': 'Restoring…',
   'backup.restarting':
     'The backup is being restored; trisse-home restarts. The page reloads in a few seconds.',
+  'app.loading_widget': 'Loading widget…',
+  'app.widget_failed_to_load': 'This widget could not be loaded.',
+  'app.retry': 'Retry',
 } as const;
 
 /** Every message key. */

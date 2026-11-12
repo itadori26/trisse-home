@@ -1004,4 +1004,7 @@ export const de: Record<MessageKey, string> = {
   'backup.restoring': 'Wird wiederhergestellt …',
   'backup.restarting':
     'Das Backup wird wiederhergestellt; trisse-home startet neu. Die Seite lädt in wenigen Sekunden neu.',
+  'app.loading_widget': 'Widget wird geladen …',
+  'app.widget_failed_to_load': 'Dieses Widget konnte nicht geladen werden.',
+  'app.retry': 'Erneut versuchen',
 };
