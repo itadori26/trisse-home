@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"trisse-home/internal/modules/dashboard/adapter/presenter"
+	"trisse-home/internal/modules/dashboard/domain"
 	"trisse-home/internal/modules/dashboard/usecase"
 	"trisse-home/internal/shared/httpapi"
 	"trisse-home/internal/shared/kernel"
@@ -26,7 +27,8 @@ func NewHandlers(get usecase.GetDashboard, tabs usecase.ManageTabs, widgets usec
 
 // Get handles GET /api/dashboard.
 func (h *Handlers) Get(w http.ResponseWriter, r *http.Request) {
-	res, err := h.get.Execute(r.Context())
+	// The client address lets network rules pick the default tab (#71).
+	res, err := h.get.ExecuteFor(r.Context(), httpapi.ClientIP(r.Context()))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
@@ -180,6 +182,25 @@ func (h *Handlers) SetBackground(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := h.tabs.SetBackground(r.Context(), r.PathValue("id"), dto.Background)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Tab(res))
+}
+
+// SetRules handles PUT /api/dashboard/tabs/{id}/rules.
+func (h *Handlers) SetRules(w http.ResponseWriter, r *http.Request) {
+	var dto TabRulesDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	in := make([]domain.RuleInput, 0, len(dto.Rules))
+	for _, x := range dto.Rules {
+		in = append(in, domain.RuleInput{Days: x.Days, From: x.From, To: x.To, Networks: x.Networks})
+	}
+	res, err := h.tabs.SetRules(r.Context(), r.PathValue("id"), in)
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
