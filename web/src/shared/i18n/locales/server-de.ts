@@ -545,4 +545,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_3d3a9008e1d23718: 'Das Token-Secret ist erforderlich.',
   // Unknown action, use start or shutdown.
   srv_048731d99c865141: 'Unbekannte Aktion, verwende start oder shutdown.',
+  // Docker discovery needs the docker module to be enabled.
+  srv_1f3976061912504c: 'Die Docker-Autodiscovery braucht das aktivierte Docker-Modul.',
+  // The interval must be between 1 and {max} minutes.
+  srv_c2aa1fabd915da16: 'Das Intervall muss zwischen 1 und {max} Minuten liegen.',
+  // Unknown merge rule.
+  srv_c64f8cf81797f821: 'Unbekannte Abgleichsregel.',
 };

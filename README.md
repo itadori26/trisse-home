@@ -43,7 +43,7 @@ Not sure whether trisse-home is the right fit? See the
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
-| **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded) |
+| **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded); optional [Docker autodiscovery](#docker-autodiscovery-optional) from container labels |
 | **bookmarks**  | Links in folders with tags, filterable                                                                |
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
@@ -174,10 +174,10 @@ trisse-home as a hardened systemd service — no Docker needed:
 
 ```sh
 sudo apt install ./trisse-home_<version>_$(dpkg --print-architecture).deb
-sudo journalctl -u trisse-home | grep setup_token
+sudo trisse-home-setup-token   # address and one-time setup token
 ```
 
-`SECRET_KEY` is generated on the first start; configuration lives in
+`SECRET_KEY` and the setup token are generated on the first start; configuration lives in
 `/etc/trisse-home/trisse-home.env`, data in `/var/lib/trisse-home`. Details,
 updates and moving from Docker: [docs/native-install.md](docs/native-install.md).
 
@@ -320,6 +320,41 @@ pveum aclmod /vms/100 -user monitor@pve -role PVEVMUser   # repeat per guest; in
 The widget then offers *start* for stopped and *shutdown* (clean ACPI/LXC shutdown, never a hard stop) for running
 guests, each after a confirmation. Every action is written to the security event log. Only the environment can
 widen the allow-list, a browser session cannot.
+## Docker autodiscovery (optional)
+
+Containers can bring their own service tile: add labels to a service in your compose file, then enable
+*Settings → Services → Docker autodiscovery* (off by default) or press *Sync now*. Labels are read through
+the existing read-only socket proxy; no new Docker permission is needed.
+
+```yaml
+services:
+  jellyfin:
+    labels:
+      trisse-home.name: Jellyfin                      # defaults to the container name
+      trisse-home.url: https://jellyfin.example.com   # required
+      trisse-home.icon: 🎬                              # emoji or image URL
+      trisse-home.description: Films and series
+```
+
+| Label | Homepage fallback | Meaning |
+| --- | --- | --- |
+| `trisse-home.url` | `homepage.href` | Link and health check URL of the tile (required) |
+| `trisse-home.name` | `homepage.name` | Tile name; defaults to the container name |
+| `trisse-home.icon` | `homepage.icon` | Emoji or image URL |
+| `trisse-home.description` | `homepage.description` | Short description |
+| `trisse-home.enable` | – | `false` skips the container |
+
+Stacks prepared for [Homepage](https://gethomepage.dev/configs/docker/) work unchanged; `homepage.group` and
+`homepage.widget.*` are ignored because tiles have no groups. Tiles are matched by **container name**, so
+re-creating a container keeps its tile, position and history.
+
+- **Edits:** discovered tiles can be edited. With *Labels win on the next sync* (default) the label values
+  replace your changes on the next sync; with *Keep my changes* an edited tile is left alone.
+- **Removed containers:** the tile is hidden from the dashboard (not deleted) and marked in the settings; it
+  comes back with the container. Hidden tiles are not health-checked, so a removed container triggers no
+  offline notification. Delete the tile in the settings if you no longer need it.
+- **Interval:** 1 to 1440 minutes (default 5). Invalid labels (e.g. a URL without `http(s)://`) are skipped
+  and counted in the result of the last sync.
 
 ## Notifications and backup monitoring
 
