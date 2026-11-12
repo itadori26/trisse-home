@@ -4,7 +4,7 @@ import { de } from './locales/de';
 import { en } from './locales/en';
 import { serverDe } from './locales/server-de';
 import { serverMessages } from '../api-client/generated/server-messages';
-import { serverMessage, setLanguage } from './i18n.svelte';
+import { loadServerMessages, serverMessage, setLanguage } from './i18n.svelte';
 
 describe('i18n', () => {
   it('formats placeholders', () => {
@@ -45,6 +45,7 @@ describe('backend messages (#102)', () => {
     );
     expect(key).toBeDefined();
     setLanguage('de');
+    await loadServerMessages();
     expect(serverMessage(key, { max: '500' })).toContain('500');
     expect(serverMessage('srv_unknown')).toBeUndefined();
     expect(serverMessage(undefined)).toBeUndefined();

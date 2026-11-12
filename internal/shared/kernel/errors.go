@@ -1,10 +1,9 @@
 package kernel
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"strings"
 )
 
@@ -89,11 +88,13 @@ func (e *PublicError) Error() string { return e.Message }
 func (e *PublicError) Unwrap() error { return e.Kind }
 
 // MessageKey identifies a message template independently of its language:
-// "srv_" and the first 12 hex digits of its SHA-256. The frontend catalogue
-// is generated from the same templates (scripts/servermessages).
+// "srv_" and the 64-bit FNV-1a hash of the template in hex. It is an
+// identifier, not a security feature. The frontend catalogue is generated
+// from the same templates (scripts/servermessages).
 func MessageKey(template string) string {
-	sum := sha256.Sum256([]byte(template))
-	return "srv_" + hex.EncodeToString(sum[:6])
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(template)) // hash.Hash never fails
+	return fmt.Sprintf("srv_%016x", h.Sum64())
 }
 
 func pairs(params []any) map[string]string {

@@ -8,7 +8,6 @@
   import DashboardPage from './DashboardPage.svelte';
   import QuickSearch from './QuickSearch.svelte';
   import { opensQuickSearch } from './quickSearch';
-  import SettingsDialog from './SettingsDialog.svelte';
 
   /** Props of the authenticated application shell. */
   interface Props {
@@ -148,14 +147,17 @@
 </main>
 
 {#if settingsOpen && modules}
-  <SettingsDialog
-    {container}
-    {modules}
-    {appearance}
-    onappearance={(a) => (appearance = a)}
-    onrestarttour={modules.has('onboarding') ? restartTour : undefined}
-    onclose={() => (settingsOpen = false)}
-  />
+  <!-- Loaded on first use: the settings are not needed for the first paint (ADR 0011). -->
+  {#await import('./SettingsDialog.svelte') then { default: SettingsDialog }}
+    <SettingsDialog
+      {container}
+      {modules}
+      {appearance}
+      onappearance={(a) => (appearance = a)}
+      onrestarttour={modules.has('onboarding') ? restartTour : undefined}
+      onclose={() => (settingsOpen = false)}
+    />
+  {/await}
 {/if}
 
 {#if quickSearch && modules}
