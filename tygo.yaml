@@ -141,3 +141,8 @@ packages:
   - path: "trisse-home/internal/modules/timeline/adapter/controller"
     output_path: "web/src/shared/api-client/generated/timeline-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/fuel/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/fuel.ts"
+  - path: "trisse-home/internal/modules/fuel/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/fuel-requests.ts"
+    include_files: ["dto.go"]

@@ -38,6 +38,7 @@ tags:
   - name: system
   - name: docker
   - name: adguard
+  - name: fuel
   - name: calendar
   - name: platform
 
@@ -1291,6 +1292,63 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardStats" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
 
+  # ---------------------------------------------------------------- fuel
+  /api/fuel/settings:
+    get:
+      tags: [fuel]
+      summary: Fuel price settings (the API key is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/FuelSettings" } } } }
+    put:
+      tags: [fuel]
+      summary: Test and save key, location, radius and fuel type (empty key keeps the stored one; favourites are kept)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lat, lon, radiusKm, fuel]
+              properties:
+                apiKey: { type: string, format: uuid }
+                lat: { type: number }
+                lon: { type: number }
+                place: { type: string }
+                radiusKm: { type: number, minimum: 1, maximum: 25 }
+                fuel: { type: string, enum: [e5, e10, diesel] }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/FuelSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/fuel/favourites:
+    put:
+      tags: [fuel]
+      summary: Replace the favourite stations (at most 10)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: array, maxItems: 10, items: { type: object, properties: { id: { type: string }, name: { type: string } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/FuelSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/fuel/overview:
+    get:
+      tags: [fuel]
+      summary: Cheapest stations (top 10) and favourites with the price of the chosen fuel (cached for 5 minutes)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fuel: { type: string, enum: [e5, e10, diesel] }
+                  place: { type: string }
+                  cheapest: { type: array, items: { $ref: "#/components/schemas/FuelStation" } }
+                  favourites: { type: array, items: { $ref: "#/components/schemas/FuelStation" } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+
   # ---------------------------------------------------------------- calendar
   /api/calendar/settings:
     get:
@@ -1684,6 +1742,27 @@ components:
         unhealthy: { type: integer }
         updatedAt: { type: string, format: date-time }
         error: { type: string }
+    FuelSettings:
+      type: object
+      properties:
+        configured: { type: boolean }
+        hasApiKey: { type: boolean }
+        lat: { type: number }
+        lon: { type: number }
+        place: { type: string }
+        radiusKm: { type: number }
+        fuel: { type: string, enum: [e5, e10, diesel] }
+        favourites: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string } } } }
+    FuelStation:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        brand: { type: string }
+        address: { type: string }
+        distanceKm: { type: number }
+        price: { type: [number, "null"], description: Euro; null when the station reports none }
+        open: { type: boolean }
     AdGuardSettings:
       type: object
       properties: { configured: { type: boolean }, url: { type: string }, username: { type: string }, hasPassword: { type: boolean } }
