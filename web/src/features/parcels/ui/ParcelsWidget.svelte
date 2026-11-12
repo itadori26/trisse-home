@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { type Parcel, parcelName, statusInfo } from '../domain/parcel';
@@ -9,6 +10,7 @@
     parcels: ParcelsUseCases;
   }
   let { parcels }: Props = $props();
+  const poll = usePolling();
 
   const POLL_MS = 10 * 60_000;
   let list = $state<Parcel[]>([]);
@@ -22,12 +24,13 @@
     parcels
       .list()
       .then((l) => ((list = l), (loaded = true), (error = '')))
-      .catch((err) => (error = errorMessage(err)));
+      .catch((err) => {
+        error = errorMessage(err);
+        throw err;
+      });
 
   $effect(() => {
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+    return poll(load, POLL_MS);
   });
 
   async function add(e: SubmitEvent) {

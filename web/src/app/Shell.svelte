@@ -5,6 +5,7 @@
   import { errorMessage } from '../shared/api-client/http';
   import { applyTheme } from '../shared/theme/theme';
   import type { Container } from './container';
+  import { provideRefresh } from '../shared/refresh';
   import DashboardPage from './DashboardPage.svelte';
   import { opensQuickSearch } from './quickSearch';
 
@@ -15,6 +16,13 @@
     onlogout: () => void;
   }
   let { container, onlogout }: Props = $props();
+  // Components outside widgets (e.g. the maintenance banner) poll through it too.
+  provideRefresh({
+    get scheduler() {
+      return container.refresh;
+    },
+    track: () => () => {},
+  });
 
   let settingsOpen = $state(false);
   let editing = $state(false);

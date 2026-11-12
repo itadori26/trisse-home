@@ -3,6 +3,7 @@
  * and the use cases, and hands them to the UI. Nothing else instantiates
  * adapters, so features stay independent of each other.
  */
+import { createRefreshScheduler, type RefreshScheduler } from '../shared/refresh';
 import { AdGuardApi } from '../features/adguard/adapter/api/adguardApi';
 import { AdGuardUseCases } from '../features/adguard/usecase/adguardUseCases';
 import { FritzBoxApi } from '../features/fritzbox/adapter/api/fritzboxApi';
@@ -92,6 +93,8 @@ export interface Container {
   timeline: TimelineUseCases;
   diskhealth: DiskHealthUseCases;
   speedtest: SpeedtestUseCases;
+  /** Shared refresh scheduler of all widgets (#117). */
+  refresh: RefreshScheduler;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -131,6 +134,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     timeline: new TimelineUseCases(new TimelineApi(http)),
     diskhealth: new DiskHealthUseCases(new DiskHealthApi(http)),
     speedtest: new SpeedtestUseCases(new SpeedtestApi(http)),
+    refresh: createRefreshScheduler(),
     // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),

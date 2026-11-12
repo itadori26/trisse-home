@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { errorMessage } from '../../../shared/api-client/http';
   import { intlLocale, t } from '../../../shared/i18n';
   import type { Service } from '../domain/service';
@@ -16,6 +17,7 @@
     services: ServicesUseCases;
   }
   let { services }: Props = $props();
+  const poll = usePolling();
 
   let list = $state<Service[]>([]);
   let uptime = $state<Record<string, ServiceUptime>>({});
@@ -30,12 +32,13 @@
         uptime = Object.fromEntries(u.map((x) => [x.serviceId, x]));
         error = '';
       })
-      .catch((err) => (error = errorMessage(err)));
+      .catch((err) => {
+        error = errorMessage(err);
+        throw err;
+      });
 
   $effect(() => {
-    load();
-    const timer = setInterval(load, 5 * 60_000);
-    return () => clearInterval(timer);
+    return poll(load, 5 * 60_000);
   });
 
   async function toggle(id: string) {

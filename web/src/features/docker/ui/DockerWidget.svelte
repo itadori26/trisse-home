@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
@@ -19,6 +20,7 @@
     config: Record<string, unknown>;
   }
   let { docker, config }: Props = $props();
+  const poll = usePolling();
 
   const POLL_MS = 20_000;
   const cfg = $derived(parseDockerConfig(config));
@@ -37,9 +39,7 @@
         .updates()
         .then((l) => (updates = updatesByContainer(l ?? [])))
         .catch(() => {});
-    load();
-    const timer = setInterval(load, 10 * 60_000);
-    return () => clearInterval(timer);
+    return poll(load, 10 * 60_000);
   });
 
   $effect(() => {
@@ -78,10 +78,11 @@
       docker
         .containers()
         .then((d) => ((data = d), (error = '')))
-        .catch((err) => (error = errorMessage(err)));
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+        .catch((err) => {
+          error = errorMessage(err);
+          throw err;
+        });
+    return poll(load, POLL_MS);
   });
 </script>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { t } from '../../../shared/i18n';
   import Sparkline from '../../../shared/ui/Sparkline.svelte';
@@ -10,6 +11,7 @@
     speedtest: SpeedtestUseCases;
   }
   let { speedtest }: Props = $props();
+  const poll = usePolling();
 
   let range = $state<Range>(24);
   let data = $state<SpeedResults | null>(null);
@@ -25,10 +27,9 @@
         .catch((err) => {
           missing = err instanceof ApiError && err.status === 404;
           error = errorMessage(err);
+          throw err;
         });
-    load();
-    const timer = setInterval(load, 10 * 60_000);
-    return () => clearInterval(timer);
+    return poll(load, 10 * 60_000);
   });
 </script>
 

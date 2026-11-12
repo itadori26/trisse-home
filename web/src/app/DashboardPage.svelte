@@ -26,7 +26,11 @@
   {#snippet content(widget: Widget)}
     {@const def = definitionFor(widget.kind)}
     {#if def}
-      <LazyComponent renderer={def.view} props={def.view.props(widget.config, container)} />
+      <LazyComponent
+        renderer={def.view}
+        props={def.view.props(widget.config, container)}
+        scheduler={container.refresh}
+      />
     {/if}
   {/snippet}
   {#snippet settings(widget: Widget, save: (config: WidgetConfig) => Promise<void>)}
@@ -35,6 +39,7 @@
       <LazyComponent
         renderer={def.settings}
         props={{ ...def.settings.props(widget.config, container), onsave: save }}
+        scheduler={container.refresh}
       />
     {/if}
   {/snippet}

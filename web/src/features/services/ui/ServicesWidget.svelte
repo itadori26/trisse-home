@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Sparkline from '../../../shared/ui/Sparkline.svelte';
@@ -18,6 +19,7 @@
     config: Record<string, unknown>;
   }
   let { services, config }: Props = $props();
+  const poll = usePolling();
 
   const POLL_MS = 30_000;
   let list = $state<Service[]>([]);
@@ -46,11 +48,12 @@
       return services
         .list()
         .then((l) => ((list = l), (error = '')))
-        .catch((err) => (error = errorMessage(err)));
+        .catch((err) => {
+          error = errorMessage(err);
+          throw err;
+        });
     };
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+    return poll(load, POLL_MS);
   });
 </script>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { formatBytes, formatUptime } from '../../../shared/ui/format';
@@ -12,6 +13,7 @@
     system: SystemUseCases;
   }
   let { system }: Props = $props();
+  const poll = usePolling();
 
   /** The backend samples every 5 s. */
   const POLL_MS = 5000;
@@ -26,19 +28,16 @@
       system
         .snapshot()
         .then((s) => ((snap = s), (error = '')))
-        .catch((err) => (error = errorMessage(err)));
-    load();
-    const timer = setInterval(load, POLL_MS);
-    const loadHistory = () =>
-      system
-        .history()
-        .then((h) => (history = h))
-        .catch(() => {});
-    loadHistory();
-    const historyTimer = setInterval(loadHistory, HISTORY_POLL_MS);
+        .catch((err) => {
+          error = errorMessage(err);
+          throw err;
+        });
+    const stopSnapshot = poll(load, POLL_MS);
+    // The history is optional; failures still back off.
+    const stopHistory = poll(() => system.history().then((h) => (history = h)), HISTORY_POLL_MS);
     return () => {
-      clearInterval(timer);
-      clearInterval(historyTimer);
+      stopSnapshot();
+      stopHistory();
     };
   });
 

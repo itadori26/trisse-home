@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { intlLocale, t } from '../../../shared/i18n';
   import { type MaintenanceWindow, activeMaintenance } from '../domain/notifications';
   import type { NotificationsUseCases } from '../usecase/notificationsUseCases';
@@ -8,6 +9,7 @@
     notifications: NotificationsUseCases;
   }
   let { notifications }: Props = $props();
+  const poll = usePolling();
 
   let active = $state<MaintenanceWindow[]>([]);
 
@@ -16,10 +18,11 @@
       notifications
         .maintenance()
         .then((l) => (active = activeMaintenance(l, new Date())))
-        .catch(() => (active = []));
-    refresh();
-    const timer = setInterval(refresh, 60_000);
-    return () => clearInterval(timer);
+        .catch((err) => {
+          active = [];
+          throw err;
+        });
+    return poll(refresh, 60_000);
   });
 </script>
 

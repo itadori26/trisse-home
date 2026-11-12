@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { type ShoppingItem, withDone } from '../domain/shopping';
@@ -9,6 +10,7 @@
     shopping: ShoppingUseCases;
   }
   let { shopping }: Props = $props();
+  const poll = usePolling();
 
   const POLL_MS = 60_000;
   let items = $state<ShoppingItem[]>([]);
@@ -26,12 +28,11 @@
       .catch((err) => {
         unconfigured = err instanceof ApiError && err.status === 404;
         error = errorMessage(err);
+        throw err;
       });
 
   $effect(() => {
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+    return poll(load, POLL_MS);
   });
 
   async function add(e: SubmitEvent) {
