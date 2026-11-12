@@ -18,6 +18,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_865d0fdde8c133ca: 'Für neue Registries ist ein Passwort oder Zugriffstoken erforderlich.',
   // A reminder needs a due date.
   srv_fc8a2589829c3428: 'Eine Erinnerung braucht ein Fälligkeitsdatum.',
+  // A session lasts between 1 and 180 minutes.
+  srv_e9ad8cf134079d79: 'Eine Einheit dauert zwischen 1 und 180 Minuten.',
   // A shortcut with this keyword already exists.
   srv_76a5625367cbe997: 'Es gibt bereits ein Kürzel mit diesem Schlüsselwort.',
   // Actions are not enabled for this container (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).
@@ -204,6 +206,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_ea4ce39d77587136: 'Das Speichern von Zugangsdaten ist in der Demo deaktiviert.',
   // The countdown does not exist.
   srv_1532da22068d27c4: 'Den Countdown gibt es nicht.',
+  // The session must have ended within the last day.
+  srv_addb603b2e8d10d3: 'Die Einheit muss innerhalb des letzten Tages geendet haben.',
   // The title must be between 1 and 120 characters long.
   srv_28a208881a6ef97d: 'Der Titel muss zwischen 1 und 120 Zeichen lang sein.',
   // TLS must be starttls, tls or none.
