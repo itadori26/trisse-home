@@ -84,7 +84,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	// to them, or to a sink that discards them when the module is disabled.
 	var sink kernel.ObservationSink = kernel.DiscardObservations{}
 	if cfg.ModuleEnabled("notifications") {
-		n := notifications.New(db, secrets, client, clk)
+		n := notifications.New(db, secrets, client, clk, ids)
 		registry.Register(n)
 		sink = n
 		alerts.target = n

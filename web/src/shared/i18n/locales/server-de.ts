@@ -10,6 +10,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_350d099c21ede260: 'Ein Lesezeichen kann höchstens 10 Tags haben.',
   // A guest with this name already exists.
   srv_083c4fe6f2b25f45: 'Es gibt bereits einen Gast mit diesem Namen.',
+  // A maintenance window must end after it starts and last at most 7 days.
+  srv_a912b3e2ea2b8170: 'Ein Wartungsfenster muss nach seinem Beginn enden und darf höchstens 7 Tage dauern.',
   // A note needs a title or some text.
   srv_cf47637ff80f03dc: 'Eine Notiz braucht einen Titel oder etwas Text.',
   // A shortcut with this keyword already exists.
@@ -37,6 +39,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_c2c503807749b722: 'Bitte mindestens einen Bereich wählen.',
   // Choose between 0 (never) and 3650 days.
   srv_0054eff4d1acb233: 'Bitte zwischen 0 (nie) und 3650 Tagen wählen.',
+  // Choose what the maintenance applies to.
+  srv_4e9dc8e29fa35fbf: 'Bitte wählen, wofür die Wartung gilt.',
   // Colors must look like #1a2b3c.
   srv_100561a937e88349: 'Farben müssen wie #1a2b3c aussehen.',
   // Could not connect to AdGuard Home: {detail}
@@ -75,6 +79,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_72f2ef28f00d9995: 'Icons dürfen höchstens 8 Zeichen lang sein.',
   // Invalid scope {scope}: use module:read or module:write.
   srv_8648b1ab32906623: 'Ungültiger Bereich {scope}: bitte modul:read oder modul:write verwenden.',
+  // Invalid scope {scope}: use service:<name>, container:<name> or *.
+  srv_d6e30a440a4e7b86: 'Ungültige Angabe {scope}: bitte service:<Name>, container:<Name> oder * verwenden.',
   // Items must be between 1 and 200 characters long.
   srv_593a1c118a3d9d67: 'Einträge müssen zwischen 1 und 200 Zeichen lang sein.',
   // Labels must be at most 40 characters long.
@@ -112,6 +118,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_d92a0962a35bc0f4: 'Bitte wähle in den Widget-Einstellungen eine Haltestelle.',
   // Please choose one of the configured calendars.
   srv_f5627673a11b56bd: 'Bitte wähle einen der eingerichteten Kalender.',
+  // Please enter a valid sender address.
+  srv_ac8a8ae2b384e281: 'Bitte eine gültige Absenderadresse eingeben.',
   // Please enter a valid start and end.
   srv_b71f32ebd27a0b6a: 'Bitte gib einen gültigen Beginn und ein gültiges Ende ein.',
   // Please enter and save a topic first.
@@ -120,11 +128,17 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_a4d2757d3ca7d004: 'Bitte mindestens eine Kalender-URL eingeben.',
   // Please enter between 2 and 100 characters.
   srv_990b607e23145ec7: 'Bitte zwischen 2 und 100 Zeichen eingeben.',
+  // Please enter the SMTP server name.
+  srv_5057fd283cbaf8f6: 'Bitte den Namen des SMTP-Servers eingeben.',
   // Please enter the code from your authenticator app or a recovery code.
   srv_2c825edcb1338a1c:
     'Bitte gib den Code aus deiner Authenticator-App oder einen Wiederherstellungscode ein.',
   // Please enter the password of the FRITZ!Box user.
   srv_eabd506dfb319855: 'Bitte gib das Passwort des FRITZ!Box-Benutzers ein.',
+  // Please enter valid recipient addresses, separated by commas.
+  srv_e9295c1002fdd2ba: 'Bitte gültige Empfängeradressen eingeben, durch Kommas getrennt.',
+  // Quiet hours need a start and an end such as 22:00 and 07:00.
+  srv_04eab3a4b4f8b837: 'Ruhezeiten brauchen einen Beginn und ein Ende, z. B. 22:00 und 07:00.',
   // Session not found.
   srv_785eadcc6dca712c: 'Sitzung nicht gefunden.',
   // Single sign-on is not configured.
@@ -133,6 +147,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_32f91240e6490e41: 'Bitte zuerst die Einrichtung der Zwei-Faktor-Authentifizierung starten.',
   // Storing credentials is disabled in the demo.
   srv_ea4ce39d77587136: 'Das Speichern von Zugangsdaten ist in der Demo deaktiviert.',
+  // TLS must be starttls, tls or none.
+  srv_8ba7cc04f14ed353: 'TLS muss starttls, tls oder none sein.',
   // Tags may only contain letters, digits, - and _ (max. 30 characters).
   srv_7cdf99ade35d99e3: 'Tags dürfen nur Buchstaben, Ziffern, - und _ enthalten (max. 30 Zeichen).',
   // The FRITZ!Box is not configured yet.
@@ -176,6 +192,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_6356e14455c5ce13: 'Der Kalenderserver hat den Termin abgelehnt: {detail}',
   // The certificate warning must be between 1 and 90 days.
   srv_55663fc836edb6a7: 'Die Zertifikatswarnung muss zwischen 1 und 90 Tagen liegen.',
+  // The channel could not be reached: {detail}
+  srv_d2989a89176a1847: 'Der Kanal ist nicht erreichbar: {detail}',
+  // The channel does not exist.
+  srv_e97962ce6df48c04: 'Der Kanal existiert nicht.',
+  // The channel type must be gotify, webhook or email.
+  srv_369ee646cdd39767: 'Die Kanalart muss gotify, webhook oder email sein.',
   // The check URL must start with http:// or https://.
   srv_49713b674a89dd04: 'Die Prüf-URL muss mit http:// oder https:// beginnen.',
   // The custom CSS must be at most 64 KiB.
@@ -247,6 +269,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_eeec5bbc9fb36341: 'Der Ort darf höchstens 200 Zeichen lang sein.',
   // The longitude must be between -180 and 180.
   srv_39566e8cbb1ec35d: 'Der Längengrad muss zwischen -180 und 180 liegen.',
+  // The maintenance window does not exist.
+  srv_d6a9caae13404f6e: 'Das Wartungsfenster existiert nicht.',
   // The maximum age must be between 1 hour and 60 days.
   srv_761ff31914abb39c: 'Das Höchstalter muss zwischen 1 Stunde und 60 Tagen liegen.',
   // The name must be 2–32 lowercase letters, digits, dots, dashes or underscores.
@@ -288,6 +312,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_be9e30d725fd25b6: 'Das Passwort darf nicht nur aus Leerzeichen bestehen.',
   // The period must be positive and at most 42 days long.
   srv_066ea148faee11ae: 'Der Zeitraum muss positiv und höchstens 42 Tage lang sein.',
+  // The port must be between 1 and 65535.
+  srv_6566f488a34e8fc3: 'Der Port muss zwischen 1 und 65535 liegen.',
   // The rain radar is only available for Germany.
   srv_d5d2cea1e1d1fa8d: 'Das Regenradar ist nur für Deutschland verfügbar.',
   // The row is out of range.
@@ -323,6 +349,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_788613837cca8cc6: 'Die Aufgabenliste ist nicht erreichbar: {detail}',
   // The template does not exist.
   srv_4ad756b3998ef1fd: 'Die Vorlage existiert nicht.',
+  // The template must be at most 4000 characters long.
+  srv_83146ba690ec10f4: 'Die Vorlage darf höchstens 4000 Zeichen lang sein.',
   // The template name must be between 1 and 40 characters long.
   srv_c62fe8c4040fbb11: 'Der Vorlagenname muss zwischen 1 und 40 Zeichen lang sein.',
   // The theme must be system, light or dark.
@@ -355,6 +383,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_a164605f887b18d7: 'Der Widget-Typ ist ungültig.',
   // The width must be between 1 and 12 columns.
   srv_9dfec97d8d360b86: 'Die Breite muss zwischen 1 und 12 Spalten liegen.',
+  // There are already 10 channels.
+  srv_53e6d03eb73e5456: 'Es gibt bereits 10 Kanäle.',
   // There are already 10 passkeys.
   srv_7c2cacdb15125f01: 'Es gibt bereits 10 Passkeys.',
   // There are already 20 guests.
@@ -388,6 +418,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_a9954572b8880ec0: 'Die Zwei-Faktor-Authentifizierung ist bereits aktiviert.',
   // Two-factor authentication is not enabled.
   srv_326d279028bf3d2f: 'Die Zwei-Faktor-Authentifizierung ist nicht aktiviert.',
+  // Unknown alert type {type}.
+  srv_fc5b4d698d5d3c6f: 'Unbekannte Benachrichtigungsart {type}.',
   // Unknown search provider.
   srv_dea670a71d2295ca: 'Unbekannte Suchmaschine.',
   // Username and app password are required.

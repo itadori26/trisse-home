@@ -129,6 +129,47 @@ paths:
       tags: [notifications]
       summary: Send a test message
       responses: { "204": { description: Sent }, "503": { description: ntfy server not reachable } }
+  /api/notifications/channels:
+    get:
+      tags: [notifications]
+      summary: Additional channels (Gotify, webhook, e-mail) without secrets
+      responses: { "200": { description: OK } }
+    post:
+      tags: [notifications]
+      summary: Add a channel with minimum importance and optional alert types
+      responses: { "200": { description: Created } }
+  /api/notifications/channels/{id}:
+    put:
+      tags: [notifications]
+      summary: Update a channel (empty secret keeps the stored one)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [notifications]
+      summary: Delete a channel
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted } }
+  /api/notifications/channels/{id}/test:
+    post:
+      tags: [notifications]
+      summary: Send a test message through one channel
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Sent } }
+  /api/notifications/maintenance:
+    get:
+      tags: [notifications]
+      summary: Active and upcoming maintenance windows
+      responses: { "200": { description: "List of {id, scope, start, end, note}" } }
+    post:
+      tags: [notifications]
+      summary: "Start a maintenance window: {scope: [\"service:NAS\", \"container:x\" or \"*\"], minutes | start+end, note}"
+      responses: { "201": { description: Created } }
+  /api/notifications/maintenance/{id}:
+    delete:
+      tags: [notifications]
+      summary: End an active window now or remove a planned one
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Ended } }
   /api/backup-status/sources:
     get:
       tags: [backup-status]

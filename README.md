@@ -64,7 +64,7 @@ Not sure whether trisse-home is the right fit? See the
 | **appearance** | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
-| **notifications** | Push messages via [ntfy](https://ntfy.sh) for offline services, containers, full disks, expiring certificates and failed backups |
+| **notifications** | Push messages via [ntfy](https://ntfy.sh), Gotify, webhooks (HMAC-signed) or e-mail for offline services, containers, full disks, expiring certificates, failed backups and security events; importance per type, quiet hours with a morning summary and maintenance windows |
 | **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
 | **auth**       | First-run setup, login with two-factor authentication, session overview with sign-out per device, password change, security log with ntfy alerts on new devices and lockouts (exponential backoff), read-only guest accounts with shared tabs ([ADR 0012](docs/adr/0012-owner-and-guest-roles.md)), scoped [API tokens](docs/api-tokens.md) for automations, optional single sign-on via OIDC or forward auth ([ADR 0013](docs/adr/0013-single-sign-on.md)), passkeys as second factor behind HTTPS ([ADR 0014](docs/adr/0014-passkeys.md)) — always enabled |
 
@@ -328,7 +328,7 @@ service tiles are configured in the web interface.
 
 Several modules fetch URLs that you configure yourself: service health checks,
 RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, the FRITZ!Box and your
-ntfy server. This is intended behaviour, so static analysis reports these as
+ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can
 configure them (session + CSRF protection, IP allowlist). Weather data comes
 from Open-Meteo, weather warnings and the rain radar from the open data

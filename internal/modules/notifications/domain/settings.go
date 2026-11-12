@@ -45,6 +45,8 @@ type Settings struct {
 	Topic     string
 	Token     string
 	Rules     Rules
+	// Policy holds severities and quiet hours (#69).
+	Policy Policy
 }
 
 // DefaultSettings are used until the user configures notifications.

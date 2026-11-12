@@ -1,8 +1,11 @@
-import { de } from './locales/de';
 import { en, type MessageKey } from './locales/en';
 import { formatMessage, type Locale, type MessageParams, resolveLocale } from './format';
 
-const catalogs: Record<Locale, Record<MessageKey, string>> = { en, de };
+/**
+ * The German catalogue is loaded on demand so English users never download
+ * it and it stays out of the initial bundle (ADR 0011, #116).
+ */
+let german = $state.raw<Record<MessageKey, string> | null>(null);
 
 const browserLanguages = (): readonly string[] =>
   typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language]);
@@ -14,7 +17,14 @@ const state = $state<{ locale: Locale }>({ locale: resolveLocale('', browserLang
  * that calls t() re-render when the language changes.
  */
 export function t(key: MessageKey, params?: MessageParams): string {
-  return formatMessage(catalogs[state.locale][key] ?? en[key], params);
+  const catalog = state.locale === 'de' && german ? german : en;
+  return formatMessage(catalog[key] ?? en[key], params);
+}
+
+/** Loads the catalogues of the active language; resolves when they are ready. */
+export async function loadLanguage(): Promise<void> {
+  if (state.locale === 'de' && !german) german = (await import('./locales/de')).de;
+  await loadServerMessages();
 }
 
 /** The active UI language. */
@@ -31,7 +41,7 @@ export function intlLocale(): string {
 export function setLanguage(preference: string): void {
   state.locale = resolveLocale(preference, browserLanguages());
   if (typeof document !== 'undefined') document.documentElement.lang = state.locale;
-  void loadServerMessages();
+  void loadLanguage();
 }
 
 export type { MessageKey };

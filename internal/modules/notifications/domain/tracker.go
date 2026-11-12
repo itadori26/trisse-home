@@ -47,6 +47,9 @@ type Message struct {
 	Body     string
 	Priority int
 	Tags     []string
+	// Type is the alert type ("service", "security", …, "digest").
+	Type     string
+	Severity Severity
 }
 
 // Priorities as defined by ntfy.

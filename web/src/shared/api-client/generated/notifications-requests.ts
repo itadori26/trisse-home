@@ -26,4 +26,51 @@ export interface SettingsInputDTO {
   topic: string;
   token: string;
   rules: RulesInputDTO;
+  policy: PolicyDTO;
+}
+/**
+ * PolicyDTO configures severities per alert type and quiet hours (#69).
+ */
+export interface PolicyDTO {
+  severities: { [key: string]: string};
+  quiet: QuietHoursDTO;
+}
+/**
+ * QuietHoursDTO mutes non-critical notifications; days are 0 (Sunday) to 6.
+ */
+export interface QuietHoursDTO {
+  enabled: boolean;
+  start: string;
+  end: string;
+  days: number /* int */[];
+}
+/**
+ * ChannelDTO creates or updates a channel (#87); an empty secret keeps the stored one.
+ */
+export interface ChannelDTO {
+  kind: string;
+  name: string;
+  enabled: boolean;
+  minSeverity: string;
+  types: string[];
+  url: string;
+  secret: string;
+  template: string;
+  smtpHost: string;
+  smtpPort: number /* int */;
+  username: string;
+  from: string;
+  to: string;
+  tls: string;
+}
+/**
+ * MaintenanceDTO starts a maintenance window; without start it starts now
+ * and lasts Minutes.
+ */
+export interface MaintenanceDTO {
+  scope: string[];
+  start?: string /* RFC 3339 */;
+  end?: string /* RFC 3339 */;
+  minutes: number /* int */;
+  note: string;
 }

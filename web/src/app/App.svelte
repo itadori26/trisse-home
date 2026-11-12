@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t } from '../shared/i18n';
+  import { loadLanguage, t } from '../shared/i18n';
   import { LoginPage, SetupPage, type AuthView } from '../features/auth';
   import { errorMessage } from '../shared/api-client/http';
   import { canStartOffline, clearOfflineData, rememberSignedIn } from '../shared/pwa';
@@ -13,6 +13,8 @@
 
   async function refresh() {
     try {
+      // The browser language's catalogue first, so the page never flashes English.
+      await loadLanguage().catch(() => undefined);
       view = await container.auth.currentView();
       loadError = '';
       rememberSignedIn(view === 'app');

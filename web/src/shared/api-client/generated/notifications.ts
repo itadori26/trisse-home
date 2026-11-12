@@ -30,6 +30,54 @@ export interface SettingsDTO {
   topic: string;
   hasToken: boolean;
   rules: RulesDTO;
+  policy: PolicyDTO;
   lastError: string;
   lastDelivered?: string /* RFC 3339 */;
+}
+/**
+ * PolicyDTO holds severities per alert type (all types, defaults filled in)
+ * and quiet hours.
+ */
+export interface PolicyDTO {
+  severities: { [key: string]: string};
+  quiet: QuietHoursDTO;
+}
+/**
+ * QuietHoursDTO holds the quiet hours; days are 0 (Sunday) to 6.
+ */
+export interface QuietHoursDTO {
+  enabled: boolean;
+  start: string;
+  end: string;
+  days: number /* int */[];
+}
+/**
+ * ChannelViewDTO describes a channel; the secret is never returned.
+ */
+export interface ChannelViewDTO {
+  id: string;
+  kind: string;
+  name: string;
+  enabled: boolean;
+  minSeverity: string;
+  types: string[];
+  url: string;
+  hasSecret: boolean;
+  template: string;
+  smtpHost: string;
+  smtpPort: number /* int */;
+  username: string;
+  from: string;
+  to: string;
+  tls: string;
+}
+/**
+ * MaintenanceWindowDTO describes a maintenance window.
+ */
+export interface MaintenanceWindowDTO {
+  id: string;
+  scope: string[];
+  start: string /* RFC 3339 */;
+  end: string /* RFC 3339 */;
+  note: string;
 }

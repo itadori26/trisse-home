@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MaintenanceBanner from '../features/notifications/ui/MaintenanceBanner.svelte';
   import { setLanguage, t } from '../shared/i18n';
   import { type Appearance, cssVariables, defaultAppearance } from '../features/appearance';
   import { Tour } from '../features/onboarding';
@@ -142,6 +143,9 @@
     </p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if modules}
+    {#if modules.has('notifications') && !container.auth.guest}<MaintenanceBanner
+        notifications={container.notifications}
+      />{/if}
     <DashboardPage {container} {editing} {widgetKinds} />
   {/if}
 </main>
