@@ -302,6 +302,7 @@
       {container}
       {modules}
       initialQuery={searchStart}
+      {weatherLocation}
       onclose={() => ((quickSearch = false), (searchStart = ''))}
     />
   {/await}
