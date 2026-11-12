@@ -1,5 +1,13 @@
 import type { Incident, ServiceUptime } from '../domain/uptime';
-import { type LatencyPoint, type Service, type ServiceInput, validateServiceInput } from '../domain/service';
+import { type Discovery, type DiscoverySettings, validInterval } from '../domain/discovery';
+import {
+  type LatencyPoint,
+  type Service,
+  type ServiceInput,
+  validateServiceInput,
+  visibleServices,
+} from '../domain/service';
+import { t } from '../../../shared/i18n';
 
 /** Output port: services backend. */
 export interface ServicesGateway {
@@ -13,6 +21,9 @@ export interface ServicesGateway {
   uptime(): Promise<ServiceUptime[]>;
   incidents(serviceId: string, limit: number): Promise<Incident[]>;
   wake(id: string): Promise<void>;
+  discovery(): Promise<Discovery>;
+  saveDiscovery(settings: DiscoverySettings): Promise<Discovery>;
+  syncDiscovery(): Promise<Discovery>;
 }
 
 /** Error for input rejected before it reaches the backend. */
@@ -24,7 +35,13 @@ export class ServiceValidationError extends Error {
 export class ServicesUseCases {
   constructor(private readonly gateway: ServicesGateway) {}
 
-  list(): Promise<Service[]> {
+  /** Tiles shown on the dashboard (without those of removed containers). */
+  async list(): Promise<Service[]> {
+    return visibleServices(await this.gateway.list());
+  }
+
+  /** Every tile, including hidden ones, for the settings. */
+  listAll(): Promise<Service[]> {
     return this.gateway.list();
   }
 
@@ -51,8 +68,8 @@ export class ServicesUseCases {
     return out;
   }
 
-  checkNow(): Promise<Service[]> {
-    return this.gateway.checkNow();
+  async checkNow(): Promise<Service[]> {
+    return visibleServices(await this.gateway.checkNow());
   }
 
   /** Response time history of the last 24 hours per service ID. */
@@ -73,5 +90,22 @@ export class ServicesUseCases {
   /** Recent outages of one service, or of all when serviceId is empty. */
   incidents(serviceId = '', limit = 20): Promise<Incident[]> {
     return this.gateway.incidents(serviceId, limit);
+  }
+
+  /** State of Docker autodiscovery (#78). */
+  discovery(): Promise<Discovery> {
+    return this.gateway.discovery();
+  }
+
+  /** Saves the discovery settings after validation. */
+  saveDiscovery(settings: DiscoverySettings): Promise<Discovery> {
+    if (!validInterval(settings.intervalMinutes))
+      return Promise.reject(new ServiceValidationError(t('services.discovery.invalid_interval')));
+    return this.gateway.saveDiscovery(settings);
+  }
+
+  /** Reads the container labels now and updates the tiles. */
+  syncDiscovery(): Promise<Discovery> {
+    return this.gateway.syncDiscovery();
   }
 }

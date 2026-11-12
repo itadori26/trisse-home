@@ -525,4 +525,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_fcbb5bbe636e4559: 'Dieser DNS-Filter ist noch nicht eingerichtet.',
   // Unknown DNS filter, use adguard or pihole.
   srv_1a87cc7977ed4993: 'Unbekannter DNS-Filter, verwende adguard oder pihole.',
+  // Docker discovery needs the docker module to be enabled.
+  srv_1f3976061912504c: 'Die Docker-Autodiscovery braucht das aktivierte Docker-Modul.',
+  // The interval must be between 1 and {max} minutes.
+  srv_c2aa1fabd915da16: 'Das Intervall muss zwischen 1 und {max} Minuten liegen.',
+  // Unknown merge rule.
+  srv_c64f8cf81797f821: 'Unbekannte Abgleichsregel.',
 };

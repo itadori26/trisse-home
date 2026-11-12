@@ -4,7 +4,7 @@
 set -e
 
 if [ -d /run/systemd/system ] && [ "$1" = remove ]; then
-	deb-systemd-invoke stop trisse-home.service >/dev/null || true
+	deb-systemd-invoke stop trisse-home-setup-info.timer trisse-home.service >/dev/null || true
 fi
 
 exit 0

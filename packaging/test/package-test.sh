@@ -18,6 +18,7 @@ fail() {
 }
 mode_of() { stat -c '%U:%G %a' "$1"; }
 key_of() { sed -n 's/^SECRET_KEY=//p' "$1"; }
+token_of() { sed -n 's/^SETUP_TOKEN=//p' "$1"; }
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -35,13 +36,22 @@ getent passwd trisse-home >/dev/null || fail "system user missing"
 # Enabled for the next boot even without a running systemd (image builds).
 [ -L /etc/systemd/system/multi-user.target.wants/trisse-home.service ] || fail "unit not enabled"
 
-step "first start creates a per-installation key"
+step "first start creates a per-installation key and setup token"
 /usr/lib/trisse-home/trisse-home-init
 [ "$(mode_of $conf/secret.env)" = "root:trisse-home 640" ] || fail "secret: $(mode_of $conf/secret.env)"
 key=$(key_of $conf/secret.env)
 [ "$(printf %s "$key" | base64 -d | wc -c)" -eq 32 ] || fail "SECRET_KEY is not 32 bytes base64"
+token=$(token_of $conf/secret.env)
+echo "$token" | grep -Eq '^[A-HJ-NP-Z2-9]{4}(-[A-HJ-NP-Z2-9]{4}){4}$' || fail "unexpected setup token format: $token"
 /usr/lib/trisse-home/trisse-home-init
 [ "$(key_of $conf/secret.env)" = "$key" ] || fail "second start must keep the key"
+[ "$(token_of $conf/secret.env)" = "$token" ] || fail "second start must keep the setup token"
+[ "$(grep -c '^SECRET_KEY=' $conf/secret.env)" -eq 1 ] || fail "duplicate SECRET_KEY lines"
+
+step "setup token helper"
+trisse-home-setup-token | grep -q "Token  $token" || fail "trisse-home-setup-token does not show the token"
+[ -f /usr/lib/systemd/system/trisse-home-setup-info.timer ] || fail "setup info timer missing"
+[ -L /etc/systemd/system/timers.target.wants/trisse-home-setup-info.timer ] || fail "setup info timer not enabled"
 
 step "upgrade keeps local changes"
 echo "LOG_LEVEL=debug" >>$conf/trisse-home.env
@@ -75,7 +85,10 @@ apt-get purge -y -qq trisse-home >/dev/null
 rm -rf $state
 apt-get install -y -qq "$(realpath "$deb")" >/dev/null
 echo "SECRET_KEY=$key" >>$conf/trisse-home.env
+echo "SETUP_TOKEN=my-own-setup-token-123" >>$conf/trisse-home.env
 /usr/lib/trisse-home/trisse-home-init
-[ ! -e $conf/secret.env ] || fail "key generated although one is configured"
+! grep -q '^SECRET_KEY=' $conf/secret.env 2>/dev/null || fail "key generated although one is configured"
+! grep -q '^SETUP_TOKEN=' $conf/secret.env 2>/dev/null || fail "token generated although one is configured"
+trisse-home-setup-token | grep -q "Token  my-own-setup-token-123" || fail "configured token not shown"
 
 printf '\nOK: all package tests passed\n'

@@ -20,6 +20,7 @@ type ContainerSource interface {
 type ContainerView struct {
 	ID, Name, Image, State, Status, Health, Project string
 	Created                                         time.Time
+	Labels                                          map[string]string
 }
 
 // ListResponse is the cached container list.
@@ -76,7 +77,7 @@ func (uc *containers) Refresh(ctx context.Context) error {
 	for _, c := range list {
 		res.Containers = append(res.Containers, ContainerView{
 			ID: c.ID, Name: c.Name, Image: c.Image, State: c.State, Status: c.Status,
-			Health: string(c.Health()), Project: c.Project, Created: c.Created,
+			Health: string(c.Health()), Project: c.Project, Created: c.Created, Labels: c.Labels,
 		})
 	}
 	uc.cached = &res
