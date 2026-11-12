@@ -1,0 +1,71 @@
+#!/bin/sh
+# Shows the setup token on a headless device until the account exists
+# (trisse-home-setup-info.timer, ADR 0015):
+#
+#   - on the local console (HDMI) via /etc/issue.d, shown above the login
+#   - in trisse-home-setup.txt on the boot partition of a Raspberry Pi, readable
+#     by whoever holds the SD card
+#
+# Both need physical access to the device. Once the setup is done both copies
+# are deleted and the timer disables itself.
+set -eu
+
+ISSUE_FILE=${TRISSE_HOME_ISSUE_FILE:-/etc/issue.d/trisse-home.issue}
+BOOT_DIR=${TRISSE_HOME_BOOT_DIR:-/boot/firmware}
+BOOT_FILE="$BOOT_DIR/trisse-home-setup.txt"
+
+# shellcheck source=packaging/lib/env.sh
+. "${TRISSE_HOME_LIB:-/usr/lib/trisse-home}/env.sh"
+
+reload_consoles() {
+	# Running agetty instances re-read /etc/issue(.d) on this signal.
+	agetty --reload 2>/dev/null || true
+}
+
+cleanup() {
+	rm -f "$ISSUE_FILE" "$BOOT_FILE"
+	reload_consoles
+}
+
+status=$(trisse_home_setup_status)
+
+case "$status" in
+done)
+	cleanup
+	if [ -d /run/systemd/system ]; then
+		systemctl disable --now trisse-home-setup-info.timer >/dev/null 2>&1 || true
+	fi
+	exit 0
+	;;
+pending) ;;
+*) exit 0 ;; # service still starting: try again on the next run
+esac
+
+token=$(trisse_home_value SETUP_TOKEN)
+[ -n "$token" ] || exit 0
+suffix=$(trisse_home_url_suffix)
+host=$(hostname)
+
+umask 022
+mkdir -p "$(dirname "$ISSUE_FILE")"
+# agetty escapes: \4 is the IPv4 address of the default interface.
+cat >"$ISSUE_FILE" <<EOF
+  trisse-home is ready to be set up
+    Open   http://$host.local$suffix   or   http://\4$suffix
+    Token  $token
+
+EOF
+reload_consoles
+
+if [ -d "$BOOT_DIR" ] && [ -w "$BOOT_DIR" ]; then
+	cat >"$BOOT_FILE" <<EOF
+trisse-home setup
+=================
+
+Open   http://$host.local$suffix   (or the IP address of the Pi$suffix)
+Token  $token
+
+This file is deleted automatically once your account exists.
+The token only works until then.
+EOF
+fi
