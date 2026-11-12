@@ -980,6 +980,33 @@ export const en = {
   'backup.restoring': 'Restoring…',
   'backup.restarting':
     'The backup is being restored; trisse-home restarts. The page reloads in a few seconds.',
+  'app.loading_widget': 'Loading widget…',
+  'app.widget_failed_to_load': 'This widget could not be loaded.',
+  'app.retry': 'Retry',
+  'freshness.not_loaded': 'not loaded yet',
+  'freshness.just_now': 'updated just now',
+  'freshness.minutes_ago': 'updated {minutes} min ago',
+  'freshness.stale': 'outdated – {age}',
+  'freshness.failed': 'refresh failed – {age}',
+  'freshness.updated_at': 'Last updated: {time}',
+  'freshness.last_error': 'Last error: {error}',
+  'freshness.refresh': 'Refresh now',
+  'picker.search': 'Search widgets…',
+  'picker.count': '{count} widgets',
+  'picker.no_match': 'No widget matches “{query}”.',
+  'picker.widgets': 'Widgets',
+  'picker.category.everyday': 'Everyday',
+  'picker.category.information': 'Information',
+  'picker.category.server': 'Server',
+  'picker.category.network': 'Network & integrations',
+  'shortcuts.title': 'Keyboard shortcuts',
+  'shortcuts.or': 'or',
+  'shortcuts.search': 'Open the quick search',
+  'shortcuts.tabs': 'Switch to tab 1 to 9',
+  'shortcuts.edit': 'Start or finish edit mode',
+  'shortcuts.help': 'Show this overview',
+  'shortcuts.hint':
+    'Shortcuts are ignored while you type in a field or a dialog is open. In edit mode, widgets move with the arrow keys.',
 } as const;
 
 /** Every message key. */

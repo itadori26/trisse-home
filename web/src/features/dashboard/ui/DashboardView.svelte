@@ -3,6 +3,8 @@
   import type { Snippet } from 'svelte';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
+  import type { IconName } from '../../../shared/ui/icons/paths';
+  import WidgetPicker from './WidgetPicker.svelte';
   import type { Tab, Widget, WidgetConfig, WidgetType } from '../domain/dashboard';
   import type { LayoutItem } from '../domain/layout';
   import type { DashboardUseCases } from '../usecase/dashboardUseCases';
@@ -19,6 +21,8 @@
     editing: boolean;
     /** Widget types that may be added (enabled modules only). */
     widgetTypes: WidgetType[];
+    /** Picker icon per widget kind (#104). */
+    widgetIcon: (kind: string) => IconName | undefined;
     /** Renders the content of a widget. */
     content: Snippet<[Widget]>;
     /** Renders the settings form of a widget; `save` persists a new config. */
@@ -28,7 +32,7 @@
     /** Whether a widget kind is rendered without card chrome outside edit mode. */
     chromeless: (kind: string) => boolean;
   }
-  let { uc, editing, widgetTypes, content, settings, hasSettings, chromeless }: Props = $props();
+  let { uc, editing, widgetTypes, widgetIcon, content, settings, hasSettings, chromeless }: Props = $props();
 
   const ACTIVE_TAB_KEY = 'trisse-home.activeTab';
 
@@ -56,6 +60,12 @@
     } catch {
       return '';
     }
+  }
+
+  /** Selects the n-th tab (0-based), e.g. from the 1–9 shortcuts (#95). */
+  export function selectTabAt(index: number) {
+    const tab = tabs[index];
+    if (tab) select(tab.id);
   }
 
   function select(id: string) {
@@ -215,18 +225,7 @@
 </section>
 
 {#if dialog?.kind === 'add-widget'}
-  <Modal title={t('dashboard.add_widget_2')} onclose={() => (dialog = null)}>
-    <ul class="catalog">
-      {#each widgetTypes as type (type.kind)}
-        <li>
-          <button class="btn" type="button" onclick={() => addWidget(type)}>
-            <strong>{type.title}</strong>
-            <span class="muted">{type.description}</span>
-          </button>
-        </li>
-      {/each}
-    </ul>
-  </Modal>
+  <WidgetPicker types={widgetTypes} icon={widgetIcon} onpick={addWidget} onclose={() => (dialog = null)} />
 {:else if dialog?.kind === 'new-tab'}
   <NewTabDialog
     {uc}
@@ -297,18 +296,5 @@
   }
   .add {
     align-self: center;
-  }
-  .catalog {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--space-2);
-  }
-  .catalog .btn {
-    width: 100%;
-    flex-direction: column;
-    align-items: flex-start;
-    text-align: left;
   }
 </style>

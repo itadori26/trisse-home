@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fold, opensQuickSearch, type QuickItem, score, search } from './quickSearch';
+import { fold, type QuickItem, score, search } from './quickSearch';
 
 const items: QuickItem[] = [
   {
@@ -30,14 +30,5 @@ describe('quick search', () => {
   });
   it('returns nothing for blank queries', () => {
     expect(search(items, '  ')).toEqual([]);
-  });
-  it('opens with Ctrl+K anywhere and / outside inputs', () => {
-    const input = { tagName: 'INPUT', isContentEditable: false } as unknown as EventTarget;
-    const div = { tagName: 'DIV', isContentEditable: false } as unknown as EventTarget;
-    const key = (key: string, ctrl = false) => ({ key, ctrlKey: ctrl, metaKey: false, altKey: false });
-    expect(opensQuickSearch(key('k', true), input)).toBe(true);
-    expect(opensQuickSearch(key('/'), div)).toBe(true);
-    expect(opensQuickSearch(key('/'), input)).toBe(false);
-    expect(opensQuickSearch(key('k'), div)).toBe(false);
   });
 });

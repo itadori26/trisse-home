@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { t } from '../../../shared/i18n';
   import { formatBytes } from '../../../shared/ui/format';
@@ -10,6 +11,7 @@
     diskhealth: DiskHealthUseCases;
   }
   let { diskhealth }: Props = $props();
+  const poll = usePolling();
 
   let disks = $state<Disk[] | null>(null);
   let error = $state('');
@@ -23,10 +25,9 @@
         .catch((err) => {
           missing = err instanceof ApiError && err.status === 404;
           error = errorMessage(err);
+          throw err;
         });
-    load();
-    const timer = setInterval(load, 5 * 60_000);
-    return () => clearInterval(timer);
+    return poll(load, 5 * 60_000);
   });
 
   const describe = (f: Finding) =>

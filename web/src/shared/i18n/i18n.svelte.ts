@@ -1,11 +1,15 @@
-import { en, type MessageKey } from './locales/en';
+import type { MessageKey } from './locales/en';
 import { formatMessage, type Locale, type MessageParams, resolveLocale } from './format';
 
+type Catalogue = Record<MessageKey, string>;
+
 /**
- * The German catalogue is loaded on demand so English users never download
- * it and it stays out of the initial bundle (ADR 0011, #116).
+ * Both catalogues are loaded on demand, so only the active language is
+ * downloaded and neither is part of the initial bundle (ADR 0011, #116).
+ * App.svelte awaits loadLanguage() before the first render.
  */
-let german = $state.raw<Record<MessageKey, string> | null>(null);
+let english = $state.raw<Catalogue | null>(null);
+let german = $state.raw<Catalogue | null>(null);
 
 const browserLanguages = (): readonly string[] =>
   typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language]);
@@ -17,13 +21,18 @@ const state = $state<{ locale: Locale }>({ locale: resolveLocale('', browserLang
  * that calls t() re-render when the language changes.
  */
 export function t(key: MessageKey, params?: MessageParams): string {
-  const catalog = state.locale === 'de' && german ? german : en;
-  return formatMessage(catalog[key] ?? en[key], params);
+  // While a switched-to language loads, the other catalogue stays visible.
+  const catalog = state.locale === 'de' ? (german ?? english) : (english ?? german);
+  return formatMessage(catalog?.[key] ?? english?.[key] ?? key, params);
 }
 
 /** Loads the catalogues of the active language; resolves when they are ready. */
 export async function loadLanguage(): Promise<void> {
-  if (state.locale === 'de' && !german) german = (await import('./locales/de')).de;
+  if (state.locale === 'de') {
+    german ??= (await import('./locales/de')).de;
+  } else {
+    english ??= (await import('./locales/en')).en;
+  }
   await loadServerMessages();
 }
 

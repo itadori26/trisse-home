@@ -1,3 +1,4 @@
+import type { WidgetCategory } from './catalog';
 import { t } from '../../../shared/i18n';
 import type { LayoutItem } from './layout';
 
@@ -41,6 +42,10 @@ export interface WidgetType {
   title: string;
   description: string;
   defaultSize: { w: number; h: number };
+  /** Column of the widget picker (#104). */
+  category: WidgetCategory;
+  /** Extra search terms of the widget picker. */
+  keywords: string[];
 }
 
 /** Maximum tab name length; mirrors the backend. */

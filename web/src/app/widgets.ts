@@ -5,44 +5,25 @@ import { t } from '../shared/i18n';
  * other; this file is the only place that combines them.
  */
 import type { Component } from 'svelte';
-import { AdGuardWidget } from '../features/adguard';
-import { FritzBoxWidget } from '../features/fritzbox';
-import { NextcloudWidget } from '../features/nextcloud';
-import { ShoppingWidget } from '../features/shopping';
-import { ParcelsWidget } from '../features/parcels';
-import { TransitWidget, TransitWidgetSettings } from '../features/transit';
-import { WasteWidget } from '../features/waste';
-import { WireGuardWidget } from '../features/wireguard';
-import { BackupStatusWidget } from '../features/backupmonitor';
-import { BookmarksWidget, BookmarksWidgetSettings } from '../features/bookmarks';
-import { CalendarWidget, CalendarWidgetSettings } from '../features/calendar';
-import { ClockSettings, ClockWidget } from '../features/clock';
 import type { WidgetType } from '../features/dashboard';
-import { DockerWidget, DockerWidgetSettings } from '../features/docker';
-import { NotesWidget, NotesWidgetSettings } from '../features/notes';
-import { RssWidget, RssWidgetSettings } from '../features/rss';
-import { SearchWidget, SearchWidgetSettings } from '../features/search';
-import { ServicesWidget, StatusOverviewWidget } from '../features/services';
-import { TimelineWidget } from '../features/timeline';
-import { DiskHealthWidget } from '../features/diskhealth';
-import { SpeedtestWidget } from '../features/speedtest';
-import { SystemWidget } from '../features/system';
-import { TodosWidget, TodosWidgetSettings } from '../features/todos';
-import { RadarWidget, WeatherSettings, WeatherWidget } from '../features/weather';
+import type { IconName } from '../shared/ui/icons/paths';
 import type { Container } from './container';
 
 /** Configuration object stored per widget. */
 type Config = Record<string, unknown>;
 
-/** A component together with a function that builds its props. */
-interface Renderer {
-  component: Component<Record<string, unknown>>;
+/** A lazily loaded component together with a function that builds its props (#116). */
+export interface Renderer {
+  /** Loads the component's chunk; the promise is cached per kind. */
+  load: () => Promise<Component<Record<string, unknown>>>;
   props: (config: Config, c: Container) => Record<string, unknown>;
 }
 
 /** Everything the dashboard needs to know about one widget kind. */
 export interface WidgetDefinition {
   type: WidgetType;
+  /** Tile icon of the widget picker (#104); required for every kind. */
+  icon: IconName;
   /** Rendered without card chrome outside edit mode. */
   chromeless?: boolean;
   view: Renderer;
@@ -50,12 +31,24 @@ export interface WidgetDefinition {
   settings?: Renderer;
 }
 
-/** Type-checks props against the component and erases the type for the registry. */
-function renderer<P extends object>(
-  component: Component<P>,
+/**
+ * Type-checks props against the lazily imported component and erases the
+ * type for the registry. Only this file knows how widget code is loaded.
+ */
+function lazy<P extends object>(
+  load: () => Promise<{ default: Component<P> }>,
   props: (config: Config, c: Container) => Omit<P, 'onsave'>,
 ): Renderer {
-  return { component: component as unknown as Component<Record<string, unknown>>, props };
+  let loaded: Promise<Component<Record<string, unknown>>> | undefined;
+  return {
+    load: () => {
+      loaded ??= load().then((m) => m.default as unknown as Component<Record<string, unknown>>);
+      // A failed chunk (e.g. offline after an update) can be retried.
+      loaded.catch(() => (loaded = undefined));
+      return loaded;
+    },
+    props,
+  };
 }
 
 /** All widget kinds known to the frontend. */
@@ -63,6 +56,8 @@ export const widgetDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'search',
+      category: 'everyday',
+      keywords: ['web', 'google', 'duckduckgo', 'suche', 'shortcut'],
       get title() {
         return t('widget.search.title');
       },
@@ -72,12 +67,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 8, h: 2 },
     },
     chromeless: true,
-    view: renderer(SearchWidget, (config, c) => ({ config, search: c.search })),
-    settings: renderer(SearchWidgetSettings, (config) => ({ config })),
+    icon: 'search',
+    view: lazy(
+      () => import('../features/search/ui/SearchWidget.svelte'),
+      (config, c) => ({ config, search: c.search }),
+    ),
+    settings: lazy(
+      () => import('../features/search/ui/SearchWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
   },
   {
     type: {
       kind: 'clock',
+      category: 'everyday',
+      keywords: ['time', 'date', 'zeit', 'uhr', 'datum'],
       get title() {
         return t('widget.clock.title');
       },
@@ -86,12 +90,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 3, h: 3 },
     },
-    view: renderer(ClockWidget, (config) => ({ config })),
-    settings: renderer(ClockSettings, (config) => ({ config })),
+    icon: 'clock',
+    view: lazy(
+      () => import('../features/clock/ui/ClockWidget.svelte'),
+      (config) => ({ config }),
+    ),
+    settings: lazy(
+      () => import('../features/clock/ui/ClockSettings.svelte'),
+      (config) => ({ config }),
+    ),
   },
   {
     type: {
       kind: 'weather',
+      category: 'information',
+      keywords: ['forecast', 'temperature', 'wetter', 'vorhersage', 'regen'],
       get title() {
         return t('widget.weather.title');
       },
@@ -100,12 +113,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 4 },
     },
-    view: renderer(WeatherWidget, (config, c) => ({ config, weather: c.weather })),
-    settings: renderer(WeatherSettings, (config, c) => ({ config, weather: c.weather })),
+    icon: 'sun',
+    view: lazy(
+      () => import('../features/weather/ui/WeatherWidget.svelte'),
+      (config, c) => ({ config, weather: c.weather }),
+    ),
+    settings: lazy(
+      () => import('../features/weather/ui/WeatherSettings.svelte'),
+      (config, c) => ({ config, weather: c.weather }),
+    ),
   },
   {
     type: {
       kind: 'radar',
+      category: 'information',
+      keywords: ['rain', 'dwd', 'regenradar', 'niederschlag'],
       get title() {
         return t('widget.radar.title');
       },
@@ -114,16 +136,25 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 4 },
     },
-    view: renderer(RadarWidget, (config, c) => ({ config, weather: c.weather })),
-    settings: renderer(WeatherSettings, (config, c) => ({
-      config,
-      weather: c.weather,
-      mode: 'radar' as const,
-    })),
+    icon: 'rain',
+    view: lazy(
+      () => import('../features/weather/ui/RadarWidget.svelte'),
+      (config, c) => ({ config, weather: c.weather }),
+    ),
+    settings: lazy(
+      () => import('../features/weather/ui/WeatherSettings.svelte'),
+      (config, c) => ({
+        config,
+        weather: c.weather,
+        mode: 'radar' as const,
+      }),
+    ),
   },
   {
     type: {
       kind: 'services',
+      category: 'server',
+      keywords: ['uptime', 'status', 'health', 'dienste', 'erreichbarkeit'],
       get title() {
         return t('widget.services.title');
       },
@@ -132,11 +163,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 6, h: 4 },
     },
-    view: renderer(ServicesWidget, (config, c) => ({ config, services: c.services })),
+    icon: 'server',
+    view: lazy(
+      () => import('../features/services/ui/ServicesWidget.svelte'),
+      (config, c) => ({ config, services: c.services }),
+    ),
   },
   {
     type: {
       kind: 'status-overview',
+      category: 'server',
+      keywords: ['uptime', 'incidents', 'sla', 'statusseite', 'störungen'],
       get title() {
         return t('widget.status-overview.title');
       },
@@ -145,11 +182,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 5 },
     },
-    view: renderer(StatusOverviewWidget, (_config, c) => ({ services: c.services })),
+    icon: 'activity',
+    view: lazy(
+      () => import('../features/services/ui/StatusOverviewWidget.svelte'),
+      (_config, c) => ({ services: c.services }),
+    ),
   },
   {
     type: {
       kind: 'bookmarks',
+      category: 'everyday',
+      keywords: ['links', 'favorites', 'lesezeichen', 'favoriten'],
       get title() {
         return t('widget.bookmarks.title');
       },
@@ -158,12 +201,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 5 },
     },
-    view: renderer(BookmarksWidget, (config, c) => ({ config, bookmarks: c.bookmarks })),
-    settings: renderer(BookmarksWidgetSettings, (config, c) => ({ config, bookmarks: c.bookmarks })),
+    icon: 'bookmark',
+    view: lazy(
+      () => import('../features/bookmarks/ui/BookmarksWidget.svelte'),
+      (config, c) => ({ config, bookmarks: c.bookmarks }),
+    ),
+    settings: lazy(
+      () => import('../features/bookmarks/ui/BookmarksWidgetSettings.svelte'),
+      (config, c) => ({ config, bookmarks: c.bookmarks }),
+    ),
   },
   {
     type: {
       kind: 'notes',
+      category: 'everyday',
+      keywords: ['markdown', 'text', 'notizen', 'memo'],
       get title() {
         return t('widget.notes.title');
       },
@@ -172,12 +224,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 4 },
     },
-    view: renderer(NotesWidget, (config, c) => ({ config, notes: c.notes })),
-    settings: renderer(NotesWidgetSettings, (config) => ({ config })),
+    icon: 'note',
+    view: lazy(
+      () => import('../features/notes/ui/NotesWidget.svelte'),
+      (config, c) => ({ config, notes: c.notes }),
+    ),
+    settings: lazy(
+      () => import('../features/notes/ui/NotesWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
   },
   {
     type: {
       kind: 'todos',
+      category: 'everyday',
+      keywords: ['tasks', 'to-do', 'aufgaben', 'erledigen'],
       get title() {
         return t('widget.todos.title');
       },
@@ -186,12 +247,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 5 },
     },
-    view: renderer(TodosWidget, (config, c) => ({ config, todos: c.todos })),
-    settings: renderer(TodosWidgetSettings, (config) => ({ config })),
+    icon: 'check',
+    view: lazy(
+      () => import('../features/todos/ui/TodosWidget.svelte'),
+      (config, c) => ({ config, todos: c.todos }),
+    ),
+    settings: lazy(
+      () => import('../features/todos/ui/TodosWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
   },
   {
     type: {
       kind: 'rss',
+      category: 'information',
+      keywords: ['news', 'feed', 'atom', 'nachrichten'],
       get title() {
         return t('widget.rss.title');
       },
@@ -200,12 +270,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 5, h: 6 },
     },
-    view: renderer(RssWidget, (config, c) => ({ config, rss: c.rss })),
-    settings: renderer(RssWidgetSettings, (config, c) => ({ config, rss: c.rss })),
+    icon: 'rss',
+    view: lazy(
+      () => import('../features/rss/ui/RssWidget.svelte'),
+      (config, c) => ({ config, rss: c.rss }),
+    ),
+    settings: lazy(
+      () => import('../features/rss/ui/RssWidgetSettings.svelte'),
+      (config, c) => ({ config, rss: c.rss }),
+    ),
   },
   {
     type: {
       kind: 'calendar',
+      category: 'information',
+      keywords: ['events', 'caldav', 'ical', 'kalender', 'termine'],
       get title() {
         return t('widget.calendar.title');
       },
@@ -214,12 +293,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 5 },
     },
-    view: renderer(CalendarWidget, (config, c) => ({ config, calendar: c.calendar })),
-    settings: renderer(CalendarWidgetSettings, (config) => ({ config })),
+    icon: 'calendar',
+    view: lazy(
+      () => import('../features/calendar/ui/CalendarWidget.svelte'),
+      (config, c) => ({ config, calendar: c.calendar }),
+    ),
+    settings: lazy(
+      () => import('../features/calendar/ui/CalendarWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
   },
   {
     type: {
       kind: 'system',
+      category: 'server',
+      keywords: ['cpu', 'memory', 'ram', 'disk', 'host', 'speicher'],
       get title() {
         return t('widget.system.title');
       },
@@ -228,11 +316,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 5 },
     },
-    view: renderer(SystemWidget, (_config, c) => ({ system: c.system })),
+    icon: 'cpu',
+    view: lazy(
+      () => import('../features/system/ui/SystemWidget.svelte'),
+      (_config, c) => ({ system: c.system }),
+    ),
   },
   {
     type: {
       kind: 'docker',
+      category: 'server',
+      keywords: ['containers', 'compose', 'images', 'container'],
       get title() {
         return t('widget.docker.title');
       },
@@ -241,12 +335,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 6 },
     },
-    view: renderer(DockerWidget, (config, c) => ({ config, docker: c.docker })),
-    settings: renderer(DockerWidgetSettings, (config, c) => ({ config, docker: c.docker })),
+    icon: 'box',
+    view: lazy(
+      () => import('../features/docker/ui/DockerWidget.svelte'),
+      (config, c) => ({ config, docker: c.docker }),
+    ),
+    settings: lazy(
+      () => import('../features/docker/ui/DockerWidgetSettings.svelte'),
+      (config, c) => ({ config, docker: c.docker }),
+    ),
   },
   {
     type: {
       kind: 'adguard',
+      category: 'network',
+      keywords: ['dns', 'ads', 'blocking', 'werbung'],
       get title() {
         return t('widget.adguard.title');
       },
@@ -255,11 +358,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 4 },
     },
-    view: renderer(AdGuardWidget, (_config, c) => ({ adguard: c.adguard })),
+    icon: 'shield',
+    view: lazy(
+      () => import('../features/adguard/ui/AdGuardWidget.svelte'),
+      (_config, c) => ({ adguard: c.adguard }),
+    ),
   },
   {
     type: {
       kind: 'nextcloud',
+      category: 'network',
+      keywords: ['files', 'storage', 'dateien', 'cloud'],
       get title() {
         return t('widget.nextcloud.title');
       },
@@ -268,11 +377,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 3 },
     },
-    view: renderer(NextcloudWidget, (_config, c) => ({ nextcloud: c.nextcloud })),
+    icon: 'cloud',
+    view: lazy(
+      () => import('../features/nextcloud/ui/NextcloudWidget.svelte'),
+      (_config, c) => ({ nextcloud: c.nextcloud }),
+    ),
   },
   {
     type: {
       kind: 'fritzbox',
+      category: 'network',
+      keywords: ['avm', 'router', 'wifi', 'wlan', 'internet'],
       get title() {
         return t('widget.fritzbox.title');
       },
@@ -281,11 +396,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 4 },
     },
-    view: renderer(FritzBoxWidget, (_config, c) => ({ fritzbox: c.fritzbox })),
+    icon: 'router',
+    view: lazy(
+      () => import('../features/fritzbox/ui/FritzBoxWidget.svelte'),
+      (_config, c) => ({ fritzbox: c.fritzbox }),
+    ),
   },
   {
     type: {
       kind: 'wireguard',
+      category: 'network',
+      keywords: ['vpn', 'peers', 'tunnel'],
       get title() {
         return t('widget.wireguard.title');
       },
@@ -294,11 +415,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 3 },
     },
-    view: renderer(WireGuardWidget, (_config, c) => ({ wireguard: c.wireguard })),
+    icon: 'key',
+    view: lazy(
+      () => import('../features/wireguard/ui/WireGuardWidget.svelte'),
+      (_config, c) => ({ wireguard: c.wireguard }),
+    ),
   },
   {
     type: {
       kind: 'waste',
+      category: 'information',
+      keywords: ['garbage', 'bin', 'müll', 'abfall', 'tonne'],
       get title() {
         return t('widget.waste.title');
       },
@@ -307,11 +434,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 3, h: 3 },
     },
-    view: renderer(WasteWidget, (_config, c) => ({ waste: c.waste })),
+    icon: 'trash',
+    view: lazy(
+      () => import('../features/waste/ui/WasteWidget.svelte'),
+      (_config, c) => ({ waste: c.waste }),
+    ),
   },
   {
     type: {
       kind: 'shopping',
+      category: 'information',
+      keywords: ['groceries', 'list', 'einkaufen', 'einkaufsliste'],
       get title() {
         return t('widget.shopping.title');
       },
@@ -320,11 +453,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 3, h: 4 },
     },
-    view: renderer(ShoppingWidget, (_config, c) => ({ shopping: c.shopping })),
+    icon: 'cart',
+    view: lazy(
+      () => import('../features/shopping/ui/ShoppingWidget.svelte'),
+      (_config, c) => ({ shopping: c.shopping }),
+    ),
   },
   {
     type: {
       kind: 'transit',
+      category: 'information',
+      keywords: ['departures', 'train', 'abfahrten', 'bahn', 'öpnv'],
       get title() {
         return t('widget.transit.title');
       },
@@ -333,12 +472,21 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 4 },
     },
-    view: renderer(TransitWidget, (config, c) => ({ config, transit: c.transit })),
-    settings: renderer(TransitWidgetSettings, (config, c) => ({ config, transit: c.transit })),
+    icon: 'bus',
+    view: lazy(
+      () => import('../features/transit/ui/TransitWidget.svelte'),
+      (config, c) => ({ config, transit: c.transit }),
+    ),
+    settings: lazy(
+      () => import('../features/transit/ui/TransitWidgetSettings.svelte'),
+      (config, c) => ({ config, transit: c.transit }),
+    ),
   },
   {
     type: {
       kind: 'parcels',
+      category: 'information',
+      keywords: ['dhl', 'tracking', 'pakete', 'sendung'],
       get title() {
         return t('widget.parcels.title');
       },
@@ -347,11 +495,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 4 },
     },
-    view: renderer(ParcelsWidget, (_config, c) => ({ parcels: c.parcels })),
+    icon: 'package',
+    view: lazy(
+      () => import('../features/parcels/ui/ParcelsWidget.svelte'),
+      (_config, c) => ({ parcels: c.parcels }),
+    ),
   },
   {
     type: {
       kind: 'backup-status',
+      category: 'server',
+      keywords: ['restic', 'borg', 'cron', 'heartbeat', 'sicherung'],
       get title() {
         return t('widget.backup-status.title');
       },
@@ -360,11 +514,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 3 },
     },
-    view: renderer(BackupStatusWidget, (_config, c) => ({ backupMonitor: c.backupMonitor })),
+    icon: 'archive',
+    view: lazy(
+      () => import('../features/backupmonitor/ui/BackupStatusWidget.svelte'),
+      (_config, c) => ({ backupMonitor: c.backupMonitor }),
+    ),
   },
   {
     type: {
       kind: 'timeline',
+      category: 'information',
+      keywords: ['events', 'log', 'history', 'zeitleiste', 'verlauf'],
       get title() {
         return t('widget.timeline.title');
       },
@@ -373,11 +533,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 5 },
     },
-    view: renderer(TimelineWidget, (config, c) => ({ config, timeline: c.timeline })),
+    icon: 'history',
+    view: lazy(
+      () => import('../features/timeline/ui/TimelineWidget.svelte'),
+      (config, c) => ({ config, timeline: c.timeline }),
+    ),
   },
   {
     type: {
       kind: 'diskhealth',
+      category: 'server',
+      keywords: ['smart', 'nvme', 'hdd', 'ssd', 'festplatte'],
       get title() {
         return t('widget.diskhealth.title');
       },
@@ -386,11 +552,17 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 4, h: 4 },
     },
-    view: renderer(DiskHealthWidget, (_config, c) => ({ diskhealth: c.diskhealth })),
+    icon: 'disk',
+    view: lazy(
+      () => import('../features/diskhealth/ui/DiskHealthWidget.svelte'),
+      (_config, c) => ({ diskhealth: c.diskhealth }),
+    ),
   },
   {
     type: {
       kind: 'speedtest',
+      category: 'server',
+      keywords: ['internet', 'bandwidth', 'ping', 'bandbreite'],
       get title() {
         return t('widget.speedtest.title');
       },
@@ -399,10 +571,19 @@ export const widgetDefinitions: WidgetDefinition[] = [
       },
       defaultSize: { w: 3, h: 4 },
     },
-    view: renderer(SpeedtestWidget, (_config, c) => ({ speedtest: c.speedtest })),
+    icon: 'gauge',
+    view: lazy(
+      () => import('../features/speedtest/ui/SpeedtestWidget.svelte'),
+      (_config, c) => ({ speedtest: c.speedtest }),
+    ),
   },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];
+
+/** Picker icon of a widget kind. */
+export function iconFor(kind: string): IconName | undefined {
+  return definitionFor(kind)?.icon;
+}
 
 /** Looks up the definition of a widget kind. */
 export function definitionFor(kind: string): WidgetDefinition | undefined {

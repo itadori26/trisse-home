@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { errorMessage } from '../../../shared/api-client/http';
   import { intlLocale, t } from '../../../shared/i18n';
   import {
@@ -16,6 +17,7 @@
     timeline: TimelineUseCases;
   }
   let { config, timeline }: Props = $props();
+  const poll = usePolling();
 
   const options = $derived(timelineConfig(config));
   let events = $state<TimelineEvent[]>([]);
@@ -29,10 +31,11 @@
       timeline
         .list(filter)
         .then((l) => ((events = l), (error = '')))
-        .catch((err) => (error = errorMessage(err)));
-    load();
-    const timer = setInterval(load, 60_000);
-    return () => clearInterval(timer);
+        .catch((err) => {
+          error = errorMessage(err);
+          throw err;
+        });
+    return poll(load, 60_000);
   });
 
   const dayKey = (d: Date) =>
