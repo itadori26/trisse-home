@@ -8,6 +8,7 @@ data/
 
 # Build output
 /bin/
+/dist/
 internal/platform/webui/dist/*
 !internal/platform/webui/dist/.gitkeep
 coverage.out

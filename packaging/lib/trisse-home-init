@@ -1,0 +1,59 @@
+#!/bin/sh
+# Prepares a native trisse-home installation before the service starts.
+# Runs as root via ExecStartPre=+ in trisse-home.service and is idempotent.
+#
+# It creates the per-installation SECRET_KEY on the first start. The key is
+# never part of the package or of a Raspberry Pi image, so every device that
+# is installed or flashed gets its own key.
+#
+# Paths can be overridden for tests through the TRISSE_HOME_* variables.
+set -eu
+
+CONF_DIR=${TRISSE_HOME_CONF_DIR:-/etc/trisse-home}
+STATE_DIR=${TRISSE_HOME_STATE_DIR:-/var/lib/trisse-home}
+SERVICE_GROUP=${TRISSE_HOME_GROUP:-trisse-home}
+
+CONFIG_FILE="$CONF_DIR/trisse-home.env"
+SECRET_FILE="$CONF_DIR/secret.env"
+# Written by the postrm script when the package is purged but the data is
+# kept, so that a later reinstall can still decrypt stored credentials.
+SAVED_SECRET="$STATE_DIR/secret.env.purged"
+
+has_key() {
+	[ -f "$1" ] && grep -Eq '^[[:space:]]*SECRET_KEY=[^[:space:]]' "$1"
+}
+
+install_secret() {
+	# $1: file with the content to install. Written atomically with the final
+	# owner and mode, so the service never sees a half-written or unreadable key.
+	chgrp "$SERVICE_GROUP" "$1"
+	chmod 0640 "$1"
+	mv -f "$1" "$SECRET_FILE"
+}
+
+# An admin-provided key (e.g. when moving from Docker) always wins.
+if has_key "$CONFIG_FILE" || has_key "$SECRET_FILE"; then
+	exit 0
+fi
+
+umask 077
+tmp=$(mktemp "$SECRET_FILE.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+
+if has_key "$SAVED_SECRET"; then
+	cat "$SAVED_SECRET" >"$tmp"
+	install_secret "$tmp"
+	rm -f "$SAVED_SECRET"
+	echo "trisse-home: restored the SECRET_KEY saved when the package was purged" >&2
+	exit 0
+fi
+
+# 32 random bytes, base64 encoded: the format SECRET_KEY expects.
+key=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+{
+	echo "# Generated on the first start of trisse-home. It encrypts the stored"
+	echo "# credentials of integrations: keep a copy next to your backups."
+	echo "SECRET_KEY=$key"
+} >"$tmp"
+install_secret "$tmp"
+echo "trisse-home: generated a new SECRET_KEY in $SECRET_FILE" >&2

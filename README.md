@@ -156,6 +156,20 @@ start it again.
 `sudo docker compose restart trisse-home` and use the new setup token from
 the log.
 
+## Native install without Docker (Debian, Ubuntu, Raspberry Pi OS)
+
+Every release also attaches `.deb` packages for `amd64` and `arm64` that run
+trisse-home as a hardened systemd service — no Docker needed:
+
+```sh
+sudo apt install ./trisse-home_<version>_$(dpkg --print-architecture).deb
+sudo journalctl -u trisse-home | grep setup_token
+```
+
+`SECRET_KEY` is generated on the first start; configuration lives in
+`/etc/trisse-home/trisse-home.env`, data in `/var/lib/trisse-home`. Details,
+updates and moving from Docker: [docs/native-install.md](docs/native-install.md).
+
 ## WireGuard widget (optional)
 
 > **Why is this an extra step?** `wg` needs network admin rights and its output contains the server's private key.
