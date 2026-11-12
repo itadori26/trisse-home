@@ -153,6 +153,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_67f0ba90e3a4e5b4: 'Das kann nur der Besitzer.',
   // Only the owner can restore backups in the browser.
   srv_2fa2f3b7606fee5e: 'Nur der Besitzer kann Backups im Browser wiederherstellen.',
+  // Only today and yesterday can be checked off.
+  srv_a1fc697b9fe6467c: 'Abhaken geht nur für heute und gestern.',
   // Passkeys need HTTPS and PUBLIC_URL (see the README).
   srv_b90b21f1d731b4f6: 'Passkeys brauchen HTTPS und PUBLIC_URL (siehe README).',
   // Password login is disabled. Use single sign-on.
@@ -206,6 +208,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_ea4ce39d77587136: 'Das Speichern von Zugangsdaten ist in der Demo deaktiviert.',
   // The countdown does not exist.
   srv_1532da22068d27c4: 'Den Countdown gibt es nicht.',
+  // The habit does not exist.
+  srv_f37ac2a179a60cc1: 'Diese Gewohnheit gibt es nicht.',
   // The session must have ended within the last day.
   srv_addb603b2e8d10d3: 'Die Einheit muss innerhalb des letzten Tages geendet haben.',
   // The title must be between 1 and 120 characters long.

@@ -156,3 +156,8 @@ packages:
   - path: "trisse-home/internal/modules/focus/adapter/controller"
     output_path: "web/src/shared/api-client/generated/focus-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/habits/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/habits.ts"
+  - path: "trisse-home/internal/modules/habits/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/habits-requests.ts"
+    include_files: ["dto.go"]

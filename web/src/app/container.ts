@@ -74,6 +74,8 @@ import { CountdownApi } from '../features/countdown/adapter/api/countdownApi';
 import { CountdownUseCases } from '../features/countdown/usecase/countdownUseCases';
 import { browserNotifier, FocusApi } from '../features/focus/adapter/api/focusApi';
 import { FocusUseCases } from '../features/focus/usecase/focusUseCases';
+import { HabitsApi } from '../features/habits/adapter/api/habitsApi';
+import { HabitsUseCases } from '../features/habits/usecase/habitsUseCases';
 
 /** All use cases available to the UI. */
 export interface Container {
@@ -111,6 +113,7 @@ export interface Container {
   briefing: BriefingUseCases;
   countdown: CountdownUseCases;
   focus: FocusUseCases;
+  habits: HabitsUseCases;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -155,6 +158,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     briefing: new BriefingUseCases(new BriefingApi(http)),
     countdown: new CountdownUseCases(new CountdownApi(http)),
     focus: new FocusUseCases(new FocusApi(http), browserNotifier),
+    habits: new HabitsUseCases(new HabitsApi(http)),
     // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),

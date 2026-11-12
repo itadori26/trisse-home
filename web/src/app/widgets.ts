@@ -650,6 +650,29 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (config, c) => ({ config, focus: c.focus }),
     ),
   },
+  {
+    type: {
+      kind: 'habits',
+      category: 'everyday',
+      keywords: ['habit', 'streak', 'routine', 'gewohnheit', 'routine', 'serie', 'tracker'],
+      get title() {
+        return t('widget.habits.title');
+      },
+      get description() {
+        return t('widget.habits.description');
+      },
+      defaultSize: { w: 4, h: 4 },
+    },
+    icon: 'check',
+    view: lazy(
+      () => import('../features/habits/ui/HabitsWidget.svelte'),
+      (config, c) => ({ config, habits: c.habits }),
+    ),
+    settings: lazy(
+      () => import('../features/habits/ui/HabitsSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];
 
