@@ -31,9 +31,10 @@ const (
 	Binary     = "binaryMB"
 	Image      = "imageMB"
 	Memory     = "idleMemoryMB"
+	PiImage    = "piImageMB"
 )
 
-var order = []string{InitialJS, InitialCSS, LazyChunk, Binary, Image, Memory}
+var order = []string{InitialJS, InitialCSS, LazyChunk, Binary, Image, Memory, PiImage}
 
 var labels = map[string]string{
 	InitialJS:  "Initial JS (gzip)",
@@ -42,6 +43,7 @@ var labels = map[string]string{
 	Binary:     "Go binary",
 	Image:      "Container image",
 	Memory:     "Idle memory (RSS after 60 s)",
+	PiImage:    "Raspberry Pi image (.img.xz)",
 }
 
 func unit(name string) string {
@@ -168,6 +170,7 @@ func run() error {
 	binary := flag.String("binary", "", "Go binary")
 	imageBytes := flag.Float64("image-bytes", 0, "container image size in bytes (docker image inspect)")
 	memory := flag.String("memory", "", "docker stats MemUsage, e.g. \"18.5MiB / 7.6GiB\"")
+	piImage := flag.String("pi-image", "", "compressed Raspberry Pi image (.img.xz)")
 	baselinePath := flag.String("baseline", "", "measurements of main for the delta column (optional)")
 	out := flag.String("out", "", "write the measurements as JSON")
 	flag.Parse()
@@ -190,6 +193,13 @@ func run() error {
 			return err
 		}
 		got[Binary] = mb(float64(st.Size()))
+	}
+	if *piImage != "" {
+		st, err := os.Stat(*piImage)
+		if err != nil {
+			return err
+		}
+		got[PiImage] = mb(float64(st.Size()))
 	}
 	if *imageBytes > 0 {
 		got[Image] = mb(*imageBytes)
