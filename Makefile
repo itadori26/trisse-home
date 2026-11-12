@@ -6,6 +6,12 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 BIN     := bin/trisse-home
 WEB     := web
 
+# Native packages (ADR 0015). PKG_VERSION is a Debian version derived from
+# the latest release tag, see scripts/package-version.sh.
+NFPM        ?= nfpm
+PKG_ARCHS   ?= amd64 arm64
+PKG_VERSION ?= $(shell sh scripts/package-version.sh)
+
 .PHONY: help
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
@@ -56,6 +62,16 @@ build-web: ## Build the frontend into internal/platform/webui/dist
 build: build-web ## Build the single binary with the embedded frontend
 	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=$(VERSION)" -o $(BIN) ./cmd/server
 
+.PHONY: package
+package: build-web ## Build .deb packages for PKG_ARCHS into dist/ (needs nfpm)
+	mkdir -p dist
+	set -e; for arch in $(PKG_ARCHS); do \
+		CGO_ENABLED=0 GOOS=linux GOARCH=$$arch go build -trimpath -ldflags="-s -w -X main.version=$(VERSION)" \
+			-o bin/linux-$$arch/trisse-home ./cmd/server; \
+		GOARCH=$$arch PKG_VERSION=$(PKG_VERSION) $(NFPM) package --config packaging/nfpm.yaml --packager deb --target dist/; \
+	done
+	cd dist && sha256sum *.deb > trisse-home_$(PKG_VERSION)_packages.sha256
+
 .PHONY: run
 run: build ## Run locally with data in ./data (needs SECRET_KEY or .env)
 	set -a; [ -f .env ] && source .env; set +a; \
@@ -86,7 +102,7 @@ logs: ## Follow the application logs
 
 .PHONY: clean
 clean: ## Remove build output
-	rm -rf bin coverage.out internal/platform/webui/dist/assets internal/platform/webui/dist/index.html
+	rm -rf bin dist coverage.out internal/platform/webui/dist/assets internal/platform/webui/dist/index.html
 
 new-module: ## Scaffold a new module: make new-module NAME=recipes [TITLE="Recipes"]
 	go run ./scripts/newmodule -name "$(NAME)" -title "$(TITLE)"

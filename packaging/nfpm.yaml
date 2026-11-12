@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://nfpm.goreleaser.com/schema.json
+#
+# Native packages for trisse-home (ADR 0015). Built by `make package`:
+#   GOARCH        target architecture (amd64, arm64)
+#   PKG_VERSION   Debian version without a leading "v", e.g. 1.2.3
+# The binary is expected in bin/linux-${GOARCH}/trisse-home.
+name: trisse-home
+arch: ${GOARCH}
+platform: linux
+version: ${PKG_VERSION}
+# PKG_VERSION is already a valid Debian version (see Makefile); use it as is.
+version_schema: none
+section: web
+priority: optional
+maintainer: Trisse <32554080+itadori26@users.noreply.github.com>
+vendor: trisse-home contributors
+homepage: https://github.com/itadori26/trisse-home
+license: MIT
+description: |-
+  Self-hosted personal start page
+  Freely arranged widgets on multiple tabs plus small modules for everyday
+  life and the home server. One static binary with an embedded web UI and
+  SQLite, running as a hardened systemd service.
+
+depends:
+  # deb-systemd-helper and deb-systemd-invoke in the maintainer scripts.
+  - init-system-helpers
+
+contents:
+  - src: ./bin/linux-${GOARCH}/trisse-home
+    dst: /usr/bin/trisse-home
+    expand: true
+    file_info:
+      mode: 0755
+
+  - src: ./packaging/lib/trisse-home-init
+    dst: /usr/lib/trisse-home/trisse-home-init
+    file_info:
+      mode: 0755
+
+  - src: ./packaging/systemd/trisse-home.service
+    dst: /usr/lib/systemd/system/trisse-home.service
+    file_info:
+      mode: 0644
+
+  - src: ./packaging/sysusers.d/trisse-home.conf
+    dst: /usr/lib/sysusers.d/trisse-home.conf
+    file_info:
+      mode: 0644
+
+  # Ownership (root:trisse-home) is set in postinst: the group does not exist
+  # yet when dpkg unpacks the files.
+  - dst: /etc/trisse-home
+    type: dir
+    file_info:
+      mode: 0750
+
+  - src: ./packaging/trisse-home.env
+    dst: /etc/trisse-home/trisse-home.env
+    type: config
+    file_info:
+      mode: 0640
+
+  - src: ./LICENSE
+    dst: /usr/share/doc/trisse-home/copyright
+    file_info:
+      mode: 0644
+
+scripts:
+  postinstall: ./packaging/scripts/postinstall.sh
+  preremove: ./packaging/scripts/preremove.sh
+  postremove: ./packaging/scripts/postremove.sh

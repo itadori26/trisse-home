@@ -134,6 +134,55 @@ jobs:
           exit-code: "1"
           skip-setup-trivy: true
 
+  # Native .deb packages (ADR 0015): build, lifecycle test in Debian and a real
+  # start under systemd with the hardened unit.
+  package:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    env:
+      NFPM_VERSION: v2.47.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build packages (amd64, arm64)
+        run: |
+          go install "github.com/goreleaser/nfpm/v2/cmd/nfpm@$NFPM_VERSION"
+          (cd web && npm ci --no-audit --no-fund)
+          make package NFPM="$(go env GOPATH)/bin/nfpm"
+          ls -l dist
+      - name: Install, upgrade, remove and purge in Debian Trixie
+        run: docker run --rm -v "$PWD:/src:ro" -w /src debian:trixie sh packaging/test/package-test.sh dist/trisse-home_*_amd64.deb
+      - name: Start the service under systemd
+        run: |
+          sudo apt-get install -y ./dist/trisse-home_*_amd64.deb
+          for i in $(seq 30); do curl -fsS http://127.0.0.1:8090/healthz >/dev/null && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8090/healthz
+          systemctl is-active trisse-home
+          sudo journalctl -u trisse-home --no-pager | grep -q setup_token
+          test "$(sudo stat -c '%U:%G %a' /etc/trisse-home/secret.env)" = "root:trisse-home 640"
+      - name: Check the unit and its sandbox (exposure must stay at or below 2.0)
+        run: |
+          systemd-analyze verify /usr/lib/systemd/system/trisse-home.service
+          # --threshold is the exposure × 10 (default 100 = 10.0): 20 = 2.0.
+          systemd-analyze security trisse-home --threshold=20 --no-pager
+      - name: Service log
+        if: failure()
+        run: sudo journalctl -u trisse-home --no-pager -n 200
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages
+          path: dist/
+          retention-days: 14
+
   vulnerabilities:
     runs-on: ubuntu-latest
     steps:
