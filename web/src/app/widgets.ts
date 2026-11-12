@@ -602,6 +602,52 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (_config, c) => ({ briefing: c.briefing }),
     ),
   },
+  {
+    type: {
+      kind: 'countdown',
+      category: 'everyday',
+      keywords: ['days', 'deadline', 'exam', 'holiday', 'countdown', 'tage', 'frist', 'prüfung', 'urlaub'],
+      get title() {
+        return t('widget.countdown.title');
+      },
+      get description() {
+        return t('widget.countdown.description');
+      },
+      defaultSize: { w: 4, h: 4 },
+    },
+    icon: 'hourglass',
+    view: lazy(
+      () => import('../features/countdown/ui/CountdownWidget.svelte'),
+      (config, c) => ({ config, countdown: c.countdown }),
+    ),
+    settings: lazy(
+      () => import('../features/countdown/ui/CountdownSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
+  {
+    type: {
+      kind: 'focus',
+      category: 'everyday',
+      keywords: ['pomodoro', 'timer', 'study', 'concentration', 'lernen', 'konzentration', 'pause'],
+      get title() {
+        return t('widget.focus.title');
+      },
+      get description() {
+        return t('widget.focus.description');
+      },
+      defaultSize: { w: 3, h: 4 },
+    },
+    icon: 'timer',
+    view: lazy(
+      () => import('../features/focus/ui/FocusWidget.svelte'),
+      (config, c) => ({ config, focus: c.focus }),
+    ),
+    settings: lazy(
+      () => import('../features/focus/ui/FocusSettings.svelte'),
+      (config, c) => ({ config, focus: c.focus }),
+    ),
+  },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];
 

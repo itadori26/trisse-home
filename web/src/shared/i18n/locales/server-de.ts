@@ -18,6 +18,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_865d0fdde8c133ca: 'Für neue Registries ist ein Passwort oder Zugriffstoken erforderlich.',
   // A reminder needs a due date.
   srv_fc8a2589829c3428: 'Eine Erinnerung braucht ein Fälligkeitsdatum.',
+  // A session lasts between 1 and 180 minutes.
+  srv_e9ad8cf134079d79: 'Eine Einheit dauert zwischen 1 und 180 Minuten.',
   // A shortcut with this keyword already exists.
   srv_76a5625367cbe997: 'Es gibt bereits ein Kürzel mit diesem Schlüsselwort.',
   // Actions are not enabled for this container (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).
@@ -80,6 +82,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Bitte zuerst das Abrufen von Titeln und Icons in den Lesezeichen-Einstellungen aktivieren.',
   // Enable the link check in the bookmark settings first.
   srv_f8405f015011b4d0: 'Bitte zuerst die Linkprüfung in den Lesezeichen-Einstellungen aktivieren.',
+  // Enter a date like 2026-12-24.
+  srv_22fc413ef29251fa: 'Bitte ein Datum wie 2026-12-24 eingeben.',
   // Enter a time like 07:00.
   srv_45cc329a438ca49f: 'Bitte eine Uhrzeit wie 07:00 eingeben.',
   // Every widget may appear only once.
@@ -98,6 +102,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_8e50b118b5e6b205: 'Jede Regel braucht einen Suchtext mit höchstens 40 Zeichen.',
   // Export version {version} is not supported by this version of trisse-home.
   srv_43fe335aacf98b3c: 'Exportversion {version} wird von dieser trisse-home-Version nicht unterstützt.',
+  // graceDays must be a number.
+  srv_1bef734e6f2cdc94: 'graceDays muss eine Zahl sein.',
   // Guests can only view this dashboard.
   srv_79bf20d17f6aa6eb: 'Gäste können dieses Dashboard nur ansehen.',
   // Host metrics are not available. Are /proc and /sys mounted?
@@ -198,6 +204,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_32f91240e6490e41: 'Bitte zuerst die Einrichtung der Zwei-Faktor-Authentifizierung starten.',
   // Storing credentials is disabled in the demo.
   srv_ea4ce39d77587136: 'Das Speichern von Zugangsdaten ist in der Demo deaktiviert.',
+  // The countdown does not exist.
+  srv_1532da22068d27c4: 'Den Countdown gibt es nicht.',
+  // The session must have ended within the last day.
+  srv_addb603b2e8d10d3: 'Die Einheit muss innerhalb des letzten Tages geendet haben.',
+  // The title must be between 1 and 120 characters long.
+  srv_28a208881a6ef97d: 'Der Titel muss zwischen 1 und 120 Zeichen lang sein.',
   // TLS must be starttls, tls or none.
   srv_8ba7cc04f14ed353: 'TLS muss starttls, tls oder none sein.',
   // Tags may only contain letters, digits, - and _ (max. 30 characters).
@@ -523,6 +535,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   // Use a cron expression with five fields, e.g. 0 3 * * * (daily at 03:00).
   srv_564c3b1fecfb1093:
     'Bitte einen Cron-Ausdruck mit fünf Feldern verwenden, z. B. 0 3 * * * (täglich um 03:00).',
+  // Use a single emoji.
+  srv_61031ab185b65e33: 'Bitte nur ein einzelnes Emoji verwenden.',
   // User name and password (or app password) are required.
   srv_1c73ff4160f4ee94: 'Benutzername und Passwort (oder App-Passwort) sind erforderlich.',
   // Username and app password are required.

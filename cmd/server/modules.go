@@ -17,9 +17,11 @@ import (
 	"trisse-home/internal/modules/bookmarks"
 	"trisse-home/internal/modules/briefing"
 	"trisse-home/internal/modules/calendar"
+	"trisse-home/internal/modules/countdown"
 	"trisse-home/internal/modules/dashboard"
 	"trisse-home/internal/modules/diskhealth"
 	"trisse-home/internal/modules/docker"
+	"trisse-home/internal/modules/focus"
 	"trisse-home/internal/modules/fritzbox"
 	"trisse-home/internal/modules/nextcloud"
 	"trisse-home/internal/modules/notes"
@@ -150,6 +152,8 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
+		{"countdown", func() modules.Module { return countdown.New(db, clk, ids) }},
+		{"focus", func() modules.Module { return focus.New(db, clk, ids) }},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {
