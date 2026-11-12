@@ -2,7 +2,8 @@ name: Release
 
 # A tag vX.Y.Z builds multi-arch images, pushes them to GHCR, smoke-tests the
 # arm64 image under QEMU, attaches an SBOM and publishes a GitHub release with
-# notes generated from Conventional Commits (scripts/release-notes.sh).
+# notes generated from Conventional Commits (scripts/release-notes.sh). The
+# native .deb packages (amd64, arm64) are attached to the same release.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -86,6 +87,36 @@ jobs:
           printf '\n### Container image\n\n```\n%s:%s\n```\n' "$IMAGE" "${{ needs.image.outputs.version }}" >> notes.md
           gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md \
             "trisse-home-${{ needs.image.outputs.version }}.spdx.json"
+
+  # Native .deb packages for amd64 and arm64 (ADR 0015), attached to the release.
+  packages:
+    runs-on: ubuntu-latest
+    needs: [image, release]
+    permissions:
+      contents: write
+    env:
+      NFPM_VERSION: v2.47.0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build packages
+        env:
+          VERSION: ${{ needs.image.outputs.version }}
+        run: |
+          go install "github.com/goreleaser/nfpm/v2/cmd/nfpm@$NFPM_VERSION"
+          (cd web && npm ci --no-audit --no-fund)
+          make package NFPM="$(go env GOPATH)/bin/nfpm" VERSION="$VERSION" PKG_VERSION="$VERSION"
+      - name: Attach packages to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/*.deb dist/*.sha256 --clobber
 
   screenshots:
     runs-on: ubuntu-latest
