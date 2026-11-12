@@ -805,6 +805,8 @@ export const de: Record<MessageKey, string> = {
   'notifications.type.forecast': 'Speicher bald voll',
   'notifications.type.speedtest': 'Internet-Geschwindigkeit',
   'notifications.type.image': 'Container-Image-Update',
+  'notifications.type.reminder': 'To-do-Erinnerung',
+  'notifications.type.briefing': 'Tagesüberblick',
   'notifications.severity.info': 'Info',
   'notifications.severity.warning': 'Warnung',
   'notifications.severity.critical': 'Kritisch',

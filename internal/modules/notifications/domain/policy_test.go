@@ -90,3 +90,28 @@ func TestChannel(t *testing.T) {
 		}
 	}
 }
+
+func TestAlertKinds(t *testing.T) {
+	cases := []struct {
+		kind     string
+		tag      string
+		severity Severity
+	}{
+		{"security", "lock", SeverityWarning},
+		{"reminder", "bell", SeverityInfo},
+		{"briefing", "sunny", SeverityInfo},
+		{"unknown", "lock", SeverityWarning},
+	}
+	for _, c := range cases {
+		if got := AlertTag(c.kind); got != c.tag {
+			t.Errorf("AlertTag(%q) = %q, want %q", c.kind, got, c.tag)
+		}
+		if got := (Policy{}).SeverityOf(c.kind); got != c.severity {
+			t.Errorf("SeverityOf(%q) = %q, want %q", c.kind, got, c.severity)
+		}
+	}
+	reminder := Channel{Name: "Phone", Kind: ChannelWebhook, URL: "https://example.org/hook", Types: []string{"reminder", "briefing"}}
+	if err := reminder.Validate(); err != nil {
+		t.Fatalf("reminder and briefing must be selectable per channel: %v", err)
+	}
+}
