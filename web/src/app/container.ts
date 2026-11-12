@@ -68,6 +68,7 @@ import { WeatherApi } from '../features/weather/adapter/api/weatherApi';
 import { WeatherUseCases } from '../features/weather/usecase/weatherUseCases';
 import type { InfoResponse } from '../shared/api-client/generated/modules';
 import { FetchHttpClient } from '../shared/api-client/http';
+import { SmarthomeApi, SmarthomeUseCases } from '../features/smarthome';
 
 /** All use cases available to the UI. */
 export interface Container {
@@ -102,6 +103,7 @@ export interface Container {
   shortcuts: ShortcutRegistry;
   /** Quick capture and palette commands (#105, #67). */
   quickActions: QuickActionsUseCases;
+  smarthome: SmarthomeUseCases;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -143,6 +145,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     speedtest: new SpeedtestUseCases(new SpeedtestApi(http)),
     refresh: createRefreshScheduler(),
     shortcuts: new ShortcutRegistry(),
+    smarthome: new SmarthomeUseCases(new SmarthomeApi(http)),
     // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),

@@ -29,6 +29,7 @@ import (
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
 	"trisse-home/internal/modules/shopping"
+	"trisse-home/internal/modules/smarthome"
 	"trisse-home/internal/modules/speedtest"
 	"trisse-home/internal/modules/system"
 	"trisse-home/internal/modules/timeline"
@@ -147,6 +148,10 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
+		{"smarthome", func() modules.Module {
+			return smarthome.New(smarthome.Config{DB: db, Cipher: secrets, Client: client,
+				ActionEntities: cfg.SmartHomeActionsEntities, Clock: clk, Audit: authModule})
+		}},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {

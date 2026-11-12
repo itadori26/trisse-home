@@ -101,6 +101,19 @@ func TestDockerActionsNeedAllowList(t *testing.T) {
 	}
 }
 
+func TestSmartHomeActionEntities(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "SMARTHOME_ACTIONS_ENTITIES": "switch.Coffee, button.door_bell"}))
+	if err != nil || len(cfg.SmartHomeActionsEntities) != 2 || cfg.SmartHomeActionsEntities[0] != "switch.coffee" {
+		t.Fatalf("unexpected %v %v", cfg.SmartHomeActionsEntities, err)
+	}
+	if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "SMARTHOME_ACTIONS_ENTITIES": "coffee"})); err == nil {
+		t.Fatal("an ID without domain was accepted")
+	}
+	if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "DEMO_MODE": "true", "SMARTHOME_ACTIONS_ENTITIES": "switch.x"})); err == nil {
+		t.Fatal("a demo must not switch real devices")
+	}
+}
+
 func TestDemoModeRefusesRealIntegrations(t *testing.T) {
 	vars := map[string]string{"SECRET_KEY": validKey, "DEMO_MODE": "true", "SAMPLE_DATA": "false"}
 	cfg, err := Load(env(vars))
