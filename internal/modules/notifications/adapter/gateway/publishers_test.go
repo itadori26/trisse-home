@@ -103,4 +103,10 @@ func TestEmail(t *testing.T) {
 	if !strings.Contains(umlaut, "Subject: =?utf-8?q?") {
 		t.Fatalf("non-ASCII subject not encoded: %s", umlaut)
 	}
+	evil := string(BuildEmail(domain.Channel{From: "a@b.c\r\nBcc: x@y.z", To: "me@b.c"},
+		domain.Message{Title: "NAS\r\nBcc: x@y.z", Body: "line\r\n.\r\nend\x00"}, time.Unix(0, 0)))
+	head, body, _ := strings.Cut(evil, "\r\n\r\n")
+	if strings.Contains(head, "\r\nBcc:") || strings.Count(head, "\r\n") != 6 || strings.ContainsRune(body, 0) {
+		t.Fatalf("header injection:\n%q", evil)
+	}
 }

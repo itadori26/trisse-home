@@ -122,14 +122,37 @@ func NewEmailPublisher(now func() time.Time) *EmailPublisher {
 	return &EmailPublisher{Dial: func(ctx context.Context, addr string) (net.Conn, error) { return d.DialContext(ctx, "tcp", addr) }, now: now}
 }
 
+// headerValue removes control characters (CR, LF, …) so values taken from
+// service names or alert titles cannot start new header lines.
+func headerValue(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r < ' ' || r == 0x7f {
+			return ' '
+		}
+		return r
+	}, s)
+}
+
+// bodyText normalises line endings to CRLF and drops other control
+// characters; dot-stuffing is done by the SMTP data writer.
+func bodyText(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.Map(func(r rune) rune {
+		if (r < ' ' && r != '\n' && r != '\t') || r == 0x7f {
+			return -1
+		}
+		return r
+	}, s)
+	return strings.ReplaceAll(s, "\n", "\r\n")
+}
+
 // BuildEmail renders the message as an RFC 5322 mail with a UTF-8 subject.
 func BuildEmail(c domain.Channel, m domain.Message, date time.Time) []byte {
 	var b strings.Builder
-	fmt.Fprintf(&b, "From: %s\r\nTo: %s\r\n", c.From, c.To)
-	fmt.Fprintf(&b, "Subject: %s\r\n", mime.QEncoding.Encode("utf-8", "[trisse-home] "+m.Title))
+	fmt.Fprintf(&b, "From: %s\r\nTo: %s\r\n", headerValue(c.From), headerValue(c.To))
+	fmt.Fprintf(&b, "Subject: %s\r\n", mime.QEncoding.Encode("utf-8", headerValue("[trisse-home] "+m.Title)))
 	fmt.Fprintf(&b, "Date: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n", date.Format(time.RFC1123Z))
-	body := strings.ReplaceAll(m.Body, "\n", "\r\n")
-	fmt.Fprintf(&b, "%s\r\n\r\nSeverity: %s\r\n", body, m.Severity)
+	fmt.Fprintf(&b, "%s\r\n\r\nSeverity: %s\r\n", bodyText(m.Body), headerValue(string(m.Severity)))
 	return []byte(b.String())
 }
 
