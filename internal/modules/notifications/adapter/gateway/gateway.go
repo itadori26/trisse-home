@@ -59,9 +59,9 @@ type rulesRow struct {
 func (r *Repository) Load(ctx context.Context) (domain.Settings, error) {
 	var s domain.Settings
 	var enabled int
-	var tokenEnc, rules string
-	err := r.db.QueryRowContext(ctx, `SELECT enabled, server_url, topic, token_encrypted, rules FROM notification_settings WHERE id = 1`).
-		Scan(&enabled, &s.ServerURL, &s.Topic, &tokenEnc, &rules)
+	var tokenEnc, rules, policy string
+	err := r.db.QueryRowContext(ctx, `SELECT enabled, server_url, topic, token_encrypted, rules, policy FROM notification_settings WHERE id = 1`).
+		Scan(&enabled, &s.ServerURL, &s.Topic, &tokenEnc, &rules, &policy)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.DefaultSettings(), nil
 	}
@@ -79,6 +79,11 @@ func (r *Repository) Load(ctx context.Context) (domain.Settings, error) {
 		return domain.Settings{}, fmt.Errorf("decode rules: %w", err)
 	}
 	s.Rules = domain.Rules(rr)
+	var pr policyRow
+	if err := json.Unmarshal([]byte(policy), &pr); err != nil {
+		return domain.Settings{}, fmt.Errorf("decode policy: %w", err)
+	}
+	s.Policy = pr.domain()
 	return s, nil
 }
 
@@ -95,10 +100,14 @@ func (r *Repository) Save(ctx context.Context, s domain.Settings) error {
 	if err != nil {
 		return fmt.Errorf("encode rules: %w", err)
 	}
-	_, err = r.db.ExecContext(ctx, `INSERT INTO notification_settings (id, enabled, server_url, topic, token_encrypted, rules)
-		VALUES (1, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET enabled = excluded.enabled, server_url = excluded.server_url,
-		topic = excluded.topic, token_encrypted = excluded.token_encrypted, rules = excluded.rules`,
-		sqlutil.BoolToInt(s.Enabled), s.ServerURL, s.Topic, tokenEnc, string(rules))
+	policy, err := json.Marshal(policyFrom(s.Policy))
+	if err != nil {
+		return fmt.Errorf("encode policy: %w", err)
+	}
+	_, err = r.db.ExecContext(ctx, `INSERT INTO notification_settings (id, enabled, server_url, topic, token_encrypted, rules, policy)
+		VALUES (1, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET enabled = excluded.enabled, server_url = excluded.server_url,
+		topic = excluded.topic, token_encrypted = excluded.token_encrypted, rules = excluded.rules, policy = excluded.policy`,
+		sqlutil.BoolToInt(s.Enabled), s.ServerURL, s.Topic, tokenEnc, string(rules), string(policy))
 	if err != nil {
 		return fmt.Errorf("upsert notification settings: %w", err)
 	}

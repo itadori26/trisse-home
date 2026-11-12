@@ -14,10 +14,21 @@ type UsageDTO struct {
 	Percent float64 `json:"percent"`
 }
 
+// ForecastDTO predicts when a file system is full (#108).
+type ForecastDTO struct {
+	// Status: filling (daysUntilFull is set), flat (no growth) or
+	// insufficient (fewer than three days of data).
+	Status        string  `json:"status" tstype:"'filling' | 'flat' | 'insufficient'"`
+	DaysUntilFull float64 `json:"daysUntilFull"`
+	BytesPerDay   float64 `json:"bytesPerDay"`
+	Confidence    float64 `json:"confidence"`
+}
+
 // DiskDTO is the usage of one file system.
 type DiskDTO struct {
-	Label string   `json:"label"`
-	Usage UsageDTO `json:"usage"`
+	Label    string       `json:"label"`
+	Usage    UsageDTO     `json:"usage"`
+	Forecast *ForecastDTO `json:"forecast"`
 }
 
 // SnapshotDTO is returned by GET /api/system.
@@ -39,8 +50,8 @@ func usage(u usecase.UsageView) UsageDTO {
 	return UsageDTO{Total: u.Total, Used: u.Used, Percent: round1(u.Percent)}
 }
 
-// Snapshot maps a SnapshotView.
-func Snapshot(s usecase.SnapshotView) SnapshotDTO {
+// Snapshot maps a SnapshotView with the disk forecasts by label (may be nil).
+func Snapshot(s usecase.SnapshotView, forecasts map[string]usecase.ForecastView) SnapshotDTO {
 	dto := SnapshotDTO{
 		CPUPercent: round1(s.CPUPercent), CPUCount: s.CPUCount,
 		Load:   [3]float64{s.Load1, s.Load5, s.Load15},
@@ -48,9 +59,20 @@ func Snapshot(s usecase.SnapshotView) SnapshotDTO {
 		UptimeSeconds: int64(s.Uptime.Seconds()), Temperature: round1(s.Temperature), TakenAt: s.TakenAt,
 	}
 	for _, d := range s.Disks {
-		dto.Disks = append(dto.Disks, DiskDTO{Label: d.Label, Usage: usage(d.Usage)})
+		disk := DiskDTO{Label: d.Label, Usage: usage(d.Usage)}
+		if f, ok := forecasts[d.Label]; ok {
+			disk.Forecast = &ForecastDTO{Status: string(f.Status), DaysUntilFull: round1(f.DaysUntilFull),
+				BytesPerDay: math.Round(f.BytesPerDay), Confidence: math.Round(f.Confidence*100) / 100}
+		}
+		dto.Disks = append(dto.Disks, disk)
 	}
 	return dto
+}
+
+// ForecastSettingsDTO is returned by GET/PUT /api/system/forecast-settings.
+type ForecastSettingsDTO struct {
+	WindowDays int `json:"windowDays"`
+	AlertDays  int `json:"alertDays"`
 }
 
 // PointDTO is one history point (percentages).

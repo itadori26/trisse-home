@@ -1,5 +1,13 @@
-import type { HttpClient } from '../../../../shared/api-client/http';
-import type { CapabilitiesDTO, ListDTO, LogsDTO } from '../../../../shared/api-client/generated/docker';
+import { ApiError, type HttpClient } from '../../../../shared/api-client/http';
+import type {
+  CapabilitiesDTO,
+  ImageUpdateDTO,
+  ListDTO,
+  LogsDTO,
+  UpdateSettingsDTO,
+} from '../../../../shared/api-client/generated/docker';
+import type { UpdateSettingsInputDTO } from '../../../../shared/api-client/generated/docker-requests';
+import type { ImageUpdate, RegistryInput, UpdateSettings } from '../../domain/imageUpdate';
 import type { ContainerList, DockerActions } from '../../domain/container';
 import type { DockerGateway } from '../../usecase/dockerUseCases';
 
@@ -38,5 +46,32 @@ export class DockerApi implements DockerGateway {
 
   async logs(name: string): Promise<string[]> {
     return (await this.http.get<LogsDTO>(`/api/docker/containers/${encodeURIComponent(name)}/logs`)).lines;
+  }
+
+  async updates(): Promise<ImageUpdate[] | null> {
+    try {
+      const list = await this.http.get<ImageUpdateDTO[]>('/api/docker/updates');
+      return list.map((d) => ({
+        ...d,
+        containers: d.containers ?? [],
+        checkedAt: d.checkedAt && !d.checkedAt.startsWith('0001') ? new Date(d.checkedAt) : null,
+      }));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }
+  }
+
+  updateSettings(): Promise<UpdateSettings> {
+    return this.http.get<UpdateSettingsDTO>('/api/docker/updates/settings');
+  }
+
+  saveUpdateSettings(
+    enabled: boolean,
+    semverTags: boolean,
+    registries: RegistryInput[],
+  ): Promise<UpdateSettings> {
+    const body: UpdateSettingsInputDTO = { enabled, semverTags, registries };
+    return this.http.put<UpdateSettingsDTO>('/api/docker/updates/settings', body);
   }
 }

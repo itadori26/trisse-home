@@ -1,5 +1,5 @@
 {
-  "comment": "Resource budgets, see docs/adr/0011-lean-by-default.md. Raise a budget only in a PR that explains why. Baselines measured 2026-11-11 on commit d99655e. piImageMB measured 2026-11-12 in the Raspberry Pi image workflow.",
+  "comment": "Resource budgets, see docs/adr/0011-lean-by-default.md. Raise a budget only in a PR that explains why. Baselines measured 2026-11-11 on commit d99655e. Initial JS lowered to 90 KB with lazy widgets, pages and catalogues (#116; measured 33.3 KB on 2026-11-12). piImageMB measured 2026-11-12 in the Raspberry Pi image workflow.",
   "baseline": {
     "initialJsGzipKB": 134.0,
     "initialCssGzipKB": 6.6,
@@ -9,7 +9,7 @@
     "piImageMB": 557.5
   },
   "budgets": {
-    "initialJsGzipKB": 140,
+    "initialJsGzipKB": 90,
     "initialCssGzipKB": 10,
     "largestLazyChunkGzipKB": 60,
     "binaryMB": 17.9,

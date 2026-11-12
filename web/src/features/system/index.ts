@@ -3,3 +3,4 @@ export { SystemApi } from './adapter/api/systemApi';
 export { SystemUseCases } from './usecase/systemUseCases';
 export { default as SystemWidget } from './ui/SystemWidget.svelte';
 export { default as AboutSettings } from './ui/AboutSettings.svelte';
+export { default as ForecastSettings } from './ui/ForecastSettings.svelte';

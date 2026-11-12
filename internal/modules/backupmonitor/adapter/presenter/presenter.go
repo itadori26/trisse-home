@@ -14,7 +14,12 @@ type SourceDTO struct {
 	ID            string     `json:"id"`
 	Name          string     `json:"name"`
 	MaxAgeHours   float64    `json:"maxAgeHours"`
-	State         string     `json:"state" tstype:"'ok' | 'overdue' | 'failed' | 'waiting'"`
+	Kind          string     `json:"kind" tstype:"'backup' | 'check'"`
+	Cron          string     `json:"cron"`
+	GraceMinutes  float64    `json:"graceMinutes"`
+	LastStartAt   *time.Time `json:"lastStartAt"`
+	LastDurationS float64    `json:"lastDurationSeconds"`
+	State         string     `json:"state" tstype:"'ok' | 'overdue' | 'failed' | 'waiting' | 'running'"`
 	LastSuccessAt *time.Time `json:"lastSuccessAt"`
 	LastFailureAt *time.Time `json:"lastFailureAt"`
 	LastMessage   string     `json:"lastMessage"`
@@ -35,7 +40,8 @@ func optional(t time.Time) *time.Time {
 
 // Source maps a SourceView.
 func Source(v usecase.SourceView) SourceDTO {
-	return SourceDTO{ID: v.ID, Name: v.Name, MaxAgeHours: v.MaxAge.Hours(), State: v.State,
+	return SourceDTO{ID: v.ID, Name: v.Name, MaxAgeHours: v.MaxAge.Hours(), State: v.State, Kind: v.Kind, Cron: v.Cron,
+		GraceMinutes: v.Grace.Minutes(), LastStartAt: optional(v.LastStartAt), LastDurationS: v.LastDuration.Seconds(),
 		LastSuccessAt: optional(v.LastSuccessAt), LastFailureAt: optional(v.LastFailureAt), LastMessage: v.LastMessage}
 }
 

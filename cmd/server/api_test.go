@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -629,6 +630,38 @@ func TestAPIEndToEnd(t *testing.T) {
 	if !seen["login_succeeded"] || !seen["new_device"] {
 		t.Fatalf("security log: %v", events)
 	}
+
+	// --- timeline (#74) ---
+	var tl []obj
+	c.json(http.MethodGet, "/api/timeline?limit=5", nil, http.StatusOK, &tl)
+	c.do(http.MethodPut, "/api/timeline/settings", obj{"retentionDays": 0}, http.StatusUnprocessableEntity)
+	c.do(http.MethodPut, "/api/timeline/settings", obj{"retentionDays": 14}, http.StatusOK)
+
+	// --- disk forecast settings (#108) ---
+	c.do(http.MethodPut, "/api/system/forecast-settings", obj{"windowDays": 2, "alertDays": 14}, http.StatusUnprocessableEntity)
+	c.do(http.MethodPut, "/api/system/forecast-settings", obj{"windowDays": 30, "alertDays": 7}, http.StatusOK)
+
+	// --- docker image updates (#107): off by default ---
+	c.do(http.MethodGet, "/api/docker/updates", nil, http.StatusNotFound)
+	c.do(http.MethodPut, "/api/docker/updates/settings", obj{"enabled": false, "registries": []obj{{"host": "ghcr.io", "username": "me"}}}, http.StatusUnprocessableEntity)
+	var us obj
+	c.json(http.MethodPut, "/api/docker/updates/settings", obj{"enabled": true, "semverTags": true,
+		"registries": []obj{{"host": "ghcr.io", "username": "me", "password": "token"}}}, http.StatusOK, &us)
+	if regs, _ := us["registries"].([]any); len(regs) != 1 || strings.Contains(fmt.Sprint(us), "token") {
+		t.Fatalf("update settings: %+v", us)
+	}
+	c.do(http.MethodPut, "/api/docker/updates/settings", obj{"enabled": false}, http.StatusOK)
+
+	// --- speedtest (#60): off until configured ---
+	c.do(http.MethodGet, "/api/speedtest/results", nil, http.StatusNotFound)
+	var st obj
+	c.json(http.MethodGet, "/api/speedtest/settings", nil, http.StatusOK, &st)
+	if st["configured"] != false {
+		t.Fatalf("speedtest settings: %+v", st)
+	}
+
+	// --- disk health (#59): not set up means 404 with a hint ---
+	c.do(http.MethodGet, "/api/diskhealth", nil, http.StatusNotFound)
 
 	// --- version and update check (off by default, no outbound request) ---
 	var ver obj

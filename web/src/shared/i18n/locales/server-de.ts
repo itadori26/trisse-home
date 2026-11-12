@@ -10,8 +10,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_350d099c21ede260: 'Ein Lesezeichen kann höchstens 10 Tags haben.',
   // A guest with this name already exists.
   srv_083c4fe6f2b25f45: 'Es gibt bereits einen Gast mit diesem Namen.',
+  // A maintenance window must end after it starts and last at most 7 days.
+  srv_a912b3e2ea2b8170: 'Ein Wartungsfenster muss nach seinem Beginn enden und darf höchstens 7 Tage dauern.',
   // A note needs a title or some text.
   srv_cf47637ff80f03dc: 'Eine Notiz braucht einen Titel oder etwas Text.',
+  // A password or access token is required for new registries.
+  srv_865d0fdde8c133ca: 'Für neue Registries ist ein Passwort oder Zugriffstoken erforderlich.',
   // A shortcut with this keyword already exists.
   srv_76a5625367cbe997: 'Es gibt bereits ein Kürzel mit diesem Schlüsselwort.',
   // Actions are not enabled for this container (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).
@@ -21,8 +25,14 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_9bc99814ae6ec519: 'AdGuard Home ist noch nicht eingerichtet.',
   // AdGuard Home is not reachable.
   srv_66e0c4283a72cd94: 'AdGuard Home ist nicht erreichbar.',
+  // An API token with the results:read scope is required.
+  srv_d05b6c7e6905729f: 'Ein API-Token mit dem Bereich results:read ist erforderlich.',
   // At most 10 calendars are supported.
   srv_326bb72e415244d3: 'Es werden höchstens 10 Kalender unterstützt.',
+  // At most 10 rules per tab are supported.
+  srv_9c62e19aa7e4b027: 'Pro Tab werden höchstens 10 Regeln unterstützt.',
+  // At most 20 registries can be stored.
+  srv_2ad8dffbd734017a: 'Es können höchstens 20 Registries gespeichert werden.',
   // At most 20 rules are supported.
   srv_741879779a784a6e: 'Es werden höchstens 20 Regeln unterstützt.',
   // At most 30 parcels can be tracked.
@@ -33,16 +43,22 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_c40eff143d7c40cd: 'Es können höchstens {max} Lesezeichen auf einmal importiert werden.',
   // Between 1 and 365 backups can be kept.
   srv_4bba6d234928bd07: 'Es können zwischen 1 und 365 Backups aufbewahrt werden.',
+  // Choose a backup file.
+  srv_56aef011f47cdbeb: 'Bitte eine Backup-Datei auswählen.',
   // Choose at least one scope.
   srv_c2c503807749b722: 'Bitte mindestens einen Bereich wählen.',
   // Choose between 0 (never) and 3650 days.
   srv_0054eff4d1acb233: 'Bitte zwischen 0 (nie) und 3650 Tagen wählen.',
+  // Choose what the maintenance applies to.
+  srv_4e9dc8e29fa35fbf: 'Bitte wählen, wofür die Wartung gilt.',
   // Colors must look like #1a2b3c.
   srv_100561a937e88349: 'Farben müssen wie #1a2b3c aussehen.',
   // Could not connect to AdGuard Home: {detail}
   srv_a3e65fea5b434e1e: 'Keine Verbindung zu AdGuard Home: {detail}',
   // Could not connect to Nextcloud: {detail}
   srv_6d1befe42898ea11: 'Keine Verbindung zu Nextcloud: {detail}',
+  // Could not connect to Speedtest Tracker: {detail}
+  srv_0308331877b78de4: 'Keine Verbindung zu Speedtest Tracker: {detail}',
   // Could not connect to the FRITZ!Box: {detail}
   srv_6a8ef763439ca559: 'Keine Verbindung zur FRITZ!Box: {detail}',
   // Could not load the calendar: {detail}
@@ -57,6 +73,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_099fe605093d8b87: 'DHL hat den API-Schlüssel abgelehnt.',
   // Delivered parcels can be kept for 0 to 30 days.
   srv_7cb71b2e113119ec: 'Zugestellte Sendungen können 0 bis 30 Tage angezeigt werden.',
+  // Each registry may only be listed once.
+  srv_4ae76664f7b46c6b: 'Jede Registry darf nur einmal eingetragen sein.',
+  // Each registry needs a host name (e.g. ghcr.io) and a user name.
+  srv_e9bcefee5bd2a359: 'Jede Registry braucht einen Hostnamen (z. B. ghcr.io) und einen Benutzernamen.',
   // Enter your authentication code to finish signing in.
   srv_1eb555800ce2927d: 'Gib deinen Authentifizierungscode ein, um die Anmeldung abzuschließen.',
   // Events can be at most one year long.
@@ -75,6 +95,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_72f2ef28f00d9995: 'Icons dürfen höchstens 8 Zeichen lang sein.',
   // Invalid scope {scope}: use module:read or module:write.
   srv_8648b1ab32906623: 'Ungültiger Bereich {scope}: bitte modul:read oder modul:write verwenden.',
+  // Invalid scope {scope}: use service:<name>, container:<name> or *.
+  srv_d6e30a440a4e7b86: 'Ungültige Angabe {scope}: bitte service:<Name>, container:<Name> oder * verwenden.',
   // Items must be between 1 and 200 characters long.
   srv_593a1c118a3d9d67: 'Einträge müssen zwischen 1 und 200 Zeichen lang sein.',
   // Labels must be at most 40 characters long.
@@ -89,6 +111,9 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_852391e96f8a11b2: 'Nextcloud ist noch nicht eingerichtet.',
   // No MAC address is stored for this service.
   srv_591001f7788fb502: 'Für diesen Dienst ist keine MAC-Adresse hinterlegt.',
+  // No S.M.A.R.T. export found. Run scripts/smart-export.sh on the host (see README).
+  srv_74822a0f2779c188:
+    'Kein S.M.A.R.T.-Export gefunden. Bitte scripts/smart-export.sh auf dem Host ausführen (siehe README).',
   // No WireGuard export found. Run scripts/wireguard-export.sh on the host (see README).
   srv_9d762d7de49b8d86:
     'Kein WireGuard-Export gefunden. Führe scripts/wireguard-export.sh auf dem Host aus (siehe README).',
@@ -98,10 +123,14 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_2e56580cd044b5c5: 'Keine Lesezeichen gefunden. Bitte exportiere deine Lesezeichen im Browser als HTML.',
   // No calendar is configured yet.
   srv_92fe9be68e4fbeb4: 'Es ist noch kein Kalender eingerichtet.',
+  // No off-site backup target is configured.
+  srv_7f26dde75768b4ec: 'Es ist kein externes Backup-Ziel eingerichtet.',
   // No waste calendar is configured yet.
   srv_d1f1feb231209e5a: 'Es ist noch kein Abfallkalender eingerichtet.',
   // Only the owner can do this.
   srv_67f0ba90e3a4e5b4: 'Das kann nur der Besitzer.',
+  // Only the owner can restore backups in the browser.
+  srv_2fa2f3b7606fee5e: 'Nur der Besitzer kann Backups im Browser wiederherstellen.',
   // Passkeys need HTTPS and PUBLIC_URL (see the README).
   srv_b90b21f1d731b4f6: 'Passkeys brauchen HTTPS und PUBLIC_URL (siehe README).',
   // Password login is disabled. Use single sign-on.
@@ -112,6 +141,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_d92a0962a35bc0f4: 'Bitte wähle in den Widget-Einstellungen eine Haltestelle.',
   // Please choose one of the configured calendars.
   srv_f5627673a11b56bd: 'Bitte wähle einen der eingerichteten Kalender.',
+  // Please enter a valid sender address.
+  srv_ac8a8ae2b384e281: 'Bitte eine gültige Absenderadresse eingeben.',
   // Please enter a valid start and end.
   srv_b71f32ebd27a0b6a: 'Bitte gib einen gültigen Beginn und ein gültiges Ende ein.',
   // Please enter and save a topic first.
@@ -120,21 +151,37 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_a4d2757d3ca7d004: 'Bitte mindestens eine Kalender-URL eingeben.',
   // Please enter between 2 and 100 characters.
   srv_990b607e23145ec7: 'Bitte zwischen 2 und 100 Zeichen eingeben.',
+  // Please enter the SMTP server name.
+  srv_5057fd283cbaf8f6: 'Bitte den Namen des SMTP-Servers eingeben.',
   // Please enter the code from your authenticator app or a recovery code.
   srv_2c825edcb1338a1c:
     'Bitte gib den Code aus deiner Authenticator-App oder einen Wiederherstellungscode ein.',
   // Please enter the password of the FRITZ!Box user.
   srv_eabd506dfb319855: 'Bitte gib das Passwort des FRITZ!Box-Benutzers ein.',
+  // Please enter valid recipient addresses, separated by commas.
+  srv_e9295c1002fdd2ba: 'Bitte gültige Empfängeradressen eingeben, durch Kommas getrennt.',
+  // Quiet hours need a start and an end such as 22:00 and 07:00.
+  srv_04eab3a4b4f8b837: 'Ruhezeiten brauchen einen Beginn und ein Ende, z. B. 22:00 und 07:00.',
+  // Rules need weekdays 0–6, times like 07:30 and networks like 192.168.178.0/24.
+  srv_560f31f8940f8cfc: 'Regeln brauchen Wochentage 0–6, Uhrzeiten wie 07:30 und Netze wie 192.168.178.0/24.',
   // Session not found.
   srv_785eadcc6dca712c: 'Sitzung nicht gefunden.',
   // Single sign-on is not configured.
   srv_c1cbece9dc9bd483: 'Single Sign-on ist nicht eingerichtet.',
+  // Speedtest Tracker is not configured yet.
+  srv_6f32001a15a15c4d: 'Speedtest Tracker ist noch nicht eingerichtet.',
+  // Speedtest Tracker is not reachable.
+  srv_cfc88a9871753350: 'Speedtest Tracker ist nicht erreichbar.',
   // Start the two-factor setup first.
   srv_32f91240e6490e41: 'Bitte zuerst die Einrichtung der Zwei-Faktor-Authentifizierung starten.',
   // Storing credentials is disabled in the demo.
   srv_ea4ce39d77587136: 'Das Speichern von Zugangsdaten ist in der Demo deaktiviert.',
+  // TLS must be starttls, tls or none.
+  srv_8ba7cc04f14ed353: 'TLS muss starttls, tls oder none sein.',
   // Tags may only contain letters, digits, - and _ (max. 30 characters).
   srv_7cdf99ade35d99e3: 'Tags dürfen nur Buchstaben, Ziffern, - und _ enthalten (max. 30 Zeichen).',
+  // The Docker API is not reachable. Does the socket proxy allow IMAGES=1?
+  srv_1120b37481579f63: 'Die Docker-API ist nicht erreichbar. Erlaubt der Socket-Proxy IMAGES=1?',
   // The FRITZ!Box is not configured yet.
   srv_6f0fbfbef4b05402: 'Die FRITZ!Box ist noch nicht eingerichtet.',
   // The ICS URL must start with https://, http:// or webcal://.
@@ -143,6 +190,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_1605df454fade766: 'Die URL muss {query} enthalten.',
   // The URL must look like http://192.168.1.2:3000.
   srv_ff20bffaaad40a7b: 'Die URL muss wie http://192.168.1.2:3000 aussehen.',
+  // The URL must look like http://192.168.1.2:8765.
+  srv_a74063c5a9d4db02: 'Die URL muss wie http://192.168.1.2:8765 aussehen.',
   // The URL must look like http://192.168.178.1:49000.
   srv_d14b64d005d328ef: 'Die URL muss wie http://192.168.178.1:49000 aussehen.',
   // The URL must look like https://cloud.example.com.
@@ -152,6 +201,11 @@ export const serverDe: Record<ServerMessageKey, string> = {
   // The Wake-on-LAN relay did not answer. Is COMPOSE_PROFILES=wol set (see README)?
   srv_7bd9cc89bdd1560a:
     'Das Wake-on-LAN-Relay hat nicht geantwortet. Ist COMPOSE_PROFILES=wol gesetzt (siehe README)?',
+  // The WebDAV URL must look like https://cloud.example.org/remote.php/dav/files/USER/Backups/.
+  srv_aa51a8ab465628a7:
+    'Die WebDAV-URL muss wie https://cloud.example.org/remote.php/dav/files/BENUTZER/Backups/ aussehen.',
+  // The WebDAV target is not usable: {detail}
+  srv_91c4369358de2268: 'Das WebDAV-Ziel ist nicht nutzbar: {detail}',
   // The accent color must look like #3b6ef5.
   srv_1c9c8a99006c73fe: 'Die Akzentfarbe muss wie #3b6ef5 aussehen.',
   // The account has already been set up.
@@ -162,12 +216,19 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_1f91f70c0f8f35da: 'Der Authentifizierungscode ist falsch.',
   // The background image must be an http(s) URL.
   srv_28004c9379be9be3: 'Das Hintergrundbild muss eine http(s)-URL sein.',
+  // The backup could not be received: {detail}
+  srv_ad9909a46d053d7b: 'Das Backup konnte nicht empfangen werden: {detail}',
   // The backup does not exist.
   srv_1a3955e489757321: 'Das Backup existiert nicht.',
   // The backup interval must be at least one hour.
   srv_0fd566747f1cd503: 'Das Backup-Intervall muss mindestens eine Stunde betragen.',
+  // The backup is damaged (integrity check failed).
+  srv_678e4dc426de200a: 'Das Backup ist beschädigt (Integritätsprüfung fehlgeschlagen).',
   // The backup source does not exist.
   srv_24356b769e2a8258: 'Die Backup-Quelle existiert nicht.',
+  // The backup was made by a newer version of trisse-home. Update first, then restore it.
+  srv_5b20a69f346d31d3:
+    'Das Backup stammt von einer neueren trisse-home-Version. Bitte zuerst aktualisieren und dann wiederherstellen.',
   // The bookmark does not exist.
   srv_781f5105c04c646b: 'Das Lesezeichen existiert nicht.',
   // The calendar server is not reachable.
@@ -176,6 +237,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_6356e14455c5ce13: 'Der Kalenderserver hat den Termin abgelehnt: {detail}',
   // The certificate warning must be between 1 and 90 days.
   srv_55663fc836edb6a7: 'Die Zertifikatswarnung muss zwischen 1 und 90 Tagen liegen.',
+  // The channel could not be reached: {detail}
+  srv_d2989a89176a1847: 'Der Kanal ist nicht erreichbar: {detail}',
+  // The channel does not exist.
+  srv_e97962ce6df48c04: 'Der Kanal existiert nicht.',
+  // The channel type must be gotify, webhook or email.
+  srv_369ee646cdd39767: 'Die Kanalart muss gotify, webhook oder email sein.',
   // The check URL must start with http:// or https://.
   srv_49713b674a89dd04: 'Die Prüf-URL muss mit http:// oder https:// beginnen.',
   // The custom CSS must be at most 64 KiB.
@@ -208,12 +275,20 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_0371382a6f62f53f: 'Die Datei konnte nicht gelesen werden (max. 8 MB).',
   // The file is larger than 16 MB.
   srv_e7cb725c138134cc: 'Die Datei ist größer als 16 MB.',
+  // The file is not a trisse-home backup.
+  srv_2dd869ff96b4bc7a: 'Die Datei ist kein trisse-home-Backup.',
   // The file is not valid JSON.
   srv_b8c878135ee917b1: 'Die Datei ist kein gültiges JSON.',
   // The folder does not exist.
   srv_9f6aa27e5380b437: 'Der Ordner existiert nicht.',
   // The folder name must be between 1 and 60 characters long.
   srv_c95a6275d4517459: 'Der Ordnername muss zwischen 1 und 60 Zeichen lang sein.',
+  // The forecast warning must be between 1 and 365 days.
+  srv_4a2cd38168dace16: 'Die Prognosewarnung muss zwischen 1 und 365 Tagen liegen.',
+  // The forecast window must be between 3 and 90 days.
+  srv_57fd7519663b39c9: 'Das Prognosefenster muss zwischen 3 und 90 Tagen liegen.',
+  // The grace period must be between 0 minutes and 7 days.
+  srv_dcd48aa7c1edb891: 'Die Karenzzeit muss zwischen 0 Minuten und 7 Tagen liegen.',
   // The guest does not exist.
   srv_23575e607ab8d86b: 'Der Gast existiert nicht.',
   // The height must be between 1 and 24 rows.
@@ -224,6 +299,9 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_62951ebf93a06287: 'Der Identity Provider ist nicht erreichbar: {detail}',
   // The identity provider did not confirm the sign-in: {detail}
   srv_af05df00dfc4dc1a: 'Der Identity Provider hat die Anmeldung nicht bestätigt: {detail}',
+  // The image update check is disabled. Enable it in Settings → Docker updates.
+  srv_c9b09323ab5702c6:
+    'Die Prüfung auf Image-Updates ist ausgeschaltet. Sie lässt sich unter Einstellungen → Docker-Updates einschalten.',
   // The item does not exist (any more).
   srv_77686a482211f04a: 'Der Eintrag existiert nicht (mehr).',
   // The item does not exist.
@@ -233,6 +311,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Der Eintrag wurde gleichzeitig in einer anderen App geändert. Bitte erneut versuchen.',
   // The keyword must consist of 1 to 16 letters or digits.
   srv_d6e09729bc0d1f3b: 'Das Schlüsselwort muss aus 1 bis 16 Buchstaben oder Ziffern bestehen.',
+  // The kind must be backup or check.
+  srv_0dbc446d2a829ab3: 'Die Art muss backup oder check sein.',
   // The label must be at most 60 characters long.
   srv_64e5ff21727bf802: 'Die Bezeichnung darf höchstens 60 Zeichen lang sein.',
   // The language must be en, de or empty (browser).
@@ -247,6 +327,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_eeec5bbc9fb36341: 'Der Ort darf höchstens 200 Zeichen lang sein.',
   // The longitude must be between -180 and 180.
   srv_39566e8cbb1ec35d: 'Der Längengrad muss zwischen -180 und 180 liegen.',
+  // The maintenance window does not exist.
+  srv_d6a9caae13404f6e: 'Das Wartungsfenster existiert nicht.',
   // The maximum age must be between 1 hour and 60 days.
   srv_761ff31914abb39c: 'Das Höchstalter muss zwischen 1 Stunde und 60 Tagen liegen.',
   // The name must be 2–32 lowercase letters, digits, dots, dashes or underscores.
@@ -270,6 +352,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_81c618d3f04032a6: 'Die ntfy-Server-URL muss mit http:// oder https:// beginnen.',
   // The ntfy server could not be reached: {detail}
   srv_d77d58a4fac3d674: 'Der ntfy-Server ist nicht erreichbar: {detail}',
+  // The off-site backup could not be downloaded: {detail}
+  srv_d294e91217ac56a4: 'Das externe Backup konnte nicht heruntergeladen werden: {detail}',
+  // The off-site backups could not be listed: {detail}
+  srv_3b42f48d84e45ed3: 'Die externen Backups konnten nicht aufgelistet werden: {detail}',
   // The owner account is not a guest.
   srv_a8aed831e812c028: 'Das Besitzerkonto ist kein Gast.',
   // The parcel does not exist.
@@ -288,8 +374,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_be9e30d725fd25b6: 'Das Passwort darf nicht nur aus Leerzeichen bestehen.',
   // The period must be positive and at most 42 days long.
   srv_066ea148faee11ae: 'Der Zeitraum muss positiv und höchstens 42 Tage lang sein.',
+  // The port must be between 1 and 65535.
+  srv_6566f488a34e8fc3: 'Der Port muss zwischen 1 und 65535 liegen.',
   // The rain radar is only available for Germany.
   srv_d5d2cea1e1d1fa8d: 'Das Regenradar ist nur für Deutschland verfügbar.',
+  // The retention must be between 1 and 365 days.
+  srv_2367e29c6edb5841: 'Die Aufbewahrungsdauer muss zwischen 1 und 365 Tagen liegen.',
   // The row is out of range.
   srv_088ff184c130f97e: 'Die Zeile liegt außerhalb des Bereichs.',
   // The search query is too long.
@@ -311,6 +401,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   // The sign-in took too long or was started elsewhere. Please try again.
   srv_a9878acf59444198:
     'Die Anmeldung hat zu lange gedauert oder wurde woanders begonnen. Bitte erneut versuchen.',
+  // The source must be local, remote or upload.
+  srv_7054f9e52efbae1e: 'Die Quelle muss local, remote oder upload sein.',
   // The tab does not exist.
   srv_7e608cff024ed2a8: 'Der Tab existiert nicht.',
   // The tab has too many widgets for a template.
@@ -323,6 +415,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_788613837cca8cc6: 'Die Aufgabenliste ist nicht erreichbar: {detail}',
   // The template does not exist.
   srv_4ad756b3998ef1fd: 'Die Vorlage existiert nicht.',
+  // The template must be at most 4000 characters long.
+  srv_83146ba690ec10f4: 'Die Vorlage darf höchstens 4000 Zeichen lang sein.',
   // The template name must be between 1 and 40 characters long.
   srv_c62fe8c4040fbb11: 'Der Vorlagenname muss zwischen 1 und 40 Zeichen lang sein.',
   // The theme must be system, light or dark.
@@ -355,6 +449,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_a164605f887b18d7: 'Der Widget-Typ ist ungültig.',
   // The width must be between 1 and 12 columns.
   srv_9dfec97d8d360b86: 'Die Breite muss zwischen 1 und 12 Spalten liegen.',
+  // There are already 10 channels.
+  srv_53e6d03eb73e5456: 'Es gibt bereits 10 Kanäle.',
   // There are already 10 passkeys.
   srv_7c2cacdb15125f01: 'Es gibt bereits 10 Passkeys.',
   // There are already 20 guests.
@@ -380,6 +476,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Dieser Passkey hat einen alten Signaturzähler gemeldet und wurde möglicherweise geklont. Entferne ihn und registriere ihn neu.',
   // This widget type is not available.
   srv_63543557e19be101: 'Dieser Widget-Typ ist nicht verfügbar.',
+  // Thresholds must be between 0 and 100000 Mbit/s.
+  srv_eb4a741553ab9379: 'Schwellenwerte müssen zwischen 0 und 100000 Mbit/s liegen.',
   // Too many failed attempts. Please wait a few minutes.
   srv_bc7172983106e8f0: 'Zu viele Fehlversuche. Bitte warte ein paar Minuten.',
   // Tracking numbers consist of 8 to 35 letters and digits.
@@ -388,8 +486,15 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_a9954572b8880ec0: 'Die Zwei-Faktor-Authentifizierung ist bereits aktiviert.',
   // Two-factor authentication is not enabled.
   srv_326d279028bf3d2f: 'Die Zwei-Faktor-Authentifizierung ist nicht aktiviert.',
+  // Unknown alert type {type}.
+  srv_fc5b4d698d5d3c6f: 'Unbekannte Benachrichtigungsart {type}.',
   // Unknown search provider.
   srv_dea670a71d2295ca: 'Unbekannte Suchmaschine.',
+  // Use a cron expression with five fields, e.g. 0 3 * * * (daily at 03:00).
+  srv_564c3b1fecfb1093:
+    'Bitte einen Cron-Ausdruck mit fünf Feldern verwenden, z. B. 0 3 * * * (täglich um 03:00).',
+  // User name and password (or app password) are required.
+  srv_1c73ff4160f4ee94: 'Benutzername und Passwort (oder App-Passwort) sind erforderlich.',
   // Username and app password are required.
   srv_8fe21afcca496dfb: 'Benutzername und App-Passwort sind erforderlich.',
   // Username and password are required.

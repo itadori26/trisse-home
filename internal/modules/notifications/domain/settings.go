@@ -45,6 +45,8 @@ type Settings struct {
 	Topic     string
 	Token     string
 	Rules     Rules
+	// Policy holds severities and quiet hours (#69).
+	Policy Policy
 }
 
 // DefaultSettings are used until the user configures notifications.
@@ -83,10 +85,17 @@ func (r Rules) Judge(o kernel.Observation) (relevant, healthy bool) {
 		return r.Services, o.Healthy
 	case "container":
 		return r.Containers, o.Healthy
-	case "backup":
+	case "backup", "check":
 		return r.Backups, o.Healthy
 	case "disk":
 		return r.Disk, o.Value < r.DiskThreshold
+	case "diskhealth", "forecast":
+		return r.Disk, o.Healthy
+	case "image":
+		return r.Containers, o.Healthy
+	case "speedtest":
+		// Opt-in by setting thresholds in the speedtest module.
+		return true, o.Healthy
 	case "tls":
 		return r.TLS, o.Value > float64(r.TLSDays)
 	default:

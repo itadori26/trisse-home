@@ -1,4 +1,4 @@
-import type { HistoryPoint, SystemSnapshot, VersionInfo } from '../domain/system';
+import type { ForecastSettings, HistoryPoint, SystemSnapshot, VersionInfo } from '../domain/system';
 
 /** Output port: system metrics backend. */
 export interface SystemGateway {
@@ -6,6 +6,8 @@ export interface SystemGateway {
   history(hours: number): Promise<HistoryPoint[]>;
   version(): Promise<VersionInfo>;
   setUpdateCheck(enabled: boolean): Promise<VersionInfo>;
+  forecastSettings(): Promise<ForecastSettings>;
+  saveForecastSettings(s: ForecastSettings): Promise<ForecastSettings>;
 }
 
 /** Application logic of the system feature. */
@@ -27,5 +29,16 @@ export class SystemUseCases {
 
   setUpdateCheck(enabled: boolean): Promise<VersionInfo> {
     return this.gateway.setUpdateCheck(enabled);
+  }
+
+  forecastSettings(): Promise<ForecastSettings> {
+    return this.gateway.forecastSettings();
+  }
+
+  saveForecastSettings(s: ForecastSettings): Promise<ForecastSettings> {
+    return this.gateway.saveForecastSettings({
+      windowDays: Math.round(s.windowDays),
+      alertDays: Math.round(s.alertDays),
+    });
   }
 }

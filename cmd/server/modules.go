@@ -17,6 +17,7 @@ import (
 	"trisse-home/internal/modules/bookmarks"
 	"trisse-home/internal/modules/calendar"
 	"trisse-home/internal/modules/dashboard"
+	"trisse-home/internal/modules/diskhealth"
 	"trisse-home/internal/modules/docker"
 	"trisse-home/internal/modules/fritzbox"
 	"trisse-home/internal/modules/nextcloud"
@@ -28,7 +29,9 @@ import (
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
 	"trisse-home/internal/modules/shopping"
+	"trisse-home/internal/modules/speedtest"
 	"trisse-home/internal/modules/system"
+	"trisse-home/internal/modules/timeline"
 	"trisse-home/internal/modules/todos"
 	"trisse-home/internal/modules/transfer"
 	"trisse-home/internal/modules/transit"
@@ -38,6 +41,7 @@ import (
 	"trisse-home/internal/platform/clock"
 	"trisse-home/internal/platform/config"
 	"trisse-home/internal/platform/crypto"
+	"trisse-home/internal/platform/database"
 	"trisse-home/internal/platform/demo"
 	"trisse-home/internal/platform/httpclient"
 	"trisse-home/internal/platform/idgen"
@@ -82,13 +86,23 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 
 	// Notifications are built first: monitoring modules report observations
 	// to them, or to a sink that discards them when the module is disabled.
-	var sink kernel.ObservationSink = kernel.DiscardObservations{}
+	// The timeline records the same observations and alerts (#74).
+	sinks := observationFanOut{}
+	var maintenance maintenanceReader
 	if cfg.ModuleEnabled("notifications") {
-		n := notifications.New(db, secrets, client, clk)
+		n := notifications.New(db, secrets, client, clk, ids)
 		registry.Register(n)
-		sink = n
-		alerts.target = n
+		sinks = append(sinks, n)
+		alerts.targets = append(alerts.targets, n)
+		maintenance = n
 	}
+	if cfg.ModuleEnabled("timeline") {
+		tl := timeline.New(db, clk, ids)
+		registry.Register(tl)
+		sinks = append(sinks, tl)
+		alerts.targets = append(alerts.targets, tl)
+	}
+	var sink kernel.ObservationSink = sinks
 
 	optional := []struct {
 		name  string
@@ -101,7 +115,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"services", func() modules.Module {
 			return services.New(services.Deps{
 				DB: db, Clock: clk, IDs: ids, Observations: sink,
-				Waker: out.waker, Client: out.health, InsecureClient: out.insecureHealth,
+				Waker: out.waker, Client: out.health, InsecureClient: out.insecureHealth, Maintenance: maintenance,
 			})
 		}},
 		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids) }},
@@ -113,7 +127,8 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"docker", func() modules.Module {
 			return docker.New(client, docker.Config{ProxyURL: cfg.DockerProxyURL, Actions: cfg.DockerActions,
-				ActionsContainers: cfg.DockerActionsContainers, ActionsProxyURL: cfg.DockerActionsProxyURL}, sink, clk)
+				ActionsContainers: cfg.DockerActionsContainers, ActionsProxyURL: cfg.DockerActionsProxyURL,
+				DB: db, Cipher: secrets, Registry: client}, sink, clk)
 		}},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, client, clk) }},
@@ -127,6 +142,10 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"backupmonitor", func() modules.Module {
 			return backupmonitor.New(backupmonitor.Deps{DB: db, Tokens: crypto.RandomTokens{}, Clock: clk, IDs: ids, Observations: sink})
 		}},
+		{"diskhealth", func() modules.Module {
+			return diskhealth.New(diskhealth.Config{Dir: cfg.DiskHealthDir, StaleAfter: cfg.DiskHealthStaleAfter}, sink, clk)
+		}},
+		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}
@@ -136,7 +155,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}
 	}
 	if cfg.ModuleEnabled("backup") && !cfg.DemoMode {
-		b, err := backup.New(backup.Config{Dir: cfg.BackupDir, Interval: cfg.BackupInterval, Retention: cfg.BackupRetention}, db, clk)
+		b, err := backup.New(backup.Config{Dir: cfg.BackupDir, Interval: cfg.BackupInterval, Retention: cfg.BackupRetention,
+			Cipher: secrets, Client: client, Alerts: alerts, Log: log,
+			Swapper: database.NewRestorer(cfg.DatabasePath, backup.MaxRestoreBytes), Reauth: authModule, Restart: requestRestart}, db, clk)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -145,7 +166,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 
 	kinds := append(append([]string{}, frontendOnlyWidgetKinds...), registry.WidgetKinds()...)
 	sample := dashboard.SampleWeather{Label: cfg.SampleWeather.Name, Lat: cfg.SampleWeather.Lat, Lon: cfg.SampleWeather.Lon}
-	dash := dashboard.New(db, ids, kinds, sample)
+	dash := dashboard.New(db, ids, clk, kinds, sample)
 	registry.Register(dash)
 	scope.dashboard = dash
 	return authModule, registry, nil
@@ -221,12 +242,23 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 
 // alertRelay forwards security alerts of the auth module (built first) to
 // the notifications module once that exists; without it alerts are dropped.
-type alertRelay struct{ target kernel.AlertSink }
+type alertRelay struct{ targets []kernel.AlertSink }
 
 // Alert implements kernel.AlertSink.
 func (a *alertRelay) Alert(ctx context.Context, al kernel.Alert) {
-	if a.target != nil {
-		a.target.Alert(ctx, al)
+	for _, t := range a.targets {
+		t.Alert(ctx, al)
+	}
+}
+
+// observationFanOut sends every observation to all consumers
+// (notifications, timeline); empty when both are disabled.
+type observationFanOut []kernel.ObservationSink
+
+// Observe implements kernel.ObservationSink.
+func (f observationFanOut) Observe(ctx context.Context, o kernel.Observation) {
+	for _, s := range f {
+		s.Observe(ctx, o)
 	}
 }
 
@@ -275,4 +307,11 @@ func relyingParty(cfg config.Config) *webauthn.RelyingParty {
 		return nil
 	}
 	return &webauthn.RelyingParty{ID: cfg.PublicURL.Hostname(), Origin: cfg.PublicURL.Scheme + "://" + cfg.PublicURL.Host}
+}
+
+// maintenanceReader is implemented by the notifications module (maintenance
+// windows, #69) and used by the services module to exclude planned
+// downtime from the uptime (#81).
+type maintenanceReader interface {
+	UnderMaintenance(ctx context.Context, kind, key, label string, at time.Time) bool
 }

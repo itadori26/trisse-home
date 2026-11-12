@@ -12,11 +12,25 @@ export interface UsageDTO {
   percent: number /* float64 */;
 }
 /**
+ * ForecastDTO predicts when a file system is full (#108).
+ */
+export interface ForecastDTO {
+  /**
+   * Status: filling (daysUntilFull is set), flat (no growth) or
+   * insufficient (fewer than three days of data).
+   */
+  status: 'filling' | 'flat' | 'insufficient';
+  daysUntilFull: number /* float64 */;
+  bytesPerDay: number /* float64 */;
+  confidence: number /* float64 */;
+}
+/**
  * DiskDTO is the usage of one file system.
  */
 export interface DiskDTO {
   label: string;
   usage: UsageDTO;
+  forecast?: ForecastDTO;
 }
 /**
  * SnapshotDTO is returned by GET /api/system.
@@ -31,6 +45,13 @@ export interface SnapshotDTO {
   uptimeSeconds: number /* int64 */;
   temperature: number /* float64 */;
   takenAt: string /* RFC 3339 */;
+}
+/**
+ * ForecastSettingsDTO is returned by GET/PUT /api/system/forecast-settings.
+ */
+export interface ForecastSettingsDTO {
+  windowDays: number /* int */;
+  alertDays: number /* int */;
 }
 /**
  * PointDTO is one history point (percentages).

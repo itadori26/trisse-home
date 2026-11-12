@@ -31,18 +31,31 @@ type Repository struct{ db *sql.DB }
 // NewRepository returns a repository backed by db.
 func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
-const columns = `id, name, max_age_seconds, token_hash, created_at, last_success_at, last_failure_at, last_message`
+const columns = `id, name, max_age_seconds, token_hash, created_at, last_success_at, last_failure_at, last_message,
+	kind, cron, grace_seconds, last_start_at, last_duration_ms`
 
 func scan(sc interface{ Scan(...any) error }) (domain.Source, error) {
 	var s domain.Source
-	var maxAge int64
-	var token, created string
-	var success, failure *string
-	if err := sc.Scan(&s.ID, &s.Name, &maxAge, &token, &created, &success, &failure, &s.LastMessage); err != nil {
+	var maxAge, grace, durationMs int64
+	var token, created, cron string
+	var success, failure, start *string
+	if err := sc.Scan(&s.ID, &s.Name, &maxAge, &token, &created, &success, &failure, &s.LastMessage,
+		&s.Kind, &cron, &grace, &start, &durationMs); err != nil {
 		return s, err
 	}
 	s.MaxAge, s.TokenHash = time.Duration(maxAge)*time.Second, domain.TokenHash(token)
+	s.Grace, s.LastDuration = time.Duration(grace)*time.Second, time.Duration(durationMs)*time.Millisecond
+	if cron != "" {
+		c, err := domain.ParseCron(cron)
+		if err != nil {
+			return s, fmt.Errorf("stored cron %q: %w", cron, err)
+		}
+		s.Cron = &c
+	}
 	var err error
+	if s.LastStartAt, err = sqlutil.ParseNullableTime(start); err != nil {
+		return s, err
+	}
 	if s.CreatedAt, err = sqlutil.ParseTime(created); err != nil {
 		return s, err
 	}
@@ -94,12 +107,16 @@ func (r *Repository) GetByToken(ctx context.Context, h domain.TokenHash) (domain
 
 // Save implements usecase.Repository.
 func (r *Repository) Save(ctx context.Context, s domain.Source) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO backup_sources (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	sch := s.Schedule()
+	_, err := r.db.ExecContext(ctx, `INSERT INTO backup_sources (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET name = excluded.name, max_age_seconds = excluded.max_age_seconds,
 			token_hash = excluded.token_hash, last_success_at = excluded.last_success_at,
-			last_failure_at = excluded.last_failure_at, last_message = excluded.last_message`,
+			last_failure_at = excluded.last_failure_at, last_message = excluded.last_message, kind = excluded.kind,
+			cron = excluded.cron, grace_seconds = excluded.grace_seconds, last_start_at = excluded.last_start_at,
+			last_duration_ms = excluded.last_duration_ms`,
 		s.ID, s.Name, int64(s.MaxAge/time.Second), string(s.TokenHash), sqlutil.FormatTime(s.CreatedAt),
-		sqlutil.FormatNullableTime(s.LastSuccessAt), sqlutil.FormatNullableTime(s.LastFailureAt), s.LastMessage)
+		sqlutil.FormatNullableTime(s.LastSuccessAt), sqlutil.FormatNullableTime(s.LastFailureAt), s.LastMessage,
+		sch.Kind, sch.Cron, int64(s.Grace/time.Second), sqlutil.FormatNullableTime(s.LastStartAt), s.LastDuration.Milliseconds())
 	if err != nil {
 		return fmt.Errorf("upsert source: %w", err)
 	}

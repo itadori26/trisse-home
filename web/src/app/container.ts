@@ -3,6 +3,10 @@
  * and the use cases, and hands them to the UI. Nothing else instantiates
  * adapters, so features stay independent of each other.
  */
+import { createRefreshScheduler, type RefreshScheduler } from '../shared/refresh';
+import { ShortcutRegistry } from '../shared/shortcuts/registry';
+import { QuickActionsUseCases } from '../features/quickactions/usecase/quickActionsUseCases';
+import { quickTargets } from './quickTargets';
 import { AdGuardApi } from '../features/adguard/adapter/api/adguardApi';
 import { AdGuardUseCases } from '../features/adguard/usecase/adguardUseCases';
 import { FritzBoxApi } from '../features/fritzbox/adapter/api/fritzboxApi';
@@ -15,6 +19,12 @@ import { ParcelsApi } from '../features/parcels/adapter/api/parcelsApi';
 import { ParcelsUseCases } from '../features/parcels/usecase/parcelsUseCases';
 import { TransferApi } from '../features/transfer/adapter/api/transferApi';
 import { TransferUseCases } from '../features/transfer/usecase/transferUseCases';
+import { TimelineApi } from '../features/timeline/adapter/api/timelineApi';
+import { DiskHealthApi } from '../features/diskhealth/adapter/api/diskHealthApi';
+import { SpeedtestApi } from '../features/speedtest/adapter/api/speedtestApi';
+import { SpeedtestUseCases } from '../features/speedtest/usecase/speedtestUseCases';
+import { DiskHealthUseCases } from '../features/diskhealth/usecase/diskHealthUseCases';
+import { TimelineUseCases } from '../features/timeline/usecase/timelineUseCases';
 import { TransitApi } from '../features/transit/adapter/api/transitApi';
 import { TransitUseCases } from '../features/transit/usecase/transitUseCases';
 import { WasteApi } from '../features/waste/adapter/api/wasteApi';
@@ -83,6 +93,15 @@ export interface Container {
   transit: TransitUseCases;
   parcels: ParcelsUseCases;
   transfer: TransferUseCases;
+  timeline: TimelineUseCases;
+  diskhealth: DiskHealthUseCases;
+  speedtest: SpeedtestUseCases;
+  /** Shared refresh scheduler of all widgets (#117). */
+  refresh: RefreshScheduler;
+  /** Global keyboard shortcuts (#95). */
+  shortcuts: ShortcutRegistry;
+  /** Quick capture and palette commands (#105, #67). */
+  quickActions: QuickActionsUseCases;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -96,7 +115,7 @@ export interface Container {
 /** Builds the container. `onUnauthorized` fires when the session expired. */
 export function createContainer(onUnauthorized: () => void): Container {
   const http = new FetchHttpClient(onUnauthorized);
-  return {
+  const c: Omit<Container, 'quickActions'> = {
     http,
     auth: new AuthUseCases(new AuthApi(http), http, new BrowserPasskeys()),
     dashboard: new DashboardUseCases(new DashboardApi(http)),
@@ -119,6 +138,11 @@ export function createContainer(onUnauthorized: () => void): Container {
     transit: new TransitUseCases(new TransitApi(http)),
     parcels: new ParcelsUseCases(new ParcelsApi(http)),
     transfer: new TransferUseCases(new TransferApi(http)),
+    timeline: new TimelineUseCases(new TimelineApi(http)),
+    diskhealth: new DiskHealthUseCases(new DiskHealthApi(http)),
+    speedtest: new SpeedtestUseCases(new SpeedtestApi(http)),
+    refresh: createRefreshScheduler(),
+    shortcuts: new ShortcutRegistry(),
     // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),
@@ -130,4 +154,5 @@ export function createContainer(onUnauthorized: () => void): Container {
       return { modules: new Set(info.modules), widgetKinds: new Set(info.widgetKinds) };
     },
   };
+  return { ...c, quickActions: new QuickActionsUseCases(quickTargets(c)) };
 }

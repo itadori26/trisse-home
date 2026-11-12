@@ -9,3 +9,10 @@
 export interface UpdateCheckDTO {
   enabled: boolean;
 }
+/**
+ * ForecastSettingsDTO is the body of PUT /api/system/forecast-settings.
+ */
+export interface ForecastSettingsDTO {
+  windowDays: number /* int */;
+  alertDays: number /* int */;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadPercent, parseInstallMethod, updateHintKey, type SystemSnapshot } from './system';
+import { daysUntilFull, loadPercent, parseInstallMethod, updateHintKey, type SystemSnapshot } from './system';
 
 const base: SystemSnapshot = {
   cpuPercent: 0,
@@ -33,5 +33,20 @@ describe('install method', () => {
     expect(updateHintKey('package')).toBe('system.update_how_package');
     expect(updateHintKey('appliance')).toBe('system.update_how_appliance');
     expect(updateHintKey('unknown')).toBeNull();
+  });
+});
+
+describe('daysUntilFull', () => {
+  const f = (status: 'filling' | 'flat' | 'insufficient', days = 0) => ({
+    status,
+    daysUntilFull: days,
+    bytesPerDay: 0,
+    confidence: 1,
+  });
+  it('shows only growing disks', () => {
+    expect(daysUntilFull(null)).toBeNull();
+    expect(daysUntilFull(f('flat'))).toBeNull();
+    expect(daysUntilFull(f('insufficient'))).toBeNull();
+    expect(daysUntilFull(f('filling', 22.6))).toBe(23);
   });
 });

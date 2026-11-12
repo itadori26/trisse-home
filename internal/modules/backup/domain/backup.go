@@ -52,6 +52,15 @@ func FileName(t time.Time) string {
 	return namePrefix + t.UTC().Format(nameLayout) + nameSuffix
 }
 
+// CreatedFromName returns the time encoded in a backup file name.
+func CreatedFromName(name string) (time.Time, bool) {
+	if !ValidName(name) {
+		return time.Time{}, false
+	}
+	t, err := time.Parse(nameLayout, name[len(namePrefix):len(name)-len(nameSuffix)])
+	return t, err == nil
+}
+
 // ValidName reports whether name is a backup file name created by FileName.
 // It is used to reject path traversal in download requests.
 func ValidName(name string) bool { return namePattern.MatchString(name) }

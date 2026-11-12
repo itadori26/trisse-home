@@ -15,7 +15,12 @@ export interface SourceDTO {
   id: string;
   name: string;
   maxAgeHours: number /* float64 */;
-  state: 'ok' | 'overdue' | 'failed' | 'waiting';
+  kind: 'backup' | 'check';
+  cron: string;
+  graceMinutes: number /* float64 */;
+  lastStartAt?: string /* RFC 3339 */;
+  lastDurationSeconds: number /* float64 */;
+  state: 'ok' | 'overdue' | 'failed' | 'waiting' | 'running';
   lastSuccessAt?: string /* RFC 3339 */;
   lastFailureAt?: string /* RFC 3339 */;
   lastMessage: string;

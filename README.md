@@ -39,32 +39,35 @@ Not sure whether trisse-home is the right fit? See the
 
 | Module         | What it does                                                                                          |
 | -------------- | ----------------------------------------------------------------------------------------------------- |
-| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates and per-tab backgrounds |
+| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates, per-tab backgrounds and rules that open a tab by default (weekdays, time of day, client network) |
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
-| **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN |
+| **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded) |
 | **bookmarks**  | Links in folders with tags, filterable                                                                |
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
 | **todos**      | To-do list with due dates and overdue highlighting                                                    |
+| **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
-| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; running version and an opt-in update check |
-| **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
+| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |
+| **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view; opt-in image update hints (digest compared with the registry at most every 6 h, optional newer version tags, release notes link, notification) |
 | **adguard**    | AdGuard Home statistics                                                                               |
+| **speedtest**  | Internet speed from an existing [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker): latest download/upload/ping, 24 h and 7 day sparklines, optional notification below a threshold (runs no tests itself) |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
 | **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
 | **transit**    | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org)) |
 | **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
+| **diskhealth** | S.M.A.R.T. disk health: overall verdict, temperature, reallocated/pending sectors, NVMe wear and power-on hours; notifies on degradation (from a host export, no device access) |
 | **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
 | **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
 | **transfer**   | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)     |
 | **quick search** | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web |
 | **appearance** | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS |
-| **backup**     | Automatic, consistent database backups with retention; download in the settings                       |
+| **backup**     | Automatic, consistent database backups with retention; download in the settings; optional off-site copies to WebDAV/Nextcloud with their own retention; guided restore (password + 2FA, validated before the swap) |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
-| **notifications** | Push messages via [ntfy](https://ntfy.sh) for offline services, containers, full disks, expiring certificates and failed backups |
+| **notifications** | Push messages via [ntfy](https://ntfy.sh), Gotify, webhooks (HMAC-signed) or e-mail for offline services, containers, full disks, expiring certificates, failed backups and security events; importance per type, quiet hours with a morning summary and maintenance windows |
 | **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
 | **auth**       | First-run setup, login with two-factor authentication, session overview with sign-out per device, password change, security log with ntfy alerts on new devices and lockouts (exponential backoff), read-only guest accounts with shared tabs ([ADR 0012](docs/adr/0012-owner-and-guest-roles.md)), scoped [API tokens](docs/api-tokens.md) for automations, optional single sign-on via OIDC or forward auth ([ADR 0013](docs/adr/0013-single-sign-on.md)), passkeys as second factor behind HTTPS ([ADR 0014](docs/adr/0014-passkeys.md)) — always enabled |
 
@@ -156,16 +159,23 @@ has an SBOM attached and a build provenance attestation.
 (daily, 7 kept; see `BACKUP_*`) in `/data/backups` and offers them for
 download under Settings → Backups. Keep `SECRET_KEY` separately; without it
 stored integration passwords cannot be decrypted. To copy the backups off the
-volume:
+volume, add an **off-site target** under Settings → Backups (any WebDAV folder,
+e.g. Nextcloud with an app password): every new backup is uploaded there as well
+and pruned by its own retention; failed uploads are reported via notifications.
+Or copy them by hand:
 
 ```sh
 sudo docker run --rm -v trisse-home-data:/data -v "$PWD":/backup alpine \
   cp -r /data/backups /backup/
 ```
 
-**Restore:** stop the stack, replace `/data/trisse-home.db` in the volume
-with a backup file (and remove `trisse-home.db-wal`/`-shm` if present), then
-start it again.
+**Restore:** Settings → Backups → *Restore a backup*: pick a local or off-site
+backup or upload a file, re-enter your password (and 2FA code). trisse-home
+checks the file (SQLite integrity, a trisse-home schema not newer than the running
+version), keeps the current database as `trisse-home.db.before-restore` and
+restarts; Docker starts it again with the restored data. Without the web UI: stop
+the stack, replace `/data/trisse-home.db` in the volume with a backup file (and
+remove `trisse-home.db-wal`/`-shm` if present), then start it again.
 
 **Forgot the password?**
 `sudo docker compose exec trisse-home /trisse-home reset-account`, then
@@ -205,6 +215,33 @@ The script runs `wg show all dump` in the `wireguard` container (`WG_CONTAINER=`
 only the peer lines — the interface line with the **private key is dropped and preshared keys are blanked** — and
 reads the peer names of `linuxserver/wireguard` from the public keys in its `peer_<name>` folders. Names can be
 changed in Settings → WireGuard. A peer counts as online when its last handshake is less than 3 minutes old.
+
+## Disk health widget (optional)
+
+> **Why is this an extra step?** Reading S.M.A.R.T. data needs raw device access, which the container must never
+> get. A host script writes the `smartctl` JSON output instead. [Security model →](docs/security-model.md#smart-export)
+
+Install smartmontools 7.0 or newer on the host (`sudo apt install smartmontools`) and export every 30 minutes into
+`./smart`, which is mounted read-only into the container:
+
+```sh
+sudo tee /etc/cron.d/trisse-home-smart <<'CRON'
+*/30 * * * * root /opt/stacks/trisse-home/scripts/smart-export.sh
+CRON
+```
+
+The script writes `smartctl --json -a` per disk found by `smartctl --scan-open` and removes exports of disks that
+are gone. trisse-home rates each disk:
+
+| Rule                                                                          | Status   |
+| ----------------------------------------------------------------------------- | -------- |
+| Self-assessment failed, attribute below its threshold, NVMe critical warning, spare below threshold, ≥ 100 % wear | critical |
+| Reallocated, pending, offline-uncorrectable or reported-uncorrectable sectors > 0, NVMe media errors, ≥ 90 % wear | warning  |
+| Temperature ≥ 60 °C (HDD/SATA) or ≥ 70 °C (NVMe); critical from 70/80 °C       | warning  |
+| Export older than `DISKHEALTH_STALE_AFTER` (default 2 h)                       | unknown  |
+
+State changes are sent through the notifications module (rule "Disk", type `diskhealth`) and recorded on the
+timeline. The export contains model and serial numbers, but no data from the disks.
 
 ## Progressive Web App
 
@@ -269,19 +306,27 @@ may contain secrets — only list containers whose logs you are fine seeing on t
 
 ## Notifications and backup monitoring
 
-**Notifications** (Settings → Notifications) publish to an [ntfy](https://ntfy.sh) topic. A state change is only
-reported after two consecutive checks (no flapping) and the first observation after a restart only sets the
-baseline. Topics on public servers are readable by anyone who knows the name — use a long random topic (one is
-suggested) or your own ntfy server with an access token; the token is stored encrypted with `SECRET_KEY`.
+**Notifications** (Settings → Notifications) publish to an [ntfy](https://ntfy.sh) topic and, optionally, to
+Gotify, a webhook (HMAC-signed with `X-Trisse-Signature: sha256=…` if a secret is set) or e-mail via SMTP. A
+state change is only reported after two consecutive checks (no flapping) and the first observation after a
+restart only sets the baseline. Every type has an importance (info, warning, critical); each channel can be
+limited to a minimum importance and to selected types. **Quiet hours** hold back everything but critical
+messages and send one summary afterwards. **Maintenance windows** (e.g. "NAS for 60 minutes") mute the selected
+services and containers and show a banner on the dashboard. Topics on public ntfy servers are readable by anyone
+who knows the name — use a long random topic (one is suggested) or your own ntfy server with an access token;
+all channel secrets are stored encrypted with `SECRET_KEY`.
 
-**Backup monitoring** (Settings → Backup monitoring) gives every backup job a secret ping URL, shown once. Call it
-at the end of your backup script:
+**Backup monitoring and heartbeat checks** (Settings → Backup monitoring) give every backup or any other job (cron
+jobs, certificate renewals, …) a secret ping URL, shown once:
 
 ```sh
-restic backup /data && curl -fsS -X POST "$PING_URL" || curl -fsS -X POST --data "restic failed" "$PING_URL?status=fail"
+curl -fsS -X POST "$PING_URL/start"     # optional: marks the job as running and measures its duration
+restic backup /data && curl -fsS -X POST "$PING_URL" || curl -fsS -X POST --data "restic failed" "$PING_URL/fail"
 ```
 
-A source is *overdue* when no successful run arrives within its maximum age. The ping endpoint needs no login but
+The schedule is either "at least every N hours" or a cron expression (`0 3 * * *`, `*/15 * * * *`, `@daily`),
+plus a grace period. A check is *overdue* when its expected run plus the grace period passes without a success.
+`/api/checks/...` and the older `/api/backup-status/...` URLs (including `?status=fail`) both keep working. The ping endpoint needs no login but
 is still subject to `ALLOWED_CIDRS`; only a SHA-256 hash of the token is stored, and a new URL can be generated at
 any time.
 
@@ -298,7 +343,7 @@ service tiles are configured in the web interface.
 | `HOST_PORT`         | `8090`                            | Host port (compose only).                                                     |
 | `LISTEN_ADDR`       | `:8090`                           | Listen address inside the container.                                          |
 | `ALLOWED_CIDRS`     | loopback + private ranges         | Client networks allowed to connect. Loopback is always allowed.               |
-| `TRUSTED_PROXIES`   | empty                             | Reverse proxies whose `X-Forwarded-For` header is trusted.                    |
+| `TRUSTED_PROXIES`   | empty                             | Reverse proxies whose `X-Forwarded-For` header is trusted (needed for network-based tab rules behind a proxy). |
 | `COOKIE_SECURE`     | `false`                           | `true` once served via HTTPS: adds `Secure` and the `__Host-` cookie prefix.  |
 | `SESSION_TTL`       | `720h`                            | Sliding session lifetime.                                                     |
 | `SETUP_TOKEN`       | random, logged                    | Fixed setup token (≥ 16 characters) for automated setups.                     |
@@ -309,12 +354,16 @@ service tiles are configured in the web interface.
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
 | `TRANSIT_API_URL`   | `https://api.transitous.org`      | MOTIS API for departures; point it to your own MOTIS instance if you like.    |
 | `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
+| `METRICS_ENABLED`   | `false`                           | Expose `GET /metrics` for Prometheus ([docs/metrics.md](docs/metrics.md)).    |
+| `METRICS_TOKEN`     | –                                 | Bearer token for `/metrics`, at least 32 characters.                          |
+| `DISKHEALTH_DIR`    | `/smart` (compose)                | Directory with the export of `scripts/smart-export.sh`.                       |
+| `DISKHEALTH_STALE_AFTER` | `2h`                         | Older S.M.A.R.T. exports are shown as unknown.                                |
 | `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |
 | `WOL_BROADCAST`     | `255.255.255.255:9`               | Broadcast address the magic packet is sent to (by the relay or directly).     |
 | `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
 | `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
 | `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
-| `TZ`                | `UTC`                             | Time zone for logs and floating calendar times.                               |
+| `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
 | `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
 | `DATABASE_PATH`     | `/data/trisse-home.db`            | SQLite file.                                                                  |
@@ -358,8 +407,9 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, the FRITZ!Box and your
-ntfy server. This is intended behaviour, so static analysis reports these as
+RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
+(only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
+ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can
 configure them (session + CSRF protection, IP allowlist). Weather data comes
 from Open-Meteo, weather warnings and the rain radar from the open data

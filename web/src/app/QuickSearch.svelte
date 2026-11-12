@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { palettePrefixes, QuickActionError, type QuickCommand } from '../features/quickactions';
+  import { describeCommand } from './quickCapture';
   import { t } from '../shared/i18n';
   import Markdown from '../shared/ui/Markdown.svelte';
   import Modal from '../shared/ui/Modal.svelte';
@@ -23,7 +25,41 @@
   let status = $state('');
   let note = $state<{ title: string; body: string } | null>(null);
 
-  const groups = $derived(search(items, query));
+  // Commands like "todo: Müll morgen" or "restart nextcloud" (#67).
+  const command = $derived(container.quickActions.parse(query, palettePrefixes));
+  const groups = $derived(command ? [] : search(items, query));
+  let undoLast = $state<(() => Promise<void>) | null>(null);
+
+  async function runCommand(c: QuickCommand) {
+    if (
+      (c.kind === 'restart' || c.kind === 'wake') &&
+      !confirm(describeCommand(c, container.quickActions) + '?')
+    )
+      return;
+    try {
+      const res = await container.quickActions.execute(c);
+      query = '';
+      status = describeCommand(res.command, container.quickActions, true);
+      undoLast = res.undo ?? null;
+    } catch (err) {
+      status =
+        err instanceof QuickActionError
+          ? t(err.message === 'restart' ? 'quick.not_allowed_restart' : 'quick.not_allowed_wake')
+          : errorMessage(err);
+    }
+  }
+
+  async function undo() {
+    const u = undoLast;
+    undoLast = null;
+    if (!u) return;
+    try {
+      await u();
+      status = t('quick.undone');
+    } catch (err) {
+      status = errorMessage(err);
+    }
+  }
   const flat = $derived(groups.flatMap((g) => g.items));
   const optionId = (i: number) => `qs-option-${i}`;
 
@@ -91,9 +127,10 @@
   });
 
   $effect(() => {
-    void query;
+    if (!query) return; // keep the confirmation after a command cleared the field
     active = 0;
     status = '';
+    undoLast = null;
   });
 
   async function choose(item: QuickItem | undefined) {
@@ -131,7 +168,8 @@
       document.getElementById(optionId(active))?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      choose(flat[active]);
+      if (command) void runCommand(command);
+      else choose(flat[active]);
     }
   }
 </script>
@@ -184,16 +222,32 @@
         </div>
       {/each}
     </div>
-    {#if query.trim() && flat.length === 0}
+    {#if command}
+      <p class="command" id="qs-command">
+        <kbd>Enter</kbd>
+        {describeCommand(command, container.quickActions)}
+        <span class="muted">· <kbd>Esc</kbd> {t('quick.cancel')}</span>
+      </p>
+    {:else if query.trim() && flat.length === 0}
       <p class="muted hint">{t('app.no_matches_press_enter_to_search')}</p>
     {:else if !query.trim()}
       <p class="muted hint">{t('app.to_choose_enter_to_open_to')}</p>
     {/if}
-    <p class="muted hint" role="status">{status}</p>
+    <p class="muted hint" role="status">
+      {status}
+      {#if undoLast}<button class="btn" type="button" onclick={undo}>{t('dashboard.undo')}</button>{/if}
+    </p>
+    {#if !query.trim() && !status}<p class="muted hint">{t('quick.palette_hint')}</p>{/if}
   {/if}
 </Modal>
 
 <style>
+  .command {
+    margin: var(--space-2) 0 0;
+    padding: var(--space-2);
+    border-radius: var(--radius-small);
+    background: var(--color-surface-2);
+  }
   .results {
     max-height: min(60vh, 28rem);
     overflow: auto;

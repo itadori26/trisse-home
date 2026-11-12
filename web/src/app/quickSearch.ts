@@ -73,16 +73,3 @@ export function search(items: readonly QuickItem[], query: string, perGroup = 5)
     }))
     .filter((g) => g.items.length > 0);
 }
-
-/** Whether a keyboard event should open the quick search. */
-export function opensQuickSearch(
-  e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey'>,
-  target: EventTarget | null,
-): boolean {
-  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') return true;
-  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return false;
-  const el = target as HTMLElement | null;
-  const editable =
-    !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName ?? ''));
-  return !editable;
-}

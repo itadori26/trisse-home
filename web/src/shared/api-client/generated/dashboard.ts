@@ -8,6 +8,20 @@
  */
 export interface DashboardDTO {
   tabs: TabDTO[];
+  /**
+   * DefaultTabID is the tab whose rules match now ("" = keep the last used one, #71).
+   */
+  defaultTabId: string;
+}
+/**
+ * RuleDTO opens a tab by default on weekdays (0 = Sunday), in a time range
+ * ("HH:MM", empty = whole day) and/or from networks (CIDR).
+ */
+export interface RuleDTO {
+  days: number /* int */[];
+  from: string;
+  to: string;
+  networks: string[];
 }
 /**
  * TabDTO describes a tab with its widgets.
@@ -17,6 +31,7 @@ export interface TabDTO {
   name: string;
   position: number /* int */;
   background: string;
+  rules: RuleDTO[];
   widgets: WidgetDTO[];
 }
 /**
