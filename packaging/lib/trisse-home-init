@@ -2,10 +2,16 @@
 # Prepares a native trisse-home installation before the service starts.
 # Runs as root via ExecStartPre=+ in trisse-home.service and is idempotent.
 #
-# It creates the per-installation SECRET_KEY on the first start. The key is
-# never part of the package or of a Raspberry Pi image, so every device that
-# is installed or flashed gets its own key.
+# It creates the per-installation secrets in /etc/trisse-home/secret.env on
+# the first start. They are never part of the package or of a Raspberry Pi
+# image, so every device that is installed or flashed gets its own:
 #
+#   SECRET_KEY   encrypts stored credentials of integrations
+#   SETUP_TOKEN  one-time token to create the account; persisted so that the
+#                console, the boot partition and trisse-home-setup-token can
+#                show it on a headless device (it is useless after the setup)
+#
+# Values the admin sets in trisse-home.env always win.
 # Paths can be overridden for tests through the TRISSE_HOME_* variables.
 set -eu
 
@@ -19,41 +25,55 @@ SECRET_FILE="$CONF_DIR/secret.env"
 # kept, so that a later reinstall can still decrypt stored credentials.
 SAVED_SECRET="$STATE_DIR/secret.env.purged"
 
-has_key() {
-	[ -f "$1" ] && grep -Eq '^[[:space:]]*SECRET_KEY=[^[:space:]]' "$1"
+# has VAR FILE: FILE sets VAR to a non-empty value.
+has() {
+	[ -f "$2" ] && grep -Eq "^[[:space:]]*$1=[^[:space:]]" "$2"
 }
 
-install_secret() {
-	# $1: file with the content to install. Written atomically with the final
-	# owner and mode, so the service never sees a half-written or unreadable key.
-	chgrp "$SERVICE_GROUP" "$1"
-	chmod 0640 "$1"
-	mv -f "$1" "$SECRET_FILE"
+random_key() {
+	# 32 random bytes, base64 encoded: the format SECRET_KEY expects.
+	head -c 32 /dev/urandom | base64 | tr -d '\n'
 }
 
-# An admin-provided key (e.g. when moving from Docker) always wins.
-if has_key "$CONFIG_FILE" || has_key "$SECRET_FILE"; then
-	exit 0
-fi
+random_token() {
+	# 20 characters without look-alikes (0/O, 1/I/L), grouped for typing:
+	# about 100 bits of entropy, e.g. K7MP-Q2XA-9HTD-WE4R-ZN6C.
+	LC_ALL=C tr -dc 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' </dev/urandom | head -c 20 |
+		sed 's/\(....\)/\1-/g; s/-$//'
+}
+
+# append_secret LINE...: atomically writes secret.env with its old content plus
+# the given lines, already owned by the service group, so the service never
+# sees a half-written or unreadable file.
+append_secret() {
+	tmp=$(mktemp "$SECRET_FILE.XXXXXX")
+	trap 'rm -f "$tmp"' EXIT
+	if [ -f "$SECRET_FILE" ]; then
+		cat "$SECRET_FILE" >"$tmp"
+	else
+		echo "# Generated on the first start of trisse-home. Keep a copy of SECRET_KEY" >"$tmp"
+		echo "# next to your backups: it decrypts the stored credentials." >>"$tmp"
+	fi
+	printf '%s\n' "$@" >>"$tmp"
+	chgrp "$SERVICE_GROUP" "$tmp"
+	chmod 0640 "$tmp"
+	mv -f "$tmp" "$SECRET_FILE"
+	trap - EXIT
+}
 
 umask 077
-tmp=$(mktemp "$SECRET_FILE.XXXXXX")
-trap 'rm -f "$tmp"' EXIT
 
-if has_key "$SAVED_SECRET"; then
-	cat "$SAVED_SECRET" >"$tmp"
-	install_secret "$tmp"
-	rm -f "$SAVED_SECRET"
-	echo "trisse-home: restored the SECRET_KEY saved when the package was purged" >&2
-	exit 0
+if ! has SECRET_KEY "$CONFIG_FILE" && ! has SECRET_KEY "$SECRET_FILE"; then
+	if has SECRET_KEY "$SAVED_SECRET"; then
+		append_secret "$(grep -E '^[[:space:]]*SECRET_KEY=' "$SAVED_SECRET" | tail -n 1)"
+		rm -f "$SAVED_SECRET"
+		echo "trisse-home: restored the SECRET_KEY saved when the package was purged" >&2
+	else
+		append_secret "SECRET_KEY=$(random_key)"
+		echo "trisse-home: generated a new SECRET_KEY in $SECRET_FILE" >&2
+	fi
 fi
 
-# 32 random bytes, base64 encoded: the format SECRET_KEY expects.
-key=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
-{
-	echo "# Generated on the first start of trisse-home. It encrypts the stored"
-	echo "# credentials of integrations: keep a copy next to your backups."
-	echo "SECRET_KEY=$key"
-} >"$tmp"
-install_secret "$tmp"
-echo "trisse-home: generated a new SECRET_KEY in $SECRET_FILE" >&2
+if ! has SETUP_TOKEN "$CONFIG_FILE" && ! has SETUP_TOKEN "$SECRET_FILE"; then
+	append_secret "SETUP_TOKEN=$(random_token)"
+fi

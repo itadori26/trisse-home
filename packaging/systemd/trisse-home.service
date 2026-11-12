@@ -5,7 +5,12 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-Type=simple
+# The binary sends READY=1 once the HTTP server listens and WATCHDOG=1 pings
+# while the database answers (internal/platform/sdnotify); a hung process is
+# restarted after WatchdogSec.
+Type=notify
+NotifyAccess=main
+WatchdogSec=60s
 User=trisse-home
 Group=trisse-home
 
