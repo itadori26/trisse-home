@@ -1,0 +1,31 @@
+#!/bin/sh
+# Shows the one-time setup token of this trisse-home installation and where
+# to open it. Needs root: the token is readable by root and the service only.
+set -eu
+
+if [ "$(id -u)" -ne 0 ]; then
+	echo "Run with sudo: sudo trisse-home-setup-token" >&2
+	exit 1
+fi
+
+# shellcheck source=packaging/lib/env.sh
+. "${TRISSE_HOME_LIB:-/usr/lib/trisse-home}/env.sh"
+
+suffix=$(trisse_home_url_suffix)
+status=$(trisse_home_setup_status)
+case "$status" in
+done)
+	echo "trisse-home is already set up; the setup token is no longer valid."
+	echo "Forgot the password? See https://github.com/itadori26/trisse-home/blob/main/docs/native-install.md"
+	;;
+*)
+	token=$(trisse_home_value SETUP_TOKEN)
+	if [ -z "$token" ]; then
+		echo "No setup token yet: start the service first (sudo systemctl start trisse-home)." >&2
+		exit 1
+	fi
+	echo "Open   http://$(hostname).local$suffix  (or http://<ip-address>$suffix)"
+	echo "Token  $token"
+	[ "$status" = pending ] || echo "(The service is not reachable right now: sudo systemctl status trisse-home)"
+	;;
+esac

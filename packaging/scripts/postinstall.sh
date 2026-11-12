@@ -5,7 +5,8 @@
 # "systemctl disable" is respected.
 set -e
 
-UNIT=trisse-home.service
+# The service and the timer that shows the setup token on a headless device.
+UNITS="trisse-home.service trisse-home-setup-info.timer"
 
 create_user() {
 	if getent passwd trisse-home >/dev/null; then
@@ -37,26 +38,27 @@ configure | abort-upgrade | abort-deconfigure | abort-remove)
 	create_user
 	fix_permissions
 
-	# Only removes masks created by deb-systemd-helper on package removal.
-	deb-systemd-helper unmask "$UNIT" >/dev/null || true
-	# was-enabled defaults to true, so new installations get enabled.
-	if deb-systemd-helper --quiet was-enabled "$UNIT"; then
-		deb-systemd-helper enable "$UNIT" >/dev/null || true
-	else
-		deb-systemd-helper update-state "$UNIT" >/dev/null || true
-	fi
+	for unit in $UNITS; do
+		# Only removes masks created by deb-systemd-helper on package removal.
+		deb-systemd-helper unmask "$unit" >/dev/null || true
+		# was-enabled defaults to true, so new installations get enabled.
+		if deb-systemd-helper --quiet was-enabled "$unit"; then
+			deb-systemd-helper enable "$unit" >/dev/null || true
+		else
+			deb-systemd-helper update-state "$unit" >/dev/null || true
+		fi
+	done
 
 	# No running systemd (image build in a chroot, container): enabled for the
 	# next boot only. deb-systemd-invoke also honours policy-rc.d.
 	if [ -d /run/systemd/system ]; then
 		systemctl --system daemon-reload >/dev/null || true
 		if [ -n "$2" ]; then
-			deb-systemd-invoke restart "$UNIT" >/dev/null || true
+			deb-systemd-invoke restart trisse-home.service >/dev/null || true
 		else
-			deb-systemd-invoke start "$UNIT" >/dev/null || true
-			port=$(sed -n 's/^LISTEN_ADDR=.*:\([0-9]*\)[[:space:]]*$/\1/p' /etc/trisse-home/trisse-home.env | tail -n 1)
-			echo "trisse-home is running: open http://$(hostname):${port:-8090}"
-			echo "Setup token: sudo journalctl -u trisse-home | grep setup_token"
+			deb-systemd-invoke start $UNITS >/dev/null || true
+			echo "trisse-home is starting. Show the address and setup token with:"
+			echo "  sudo trisse-home-setup-token"
 		fi
 	fi
 	;;

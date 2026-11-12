@@ -32,14 +32,15 @@ type Repository struct{ db *sql.DB }
 // NewRepository returns a repository backed by db.
 func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
-const columns = `id, name, url, check_url, icon, description, skip_tls_verify, position, mac`
+const columns = `id, name, url, check_url, icon, description, skip_tls_verify, position, mac, container, hidden, edited`
 
 func scan(s interface{ Scan(...any) error }) (domain.Service, error) {
 	var svc domain.Service
-	var skip int
+	var skip, hidden, edited int
 	var mac string
-	err := s.Scan(&svc.ID, &svc.Name, &svc.URL, &svc.CheckURL, &svc.Icon, &svc.Description, &skip, &svc.Position, &mac)
-	svc.SkipTLSVerify, svc.MAC = skip == 1, kernel.MAC(mac)
+	err := s.Scan(&svc.ID, &svc.Name, &svc.URL, &svc.CheckURL, &svc.Icon, &svc.Description, &skip, &svc.Position, &mac,
+		&svc.Container, &hidden, &edited)
+	svc.SkipTLSVerify, svc.MAC, svc.Hidden, svc.Edited = skip == 1, kernel.MAC(mac), hidden == 1, edited == 1
 	return svc, err
 }
 
@@ -75,8 +76,9 @@ func (r *Repository) Get(ctx context.Context, id string) (domain.Service, error)
 
 // Create inserts a service.
 func (r *Repository) Create(ctx context.Context, s domain.Service) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO services (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.ID, s.Name, s.URL, s.CheckURL, s.Icon, s.Description, boolInt(s.SkipTLSVerify), s.Position, string(s.MAC))
+	_, err := r.db.ExecContext(ctx, `INSERT INTO services (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.ID, s.Name, s.URL, s.CheckURL, s.Icon, s.Description, boolInt(s.SkipTLSVerify), s.Position, string(s.MAC),
+		s.Container, boolInt(s.Hidden), boolInt(s.Edited))
 	if err != nil {
 		return fmt.Errorf("insert service: %w", err)
 	}
@@ -86,8 +88,9 @@ func (r *Repository) Create(ctx context.Context, s domain.Service) error {
 // Update stores all fields of a service.
 func (r *Repository) Update(ctx context.Context, s domain.Service) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE services SET name = ?, url = ?, check_url = ?, icon = ?, description = ?,
-		skip_tls_verify = ?, position = ?, mac = ? WHERE id = ?`,
-		s.Name, s.URL, s.CheckURL, s.Icon, s.Description, boolInt(s.SkipTLSVerify), s.Position, string(s.MAC), s.ID)
+		skip_tls_verify = ?, position = ?, mac = ?, container = ?, hidden = ?, edited = ? WHERE id = ?`,
+		s.Name, s.URL, s.CheckURL, s.Icon, s.Description, boolInt(s.SkipTLSVerify), s.Position, string(s.MAC),
+		s.Container, boolInt(s.Hidden), boolInt(s.Edited), s.ID)
 	if err != nil {
 		return fmt.Errorf("update service: %w", err)
 	}

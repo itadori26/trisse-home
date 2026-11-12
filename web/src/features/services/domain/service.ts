@@ -25,6 +25,10 @@ export interface Service extends ServiceInput {
   error: string;
   certExpiresAt: Date | null;
   certExpiresSoon: boolean;
+  /** Source container of a discovered tile, empty for manual tiles (#78). */
+  container: string;
+  /** The container is gone: the tile is kept but not shown on the dashboard. */
+  hidden: boolean;
 }
 
 /** One point of a service's response time history. */
@@ -81,4 +85,9 @@ export function validateServiceInput(input: ServiceInput): string | null {
     return t('services.invalid_check_url');
   if (input.mac.trim() !== '' && !macPattern.test(input.mac.trim())) return t('services.invalid_mac');
   return null;
+}
+
+/** Tiles shown on the dashboard: discovered tiles of removed containers are hidden. */
+export function visibleServices<T extends Pick<Service, 'hidden'>>(list: readonly T[]): T[] {
+  return list.filter((s) => !s.hidden);
 }

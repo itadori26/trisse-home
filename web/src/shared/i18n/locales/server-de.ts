@@ -543,4 +543,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_e4facbe924cb2c30: 'Der Ortsname ist zu lang.',
   // The radius must be between 1 and 25 km.
   srv_ad1457baee3bb1c1: 'Der Umkreis muss zwischen 1 und 25 km liegen.',
+  // Docker discovery needs the docker module to be enabled.
+  srv_1f3976061912504c: 'Die Docker-Autodiscovery braucht das aktivierte Docker-Modul.',
+  // The interval must be between 1 and {max} minutes.
+  srv_c2aa1fabd915da16: 'Das Intervall muss zwischen 1 und {max} Minuten liegen.',
+  // Unknown merge rule.
+  srv_c64f8cf81797f821: 'Unbekannte Abgleichsregel.',
 };

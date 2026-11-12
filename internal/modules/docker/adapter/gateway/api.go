@@ -66,7 +66,7 @@ func (a *API) Containers(ctx context.Context) ([]domain.Container, error) {
 		}
 		out = append(out, domain.Container{
 			ID: id, Name: name, Image: p.Image, State: p.State, Status: p.Status,
-			Project: p.Labels["com.docker.compose.project"], Created: time.Unix(p.Created, 0).UTC(),
+			Project: p.Labels["com.docker.compose.project"], Created: time.Unix(p.Created, 0).UTC(), Labels: p.Labels,
 		})
 	}
 	return out, nil
