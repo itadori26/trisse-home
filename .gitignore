@@ -2,6 +2,7 @@
 .env
 data/
 /wireguard/
+/smart/
 *.db
 *.db-shm
 *.db-wal

@@ -58,6 +58,7 @@ Not sure whether trisse-home is the right fit? See the
 | **transit**    | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org)) |
 | **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
+| **diskhealth** | S.M.A.R.T. disk health: overall verdict, temperature, reallocated/pending sectors, NVMe wear and power-on hours; notifies on degradation (from a host export, no device access) |
 | **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
 | **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
 | **transfer**   | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)     |
@@ -177,6 +178,33 @@ only the peer lines — the interface line with the **private key is dropped and
 reads the peer names of `linuxserver/wireguard` from the public keys in its `peer_<name>` folders. Names can be
 changed in Settings → WireGuard. A peer counts as online when its last handshake is less than 3 minutes old.
 
+## Disk health widget (optional)
+
+> **Why is this an extra step?** Reading S.M.A.R.T. data needs raw device access, which the container must never
+> get. A host script writes the `smartctl` JSON output instead. [Security model →](docs/security-model.md#smart-export)
+
+Install smartmontools 7.0 or newer on the host (`sudo apt install smartmontools`) and export every 30 minutes into
+`./smart`, which is mounted read-only into the container:
+
+```sh
+sudo tee /etc/cron.d/trisse-home-smart <<'CRON'
+*/30 * * * * root /opt/stacks/trisse-home/scripts/smart-export.sh
+CRON
+```
+
+The script writes `smartctl --json -a` per disk found by `smartctl --scan-open` and removes exports of disks that
+are gone. trisse-home rates each disk:
+
+| Rule                                                                          | Status   |
+| ----------------------------------------------------------------------------- | -------- |
+| Self-assessment failed, attribute below its threshold, NVMe critical warning, spare below threshold, ≥ 100 % wear | critical |
+| Reallocated, pending, offline-uncorrectable or reported-uncorrectable sectors > 0, NVMe media errors, ≥ 90 % wear | warning  |
+| Temperature ≥ 60 °C (HDD/SATA) or ≥ 70 °C (NVMe); critical from 70/80 °C       | warning  |
+| Export older than `DISKHEALTH_STALE_AFTER` (default 2 h)                       | unknown  |
+
+State changes are sent through the notifications module (rule "Disk", type `diskhealth`) and recorded on the
+timeline. The export contains model and serial numbers, but no data from the disks.
+
 ## Progressive Web App
 
 trisse-home can be installed as an app (Android, iOS, desktop) and shows the
@@ -288,6 +316,8 @@ service tiles are configured in the web interface.
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
 | `TRANSIT_API_URL`   | `https://api.transitous.org`      | MOTIS API for departures; point it to your own MOTIS instance if you like.    |
 | `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
+| `DISKHEALTH_DIR`    | `/smart` (compose)                | Directory with the export of `scripts/smart-export.sh`.                       |
+| `DISKHEALTH_STALE_AFTER` | `2h`                         | Older S.M.A.R.T. exports are shown as unknown.                                |
 | `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |
 | `WOL_BROADCAST`     | `255.255.255.255:9`               | Broadcast address the magic packet is sent to (by the relay or directly).     |
 | `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |

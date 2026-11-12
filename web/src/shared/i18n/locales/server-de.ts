@@ -95,6 +95,9 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_852391e96f8a11b2: 'Nextcloud ist noch nicht eingerichtet.',
   // No MAC address is stored for this service.
   srv_591001f7788fb502: 'Für diesen Dienst ist keine MAC-Adresse hinterlegt.',
+  // No S.M.A.R.T. export found. Run scripts/smart-export.sh on the host (see README).
+  srv_74822a0f2779c188:
+    'Kein S.M.A.R.T.-Export gefunden. Bitte scripts/smart-export.sh auf dem Host ausführen (siehe README).',
   // No WireGuard export found. Run scripts/wireguard-export.sh on the host (see README).
   srv_9d762d7de49b8d86:
     'Kein WireGuard-Export gefunden. Führe scripts/wireguard-export.sh auf dem Host aus (siehe README).',

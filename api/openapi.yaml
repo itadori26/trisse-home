@@ -1130,6 +1130,16 @@ paths:
       summary: Next three dates per waste type, ordered by the next collection (refreshed every 6 hours)
       responses: { "200": { description: OK }, "404": { description: Not configured } }
 
+  # ---------------------------------------------------------------- diskhealth
+  /api/diskhealth:
+    get:
+      tags: [diskhealth]
+      summary: S.M.A.R.T. health per disk from the export of scripts/smart-export.sh
+      description: >
+        Status ok|warning|critical|unknown with findings, temperature, power-on hours, reallocated and pending
+        sectors (ATA) and wear (NVMe). Exports older than DISKHEALTH_STALE_AFTER are unknown.
+      responses: { "200": { description: List of disks }, "404": { description: No export found } }
+
   # ---------------------------------------------------------------- wireguard
   /api/wireguard/peers:
     get:

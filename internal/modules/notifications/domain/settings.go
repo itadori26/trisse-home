@@ -89,6 +89,8 @@ func (r Rules) Judge(o kernel.Observation) (relevant, healthy bool) {
 		return r.Backups, o.Healthy
 	case "disk":
 		return r.Disk, o.Value < r.DiskThreshold
+	case "diskhealth":
+		return r.Disk, o.Healthy
 	case "tls":
 		return r.TLS, o.Value > float64(r.TLSDays)
 	default:

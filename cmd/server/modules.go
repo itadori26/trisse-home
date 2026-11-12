@@ -17,6 +17,7 @@ import (
 	"trisse-home/internal/modules/bookmarks"
 	"trisse-home/internal/modules/calendar"
 	"trisse-home/internal/modules/dashboard"
+	"trisse-home/internal/modules/diskhealth"
 	"trisse-home/internal/modules/docker"
 	"trisse-home/internal/modules/fritzbox"
 	"trisse-home/internal/modules/nextcloud"
@@ -137,6 +138,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"fritzbox", func() modules.Module { return fritzbox.New(db, secrets, client, clk, time.Local) }},
 		{"backupmonitor", func() modules.Module {
 			return backupmonitor.New(backupmonitor.Deps{DB: db, Tokens: crypto.RandomTokens{}, Clock: clk, IDs: ids, Observations: sink})
+		}},
+		{"diskhealth", func() modules.Module {
+			return diskhealth.New(diskhealth.Config{Dir: cfg.DiskHealthDir, StaleAfter: cfg.DiskHealthStaleAfter}, sink, clk)
 		}},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
 		// scaffold:modules - make new-module inserts new modules above this line.

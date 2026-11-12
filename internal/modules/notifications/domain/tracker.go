@@ -78,6 +78,8 @@ func problemTitle(o kernel.Observation) string {
 		return fmt.Sprintf("Certificate of %s expires in %d days", o.Label, int(math.Floor(o.Value)))
 	case "backup":
 		return "Backup " + o.Label + " needs attention"
+	case "diskhealth":
+		return "Disk " + o.Label + " is degrading"
 	default:
 		return o.Label + " needs attention"
 	}

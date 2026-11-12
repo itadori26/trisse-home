@@ -47,11 +47,15 @@ type Config struct {
 	TransitAPIURL string
 	// WireGuardDir contains the export of scripts/wireguard-export.sh.
 	WireGuardDir string
-	WolRelay     string
-	WolBroadcast string
-	HostProcPath string
-	HostSysPath  string
-	DiskPaths    []string
+	// DiskHealthDir contains the export of scripts/smart-export.sh; exports
+	// older than DiskHealthStaleAfter are shown as unknown.
+	DiskHealthDir        string
+	DiskHealthStaleAfter time.Duration
+	WolRelay             string
+	WolBroadcast         string
+	HostProcPath         string
+	HostSysPath          string
+	DiskPaths            []string
 	// SampleData fills a fresh installation with example widgets and data.
 	SampleData bool
 	// DemoMode runs a public showcase: no login, sample data reset every
@@ -117,6 +121,8 @@ func Load(getenv func(string) string) (Config, error) {
 		DockerActionsProxyURL:   l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
 		WolRelay:                l.str("WOL_RELAY", ""),
 		WireGuardDir:            l.str("WIREGUARD_DIR", ""),
+		DiskHealthDir:           l.str("DISKHEALTH_DIR", ""),
+		DiskHealthStaleAfter:    l.duration("DISKHEALTH_STALE_AFTER", 2*time.Hour),
 		TransitAPIURL:           l.str("TRANSIT_API_URL", "https://api.transitous.org"),
 		WolBroadcast:            l.str("WOL_BROADCAST", "255.255.255.255:9"),
 		HostProcPath:            l.str("HOST_PROC", "/proc"),
@@ -159,7 +165,7 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.DemoMode {
 		cfg.SampleData = true
-		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != ""} {
+		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != "", "DISKHEALTH_DIR": cfg.DiskHealthDir != ""} {
 			if set {
 				l.fail(key, "must not be set together with DEMO_MODE=true (a demo must not reach real systems)")
 			}

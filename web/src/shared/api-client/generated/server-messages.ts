@@ -46,6 +46,7 @@ export const serverMessages = {
   srv_eccd19aa12e79824: "Missing or invalid CSRF token.",
   srv_852391e96f8a11b2: "Nextcloud is not configured yet.",
   srv_591001f7788fb502: "No MAC address is stored for this service.",
+  srv_74822a0f2779c188: "No S.M.A.R.T. export found. Run scripts/smart-export.sh on the host (see README).",
   srv_9d762d7de49b8d86: "No WireGuard export found. Run scripts/wireguard-export.sh on the host (see README).",
   srv_a53afcf337b06aea: "No account has been set up yet.",
   srv_2e56580cd044b5c5: "No bookmarks found. Please export your bookmarks as HTML from the browser.",

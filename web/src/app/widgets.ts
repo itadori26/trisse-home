@@ -24,6 +24,7 @@ import { RssWidget, RssWidgetSettings } from '../features/rss';
 import { SearchWidget, SearchWidgetSettings } from '../features/search';
 import { ServicesWidget, StatusOverviewWidget } from '../features/services';
 import { TimelineWidget } from '../features/timeline';
+import { DiskHealthWidget } from '../features/diskhealth';
 import { SystemWidget } from '../features/system';
 import { TodosWidget, TodosWidgetSettings } from '../features/todos';
 import { RadarWidget, WeatherSettings, WeatherWidget } from '../features/weather';
@@ -372,6 +373,19 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 4, h: 5 },
     },
     view: renderer(TimelineWidget, (config, c) => ({ config, timeline: c.timeline })),
+  },
+  {
+    type: {
+      kind: 'diskhealth',
+      get title() {
+        return t('widget.diskhealth.title');
+      },
+      get description() {
+        return t('widget.diskhealth.description');
+      },
+      defaultSize: { w: 4, h: 4 },
+    },
+    view: renderer(DiskHealthWidget, (_config, c) => ({ diskhealth: c.diskhealth })),
   },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];

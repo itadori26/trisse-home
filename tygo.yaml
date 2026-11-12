@@ -123,6 +123,8 @@ packages:
   - path: "trisse-home/internal/modules/system/adapter/controller"
     output_path: "web/src/shared/api-client/generated/system-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/diskhealth/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/diskhealth.ts"
   - path: "trisse-home/internal/modules/timeline/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/timeline.ts"
   - path: "trisse-home/internal/modules/timeline/adapter/controller"
