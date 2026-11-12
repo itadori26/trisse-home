@@ -24,12 +24,30 @@ sha256sum --check --ignore-missing "trisse-home_${VERSION}_packages.sha256"
 sudo apt install "./trisse-home_${VERSION}_$ARCH.deb"
 ```
 
-The service starts right away on port 8090. Open `http://<host>:8090` and
-enter the setup token from the log:
+The service starts right away on port 8090. Show the address and the
+one-time setup token, open the address and enter the token:
 
 ```sh
-sudo journalctl -u trisse-home | grep setup_token
+sudo trisse-home-setup-token
 ```
+
+## Setup token
+
+Like `SECRET_KEY`, the setup token is generated on the device on the first
+start (20 characters without look-alikes, e.g. `K7MP-Q2XA-9HTD-WE4R-ZN6C`) and
+is only valid until the account exists. Ways to get it — all of them need
+access to the device itself:
+
+- `sudo trisse-home-setup-token` over SSH or on the console
+- on a monitor attached to the device, above the login prompt
+- on a Raspberry Pi: `trisse-home-setup.txt` on the boot partition of the SD
+  card (readable on any computer)
+- in the log: `sudo journalctl -u trisse-home | grep setup_token`
+
+Console text and boot partition file are deleted automatically once the
+account exists (`trisse-home-setup-info.timer`). To choose the token yourself
+(automated setups), set `SETUP_TOKEN=` (at least 16 characters) in
+`trisse-home.env`.
 
 ## What the package installs
 
@@ -37,7 +55,7 @@ sudo journalctl -u trisse-home | grep setup_token
 | --- | --- |
 | `/usr/bin/trisse-home` | The binary (same as in the container image) |
 | `/etc/trisse-home/trisse-home.env` | Configuration (environment variables, see [.env.example](../.env.example)) |
-| `/etc/trisse-home/secret.env` | `SECRET_KEY`, generated on the first start |
+| `/etc/trisse-home/secret.env` | `SECRET_KEY` and `SETUP_TOKEN`, generated on the first start |
 | `/var/lib/trisse-home/` | Database and automatic backups |
 | `trisse-home.service` | systemd unit, runs as the system user `trisse-home` |
 
@@ -73,6 +91,15 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 ReadWritePaths=/mnt/usb/trisse-home
 ```
 
+## Robustness
+
+- **Watchdog:** the service reports readiness to systemd and pings its
+  watchdog every 30 seconds while the database answers. If it hangs, systemd
+  restarts it after 60 seconds (`WatchdogSec=`).
+- **Power loss:** SQLite runs in WAL mode with `synchronous=NORMAL`. After a
+  sudden power cut the database is always consistent; at worst the last
+  change before the cut is lost. Daily backups cover the rest.
+
 ## Update and rollback
 
 Install the newer package the same way; configuration, key and data are kept
@@ -86,7 +113,7 @@ daily. (Automatic updates through an APT repository are planned in #137.)
 ```sh
 sudo -u trisse-home sh -c 'set -a; . /etc/trisse-home/secret.env; . /etc/trisse-home/trisse-home.env; exec trisse-home reset-account'
 sudo systemctl restart trisse-home
-sudo journalctl -u trisse-home | grep setup_token
+sudo trisse-home-setup-token
 ```
 
 ## Moving from Docker

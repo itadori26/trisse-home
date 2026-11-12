@@ -64,7 +64,8 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 			</channel></rss>`)
 	})
 	mux.HandleFunc("GET /containers/json", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, `[{"Id":"abcdef1234567890","Names":["/web"],"Image":"nginx","State":"running","Status":"Up 1 hour (healthy)","Created":1700000000}]`)
+		_, _ = io.WriteString(w, `[{"Id":"abcdef1234567890","Names":["/web"],"Image":"nginx","State":"running","Status":"Up 1 hour (healthy)","Created":1700000000,`+
+			`"Labels":{"homepage.name":"Web","homepage.href":"https://web.lan"}}]`)
 	})
 	mux.HandleFunc("POST /containers/web/restart", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -512,6 +513,25 @@ func TestAPIEndToEnd(t *testing.T) {
 	if len(logs.Lines) != 2 || logs.Lines[1] != "listening on :80" {
 		t.Fatalf("docker logs: %v", logs)
 	}
+
+	// --- Docker autodiscovery (#78): off by default, sync on demand ---
+	var discovery obj
+	c.json(http.MethodGet, "/api/services/discovery", nil, http.StatusOK, &discovery)
+	if discovery["available"] != true || discovery["enabled"] != false || discovery["lastSync"] != nil {
+		t.Fatalf("discovery: %v", discovery)
+	}
+	c.do(http.MethodPut, "/api/services/discovery", obj{"enabled": true, "intervalMinutes": 0, "rule": "labels"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPost, "/api/services/discovery/sync", nil, http.StatusOK, &discovery)
+	if sync := discovery["lastSync"].(obj); sync["created"] != float64(1) || sync["error"] != "" {
+		t.Fatalf("discovery sync: %v", discovery)
+	}
+	var tiles []obj
+	c.json(http.MethodGet, "/api/services", nil, http.StatusOK, &tiles)
+	web := tiles[len(tiles)-1]
+	if web["container"] != "web" || web["name"] != "Web" || web["url"] != "https://web.lan" || web["hidden"] != false {
+		t.Fatalf("discovered tile: %v", web)
+	}
+	c.do(http.MethodDelete, "/api/services/"+web["id"].(string), nil, http.StatusNoContent)
 
 	// --- weather alerts outside Germany need no DWD request ---
 	var noWarnings []obj

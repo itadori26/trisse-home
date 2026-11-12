@@ -26,6 +26,8 @@ type Container struct {
 	Status  string // human readable, e.g. "Up 3 hours (healthy)"
 	Project string // compose project, if any
 	Created time.Time
+	// Labels are the container labels (used by service discovery, #78).
+	Labels map[string]string
 }
 
 // Health derives the health check state from the status text.

@@ -27,15 +27,20 @@ type Deps struct {
 	Waker          usecase.Waker
 	// Maintenance excludes planned downtime from the uptime; may be nil.
 	Maintenance usecase.MaintenanceReader
+	// Containers feeds Docker autodiscovery (#78); nil when the docker
+	// module is disabled.
+	Containers usecase.ContainerSource
 }
 
 // Module wires the services rings and implements modules.Module.
 type Module struct {
 	modules.Base
 	modules.Transferable
-	uc       usecase.Services
-	seed     usecase.SeedSampleData
-	handlers *controller.Handlers
+	uc        usecase.Services
+	seed      usecase.SeedSampleData
+	discovery usecase.Discovery
+	handlers  *controller.Handlers
+	disc      *controller.DiscoveryHandlers
 }
 
 // New builds the services module.
@@ -46,7 +51,11 @@ func New(d Deps) *Module {
 		Uptime: gateway.NewUptimeStore(d.DB), Maintenance: d.Maintenance, Location: time.Local,
 	}
 	uc := usecase.NewServices(deps)
-	return &Module{Transferable: modules.Transferable{DB: d.DB, Tables: gateway.TransferTables}, uc: uc, seed: usecase.NewSeedSampleData(deps), handlers: controller.NewHandlers(uc)}
+	disc := usecase.NewDiscovery(deps, d.Containers, gateway.NewDiscoveryStore(d.DB))
+	return &Module{
+		Transferable: modules.Transferable{DB: d.DB, Tables: gateway.TransferTables}, uc: uc, seed: usecase.NewSeedSampleData(deps),
+		discovery: disc, handlers: controller.NewHandlers(uc), disc: controller.NewDiscoveryHandlers(disc),
+	}
 }
 
 // SeedSampleData implements modules.Seeder. The example tiles are checked in
@@ -83,6 +92,9 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/services/uptime", h.Uptime)
 	r.Protected("GET /api/services/incidents", h.Incidents)
 	r.Protected("PUT /api/services/order", h.Reorder)
+	r.Protected("GET /api/services/discovery", m.disc.Get)
+	r.Protected("PUT /api/services/discovery", m.disc.Save)
+	r.Protected("POST /api/services/discovery/sync", m.disc.Sync)
 	r.Protected("PUT /api/services/{id}", h.Update)
 	r.Protected("DELETE /api/services/{id}", h.Delete)
 	r.Protected("POST /api/services/{id}/wake", h.Wake)
@@ -90,9 +102,11 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 
 // Jobs implements modules.Module.
 func (m *Module) Jobs() []modules.Job {
-	return []modules.Job{{Name: "services.health-check", Interval: checkInterval, Run: func(ctx context.Context) error {
-		return m.uc.CheckAll(ctx)
-	}}}
+	return []modules.Job{
+		{Name: "services.health-check", Interval: checkInterval, Run: m.uc.CheckAll},
+		// The job runs every minute; the user's interval is applied by SyncIfDue.
+		{Name: "services.docker-discovery", Interval: time.Minute, Run: m.discovery.SyncIfDue},
+	}
 }
 
 // Metrics implements kernel.MetricSource (#109): availability, response

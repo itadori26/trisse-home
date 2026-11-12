@@ -10,6 +10,7 @@ data/
 # Build output
 /bin/
 /dist/
+/deploy/raspberrypi/.work/
 internal/platform/webui/dist/*
 !internal/platform/webui/dist/.gitkeep
 coverage.out
