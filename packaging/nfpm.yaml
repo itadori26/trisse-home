@@ -38,10 +38,36 @@ contents:
     file_info:
       mode: 0755
 
+  - src: ./packaging/lib/trisse-home-setup-info
+    dst: /usr/lib/trisse-home/trisse-home-setup-info
+    file_info:
+      mode: 0755
+
+  - src: ./packaging/lib/trisse-home-setup-token
+    dst: /usr/sbin/trisse-home-setup-token
+    file_info:
+      mode: 0755
+
   - src: ./packaging/systemd/trisse-home.service
     dst: /usr/lib/systemd/system/trisse-home.service
     file_info:
       mode: 0644
+
+  - src: ./packaging/systemd/trisse-home-setup-info.service
+    dst: /usr/lib/systemd/system/trisse-home-setup-info.service
+    file_info:
+      mode: 0644
+
+  - src: ./packaging/systemd/trisse-home-setup-info.timer
+    dst: /usr/lib/systemd/system/trisse-home-setup-info.timer
+    file_info:
+      mode: 0644
+
+  # Read by agetty (util-linux); not created by default on every system.
+  - dst: /etc/issue.d
+    type: dir
+    file_info:
+      mode: 0755
 
   - src: ./packaging/sysusers.d/trisse-home.conf
     dst: /usr/lib/sysusers.d/trisse-home.conf

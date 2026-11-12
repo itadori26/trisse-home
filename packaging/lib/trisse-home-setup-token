@@ -1,0 +1,47 @@
+#!/bin/sh
+# Shows the one-time setup token of this trisse-home installation and where
+# to open it. Needs root: the token is readable by root and the service only.
+set -eu
+
+CONF_DIR=${TRISSE_HOME_CONF_DIR:-/etc/trisse-home}
+
+if [ "$(id -u)" -ne 0 ]; then
+	echo "Run with sudo: sudo trisse-home-setup-token" >&2
+	exit 1
+fi
+
+# value VAR: effective value, trisse-home.env wins over secret.env (as in the unit).
+value() {
+	for f in "$CONF_DIR/trisse-home.env" "$CONF_DIR/secret.env"; do
+		v=$(sed -n "s/^[[:space:]]*$1=\([^[:space:]]*\).*/\1/p" "$f" 2>/dev/null | tail -n 1)
+		if [ -n "$v" ]; then
+			echo "$v"
+			return
+		fi
+	done
+}
+
+listen=$(value LISTEN_ADDR)
+port=${listen##*:}
+case "$port" in
+"" | 80) suffix="" ;;
+*) suffix=":$port" ;;
+esac
+
+status=$(env LISTEN_ADDR="${listen:-:8090}" trisse-home setup-status 2>/dev/null || echo unknown)
+case "$status" in
+done)
+	echo "trisse-home is already set up; the setup token is no longer valid."
+	echo "Forgot the password? See https://github.com/itadori26/trisse-home/blob/main/docs/native-install.md"
+	;;
+*)
+	token=$(value SETUP_TOKEN)
+	if [ -z "$token" ]; then
+		echo "No setup token yet: start the service first (sudo systemctl start trisse-home)." >&2
+		exit 1
+	fi
+	echo "Open   http://$(hostname).local$suffix  (or http://<ip-address>$suffix)"
+	echo "Token  $token"
+	[ "$status" = pending ] || echo "(The service is not reachable right now: sudo systemctl status trisse-home)"
+	;;
+esac
