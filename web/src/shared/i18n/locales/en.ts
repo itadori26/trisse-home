@@ -1016,6 +1016,32 @@ export const en = {
   'shortcuts.ctrl_z': 'Ctrl+Z',
   'shortcuts.ctrl_shift_z': 'Ctrl+Shift+Z',
   'shortcuts.ctrl_y': 'Ctrl+Y',
+  'quick.todo': 'create to-do “{title}”',
+  'quick.note': 'create note “{title}”',
+  'quick.bookmark': 'save bookmark “{title}” ({url})',
+  'quick.restart': 'restart container {name}',
+  'quick.wake': 'wake {name}',
+  'quick.done_todo': 'To-do “{title}” created',
+  'quick.done_note': 'Note “{title}” created',
+  'quick.done_bookmark': 'Bookmark “{title}” saved',
+  'quick.done_restart': 'Container {name} restarts',
+  'quick.done_wake': 'Wake-up sent to {name}',
+  'quick.enter_will': 'Enter: {action}',
+  'quick.shift_enter_searches': 'Shift+Enter searches the web',
+  'quick.open': 'Open',
+  'quick.cancel': 'cancel',
+  'quick.undone': 'Undone.',
+  'quick.not_allowed_restart':
+    'This container cannot be restarted from trisse-home (DOCKER_ACTIONS_CONTAINERS).',
+  'quick.not_allowed_wake': 'There is no service with this name and a MAC address.',
+  'quick.palette_hint':
+    'Commands: “todo: … tomorrow”, “note: …”, “bm: url”, “restart <container>”, “wake <service>”.',
+  'quick.prefixes': 'Quick capture',
+  'quick.prefixes_hint':
+    'A prefix followed by a space creates an item instead of searching, e.g. “t Milch kaufen morgen”. Shift+Enter always searches.',
+  'quick.prefix_todo': 'Prefix for to-dos',
+  'quick.prefix_note': 'Prefix for notes',
+  'quick.prefix_bookmark': 'Prefix for bookmarks',
 } as const;
 
 /** Every message key. */

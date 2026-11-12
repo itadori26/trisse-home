@@ -41,10 +41,20 @@ describe('DashboardUseCases', () => {
     const { uc, gateway } = setup();
     const gone = { id: 'w2', tabId: 'a', kind: 'notes', config: { id: 'n1' }, x: 4, y: 0, w: 4, h: 3 };
     await uc.restoreWidget(tab('a', 0), gone);
-    expect(gateway.addWidget).toHaveBeenLastCalledWith('a', 'notes', { x: 4, y: 0, w: 4, h: 3 }, { id: 'n1' });
+    expect(gateway.addWidget).toHaveBeenLastCalledWith(
+      'a',
+      'notes',
+      { x: 4, y: 0, w: 4, h: 3 },
+      { id: 'n1' },
+    );
     const blocker = { id: 'w3', tabId: 'a', kind: 'clock', config: {}, x: 4, y: 0, w: 4, h: 2 };
     await uc.restoreWidget(tab('a', 0, [blocker]), gone);
-    expect(gateway.addWidget).toHaveBeenLastCalledWith('a', 'notes', { x: 0, y: 0, w: 4, h: 3 }, { id: 'n1' });
+    expect(gateway.addWidget).toHaveBeenLastCalledWith(
+      'a',
+      'notes',
+      { x: 0, y: 0, w: 4, h: 3 },
+      { id: 'n1' },
+    );
   });
 
   it('rejects invalid tab names without calling the backend', async () => {

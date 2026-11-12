@@ -8,6 +8,8 @@ import type { Component } from 'svelte';
 import type { WidgetType } from '../features/dashboard';
 import type { IconName } from '../shared/ui/icons/paths';
 import type { Container } from './container';
+import { prefixesFromConfig } from '../features/quickactions/domain/command';
+import { quickCapture } from './quickCapture';
 
 /** Configuration object stored per widget. */
 type Config = Record<string, unknown>;
@@ -70,7 +72,11 @@ export const widgetDefinitions: WidgetDefinition[] = [
     icon: 'search',
     view: lazy(
       () => import('../features/search/ui/SearchWidget.svelte'),
-      (config, c) => ({ config, search: c.search }),
+      (config, c) => ({
+        config,
+        search: c.search,
+        quick: quickCapture(c.quickActions, prefixesFromConfig(config['quickPrefixes'])),
+      }),
     ),
     settings: lazy(
       () => import('../features/search/ui/SearchWidgetSettings.svelte'),
