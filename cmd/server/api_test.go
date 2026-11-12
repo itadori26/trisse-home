@@ -650,7 +650,6 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	// --- disk health (#59): not set up means 404 with a hint ---
 	c.do(http.MethodGet, "/api/diskhealth", nil, http.StatusNotFound)
-
 	// --- version and update check (off by default, no outbound request) ---
 	var ver obj
 	c.json(http.MethodGet, "/api/system/version", nil, http.StatusOK, &ver)
