@@ -76,6 +76,17 @@ of loosening it, a **second** proxy allows nothing but stop/restart/kill and
 nothing else — not even reads — and trisse-home adds its own allow-list of
 container names on top. Logs are read through the read-only proxy.
 
+### Proxmox VE
+
+The widget only needs to read, so the documented token has the role
+`PVEAuditor`. Proxmox serves a self-signed certificate. Instead of switching
+TLS verification off, trisse-home pins the certificate's SHA-256 fingerprint
+and rejects every other certificate, so a machine in the LAN cannot pose as
+the node and catch the token. Start and shutdown need two independent steps:
+`PROXMOX_ACTIONS_GUESTS` in the environment (a browser session cannot change it)
+and the `VM.PowerMgmt` permission for exactly these guests in Proxmox. A hard
+stop is never offered, and every action lands in the security event log.
+
 ### WireGuard export
 
 `wg` needs `CAP_NET_ADMIN` in the network namespace of the VPN, and its

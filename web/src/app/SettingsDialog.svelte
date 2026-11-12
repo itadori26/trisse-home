@@ -3,6 +3,7 @@
   import { AboutSettings, ForecastSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
+  import { ProxmoxSettings } from '../features/proxmox';
   import { SpeedtestSettings } from '../features/speedtest';
   import { ImageUpdateSettings } from '../features/docker';
   import { FritzBoxSettings } from '../features/fritzbox';
@@ -54,6 +55,7 @@
     { id: 'folders', label: 'settings.section.bookmark_folders', module: 'bookmarks' },
     { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
     { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
+    { id: 'proxmox', label: 'settings.section.proxmox', module: 'proxmox' },
     { id: 'speedtest', label: 'settings.section.speedtest', module: 'speedtest' },
     { id: 'docker-updates', label: 'settings.section.docker_updates', module: 'docker' },
     { id: 'nextcloud', label: 'settings.section.nextcloud', module: 'nextcloud' },
@@ -150,6 +152,8 @@
     <SpeedtestSettings speedtest={container.speedtest} />
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
+  {:else if current === 'proxmox'}
+    <ProxmoxSettings proxmox={container.proxmox} />
   {:else if current === 'notifications'}
     <NotificationSettings notifications={container.notifications} />
   {:else if current === 'backupmonitor'}

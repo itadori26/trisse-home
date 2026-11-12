@@ -523,4 +523,26 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_668a30f80af88b85: 'das ist kein gültiger RSS-, Atom- oder JSON-Feed',
   // token, public id and csrf token are required
   srv_1b3daa6bc9a9f8db: 'Token, öffentliche ID und CSRF-Token sind erforderlich',
+  // A certificate fingerprint needs an https:// URL.
+  srv_56aacb20f1f37331: 'Ein Zertifikats-Fingerabdruck braucht eine https://-URL.',
+  // Actions are not enabled for this guest (PROXMOX_ACTIONS_GUESTS).
+  srv_90d6536f1a9bc239: 'Aktionen sind für diesen Gast nicht aktiviert (PROXMOX_ACTIONS_GUESTS).',
+  // Could not connect to Proxmox VE: {detail}
+  srv_9bc140831ab0a8b7: 'Verbindung zu Proxmox VE fehlgeschlagen: {detail}',
+  // Proxmox VE is not configured yet.
+  srv_d30d28cec1fe8a0e: 'Proxmox VE ist noch nicht eingerichtet.',
+  // Proxmox VE is not reachable.
+  srv_98db8603c1a1c4cd: 'Proxmox VE ist nicht erreichbar.',
+  // Proxmox VE rejected the action: {detail}
+  srv_34559635ea2aa9a1: 'Proxmox VE hat die Aktion abgelehnt: {detail}',
+  // The URL must look like https://192.168.1.10:8006.
+  srv_75618f8d84e01994: 'Die URL muss wie https://192.168.1.10:8006 aussehen.',
+  // The fingerprint must be a SHA-256 value such as AB:CD:…, 32 bytes.
+  srv_53b624415dd21efb: 'Der Fingerabdruck muss ein SHA-256-Wert wie AB:CD:… mit 32 Bytes sein.',
+  // The token ID must look like monitor@pve!trisse-home.
+  srv_98a0961ed24f0281: 'Die Token-ID muss wie monitor@pve!trisse-home aussehen.',
+  // The token secret is required.
+  srv_3d3a9008e1d23718: 'Das Token-Secret ist erforderlich.',
+  // Unknown action, use start or shutdown.
+  srv_048731d99c865141: 'Unbekannte Aktion, verwende start oder shutdown.',
 };

@@ -38,6 +38,7 @@ tags:
   - name: system
   - name: docker
   - name: adguard
+  - name: proxmox
   - name: calendar
   - name: platform
 
@@ -1291,6 +1292,42 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardStats" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
 
+  # ---------------------------------------------------------------- proxmox
+  /api/proxmox/settings:
+    get:
+      tags: [proxmox]
+      summary: Proxmox VE connection (the token secret is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ProxmoxSettings" } } } }
+    put:
+      tags: [proxmox]
+      summary: Test and save the connection (empty secret keeps the stored one)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ProxmoxSettingsInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ProxmoxSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/proxmox/status:
+    get:
+      tags: [proxmox]
+      summary: Cached nodes, guests and storages (refreshed every 30 seconds)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ProxmoxStatus" } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/proxmox/guests/{id}/{action}:
+    post:
+      tags: [proxmox]
+      summary: Start or shut down an allow-listed guest (PROXMOX_ACTIONS_GUESTS)
+      security: [{ session: [], csrf: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [start, shutdown] } }
+      responses:
+        "204": { description: Task started }
+        "403": { description: Guest not on the allow-list, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "404": { description: Unknown guest or not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+
   # ---------------------------------------------------------------- calendar
   /api/calendar/settings:
     get:
@@ -1682,6 +1719,61 @@ components:
         running: { type: integer }
         stopped: { type: integer }
         unhealthy: { type: integer }
+        updatedAt: { type: string, format: date-time }
+        error: { type: string }
+    ProxmoxSettings:
+      type: object
+      properties:
+        configured: { type: boolean }
+        url: { type: string }
+        tokenId: { type: string, example: "monitor@pve!trisse-home" }
+        hasSecret: { type: boolean }
+        fingerprint: { type: string, description: Pinned SHA-256 certificate fingerprint (lower-case hex) or empty }
+    ProxmoxSettingsInput:
+      type: object
+      required: [url, tokenId]
+      properties:
+        url: { type: string, example: "https://192.168.1.10:8006" }
+        tokenId: { type: string }
+        secret: { type: string, description: Empty keeps the stored secret }
+        fingerprint: { type: string, description: "SHA-256 with or without colons; empty verifies against the system CAs" }
+    ProxmoxStatus:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              online: { type: boolean }
+              cpuPercent: { type: number }
+              cpus: { type: integer }
+              memUsed: { type: integer }
+              memTotal: { type: integer }
+              diskUsed: { type: integer }
+              diskTotal: { type: integer }
+              uptimeSeconds: { type: integer }
+        guests:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              node: { type: string }
+              kind: { type: string, enum: [qemu, lxc] }
+              status: { type: string }
+              uptimeSeconds: { type: integer }
+              cpuPercent: { type: number }
+              memUsed: { type: integer }
+              memTotal: { type: integer }
+              actions: { type: boolean, description: Start/shutdown allowed }
+        storages:
+          type: array
+          items:
+            type: object
+            properties: { name: { type: string }, node: { type: string }, used: { type: integer }, total: { type: integer }, active: { type: boolean } }
         updatedAt: { type: string, format: date-time }
         error: { type: string }
     AdGuardSettings:

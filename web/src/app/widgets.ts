@@ -583,6 +583,29 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (_config, c) => ({ speedtest: c.speedtest }),
     ),
   },
+  {
+    type: {
+      kind: 'proxmox',
+      category: 'server',
+      keywords: ['pve', 'vm', 'lxc', 'virtualisation', 'hypervisor'],
+      get title() {
+        return t('widget.proxmox.title');
+      },
+      get description() {
+        return t('widget.proxmox.description');
+      },
+      defaultSize: { w: 4, h: 6 },
+    },
+    icon: 'server',
+    view: lazy(
+      () => import('../features/proxmox/ui/ProxmoxWidget.svelte'),
+      (config, c) => ({ config, proxmox: c.proxmox }),
+    ),
+    settings: lazy(
+      () => import('../features/proxmox/ui/ProxmoxWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];
 

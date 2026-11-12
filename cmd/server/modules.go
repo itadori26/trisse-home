@@ -25,6 +25,7 @@ import (
 	"trisse-home/internal/modules/notifications"
 	"trisse-home/internal/modules/onboarding"
 	"trisse-home/internal/modules/parcels"
+	"trisse-home/internal/modules/proxmox"
 	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
@@ -147,6 +148,10 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
+		{"proxmox", func() modules.Module {
+			return proxmox.New(proxmox.Config{DB: db, Cipher: secrets, Client: client, Pinned: out.pinned,
+				ActionGuests: cfg.ProxmoxActionsGuests, Clock: clk, Audit: authModule})
+		}},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {
@@ -219,6 +224,8 @@ type outbound struct {
 		Wake(context.Context, kernel.MAC) error
 	}
 	secrets secretStore
+	// pinned builds clients that trust one certificate fingerprint (Proxmox).
+	pinned func(fingerprint string) *http.Client
 }
 
 func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbound {
@@ -229,6 +236,9 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 			insecureHealth: &http.Client{Transport: demo.HealthyTransport{}},
 			waker:          demo.NoWake{},
 			secrets:        demo.ReadOnlySecrets{Inner: cipher},
+			pinned: func(string) *http.Client {
+				return &http.Client{Transport: demo.Transport{Now: clk.Now}, Timeout: healthCheckTimeout}
+			},
 		}
 	}
 	return outbound{
@@ -237,6 +247,9 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 		insecureHealth: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
 		waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
 		secrets:        cipher,
+		pinned: func(fp string) *http.Client {
+			return httpclient.New(httpclient.WithPinnedCertificate(fp))
+		},
 	}
 }
 
