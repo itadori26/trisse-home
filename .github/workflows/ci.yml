@@ -172,7 +172,8 @@ jobs:
       - name: Check the unit and its sandbox (exposure must stay at or below 2.0)
         run: |
           systemd-analyze verify /usr/lib/systemd/system/trisse-home.service
-          systemd-analyze security trisse-home --threshold=2.0 --no-pager
+          # --threshold is the exposure × 10 (default 100 = 10.0): 20 = 2.0.
+          systemd-analyze security trisse-home --threshold=20 --no-pager
       - name: Service log
         if: failure()
         run: sudo journalctl -u trisse-home --no-pager -n 200
