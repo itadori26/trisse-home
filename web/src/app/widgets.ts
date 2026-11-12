@@ -22,7 +22,7 @@ import { DockerWidget, DockerWidgetSettings } from '../features/docker';
 import { NotesWidget, NotesWidgetSettings } from '../features/notes';
 import { RssWidget, RssWidgetSettings } from '../features/rss';
 import { SearchWidget, SearchWidgetSettings } from '../features/search';
-import { ServicesWidget } from '../features/services';
+import { ServicesWidget, StatusOverviewWidget } from '../features/services';
 import { SystemWidget } from '../features/system';
 import { TodosWidget, TodosWidgetSettings } from '../features/todos';
 import { RadarWidget, WeatherSettings, WeatherWidget } from '../features/weather';
@@ -130,6 +130,19 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 6, h: 4 },
     },
     view: renderer(ServicesWidget, (config, c) => ({ config, services: c.services })),
+  },
+  {
+    type: {
+      kind: 'status-overview',
+      get title() {
+        return t('widget.status-overview.title');
+      },
+      get description() {
+        return t('widget.status-overview.description');
+      },
+      defaultSize: { w: 4, h: 5 },
+    },
+    view: renderer(StatusOverviewWidget, (_config, c) => ({ services: c.services })),
   },
   {
     type: {

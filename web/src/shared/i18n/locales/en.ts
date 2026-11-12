@@ -841,6 +841,13 @@ export const en = {
   'backupmonitor.grace_minutes': 'Grace period in minutes',
   'backupmonitor.every_h': 'every {hours} h',
   'backupmonitor.grace_short': '+{minutes} min grace',
+  'widget.status-overview.title': 'Status overview',
+  'widget.status-overview.description':
+    'Uptime of every service over 30 days with outages; click a service for details.',
+  'services.uptime_30d': 'Uptime in the last 30 days',
+  'services.uptime_bars': 'Daily uptime of {name} in the last 30 days',
+  'services.incident_ongoing': 'ongoing',
+  'services.no_incidents': 'No outages recorded.',
 } as const;
 
 /** Every message key. */

@@ -1,7 +1,13 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { LatencyPointDTO, ServiceDTO } from '../../../../shared/api-client/generated/services';
+import type {
+  IncidentDTO,
+  LatencyPointDTO,
+  ServiceDTO,
+  UptimeDTO,
+} from '../../../../shared/api-client/generated/services';
 import type { OrderDTO, ServiceInputDTO } from '../../../../shared/api-client/generated/services-requests';
 import type { LatencyPoint, Service, ServiceInput } from '../../domain/service';
+import type { Incident, ServiceUptime } from '../../domain/uptime';
 import type { ServicesGateway } from '../../usecase/servicesUseCases';
 
 const ZERO_TIME = '0001-01-01T00:00:00Z';
@@ -67,5 +73,25 @@ export class ServicesApi implements ServicesGateway {
 
   wake(id: string): Promise<void> {
     return this.http.post(`/api/services/${encodeURIComponent(id)}/wake`);
+  }
+
+  async uptime(): Promise<ServiceUptime[]> {
+    return (await this.http.get<UptimeDTO[]>('/api/services/uptime')).map((d) => ({
+      serviceId: d.serviceId,
+      day: d.day ?? null,
+      week: d.week ?? null,
+      month: d.month ?? null,
+      quarter: d.quarter ?? null,
+      days: (d.days ?? []).map((x) => x ?? null),
+    }));
+  }
+
+  async incidents(serviceId: string, limit: number): Promise<Incident[]> {
+    const q = new URLSearchParams({ service: serviceId, limit: String(limit) });
+    return (await this.http.get<IncidentDTO[]>(`/api/services/incidents?${q}`)).map((d) => ({
+      ...d,
+      start: new Date(d.start),
+      end: d.end ? new Date(d.end) : null,
+    }));
   }
 }

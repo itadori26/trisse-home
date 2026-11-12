@@ -83,11 +83,13 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	// Notifications are built first: monitoring modules report observations
 	// to them, or to a sink that discards them when the module is disabled.
 	var sink kernel.ObservationSink = kernel.DiscardObservations{}
+	var maintenance maintenanceReader
 	if cfg.ModuleEnabled("notifications") {
 		n := notifications.New(db, secrets, client, clk, ids)
 		registry.Register(n)
 		sink = n
 		alerts.target = n
+		maintenance = n
 	}
 
 	optional := []struct {
@@ -101,7 +103,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"services", func() modules.Module {
 			return services.New(services.Deps{
 				DB: db, Clock: clk, IDs: ids, Observations: sink,
-				Waker: out.waker, Client: out.health, InsecureClient: out.insecureHealth,
+				Waker: out.waker, Client: out.health, InsecureClient: out.insecureHealth, Maintenance: maintenance,
 			})
 		}},
 		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids) }},
@@ -275,4 +277,11 @@ func relyingParty(cfg config.Config) *webauthn.RelyingParty {
 		return nil
 	}
 	return &webauthn.RelyingParty{ID: cfg.PublicURL.Hostname(), Origin: cfg.PublicURL.Scheme + "://" + cfg.PublicURL.Host}
+}
+
+// maintenanceReader is implemented by the notifications module (maintenance
+// windows, #69) and used by the services module to exclude planned
+// downtime from the uptime (#81).
+type maintenanceReader interface {
+	UnderMaintenance(ctx context.Context, kind, key, label string, at time.Time) bool
 }

@@ -188,8 +188,8 @@ func NewHistoryStore(db *sql.DB) *HistoryStore { return &HistoryStore{db: db} }
 
 // Add implements usecase.HistoryStore.
 func (h *HistoryStore) Add(ctx context.Context, p domain.LatencyPoint) error {
-	_, err := h.db.ExecContext(ctx, `INSERT OR REPLACE INTO services_history (service_id, at, latency_ms, online) VALUES (?, ?, ?, ?)`,
-		p.ServiceID, sqlutil.FormatTime(p.At), p.LatencyMs, sqlutil.BoolToInt(p.Online))
+	_, err := h.db.ExecContext(ctx, `INSERT OR REPLACE INTO services_history (service_id, at, latency_ms, online, maintenance) VALUES (?, ?, ?, ?, ?)`,
+		p.ServiceID, sqlutil.FormatTime(p.At), p.LatencyMs, sqlutil.BoolToInt(p.Online), sqlutil.BoolToInt(p.Maintenance))
 	if err != nil {
 		return fmt.Errorf("insert history: %w", err)
 	}
@@ -198,7 +198,7 @@ func (h *HistoryStore) Add(ctx context.Context, p domain.LatencyPoint) error {
 
 // Since implements usecase.HistoryStore; points are ordered by time.
 func (h *HistoryStore) Since(ctx context.Context, t time.Time) ([]domain.LatencyPoint, error) {
-	rows, err := h.db.QueryContext(ctx, `SELECT service_id, at, latency_ms, online FROM services_history WHERE at >= ? ORDER BY at`, sqlutil.FormatTime(t))
+	rows, err := h.db.QueryContext(ctx, `SELECT service_id, at, latency_ms, online, maintenance FROM services_history WHERE at >= ? ORDER BY at`, sqlutil.FormatTime(t))
 	if err != nil {
 		return nil, fmt.Errorf("query history: %w", err)
 	}
@@ -207,14 +207,14 @@ func (h *HistoryStore) Since(ctx context.Context, t time.Time) ([]domain.Latency
 	for rows.Next() {
 		var p domain.LatencyPoint
 		var at string
-		var online int
-		if err := rows.Scan(&p.ServiceID, &at, &p.LatencyMs, &online); err != nil {
+		var online, maintenance int
+		if err := rows.Scan(&p.ServiceID, &at, &p.LatencyMs, &online, &maintenance); err != nil {
 			return nil, fmt.Errorf("scan history: %w", err)
 		}
 		if p.At, err = sqlutil.ParseTime(at); err != nil {
 			return nil, err
 		}
-		p.Online = online == 1
+		p.Online, p.Maintenance = online == 1, maintenance == 1
 		out = append(out, p)
 	}
 	return out, rows.Err()

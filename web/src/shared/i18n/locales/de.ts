@@ -863,4 +863,11 @@ export const de: Record<MessageKey, string> = {
   'backupmonitor.grace_minutes': 'Karenzzeit in Minuten',
   'backupmonitor.every_h': 'alle {hours} h',
   'backupmonitor.grace_short': '+{minutes} min Karenz',
+  'widget.status-overview.title': 'Statusübersicht',
+  'widget.status-overview.description':
+    'Verfügbarkeit aller Dienste über 30 Tage mit Störungen; Klick auf einen Dienst zeigt Details.',
+  'services.uptime_30d': 'Verfügbarkeit der letzten 30 Tage',
+  'services.uptime_bars': 'Tägliche Verfügbarkeit von {name} in den letzten 30 Tagen',
+  'services.incident_ongoing': 'dauert an',
+  'services.no_incidents': 'Keine Störungen erfasst.',
 };

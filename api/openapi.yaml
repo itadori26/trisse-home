@@ -648,6 +648,16 @@ paths:
         "204": { description: Sent }
         "400": { description: No MAC address stored }
         "503": { description: The relay did not answer (profile "wol" not enabled) }
+  /api/services/uptime:
+    get:
+      tags: [services]
+      summary: Uptime per service in percent over 24 h, 7, 30 and 90 days plus 90 daily values (null without data); maintenance windows are excluded
+      responses: { "200": { description: OK } }
+  /api/services/incidents:
+    get:
+      tags: [services]
+      summary: Outages, newest first (?service=<id>&limit=<n>); open incidents have end null
+      responses: { "200": { description: OK } }
   /api/services/history:
     get:
       tags: [services]
