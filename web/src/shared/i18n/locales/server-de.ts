@@ -456,6 +456,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_1399b4677ad575ae: 'Das Token darf das nicht.',
   // The topic may contain letters, digits, - and _ (max. 64 characters).
   srv_218a25cf9751b7dd: 'Das Topic darf Buchstaben, Ziffern, - und _ enthalten (max. 64 Zeichen).',
+  // The version does not exist.
+  srv_192c651a50b6f91f: 'Die Version existiert nicht.',
   // The weather warnings are not available right now.
   srv_314a73e152936a17: 'Die Wetterwarnungen sind gerade nicht verfügbar.',
   // The widget configuration is too large.

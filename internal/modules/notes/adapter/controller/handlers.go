@@ -14,6 +14,12 @@ type UseCases struct {
 	Get    usecase.GetNote
 	Save   usecase.SaveNote
 	Delete usecase.DeleteNote
+	// #73
+	Search    usecase.SearchNotes
+	Backlinks usecase.ListBacklinks
+	Revisions usecase.ListRevisions
+	Revision  usecase.GetRevision
+	Restore   usecase.RestoreRevision
 }
 
 // Handlers serves the notes endpoints.
@@ -64,6 +70,56 @@ func (h *Handlers) save(w http.ResponseWriter, r *http.Request, id string, statu
 		return
 	}
 	httpapi.WriteJSON(w, status, presenter.Note(res))
+}
+
+// Search handles GET /api/notes/search?q=….
+func (h *Handlers) Search(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Search.Execute(r.Context(), r.URL.Query().Get("q"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.SearchHits(res))
+}
+
+// Backlinks handles GET /api/notes/{id}/backlinks.
+func (h *Handlers) Backlinks(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Backlinks.Execute(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.NoteRefs(res))
+}
+
+// Revisions handles GET /api/notes/{id}/revisions.
+func (h *Handlers) Revisions(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Revisions.Execute(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Revisions(res))
+}
+
+// Revision handles GET /api/notes/{id}/revisions/{rev}.
+func (h *Handlers) Revision(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Revision.Execute(r.Context(), r.PathValue("id"), r.PathValue("rev"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.RevisionDetail(res))
+}
+
+// Restore handles POST /api/notes/{id}/revisions/{rev}/restore.
+func (h *Handlers) Restore(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Restore.Execute(r.Context(), r.PathValue("id"), r.PathValue("rev"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Note(res))
 }
 
 // Delete handles DELETE /api/notes/{id}.

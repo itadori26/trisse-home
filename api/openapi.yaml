@@ -905,6 +905,57 @@ paths:
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Note" } } } }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/notes/search:
+    get:
+      tags: [notes]
+      summary: Full-text search (FTS5, prefix match, diacritics folded); highlighted title and excerpt as text segments
+      parameters: [{ name: q, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200":
+          description: Best matches first (at most 20)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    title: { type: array, items: { $ref: "#/components/schemas/TextSegment" } }
+                    snippet: { type: array, items: { $ref: "#/components/schemas/TextSegment" } }
+  /api/notes/{id}/backlinks:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [notes]
+      summary: "Notes that link to this one with [[Title]]"
+      responses:
+        "200": { description: "OK (id, title)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notes/{id}/revisions:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [notes]
+      summary: Earlier versions, newest first (one per 10 minutes of editing, at most 50)
+      responses:
+        "200": { description: "OK (id, title, createdAt, size)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notes/{id}/revisions/{rev}:
+    parameters: [{ $ref: "#/components/parameters/id" }, { name: rev, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [notes]
+      summary: A version with its text and a line diff to the current note (op " ", "+", "-")
+      responses:
+        "200": { description: "OK (id, title, createdAt, size, body, diff)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notes/{id}/revisions/{rev}/restore:
+    parameters: [{ $ref: "#/components/parameters/id" }, { name: rev, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [notes]
+      summary: Restore a version; the current text is kept as a version
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: The restored note }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/notes/{id}:
     parameters: [{ $ref: "#/components/parameters/id" }]
     get:
@@ -1667,6 +1718,7 @@ components:
         bookmarks: { type: array, items: { $ref: "#/components/schemas/Bookmark" } }
         folders: { type: array, items: { $ref: "#/components/schemas/Folder" } }
         tags: { type: array, items: { type: object, properties: { name: { type: string }, count: { type: integer } } } }
+    TextSegment: { type: object, properties: { text: { type: string, description: Plain text, never HTML }, hit: { type: boolean } } }
     NoteInput:
       type: object
       required: [title, body, pinned]

@@ -220,6 +220,7 @@ export const serverMessages = {
   srv_10c62f2d6f8f250e: "The token does not exist.",
   srv_1399b4677ad575ae: "The token is not allowed to do this.",
   srv_218a25cf9751b7dd: "The topic may contain letters, digits, - and _ (max. 64 characters).",
+  srv_192c651a50b6f91f: "The version does not exist.",
   srv_314a73e152936a17: "The weather warnings are not available right now.",
   srv_3f4f8e97996c49f7: "The widget configuration is too large.",
   srv_90febdf2f4113f20: "The widget configuration must be a JSON object.",

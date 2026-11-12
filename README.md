@@ -45,7 +45,7 @@ Not sure whether trisse-home is the right fit? See the
 | **clock**      | Time and date, optionally in another time zone                                                        |
 | **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded) |
 | **bookmarks**  | Links in folders with tags, filterable; opt-in: title and favicon fetched on add (icons stored locally) and a weekly link check with a "broken links" filter |
-| **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
+| **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering); full-text search with highlighting (also in the quick search), `[[wiki links]]` with backlinks, version history with diff and restore |
 | **todos**      | To-do list with due dates and overdue highlighting, recurring to-dos (daily, weekly on weekdays, monthly, N days after completion) and reminders via the notification channels |
 | **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
