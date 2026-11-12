@@ -317,6 +317,8 @@ service tiles are configured in the web interface.
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
 | `TRANSIT_API_URL`   | `https://api.transitous.org`      | MOTIS API for departures; point it to your own MOTIS instance if you like.    |
 | `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
+| `METRICS_ENABLED`   | `false`                           | Expose `GET /metrics` for Prometheus ([docs/metrics.md](docs/metrics.md)).    |
+| `METRICS_TOKEN`     | –                                 | Bearer token for `/metrics`, at least 32 characters.                          |
 | `DISKHEALTH_DIR`    | `/smart` (compose)                | Directory with the export of `scripts/smart-export.sh`.                       |
 | `DISKHEALTH_STALE_AFTER` | `2h`                         | Older S.M.A.R.T. exports are shown as unknown.                                |
 | `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |

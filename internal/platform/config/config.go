@@ -38,7 +38,11 @@ type Config struct {
 	DockerProxyURL  string
 	// DockerActions enables restart and logs for DockerActionsContainers;
 	// restarts use DockerActionsProxyURL (a restart-only socket proxy).
-	DockerActions           bool
+	DockerActions bool
+	// MetricsEnabled exposes GET /metrics (Prometheus) protected by
+	// MetricsToken (bearer) and ALLOWED_CIDRS (#109).
+	MetricsEnabled          bool
+	MetricsToken            string
 	DockerActionsContainers []string
 	DockerActionsProxyURL   string
 	// WolRelay is host:port of the Wake-on-LAN relay; empty sends
@@ -117,6 +121,8 @@ func Load(getenv func(string) string) (Config, error) {
 		ShutdownTimeout:         l.duration("SHUTDOWN_TIMEOUT", 15*time.Second),
 		DockerProxyURL:          l.str("DOCKER_PROXY_URL", "http://docker-socket-proxy:2375"),
 		DockerActions:           l.boolean("DOCKER_ACTIONS", false),
+		MetricsEnabled:          l.boolean("METRICS_ENABLED", false),
+		MetricsToken:            l.str("METRICS_TOKEN", ""),
 		DockerActionsContainers: l.rawList("DOCKER_ACTIONS_CONTAINERS", ""),
 		DockerActionsProxyURL:   l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
 		WolRelay:                l.str("WOL_RELAY", ""),
@@ -159,6 +165,9 @@ func Load(getenv func(string) string) (Config, error) {
 	cfg.BackupDir = l.str("BACKUP_DIR", filepath.Join(filepath.Dir(cfg.DatabasePath), "backups"))
 	if len(cfg.AllowedCIDRs) == 0 && l.getenv("ALLOWED_CIDRS") != "" {
 		l.fail("ALLOWED_CIDRS", "must contain at least one CIDR")
+	}
+	if cfg.MetricsEnabled && len(cfg.MetricsToken) < minMetricsToken {
+		l.fail("METRICS_TOKEN", "must be at least 32 characters when METRICS_ENABLED=true (e.g. openssl rand -hex 32)")
 	}
 	if cfg.DockerActions && len(cfg.DockerActionsContainers) == 0 {
 		l.fail("DOCKER_ACTIONS_CONTAINERS", "must list the containers that may be restarted when DOCKER_ACTIONS=true")
@@ -243,6 +252,9 @@ func (l *loader) oneOf(key, def string, allowed ...string) string {
 	}
 	return v
 }
+
+// minMetricsToken is the minimum length of METRICS_TOKEN.
+const minMetricsToken = 32
 
 func (l *loader) boolean(key string, def bool) bool {
 	raw := l.str(key, strconv.FormatBool(def))

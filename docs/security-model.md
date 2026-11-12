@@ -85,6 +85,14 @@ the public peer status into a directory that is mounted read-only into
 trisse-home. The script is short enough to read in a minute:
 [`scripts/wireguard-export.sh`](../scripts/wireguard-export.sh).
 
+### Prometheus metrics
+
+`GET /metrics` exists only with `METRICS_ENABLED=true`. It needs a bearer
+token of at least 32 characters (compared in constant time) and is limited
+by `ALLOWED_CIDRS` like every other route. It reveals service, container and
+disk names, but no credentials and nothing from your data. See
+[metrics.md](metrics.md).
+
 ### S.M.A.R.T. export
 
 Reading disk health needs raw device access (`/dev/sd*`, `CAP_SYS_RAWIO`),

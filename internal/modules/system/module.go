@@ -1,6 +1,7 @@
 package system
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 	"net/http"
@@ -80,4 +81,29 @@ func (m *Module) Jobs() []modules.Job {
 		// Does nothing unless the user enabled the update check.
 		{Name: "system.update-check", Interval: updateCheckJobInterval, Run: m.versions.Check},
 	}
+}
+
+// Metrics implements kernel.MetricSource (#109): host metrics.
+func (m *Module) Metrics(ctx context.Context) []kernel.MetricSample {
+	s, err := m.uc.Current(ctx)
+	if err != nil {
+		return nil
+	}
+	out := []kernel.MetricSample{
+		kernel.Gauge("trisse_host_cpu_ratio", "CPU usage of the host (0-1).", s.CPUPercent/100),
+		kernel.Gauge("trisse_host_load1", "1-minute load average.", s.Load1),
+		kernel.Gauge("trisse_host_memory_used_bytes", "Used memory of the host.", float64(s.Memory.Used)),
+		kernel.Gauge("trisse_host_memory_total_bytes", "Total memory of the host.", float64(s.Memory.Total)),
+		kernel.Gauge("trisse_host_uptime_seconds", "Uptime of the host.", s.Uptime.Seconds()),
+	}
+	if s.Temperature > 0 {
+		out = append(out, kernel.Gauge("trisse_host_temperature_celsius", "Highest temperature sensor reading.", s.Temperature))
+	}
+	for _, d := range s.Disks {
+		l := kernel.Label{Name: "disk", Value: d.Label}
+		out = append(out,
+			kernel.Gauge("trisse_host_disk_used_bytes", "Used bytes per configured file system.", float64(d.Usage.Used), l),
+			kernel.Gauge("trisse_host_disk_total_bytes", "Size per configured file system.", float64(d.Usage.Total), l))
+	}
+	return out
 }

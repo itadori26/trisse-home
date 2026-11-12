@@ -94,3 +94,26 @@ func (m *Module) Jobs() []modules.Job {
 		return m.uc.CheckAll(ctx)
 	}}}
 }
+
+// Metrics implements kernel.MetricSource (#109): availability, response
+// time and certificate expiry per service.
+func (m *Module) Metrics(ctx context.Context) []kernel.MetricSample {
+	list, err := m.uc.List(ctx)
+	if err != nil {
+		return nil
+	}
+	out := make([]kernel.MetricSample, 0, 3*len(list))
+	for _, s := range list {
+		if s.State == "unknown" {
+			continue
+		}
+		l := kernel.Label{Name: "service", Value: s.Name}
+		out = append(out,
+			kernel.Gauge("trisse_service_up", "Whether the service answered its last check (1) or not (0).", kernel.Bool(s.State == "online"), l),
+			kernel.Gauge("trisse_service_response_seconds", "Response time of the last check in seconds.", float64(s.LatencyMs)/1000, l))
+		if !s.CertExpiresAt.IsZero() {
+			out = append(out, kernel.Gauge("trisse_service_cert_expiry_timestamp_seconds", "Expiry of the TLS certificate since the Unix epoch.", float64(s.CertExpiresAt.Unix()), l))
+		}
+	}
+	return out
+}

@@ -1,6 +1,7 @@
 package backupmonitor
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 	"time"
@@ -67,4 +68,26 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 // Jobs implements modules.Module.
 func (m *Module) Jobs() []modules.Job {
 	return []modules.Job{{Name: "backupmonitor.report", Interval: reportInterval, Run: m.uc.Report}}
+}
+
+// Metrics implements kernel.MetricSource (#109): state and last success
+// per backup source and heartbeat check; waiting sources are omitted.
+func (m *Module) Metrics(ctx context.Context) []kernel.MetricSample {
+	list, err := m.uc.List(ctx)
+	if err != nil {
+		return nil
+	}
+	out := make([]kernel.MetricSample, 0, 2*len(list))
+	for _, s := range list {
+		if s.State == "waiting" {
+			continue
+		}
+		labels := []kernel.Label{{Name: "name", Value: s.Name}, {Name: "kind", Value: s.Kind}}
+		out = append(out, kernel.Gauge("trisse_backup_ok", "Whether the backup or check is healthy (1: ok or running, 0: overdue or failed).",
+			kernel.Bool(s.State == "ok" || s.State == "running"), labels...))
+		if !s.LastSuccessAt.IsZero() {
+			out = append(out, kernel.Gauge("trisse_backup_last_success_timestamp_seconds", "Last successful run since the Unix epoch.", float64(s.LastSuccessAt.Unix()), labels...))
+		}
+	}
+	return out
 }

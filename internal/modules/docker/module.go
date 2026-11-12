@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -59,4 +60,24 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 // Jobs implements modules.Module.
 func (m *Module) Jobs() []modules.Job {
 	return []modules.Job{{Name: "docker.refresh", Interval: refreshInterval, Run: m.uc.Refresh}}
+}
+
+// Metrics implements kernel.MetricSource (#109): container counts and the
+// state per container.
+func (m *Module) Metrics(ctx context.Context) []kernel.MetricSample {
+	res, err := m.uc.List(ctx)
+	if err != nil {
+		return nil
+	}
+	const help = "Number of containers by state."
+	out := []kernel.MetricSample{
+		kernel.Gauge("trisse_containers", help, float64(res.Running), kernel.Label{Name: "state", Value: "running"}),
+		kernel.Gauge("trisse_containers", help, float64(res.Stopped), kernel.Label{Name: "state", Value: "stopped"}),
+		kernel.Gauge("trisse_containers", help, float64(res.Unhealthy), kernel.Label{Name: "state", Value: "unhealthy"}),
+	}
+	for _, c := range res.Containers {
+		out = append(out, kernel.Gauge("trisse_container_running", "Whether the container is running (1) or not (0).",
+			kernel.Bool(c.State == "running"), kernel.Label{Name: "container", Value: c.Name}))
+	}
+	return out
 }

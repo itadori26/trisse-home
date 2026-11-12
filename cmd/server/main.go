@@ -22,6 +22,7 @@ import (
 	"trisse-home/internal/platform/demo"
 	"trisse-home/internal/platform/httpserver"
 	"trisse-home/internal/platform/logging"
+	"trisse-home/internal/platform/metrics"
 	"trisse-home/internal/platform/middleware"
 	"trisse-home/internal/platform/router"
 	"trisse-home/internal/platform/scheduler"
@@ -150,11 +151,19 @@ func newHandler(a *app) http.Handler {
 	}
 	r.Protected("GET /api/modules", a.registry.Handler(frontendOnlyWidgetKinds))
 	r.Handle("GET /healthz", router.HealthCheck(a.db.PingContext))
+	var httpStats *metrics.HTTPStats
+	if a.cfg.MetricsEnabled {
+		httpStats = metrics.NewHTTPStats()
+		r.Handle("GET /metrics", metricsHandler(a, httpStats))
+	}
 	r.Handle("/", spa.Handler(webui.Dist()))
 
 	var h http.Handler = r
 	if a.cfg.DemoMode {
 		h = demo.Block(r)
+	}
+	if httpStats != nil {
+		h = httpStats.Middleware(h)
 	}
 	return middleware.Chain(h,
 		middleware.Recover(a.log),

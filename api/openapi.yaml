@@ -807,6 +807,14 @@ paths:
         "204": { description: Deleted }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  # ---------------------------------------------------------------- metrics
+  /metrics:
+    get:
+      tags: [system]
+      summary: Prometheus text exposition (only with METRICS_ENABLED=true; Authorization Bearer METRICS_TOKEN), see docs/metrics.md
+      security: []
+      responses: { "200": { description: "text/plain; version=0.0.4" }, "401": { description: Missing or wrong token } }
+
   # ---------------------------------------------------------------- speedtest
   /api/speedtest/settings:
     get:
