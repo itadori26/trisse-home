@@ -66,6 +66,9 @@ type Config struct {
 	// DemoResetInterval, no outbound requests and no stored credentials.
 	DemoMode          bool
 	DemoResetInterval time.Duration
+	// InstallMethod is set by the Dockerfile, the native package and the
+	// Raspberry Pi image (docker, package, appliance); empty when unknown.
+	InstallMethod string
 	// Single sign-on for the owner (ADR 0013).
 	OIDCIssuer          string
 	OIDCClientID        string
@@ -141,6 +144,7 @@ func Load(getenv func(string) string) (Config, error) {
 		BackupRetention:         l.integer("BACKUP_RETENTION", 7),
 		DemoMode:                l.boolean("DEMO_MODE", false),
 		DemoResetInterval:       l.duration("DEMO_RESET_INTERVAL", 3*time.Hour),
+		InstallMethod:           l.oneOf("INSTALL_METHOD", "", "", "docker", "package", "appliance"),
 		OIDCIssuer:              l.str("OIDC_ISSUER", ""),
 		OIDCClientID:            l.str("OIDC_CLIENT_ID", ""),
 		OIDCClientSecret:        l.str("OIDC_CLIENT_SECRET", ""),

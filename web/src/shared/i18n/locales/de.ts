@@ -688,6 +688,10 @@ export const de: Record<MessageKey, string> = {
   'system.update_check_hint':
     'Standardmäßig aus. Wenn aktiviert, fragt der Server höchstens einmal täglich bei der GitHub-API nach dem neuesten Release.',
   'system.update_available': 'Version {version} ist verfügbar.',
+  'system.update_how_docker': 'Aktualisieren mit: docker compose pull && docker compose up -d',
+  'system.update_how_package':
+    'Aktualisieren mit: sudo apt update && sudo apt upgrade (oder das neue .deb installieren).',
+  'system.update_how_appliance': 'Updates werden jede Nacht automatisch installiert.',
   'system.release_notes': 'Release Notes',
   'system.up_to_date': 'Du nutzt das neueste Release.',
   'settings.section.about': 'Über',

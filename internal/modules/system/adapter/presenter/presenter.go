@@ -105,11 +105,12 @@ type VersionDTO struct {
 	CheckEnabled    bool        `json:"checkEnabled"`
 	Latest          *ReleaseDTO `json:"latest"`
 	UpdateAvailable bool        `json:"updateAvailable"`
+	InstallMethod   string      `json:"installMethod"`
 }
 
 // Version maps a VersionInfo.
 func Version(v usecase.VersionInfo) VersionDTO {
-	dto := VersionDTO{Current: v.Current, CheckEnabled: v.CheckEnabled, UpdateAvailable: v.UpdateAvailable}
+	dto := VersionDTO{Current: v.Current, CheckEnabled: v.CheckEnabled, UpdateAvailable: v.UpdateAvailable, InstallMethod: string(v.InstallMethod)}
 	if v.Latest != nil {
 		dto.Latest = &ReleaseDTO{Version: v.Latest.Version, URL: v.Latest.URL, PublishedAt: v.Latest.PublishedAt}
 	}

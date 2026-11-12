@@ -1050,7 +1050,7 @@ paths:
     get:
       tags: [system]
       summary: Running version and, if the opt-in update check is enabled, the latest release (looked up at most once a day)
-      responses: { "200": { description: "OK (current, checkEnabled, latest, updateAvailable)" } }
+      responses: { "200": { description: "OK (current, checkEnabled, latest, updateAvailable, installMethod: docker, package, appliance or empty)" } }
   /api/system/update-check:
     put:
       tags: [system]

@@ -98,6 +98,22 @@ web/src/
 api/openapi.yaml         API description
 ```
 
+## Quick start (Raspberry Pi)
+
+No server, no Docker? Flash the ready-made image: in
+[Raspberry Pi Imager](https://www.raspberrypi.com/software/) open
+*App Options → Content Repository → Use custom URL* and enter
+
+```
+https://github.com/itadori26/trisse-home/releases/latest/download/os_list.json
+```
+
+pick **trisse-home**, set user, Wi-Fi and SSH as usual and write the card.
+After the first boot open `http://trisse-home.local` and enter the setup
+token — it is on the screen attached to the Pi, in `trisse-home-setup.txt` on
+the SD card, or shown by `sudo trisse-home-setup-token`. Updates install
+themselves at night. Details: [docs/raspberry-pi.md](docs/raspberry-pi.md).
+
 ## Quick start (Docker Compose)
 
 Requirements: Docker with the Compose plugin.
@@ -400,6 +416,7 @@ service tiles are configured in the web interface.
 | `PASSWORD_LOGIN` | `true` | `false` disables the owner's password login once SSO is configured. |
 | `SSO_REQUIRE_2FA` | `false` | Also ask for the local TOTP code after SSO. |
 | `PUBLIC_URL` | empty | Public `https://` origin (e.g. `https://home.example.org`); enables passkeys. WebAuthn does not work on plain `http://<ip>`. |
+| `INSTALL_METHOD` | set by the image, the package and the Pi image | `docker`, `package` or `appliance`; selects the update hint in the settings. |
 | `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
 | `SAMPLE_FEEDS`      | Go Blog, Hacker News              | Example feeds, comma separated.                                              |
 

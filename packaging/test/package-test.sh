@@ -53,15 +53,19 @@ trisse-home-setup-token | grep -q "Token  $token" || fail "trisse-home-setup-tok
 [ -f /usr/lib/systemd/system/trisse-home-setup-info.timer ] || fail "setup info timer missing"
 [ -L /etc/systemd/system/timers.target.wants/trisse-home-setup-info.timer ] || fail "setup info timer not enabled"
 
-step "upgrade keeps local changes"
+step "upgrade keeps local changes and copies the database first"
+mkdir -p $state && echo "data v1" >$state/trisse-home.db && echo "wal" >$state/trisse-home.db-wal
 echo "LOG_LEVEL=debug" >>$conf/trisse-home.env
 apt-get install -y -qq --reinstall -o Dpkg::Options::=--force-confold "$(realpath "$deb")" >/dev/null
 grep -q '^LOG_LEVEL=debug' $conf/trisse-home.env || fail "local config change lost"
 [ "$(key_of $conf/secret.env)" = "$key" ] || fail "upgrade changed the key"
 [ "$(mode_of $conf/trisse-home.env)" = "root:trisse-home 640" ] || fail "upgrade changed config permissions"
+copy=$(ls $state/backups/pre-upgrade/trisse-home-*.db)
+[ "$(cat "$copy")" = "data v1" ] && [ -f "$copy-wal" ] || fail "no pre-upgrade copy of the database"
+for _ in 1 2 3; do apt-get install -y -qq --reinstall -o Dpkg::Options::=--force-confold "$(realpath "$deb")" >/dev/null; sleep 1; done
+[ "$(ls $state/backups/pre-upgrade/*.db | wc -l)" -eq 3 ] || fail "more than three pre-upgrade copies kept"
 
 step "remove keeps configuration and data"
-mkdir -p $state && touch $state/trisse-home.db
 apt-get remove -y -qq trisse-home >/dev/null
 [ ! -e /usr/bin/trisse-home ] || fail "binary still installed"
 [ -f $conf/trisse-home.env ] && [ -f $conf/secret.env ] || fail "remove deleted configuration"
