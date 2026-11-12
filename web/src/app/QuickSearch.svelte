@@ -14,10 +14,17 @@
     /** Enabled modules; disabled ones are not searched. */
     modules: Set<string>;
     onclose: () => void;
+    /** Text typed into the top bar's search field before the dialog opened (#167). */
+    initialQuery?: string;
   }
-  let { container, modules, onclose }: Props = $props();
+  let { container, modules, onclose, initialQuery = '' }: Props = $props();
 
-  let query = $state('');
+  // svelte-ignore state_referenced_locally
+  let query = $state(initialQuery);
+  // Characters typed into the top bar until this dialog has focus (#167).
+  $effect(() => {
+    if (initialQuery) query = initialQuery;
+  });
   let items = $state<QuickItem[]>([]);
   let notes = new Map<string, { title: string; body: string }>();
   let todos = new Map<string, Parameters<Container['todos']['toggle']>[0]>();
@@ -223,6 +230,7 @@
       autocomplete="off"
       autofocus
       bind:value={query}
+      onfocus={(e) => e.currentTarget.setSelectionRange(query.length, query.length)}
       {onkeydown}
     />
     <div id="qs-listbox" role="listbox" aria-label={t('app.results')} class="results">

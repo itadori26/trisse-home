@@ -1711,6 +1711,9 @@ components:
         accentColor: { type: string, description: '#rrggbb or empty', pattern: '^(#[0-9a-fA-F]{6})?$' }
         backgroundImage: { type: string, description: http(s) URL or empty }
         customCss: { type: string, maxLength: 65536 }
+        language: { type: string, enum: ["", en, de], description: '"" follows the browser' }
+        greeting: { type: boolean, description: Greeting line below the top bar (#167), off by default }
+        greetingName: { type: string, maxLength: 40, description: Name used in the greeting; may be empty }
     SearchSettings:
       type: object
       required: [defaultProvider, providers, shortcuts]

@@ -1248,4 +1248,17 @@ export const de: Record<MessageKey, string> = {
   'focus.notify_denied':
     'Der Browser blockiert Benachrichtigungen für diese Seite. Bitte in den Website-Einstellungen erlauben.',
   'focus.notify_unsupported': 'Dieser Browser unterstützt keine Benachrichtigungen.',
+  'app.search_placeholder': 'Suchen …',
+  'app.menu': 'Menü',
+  'app.greeting_temperature': '{t} °C',
+  'appearance.greeting': 'Begrüßungszeile unter der Kopfleiste anzeigen (Name, Datum und Wetter)',
+  'appearance.greeting_name': 'Dein Name in der Begrüßung (optional)',
+  'appearance.greeting_morning': 'Guten Morgen',
+  'appearance.greeting_morning_named': 'Guten Morgen, {name}',
+  'appearance.greeting_day': 'Hallo',
+  'appearance.greeting_day_named': 'Hallo, {name}',
+  'appearance.greeting_evening': 'Guten Abend',
+  'appearance.greeting_evening_named': 'Guten Abend, {name}',
+  'appearance.greeting_night': 'Gute Nacht',
+  'appearance.greeting_night_named': 'Gute Nacht, {name}',
 };

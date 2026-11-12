@@ -1218,6 +1218,19 @@ export const en = {
   'focus.notify': 'Browser notification at the end of a phase',
   'focus.notify_denied': 'The browser blocks notifications for this page. Allow them in the site settings.',
   'focus.notify_unsupported': 'This browser does not support notifications.',
+  'app.search_placeholder': 'Search…',
+  'app.menu': 'Menu',
+  'app.greeting_temperature': '{t} °C',
+  'appearance.greeting': 'Show a greeting line below the top bar (name, date and weather)',
+  'appearance.greeting_name': 'Your name in the greeting (optional)',
+  'appearance.greeting_morning': 'Good morning',
+  'appearance.greeting_morning_named': 'Good morning, {name}',
+  'appearance.greeting_day': 'Hello',
+  'appearance.greeting_day_named': 'Hello, {name}',
+  'appearance.greeting_evening': 'Good evening',
+  'appearance.greeting_evening_named': 'Good evening, {name}',
+  'appearance.greeting_night': 'Good night',
+  'appearance.greeting_night_named': 'Good night, {name}',
 } as const;
 
 /** Every message key. */
