@@ -776,6 +776,46 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------------------------------------------------------- bookmarks
+  /api/bookmarks/settings:
+    get:
+      tags: [bookmarks]
+      summary: Opt-in outbound features (title/favicon fetching, weekly link check); both off by default
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkSettings" } } } } }
+    put:
+      tags: [bookmarks]
+      summary: Switch title/favicon fetching and the weekly link check
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkSettings" } } } }
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkSettings" } } } } }
+  /api/bookmarks/{id}/enrich:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [bookmarks]
+      summary: Fetch the favicon and – if the title is still the host name – the page title (requires the setting)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { description: Fetching is disabled }
+        "503": { description: The page could not be read }
+  /api/bookmarks/{id}/check:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [bookmarks]
+      summary: Check the link now (requires the setting)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { description: The link check is disabled }
+  /api/bookmarks/{id}/icon:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [bookmarks]
+      summary: Stored favicon (PNG, ICO, JPEG, GIF or WebP; served with nosniff and a sandbox CSP)
+      responses:
+        "200": { description: The image, content: { image/png: {}, image/x-icon: {}, image/jpeg: {}, image/gif: {}, image/webp: {} } }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/bookmarks:
     get:
       tags: [bookmarks]
@@ -784,6 +824,7 @@ paths:
         - { name: folder, in: query, schema: { type: string }, description: 'Folder ID, or "none" for bookmarks without folder' }
         - { name: tag, in: query, schema: { type: string } }
         - { name: q, in: query, schema: { type: string }, description: Text search in title, URL and description }
+        - { name: status, in: query, schema: { type: string, enum: [broken] }, description: Only bookmarks whose last link check failed }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkList" } } } }
     post:
@@ -864,6 +905,57 @@ paths:
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Note" } } } }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/notes/search:
+    get:
+      tags: [notes]
+      summary: Full-text search (FTS5, prefix match, diacritics folded); highlighted title and excerpt as text segments
+      parameters: [{ name: q, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200":
+          description: Best matches first (at most 20)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    title: { type: array, items: { $ref: "#/components/schemas/TextSegment" } }
+                    snippet: { type: array, items: { $ref: "#/components/schemas/TextSegment" } }
+  /api/notes/{id}/backlinks:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [notes]
+      summary: "Notes that link to this one with [[Title]]"
+      responses:
+        "200": { description: "OK (id, title)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notes/{id}/revisions:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [notes]
+      summary: Earlier versions, newest first (one per 10 minutes of editing, at most 50)
+      responses:
+        "200": { description: "OK (id, title, createdAt, size)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notes/{id}/revisions/{rev}:
+    parameters: [{ $ref: "#/components/parameters/id" }, { name: rev, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [notes]
+      summary: A version with its text and a line diff to the current note (op " ", "+", "-")
+      responses:
+        "200": { description: "OK (id, title, createdAt, size, body, diff)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notes/{id}/revisions/{rev}/restore:
+    parameters: [{ $ref: "#/components/parameters/id" }, { name: rev, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [notes]
+      summary: Restore a version; the current text is kept as a version
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: The restored note }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/notes/{id}:
     parameters: [{ $ref: "#/components/parameters/id" }]
     get:
@@ -1606,7 +1698,19 @@ components:
       allOf:
         - $ref: "#/components/schemas/BookmarkInput"
         - type: object
-          properties: { id: { type: string }, createdAt: { type: string, format: date-time } }
+          properties:
+            id: { type: string }
+            createdAt: { type: string, format: date-time }
+            hasIcon: { type: boolean, description: "A favicon is stored (GET /api/bookmarks/{id}/icon)" }
+            link:
+              type: object
+              description: Result of the last link check
+              properties:
+                state: { type: string, enum: ["", ok, redirect, broken], description: '"" = not checked yet' }
+                code: { type: integer, description: HTTP status, 0 when unreachable }
+                target: { type: string, description: Final URL of a redirect }
+                checkedAt: { type: string, description: RFC 3339 or empty }
+    BookmarkSettings: { type: object, properties: { enrich: { type: boolean }, checkLinks: { type: boolean } } }
     Folder: { type: object, properties: { id: { type: string }, name: { type: string }, position: { type: integer }, count: { type: integer } } }
     BookmarkList:
       type: object
@@ -1614,6 +1718,7 @@ components:
         bookmarks: { type: array, items: { $ref: "#/components/schemas/Bookmark" } }
         folders: { type: array, items: { $ref: "#/components/schemas/Folder" } }
         tags: { type: array, items: { type: object, properties: { name: { type: string }, count: { type: integer } } } }
+    TextSegment: { type: object, properties: { text: { type: string, description: Plain text, never HTML }, hit: { type: boolean } } }
     NoteInput:
       type: object
       required: [title, body, pinned]
@@ -1632,7 +1737,20 @@ components:
       properties:
         title: { type: string, maxLength: 300 }
         due: { type: string, description: YYYY-MM-DD or empty }
-        done: { type: boolean }
+        done: { type: boolean, description: "Completing a recurring to-do creates its next occurrence" }
+        repeat: { $ref: "#/components/schemas/TodoRepeat", description: Omit to keep the stored rule }
+        reminder: { $ref: "#/components/schemas/TodoReminder", description: Omit to keep the stored reminder }
+    TodoRepeat:
+      type: object
+      properties:
+        kind: { type: string, enum: ["", daily, weekly, monthly, after], description: '"" = no repeat; "after" = N days after completion' }
+        every: { type: integer, minimum: 1, maximum: 365 }
+        days: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, description: Weekdays of weekly rules (0 = Sunday) }
+    TodoReminder:
+      type: object
+      properties:
+        at: { type: string, example: "08:00", description: 'HH:MM; "" = no reminder (needs a due date). Sent once as a "reminder" notification.' }
+        daysBefore: { type: integer, minimum: 0, maximum: 30 }
     Todo:
       type: object
       properties:
@@ -1643,6 +1761,8 @@ components:
         overdue: { type: boolean }
         position: { type: integer }
         completedAt: { type: string }
+        repeat: { $ref: "#/components/schemas/TodoRepeat" }
+        reminder: { $ref: "#/components/schemas/TodoReminder" }
     Feed:
       type: object
       properties:

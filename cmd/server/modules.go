@@ -118,9 +118,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 				Waker: out.waker, Client: out.health, InsecureClient: out.insecureHealth, Maintenance: maintenance,
 			})
 		}},
-		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids) }},
+		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids, out.guarded) }},
 		{"notes", func() modules.Module { return notes.New(db, clk, ids) }},
-		{"todos", func() modules.Module { return todos.New(db, clk, ids) }},
+		{"todos", func() modules.Module { return todos.New(db, clk, ids, alerts) }},
 		{"rss", func() modules.Module { return rss.New(db, client, clk, ids, cfg.SampleFeeds) }},
 		{"system", func() modules.Module {
 			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths, Version: version, Client: client}, db, sink, clk)
@@ -215,11 +215,17 @@ type secretStore interface {
 // are replaced by fixtures, so no module ever contacts a real system.
 type outbound struct {
 	client, health, insecureHealth *http.Client
-	waker                          interface {
+	// guarded fetches user-supplied URLs (bookmark titles, favicons, link
+	// checks, #72); nil in demo mode, which never contacts other sites.
+	guarded *http.Client
+	waker   interface {
 		Wake(context.Context, kernel.MAC) error
 	}
 	secrets secretStore
 }
+
+// bookmarkFetchTimeout bounds title, favicon and link check requests.
+const bookmarkFetchTimeout = 8 * time.Second
 
 func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbound {
 	if cfg.DemoMode {
@@ -235,6 +241,7 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 		client:         httpclient.New(),
 		health:         httpclient.New(httpclient.WithTimeout(healthCheckTimeout)),
 		insecureHealth: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
+		guarded:        httpclient.New(httpclient.WithTimeout(bookmarkFetchTimeout), httpclient.WithInternalAddressGuard()),
 		waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
 		secrets:        cipher,
 	}

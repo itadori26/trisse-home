@@ -16,6 +16,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_cf47637ff80f03dc: 'Eine Notiz braucht einen Titel oder etwas Text.',
   // A password or access token is required for new registries.
   srv_865d0fdde8c133ca: 'Für neue Registries ist ein Passwort oder Zugriffstoken erforderlich.',
+  // A reminder needs a due date.
+  srv_fc8a2589829c3428: 'Eine Erinnerung braucht ein Fälligkeitsdatum.',
   // A shortcut with this keyword already exists.
   srv_76a5625367cbe997: 'Es gibt bereits ein Kürzel mit diesem Schlüsselwort.',
   // Actions are not enabled for this container (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).
@@ -73,6 +75,11 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_099fe605093d8b87: 'DHL hat den API-Schlüssel abgelehnt.',
   // Delivered parcels can be kept for 0 to 30 days.
   srv_7cb71b2e113119ec: 'Zugestellte Sendungen können 0 bis 30 Tage angezeigt werden.',
+  // Enable fetching titles and icons in the bookmark settings first.
+  srv_d7bffa395fc89711:
+    'Bitte zuerst das Abrufen von Titeln und Icons in den Lesezeichen-Einstellungen aktivieren.',
+  // Enable the link check in the bookmark settings first.
+  srv_f8405f015011b4d0: 'Bitte zuerst die Linkprüfung in den Lesezeichen-Einstellungen aktivieren.',
   // Every widget may appear only once.
   srv_cd8384030060ee99: 'Jedes Widget darf nur einmal vorkommen.',
   // Each registry may only be listed once.
@@ -164,6 +171,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_e9295c1002fdd2ba: 'Bitte gültige Empfängeradressen eingeben, durch Kommas getrennt.',
   // Quiet hours need a start and an end such as 22:00 and 07:00.
   srv_04eab3a4b4f8b837: 'Ruhezeiten brauchen einen Beginn und ein Ende, z. B. 22:00 und 07:00.',
+  // Reminders need a time like 08:00 and at most 30 days before the due date.
+  srv_33507329e3cf1562:
+    'Erinnerungen brauchen eine Uhrzeit wie 08:00 und höchstens 30 Tage vor dem Fälligkeitsdatum.',
+  // Repeat every 1–365 days, weeks or months; weekly repeats need at least one weekday.
+  srv_5f173b47eee5e70d:
+    'Wiederholung alle 1–365 Tage, Wochen oder Monate; wöchentliche Wiederholungen brauchen mindestens einen Wochentag.',
   // Rules need weekdays 0–6, times like 07:30 and networks like 192.168.178.0/24.
   srv_560f31f8940f8cfc: 'Regeln brauchen Wochentage 0–6, Uhrzeiten wie 07:30 und Netze wie 192.168.178.0/24.',
   // Session not found.
@@ -233,6 +246,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Das Backup stammt von einer neueren trisse-home-Version. Bitte zuerst aktualisieren und dann wiederherstellen.',
   // The bookmark does not exist.
   srv_781f5105c04c646b: 'Das Lesezeichen existiert nicht.',
+  // The bookmark has no icon.
+  srv_0e33c72d2ab4fc96: 'Das Lesezeichen hat kein Icon.',
   // The calendar server is not reachable.
   srv_3e73df212f6df359: 'Der Kalenderserver ist nicht erreichbar.',
   // The calendar server rejected the event: {detail}
@@ -297,6 +312,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_0d5b9b677899722e: 'Die Höhe muss zwischen 1 und 24 Zeilen liegen.',
   // The icon is too long.
   srv_42e741b2bbfc2695: 'Das Icon ist zu lang.',
+  // The icon must be a PNG, ICO, JPEG, GIF or WebP image of at most 64 KB.
+  srv_c64f54da73ed8e20: 'Das Icon muss ein PNG-, ICO-, JPEG-, GIF- oder WebP-Bild mit höchstens 64 KB sein.',
   // The identity provider could not be reached: {detail}
   srv_62951ebf93a06287: 'Der Identity Provider ist nicht erreichbar: {detail}',
   // The identity provider did not confirm the sign-in: {detail}
@@ -360,6 +377,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_3b42f48d84e45ed3: 'Die externen Backups konnten nicht aufgelistet werden: {detail}',
   // The owner account is not a guest.
   srv_a8aed831e812c028: 'Das Besitzerkonto ist kein Gast.',
+  // The page could not be read.
+  srv_8dec33ac27b43136: 'Die Seite konnte nicht gelesen werden.',
   // The parcel does not exist.
   srv_f35b41c22f1a21c2: 'Die Sendung existiert nicht.',
   // The passkey does not exist.
@@ -437,6 +456,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_1399b4677ad575ae: 'Das Token darf das nicht.',
   // The topic may contain letters, digits, - and _ (max. 64 characters).
   srv_218a25cf9751b7dd: 'Das Topic darf Buchstaben, Ziffern, - und _ enthalten (max. 64 Zeichen).',
+  // The version does not exist.
+  srv_192c651a50b6f91f: 'Die Version existiert nicht.',
   // The weather warnings are not available right now.
   srv_314a73e152936a17: 'Die Wetterwarnungen sind gerade nicht verfügbar.',
   // The widget configuration is too large.

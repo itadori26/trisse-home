@@ -25,7 +25,7 @@
   import { BackupSettings } from '../features/backup';
   import { BackupSourcesManager } from '../features/backupmonitor';
   import { NotificationSettings } from '../features/notifications';
-  import { BookmarkImport, FoldersManager } from '../features/bookmarks';
+  import { BookmarkImport, BookmarkLinkSettings, FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
   import { SearchSettings } from '../features/search';
@@ -107,6 +107,7 @@
     <FeedsManager rss={container.rss} />
   {:else if current === 'folders'}
     <FoldersManager bookmarks={container.bookmarks} />
+    <BookmarkLinkSettings bookmarks={container.bookmarks} />
   {:else if current === 'calendar'}
     <CalendarSettings calendar={container.calendar} />
   {:else if current === 'transfer'}

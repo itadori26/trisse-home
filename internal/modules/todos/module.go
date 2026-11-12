@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"io/fs"
+	"time"
 
 	"trisse-home/internal/modules"
 	"trisse-home/internal/modules/todos/adapter/controller"
@@ -16,20 +17,34 @@ import (
 type Module struct {
 	modules.Base
 	modules.Transferable
-	handlers *controller.Handlers
-	seed     usecase.SeedSampleData
+	handlers  *controller.Handlers
+	seed      usecase.SeedSampleData
+	reminders usecase.SendDueReminders
+}
+
+// reminderInterval is how often due reminders are checked (#68).
+const reminderInterval = time.Minute
+
+// Jobs implements modules.Module.
+func (m *Module) Jobs() []modules.Job {
+	return []modules.Job{{Name: "todos.reminders", Interval: reminderInterval, Run: func(ctx context.Context) error {
+		_, err := m.reminders.Execute(ctx)
+		return err
+	}}}
 }
 
 // SeedSampleData implements modules.Seeder.
 func (m *Module) SeedSampleData(ctx context.Context) error { return m.seed.Execute(ctx) }
 
-// New builds the to-do module.
-func New(db *sql.DB, clock kernel.Clock, ids kernel.IDGenerator) *Module {
-	d := usecase.Deps{Repo: gateway.NewRepository(db), Clock: clock, IDs: ids}
-	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, seed: usecase.NewSeedSampleData(d), handlers: controller.NewHandlers(controller.UseCases{
-		List: usecase.NewListTodos(d), Create: usecase.NewCreateTodo(d), Update: usecase.NewUpdateTodo(d),
-		Delete: usecase.NewDeleteTodo(d), ClearCompleted: usecase.NewClearCompleted(d),
-	})}
+// New builds the to-do module. Reminders are delivered to alerts (the
+// notifications module, kind "reminder") in the server's time zone.
+func New(db *sql.DB, clock kernel.Clock, ids kernel.IDGenerator, alerts kernel.AlertSink) *Module {
+	d := usecase.Deps{Repo: gateway.NewRepository(db), Clock: clock, IDs: ids, Location: time.Local, Alerts: alerts}
+	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, seed: usecase.NewSeedSampleData(d),
+		reminders: usecase.NewSendDueReminders(d), handlers: controller.NewHandlers(controller.UseCases{
+			List: usecase.NewListTodos(d), Create: usecase.NewCreateTodo(d), Update: usecase.NewUpdateTodo(d),
+			Delete: usecase.NewDeleteTodo(d), ClearCompleted: usecase.NewClearCompleted(d),
+		})}
 }
 
 // Name implements modules.Module.

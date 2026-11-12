@@ -11,13 +11,32 @@ type TodoDTO struct {
 	Overdue     bool   `json:"overdue"`
 	Position    int    `json:"position"`
 	CompletedAt string `json:"completedAt"`
+	// Repeat is the recurrence (kind "" = none, #68).
+	Repeat RepeatDTO `json:"repeat"`
+	// Reminder fires at "HH:MM" on the due date or days before ("" = none).
+	Reminder ReminderDTO `json:"reminder"`
+}
+
+// RepeatDTO describes a recurrence.
+type RepeatDTO struct {
+	Kind  string `json:"kind"`
+	Every int    `json:"every"`
+	Days  []int  `json:"days"`
+}
+
+// ReminderDTO describes a reminder.
+type ReminderDTO struct {
+	At         string `json:"at"`
+	DaysBefore int    `json:"daysBefore"`
 }
 
 const dateLayout = "2006-01-02"
 
 // Todo maps a TodoView.
 func Todo(v usecase.TodoView) TodoDTO {
-	dto := TodoDTO{ID: v.ID, Title: v.Title, Done: v.Done, Overdue: v.Overdue, Position: v.Position}
+	dto := TodoDTO{ID: v.ID, Title: v.Title, Done: v.Done, Overdue: v.Overdue, Position: v.Position,
+		Repeat:   RepeatDTO{Kind: v.Repeat.Kind, Every: v.Repeat.Every, Days: append([]int{}, v.Repeat.Days...)},
+		Reminder: ReminderDTO{At: v.Reminder.At, DaysBefore: v.Reminder.DaysBefore}}
 	if !v.Due.IsZero() {
 		dto.Due = v.Due.Format(dateLayout)
 	}
