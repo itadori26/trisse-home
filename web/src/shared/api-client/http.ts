@@ -1,4 +1,4 @@
-import { t } from '../i18n';
+import { serverMessage, t } from '../i18n';
 import type { ErrorBody } from './generated/httpapi';
 
 /** Header that carries the per-session CSRF token on state-changing requests. */
@@ -16,6 +16,9 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     readonly field?: string,
+    /** Key of the backend message template (translated if known). */
+    readonly messageKey?: string,
+    readonly params?: Record<string, string>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -79,7 +82,14 @@ export class FetchHttpClient implements HttpClient {
     if (!res.ok) {
       const err = (payload as ErrorBody | undefined)?.error;
       if (res.status === 401 && !path.startsWith('/api/auth/')) this.onUnauthorized();
-      throw new ApiError(err?.message ?? res.statusText, res.status, err?.code ?? 'unknown', err?.field);
+      throw new ApiError(
+        err?.message ?? res.statusText,
+        res.status,
+        err?.code ?? 'unknown',
+        err?.field,
+        err?.messageKey,
+        err?.params,
+      );
     }
     return payload as T;
   }
@@ -87,6 +97,7 @@ export class FetchHttpClient implements HttpClient {
 
 /** Returns a user-facing message for any thrown value. */
 export function errorMessage(err: unknown): string {
+  if (err instanceof ApiError) return serverMessage(err.messageKey, err.params) ?? err.message;
   if (err instanceof Error) return err.message;
   return t('common.something_went_wrong');
 }

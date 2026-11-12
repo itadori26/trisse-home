@@ -121,7 +121,7 @@ func (uc *sso) BeginOIDC(ctx context.Context) (string, string, error) {
 	}
 	url, err := uc.cfg.OIDC.AuthCodeURL(ctx, state, nonce, verifier)
 	if err != nil {
-		return "", "", kernel.NewPublicError(kernel.ErrUnavailable, "The identity provider could not be reached: "+err.Error())
+		return "", "", kernel.NewPublicErrorf(kernel.ErrUnavailable, "The identity provider could not be reached: {detail}", "detail", err.Error())
 	}
 	now := uc.deps.Clock.Now()
 	uc.mu.Lock()
@@ -150,7 +150,7 @@ func (uc *sso) CompleteOIDC(ctx context.Context, state, code string, client doma
 	id, err := uc.cfg.OIDC.Exchange(ctx, code, p.verifier, p.nonce)
 	if err != nil {
 		uc.deps.Events.loginFailed(ctx, domain.OwnerID, client, uc.deps.Limiter.RecordFailure(client.IP, now))
-		return SessionResponse{}, "", kernel.NewPublicError(kernel.ErrUnauthorized, "The identity provider did not confirm the sign-in: "+err.Error())
+		return SessionResponse{}, "", kernel.NewPublicErrorf(kernel.ErrUnauthorized, "The identity provider did not confirm the sign-in: {detail}", "detail", err.Error())
 	}
 	id.Provider = "oidc"
 	return uc.finish(ctx, id, client)

@@ -1,4 +1,6 @@
 import { de } from './locales/de';
+import { serverDe } from './locales/server-de';
+import { serverMessages } from '../api-client/generated/server-messages';
 import { en, type MessageKey } from './locales/en';
 import { formatMessage, type Locale, type MessageParams, resolveLocale } from './format';
 
@@ -34,3 +36,14 @@ export function setLanguage(preference: string): void {
 }
 
 export type { MessageKey };
+
+/**
+ * Translates a backend error message (#102). Returns undefined for unknown
+ * keys, so callers fall back to the English text sent by the server.
+ */
+export function serverMessage(key: string | undefined, params?: Record<string, string>): string | undefined {
+  if (!key) return undefined;
+  const catalogue: Record<string, string> = state.locale === 'de' ? serverDe : serverMessages;
+  const template = catalogue[key];
+  return template === undefined ? undefined : formatMessage(template, params);
+}

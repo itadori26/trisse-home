@@ -100,6 +100,15 @@ add the key to `en.ts` and the German text to `de.ts` and use it with
 `t('feature.key', { name })`. `npm run check` fails if a German text is
 missing, and a unit test verifies that placeholders match.
 
+**Backend error messages** are translated too (#102): create them with
+`kernel.NewPublicError(kind, "English text.")` or, with values,
+`kernel.NewPublicErrorf(kind, "At most {max} items.", "max", n)` — always with
+a string literal, never by concatenating strings. `make generate` extracts
+them into `web/src/shared/api-client/generated/server-messages.ts`; add the
+German text to `web/src/shared/i18n/locales/server-de.ts` (the compiler lists
+missing keys, the English original is in a comment above each entry). The
+frontend translates known messages and falls back to the English text.
+
 **Adding a language** (e.g. French):
 
 1. Copy `web/src/shared/i18n/locales/de.ts` to `fr.ts`, rename the export and

@@ -99,11 +99,11 @@ func (uc *fritzbox) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 		return SettingsView{}, err
 	}
 	if _, _, err := uc.box.WAN(ctx, s); err != nil {
-		return SettingsView{}, kernel.NewPublicError(kernel.ErrInvalid, "Could not connect to the FRITZ!Box: "+err.Error())
+		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not connect to the FRITZ!Box: {detail}", "detail", err.Error())
 	}
 	if s.HasLogin() {
 		if _, err := uc.box.Calls(ctx, s, 1); err != nil {
-			return SettingsView{}, kernel.NewPublicError(kernel.ErrInvalid, "Login failed: "+err.Error())
+			return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Login failed: {detail}", "detail", err.Error())
 		}
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {

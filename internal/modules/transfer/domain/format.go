@@ -1,8 +1,6 @@
 package domain
 
 import (
-	"fmt"
-
 	"trisse-home/internal/shared/kernel"
 )
 
@@ -22,7 +20,7 @@ func CheckHeader(format string, version int) error {
 		return kernel.NewValidationError("format", "This is not a trisse-home export file.")
 	}
 	if version < 1 || version > Version {
-		return kernel.NewValidationError("version", fmt.Sprintf("Export version %d is not supported by this version of trisse-home.", version))
+		return kernel.NewValidationErrorf("version", "Export version {version} is not supported by this version of trisse-home.", "version", version)
 	}
 	return nil
 }

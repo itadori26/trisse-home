@@ -129,7 +129,7 @@ func (uc *calendar) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 	}
 	agenda, err := uc.fetch(ctx, s)
 	if err != nil {
-		return SettingsView{}, kernel.NewPublicError(kernel.ErrInvalid, "Could not load the calendar: "+err.Error())
+		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not load the calendar: {detail}", "detail", err.Error())
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
@@ -218,7 +218,7 @@ func (uc *calendar) CreateEvent(ctx context.Context, in NewEventInput) (EventVie
 		return EventView{}, err
 	}
 	if err := uc.writer.Create(ctx, s, in.CalendarURL, e); err != nil {
-		return EventView{}, kernel.NewPublicError(kernel.ErrUnavailable, "The calendar server rejected the event: "+err.Error())
+		return EventView{}, kernel.NewPublicErrorf(kernel.ErrUnavailable, "The calendar server rejected the event: {detail}", "detail", err.Error())
 	}
 	_ = uc.Refresh(ctx) // the new event shows up in the agenda right away
 	return EventView{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: domain.CalendarName(in.CalendarURL),

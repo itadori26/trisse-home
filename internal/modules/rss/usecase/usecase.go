@@ -56,7 +56,7 @@ func (uc *reader) Subscribe(ctx context.Context, url string) (FeedView, error) {
 	}
 	fetched, err := uc.d.Fetcher.Fetch(ctx, f.URL)
 	if err != nil {
-		return FeedView{}, kernel.NewPublicError(kernel.ErrInvalid, "The feed could not be loaded: "+publicReason(err))
+		return FeedView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "The feed could not be loaded: {detail}", "detail", publicReason(err))
 	}
 	if err := uc.d.Repo.CreateFeed(ctx, f); err != nil {
 		return FeedView{}, err

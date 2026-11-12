@@ -215,7 +215,7 @@ func (uc *notifier) SendTest(ctx context.Context) error {
 		if errors.As(err, &pe) {
 			return err
 		}
-		return kernel.NewPublicError(kernel.ErrUnavailable, "The ntfy server could not be reached: "+err.Error())
+		return kernel.NewPublicErrorf(kernel.ErrUnavailable, "The ntfy server could not be reached: {detail}", "detail", err.Error())
 	}
 	return nil
 }

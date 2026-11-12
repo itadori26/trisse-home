@@ -80,7 +80,7 @@ func (uc *waste) SaveSettings(ctx context.Context, rawURL string, rules []domain
 	now := uc.clock.Now()
 	cs, err := uc.source.Collections(ctx, s.URL, now.Add(-24*time.Hour), now.Add(horizon))
 	if err != nil {
-		return domain.Settings{}, kernel.NewPublicError(kernel.ErrInvalid, "Could not load the waste calendar: "+err.Error())
+		return domain.Settings{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not load the waste calendar: {detail}", "detail", err.Error())
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return domain.Settings{}, fmt.Errorf("save settings: %w", err)

@@ -44,7 +44,7 @@ func NewAPIToken(id, name string, hash TokenHash, scopes []string, now, expiresA
 	for _, s := range scopes {
 		s = strings.ToLower(strings.TrimSpace(s))
 		if !scopePattern.MatchString(s) || strings.HasPrefix(s, "auth:") {
-			return APIToken{}, kernel.NewValidationError("scopes", "Invalid scope "+s+": use module:read or module:write.")
+			return APIToken{}, kernel.NewValidationErrorf("scopes", "Invalid scope {scope}: use module:read or module:write.", "scope", s)
 		}
 		if !slices.Contains(clean, s) {
 			clean = append(clean, s)
