@@ -29,6 +29,7 @@ import (
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
 	"trisse-home/internal/modules/shopping"
+	"trisse-home/internal/modules/speedtest"
 	"trisse-home/internal/modules/system"
 	"trisse-home/internal/modules/timeline"
 	"trisse-home/internal/modules/todos"
@@ -142,6 +143,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"diskhealth", func() modules.Module {
 			return diskhealth.New(diskhealth.Config{Dir: cfg.DiskHealthDir, StaleAfter: cfg.DiskHealthStaleAfter}, sink, clk)
 		}},
+		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}

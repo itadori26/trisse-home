@@ -17,6 +17,8 @@ import { TransferApi } from '../features/transfer/adapter/api/transferApi';
 import { TransferUseCases } from '../features/transfer/usecase/transferUseCases';
 import { TimelineApi } from '../features/timeline/adapter/api/timelineApi';
 import { DiskHealthApi } from '../features/diskhealth/adapter/api/diskHealthApi';
+import { SpeedtestApi } from '../features/speedtest/adapter/api/speedtestApi';
+import { SpeedtestUseCases } from '../features/speedtest/usecase/speedtestUseCases';
 import { DiskHealthUseCases } from '../features/diskhealth/usecase/diskHealthUseCases';
 import { TimelineUseCases } from '../features/timeline/usecase/timelineUseCases';
 import { TransitApi } from '../features/transit/adapter/api/transitApi';
@@ -89,6 +91,7 @@ export interface Container {
   transfer: TransferUseCases;
   timeline: TimelineUseCases;
   diskhealth: DiskHealthUseCases;
+  speedtest: SpeedtestUseCases;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -127,6 +130,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     transfer: new TransferUseCases(new TransferApi(http)),
     timeline: new TimelineUseCases(new TimelineApi(http)),
     diskhealth: new DiskHealthUseCases(new DiskHealthApi(http)),
+    speedtest: new SpeedtestUseCases(new SpeedtestApi(http)),
     // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),

@@ -79,6 +79,9 @@
 {/if}
 
 <style>
+  .small {
+    font-size: 0.85em;
+  }
   .disks,
   .findings {
     list-style: none;

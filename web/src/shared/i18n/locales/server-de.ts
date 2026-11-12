@@ -23,6 +23,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_9bc99814ae6ec519: 'AdGuard Home ist noch nicht eingerichtet.',
   // AdGuard Home is not reachable.
   srv_66e0c4283a72cd94: 'AdGuard Home ist nicht erreichbar.',
+  // An API token with the results:read scope is required.
+  srv_d05b6c7e6905729f: 'Ein API-Token mit dem Bereich results:read ist erforderlich.',
   // At most 10 calendars are supported.
   srv_326bb72e415244d3: 'Es werden höchstens 10 Kalender unterstützt.',
   // At most 20 rules are supported.
@@ -47,6 +49,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_a3e65fea5b434e1e: 'Keine Verbindung zu AdGuard Home: {detail}',
   // Could not connect to Nextcloud: {detail}
   srv_6d1befe42898ea11: 'Keine Verbindung zu Nextcloud: {detail}',
+  // Could not connect to Speedtest Tracker: {detail}
+  srv_0308331877b78de4: 'Keine Verbindung zu Speedtest Tracker: {detail}',
   // Could not connect to the FRITZ!Box: {detail}
   srv_6a8ef763439ca559: 'Keine Verbindung zur FRITZ!Box: {detail}',
   // Could not load the calendar: {detail}
@@ -146,6 +150,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_785eadcc6dca712c: 'Sitzung nicht gefunden.',
   // Single sign-on is not configured.
   srv_c1cbece9dc9bd483: 'Single Sign-on ist nicht eingerichtet.',
+  // Speedtest Tracker is not configured yet.
+  srv_6f32001a15a15c4d: 'Speedtest Tracker ist noch nicht eingerichtet.',
+  // Speedtest Tracker is not reachable.
+  srv_cfc88a9871753350: 'Speedtest Tracker ist nicht erreichbar.',
   // Start the two-factor setup first.
   srv_32f91240e6490e41: 'Bitte zuerst die Einrichtung der Zwei-Faktor-Authentifizierung starten.',
   // Storing credentials is disabled in the demo.
@@ -162,6 +170,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_1605df454fade766: 'Die URL muss {query} enthalten.',
   // The URL must look like http://192.168.1.2:3000.
   srv_ff20bffaaad40a7b: 'Die URL muss wie http://192.168.1.2:3000 aussehen.',
+  // The URL must look like http://192.168.1.2:8765.
+  srv_a74063c5a9d4db02: 'Die URL muss wie http://192.168.1.2:8765 aussehen.',
   // The URL must look like http://192.168.178.1:49000.
   srv_d14b64d005d328ef: 'Die URL muss wie http://192.168.178.1:49000 aussehen.',
   // The URL must look like https://cloud.example.com.
@@ -423,6 +433,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Dieser Passkey hat einen alten Signaturzähler gemeldet und wurde möglicherweise geklont. Entferne ihn und registriere ihn neu.',
   // This widget type is not available.
   srv_63543557e19be101: 'Dieser Widget-Typ ist nicht verfügbar.',
+  // Thresholds must be between 0 and 100000 Mbit/s.
+  srv_eb4a741553ab9379: 'Schwellenwerte müssen zwischen 0 und 100000 Mbit/s liegen.',
   // Too many failed attempts. Please wait a few minutes.
   srv_bc7172983106e8f0: 'Zu viele Fehlversuche. Bitte warte ein paar Minuten.',
   // Tracking numbers consist of 8 to 35 letters and digits.

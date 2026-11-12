@@ -3,6 +3,7 @@
   import { AboutSettings, ForecastSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
+  import { SpeedtestSettings } from '../features/speedtest';
   import { FritzBoxSettings } from '../features/fritzbox';
   import { NextcloudSettings } from '../features/nextcloud';
   import { ShoppingSettings, suggestListUrl } from '../features/shopping';
@@ -52,6 +53,7 @@
     { id: 'folders', label: 'settings.section.bookmark_folders', module: 'bookmarks' },
     { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
     { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
+    { id: 'speedtest', label: 'settings.section.speedtest', module: 'speedtest' },
     { id: 'nextcloud', label: 'settings.section.nextcloud', module: 'nextcloud' },
     { id: 'fritzbox', label: 'settings.section.fritzbox', module: 'fritzbox' },
     { id: 'wireguard', label: 'settings.section.wireguard', module: 'wireguard' },
@@ -140,6 +142,8 @@
     <FritzBoxSettings fritzbox={container.fritzbox} />
   {:else if current === 'nextcloud'}
     <NextcloudSettings nextcloud={container.nextcloud} />
+  {:else if current === 'speedtest'}
+    <SpeedtestSettings speedtest={container.speedtest} />
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
   {:else if current === 'notifications'}

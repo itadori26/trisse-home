@@ -931,4 +931,28 @@ export const de: Record<MessageKey, string> = {
   'system.forecast_window': 'Tage für die Prognose',
   'system.forecast_alert': 'Benachrichtigen, wenn voll in weniger als … Tagen',
   'settings.section.forecast': 'Speicherprognose',
+  'widget.speedtest.title': 'Internetgeschwindigkeit',
+  'widget.speedtest.description':
+    'Download, Upload und Ping aus Speedtest Tracker mit Verlauf über 24 h / 7 Tage.',
+  'settings.section.speedtest': 'Speedtest Tracker',
+  'speedtest.download': 'Download',
+  'speedtest.upload': 'Upload',
+  'speedtest.ping': 'Ping',
+  'speedtest.measured': 'Gemessen {time}',
+  'speedtest.no_results': 'In diesem Zeitraum gibt es noch keine Ergebnisse.',
+  'speedtest.range': 'Zeitraum',
+  'speedtest.range_day': '24 h',
+  'speedtest.range_week': '7 Tage',
+  'speedtest.download_history': 'Download-Geschwindigkeit im Verlauf',
+  'speedtest.upload_history': 'Upload-Geschwindigkeit im Verlauf',
+  'speedtest.ping_history': 'Ping im Verlauf',
+  'speedtest.loading': 'Wird geladen …',
+  'speedtest.settings_hint':
+    'trisse-home führt selbst keine Tests aus, sondern liest die Ergebnisse deines Speedtest Trackers. Lege dort ein API-Token mit dem Bereich results:read an.',
+  'speedtest.url': 'Speedtest-Tracker-URL',
+  'speedtest.token': 'API-Token {value}',
+  'speedtest.min_down': 'Benachrichtigen unter Download (Mbit/s, 0 = aus)',
+  'speedtest.min_up': 'Benachrichtigen unter Upload (Mbit/s, 0 = aus)',
+  'speedtest.threshold_hint':
+    'Das Token wird verschlüsselt gespeichert und nie wieder angezeigt. Die Schwellenwerte werden mit dem neuesten Ergebnis verglichen.',
 };

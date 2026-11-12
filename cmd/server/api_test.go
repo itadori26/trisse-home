@@ -640,6 +640,14 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.do(http.MethodPut, "/api/system/forecast-settings", obj{"windowDays": 2, "alertDays": 14}, http.StatusUnprocessableEntity)
 	c.do(http.MethodPut, "/api/system/forecast-settings", obj{"windowDays": 30, "alertDays": 7}, http.StatusOK)
 
+	// --- speedtest (#60): off until configured ---
+	c.do(http.MethodGet, "/api/speedtest/results", nil, http.StatusNotFound)
+	var st obj
+	c.json(http.MethodGet, "/api/speedtest/settings", nil, http.StatusOK, &st)
+	if st["configured"] != false {
+		t.Fatalf("speedtest settings: %+v", st)
+	}
+
 	// --- disk health (#59): not set up means 404 with a hint ---
 	c.do(http.MethodGet, "/api/diskhealth", nil, http.StatusNotFound)
 

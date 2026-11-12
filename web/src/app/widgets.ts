@@ -25,6 +25,7 @@ import { SearchWidget, SearchWidgetSettings } from '../features/search';
 import { ServicesWidget, StatusOverviewWidget } from '../features/services';
 import { TimelineWidget } from '../features/timeline';
 import { DiskHealthWidget } from '../features/diskhealth';
+import { SpeedtestWidget } from '../features/speedtest';
 import { SystemWidget } from '../features/system';
 import { TodosWidget, TodosWidgetSettings } from '../features/todos';
 import { RadarWidget, WeatherSettings, WeatherWidget } from '../features/weather';
@@ -386,6 +387,19 @@ export const widgetDefinitions: WidgetDefinition[] = [
       defaultSize: { w: 4, h: 4 },
     },
     view: renderer(DiskHealthWidget, (_config, c) => ({ diskhealth: c.diskhealth })),
+  },
+  {
+    type: {
+      kind: 'speedtest',
+      get title() {
+        return t('widget.speedtest.title');
+      },
+      get description() {
+        return t('widget.speedtest.description');
+      },
+      defaultSize: { w: 3, h: 4 },
+    },
+    view: renderer(SpeedtestWidget, (_config, c) => ({ speedtest: c.speedtest })),
   },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];

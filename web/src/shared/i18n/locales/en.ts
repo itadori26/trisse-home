@@ -907,6 +907,30 @@ export const en = {
   'system.forecast_window': 'Days used for the forecast',
   'system.forecast_alert': 'Notify when full in fewer than … days',
   'settings.section.forecast': 'Disk forecast',
+  'widget.speedtest.title': 'Internet speed',
+  'widget.speedtest.description':
+    'Download, upload and ping from Speedtest Tracker with a 24 h / 7 day history.',
+  'settings.section.speedtest': 'Speedtest Tracker',
+  'speedtest.download': 'Download',
+  'speedtest.upload': 'Upload',
+  'speedtest.ping': 'Ping',
+  'speedtest.measured': 'Measured {time}',
+  'speedtest.no_results': 'No results in this period yet.',
+  'speedtest.range': 'Period',
+  'speedtest.range_day': '24 h',
+  'speedtest.range_week': '7 days',
+  'speedtest.download_history': 'Download speed over time',
+  'speedtest.upload_history': 'Upload speed over time',
+  'speedtest.ping_history': 'Ping over time',
+  'speedtest.loading': 'Loading…',
+  'speedtest.settings_hint':
+    'trisse-home runs no tests itself; it reads the results of your Speedtest Tracker. Create an API token with the results:read scope there.',
+  'speedtest.url': 'Speedtest Tracker URL',
+  'speedtest.token': 'API token {value}',
+  'speedtest.min_down': 'Notify below download (Mbit/s, 0 = off)',
+  'speedtest.min_up': 'Notify below upload (Mbit/s, 0 = off)',
+  'speedtest.threshold_hint':
+    'The token is stored encrypted and never shown again. Thresholds are checked against the latest result.',
 } as const;
 
 /** Every message key. */

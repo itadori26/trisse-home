@@ -66,6 +66,8 @@ func FromObservation(id string, at time.Time, o kernel.Observation, healthy bool
 		msg = fmt.Sprintf("Certificate of %s expires in %.0f days", o.Label, o.Value)
 	case o.Kind == "forecast":
 		msg = fmt.Sprintf("Disk %s is full in about %.0f days", o.Label, o.Value)
+	case o.Kind == "speedtest":
+		msg = "Internet is slower than the threshold"
 	case o.Kind == "diskhealth":
 		msg = "Disk " + o.Label + " is degrading"
 	default:

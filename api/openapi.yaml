@@ -807,6 +807,23 @@ paths:
         "204": { description: Deleted }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  # ---------------------------------------------------------------- speedtest
+  /api/speedtest/settings:
+    get:
+      tags: [speedtest]
+      summary: Speedtest Tracker connection and thresholds (the token is never returned)
+      responses: { "200": { description: "{configured, url, hasToken, minDownMbps, minUpMbps}" } }
+    put:
+      tags: [speedtest]
+      summary: Test and save the connection; an empty token keeps the stored one, thresholds of 0 are off
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, token: { type: string }, minDownMbps: { type: number }, minUpMbps: { type: number } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid or not reachable } }
+  /api/speedtest/results:
+    get:
+      tags: [speedtest]
+      summary: Latest result and history in Mbit/s and ms (?hours=24|168, default 168; cached, refreshed every 10 minutes)
+      responses: { "200": { description: "{latest, history, updatedAt, error}" }, "404": { description: Not configured } }
+
   # ---------------------------------------------------------------- timeline
   /api/timeline:
     get:
