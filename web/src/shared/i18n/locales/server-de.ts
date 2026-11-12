@@ -523,4 +523,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_668a30f80af88b85: 'das ist kein gültiger RSS-, Atom- oder JSON-Feed',
   // token, public id and csrf token are required
   srv_1b3daa6bc9a9f8db: 'Token, öffentliche ID und CSRF-Token sind erforderlich',
+  // Docker discovery needs the docker module to be enabled.
+  srv_1f3976061912504c: 'Die Docker-Autodiscovery braucht das aktivierte Docker-Modul.',
+  // The interval must be between 1 and {max} minutes.
+  srv_c2aa1fabd915da16: 'Das Intervall muss zwischen 1 und {max} Minuten liegen.',
+  // Unknown merge rule.
+  srv_c64f8cf81797f821: 'Unbekannte Abgleichsregel.',
 };
