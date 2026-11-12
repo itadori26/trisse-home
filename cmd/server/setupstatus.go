@@ -49,11 +49,12 @@ func loopbackURL(listenAddr string) (string, error) {
 }
 
 func fetchSetupStatus(ctx context.Context, client *http.Client, baseURL string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/api/auth/status", nil)
+	// baseURL is the loopback address built by loopbackURL (or a test server).
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/api/auth/status", nil) //nolint:gosec // fixed loopback URL, see above
 	if err != nil {
 		return "", err
 	}
-	res, err := client.Do(req)
+	res, err := client.Do(req) //nolint:gosec // fixed loopback URL, see above
 	if err != nil {
 		return "", fmt.Errorf("server not reachable: %w", err)
 	}
