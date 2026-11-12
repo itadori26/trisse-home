@@ -50,7 +50,7 @@ Not sure whether trisse-home is the right fit? See the
 | **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
-| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; running version and an opt-in update check |
+| **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |

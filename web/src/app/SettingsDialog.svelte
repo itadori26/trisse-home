@@ -1,6 +1,6 @@
 <script lang="ts">
   import { TimelineSettings } from '../features/timeline';
-  import { AboutSettings } from '../features/system';
+  import { AboutSettings, ForecastSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
   import { FritzBoxSettings } from '../features/fritzbox';
@@ -67,6 +67,7 @@
     { id: 'security-log', label: 'settings.section.security_log' },
     { id: 'guests', label: 'settings.section.guests' },
     { id: 'tokens', label: 'settings.section.tokens' },
+    { id: 'forecast', label: 'settings.section.forecast', module: 'system' },
     { id: 'about', label: 'settings.section.about', module: 'system' },
   ];
   /** Guests only manage their own account (ADR 0012). */
@@ -115,6 +116,8 @@
     <GuestsSettings auth={container.auth} tabs={guestTabs} />
   {:else if current === 'timeline'}
     <TimelineSettings timeline={container.timeline} />
+  {:else if current === 'forecast'}
+    <ForecastSettings system={container.system} />
   {:else if current === 'about'}
     <AboutSettings system={container.system} />
   {:else if current === 'parcels'}

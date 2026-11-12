@@ -946,6 +946,16 @@ paths:
       summary: Enable or disable the daily update check against the GitHub releases API (default off)
       requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean } } } } } }
       responses: { "200": { description: OK } }
+  /api/system/forecast-settings:
+    get:
+      tags: [system]
+      summary: Disk forecast window and warning threshold in days (defaults 14/14)
+      responses: { "200": { description: "{windowDays, alertDays}" } }
+    put:
+      tags: [system]
+      summary: Set the forecast window (3-90 days) and warning threshold (1-365 days)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { windowDays: { type: integer }, alertDays: { type: integer } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid } }
   /api/system/history:
     get:
       tags: [system]
@@ -1513,7 +1523,22 @@ components:
         load: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
         memory: { $ref: "#/components/schemas/Usage" }
         swap: { $ref: "#/components/schemas/Usage" }
-        disks: { type: array, items: { type: object, properties: { label: { type: string }, usage: { $ref: "#/components/schemas/Usage" } } } }
+        disks:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              usage: { $ref: "#/components/schemas/Usage" }
+              forecast:
+                type: object
+                nullable: true
+                description: Disk forecast from daily aggregates (null before the first aggregate)
+                properties:
+                  status: { type: string, enum: [filling, flat, insufficient] }
+                  daysUntilFull: { type: number }
+                  bytesPerDay: { type: number }
+                  confidence: { type: number, description: R² of the regression (0-1) }
         uptimeSeconds: { type: integer }
         temperature: { type: number, description: °C, 0 if unknown }
         takenAt: { type: string, format: date-time }

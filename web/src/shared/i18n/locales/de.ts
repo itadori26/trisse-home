@@ -924,4 +924,11 @@ export const de: Record<MessageKey, string> = {
   'diskhealth.finding.no_data': 'smartctl hat keine Zustandsdaten geliefert',
   'diskhealth.finding.stale':
     'Der Export ist veraltet – bitte den Cronjob von scripts/smart-export.sh prüfen',
+  'system.forecast_full_in': 'Voll in ca. {days} Tagen',
+  'system.forecast_full_now': 'Innerhalb eines Tages voll',
+  'system.forecast_hint':
+    'Die Prognose legt eine Gerade durch die tägliche Belegung der letzten Tage (90 Tage gespeichert). Sie braucht mindestens drei Tage Daten und wird ausgeblendet, wenn die Belegung gleich bleibt oder sinkt.',
+  'system.forecast_window': 'Tage für die Prognose',
+  'system.forecast_alert': 'Benachrichtigen, wenn voll in weniger als … Tagen',
+  'settings.section.forecast': 'Speicherprognose',
 };

@@ -636,6 +636,10 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.do(http.MethodPut, "/api/timeline/settings", obj{"retentionDays": 0}, http.StatusUnprocessableEntity)
 	c.do(http.MethodPut, "/api/timeline/settings", obj{"retentionDays": 14}, http.StatusOK)
 
+	// --- disk forecast settings (#108) ---
+	c.do(http.MethodPut, "/api/system/forecast-settings", obj{"windowDays": 2, "alertDays": 14}, http.StatusUnprocessableEntity)
+	c.do(http.MethodPut, "/api/system/forecast-settings", obj{"windowDays": 30, "alertDays": 7}, http.StatusOK)
+
 	// --- disk health (#59): not set up means 404 with a hint ---
 	c.do(http.MethodGet, "/api/diskhealth", nil, http.StatusNotFound)
 

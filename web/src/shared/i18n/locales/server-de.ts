@@ -239,6 +239,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_9f6aa27e5380b437: 'Der Ordner existiert nicht.',
   // The folder name must be between 1 and 60 characters long.
   srv_c95a6275d4517459: 'Der Ordnername muss zwischen 1 und 60 Zeichen lang sein.',
+  // The forecast warning must be between 1 and 365 days.
+  srv_4a2cd38168dace16: 'Die Prognosewarnung muss zwischen 1 und 365 Tagen liegen.',
+  // The forecast window must be between 3 and 90 days.
+  srv_57fd7519663b39c9: 'Das Prognosefenster muss zwischen 3 und 90 Tagen liegen.',
   // The grace period must be between 0 minutes and 7 days.
   srv_dcd48aa7c1edb891: 'Die Karenzzeit muss zwischen 0 Minuten und 7 Tagen liegen.',
   // The guest does not exist.

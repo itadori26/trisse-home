@@ -4,7 +4,7 @@
   import { formatBytes, formatUptime } from '../../../shared/ui/format';
   import Meter from '../../../shared/ui/Meter.svelte';
   import Sparkline from '../../../shared/ui/Sparkline.svelte';
-  import type { HistoryPoint, SystemSnapshot } from '../domain/system';
+  import { type HistoryPoint, type SystemSnapshot, daysUntilFull } from '../domain/system';
   import type { SystemUseCases } from '../usecase/systemUseCases';
 
   /** Props of the system widget. */
@@ -59,7 +59,11 @@
         detail={usage(snap.swap)}
       />{/if}
     {#each snap.disks as d (d.label)}
+      {@const full = daysUntilFull(d.forecast)}
       <Meter label={d.label} percent={d.usage.percent} detail={usage(d.usage)} />
+      {#if full !== null}<p class="forecast muted" class:soon={full < 14}>
+          {full === 0 ? t('system.forecast_full_now') : t('system.forecast_full_in', { days: full })}
+        </p>{/if}
     {/each}
     {#if snap.disks.length}
       <Sparkline values={history.map((p) => p.disk)} max={100} label={t('system.disk_usage_over_24_hours')} />
@@ -77,6 +81,13 @@
 {/if}
 
 <style>
+  .forecast {
+    margin: -0.25em 0 0.25em;
+    font-size: 0.8em;
+  }
+  .forecast.soon {
+    color: var(--color-warning);
+  }
   /* Spread the meters over tall widgets instead of stacking them at the top. */
   .system {
     height: 100%;

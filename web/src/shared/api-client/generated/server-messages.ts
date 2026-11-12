@@ -116,6 +116,8 @@ export const serverMessages = {
   srv_b8c878135ee917b1: "The file is not valid JSON.",
   srv_9f6aa27e5380b437: "The folder does not exist.",
   srv_c95a6275d4517459: "The folder name must be between 1 and 60 characters long.",
+  srv_4a2cd38168dace16: "The forecast warning must be between 1 and 365 days.",
+  srv_57fd7519663b39c9: "The forecast window must be between 3 and 90 days.",
   srv_dcd48aa7c1edb891: "The grace period must be between 0 minutes and 7 days.",
   srv_23575e607ab8d86b: "The guest does not exist.",
   srv_0d5b9b677899722e: "The height must be between 1 and 24 rows.",

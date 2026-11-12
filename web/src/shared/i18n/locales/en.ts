@@ -900,6 +900,13 @@ export const en = {
   'diskhealth.finding.media_errors': '{value} media errors',
   'diskhealth.finding.no_data': 'smartctl returned no health data',
   'diskhealth.finding.stale': 'The export is outdated – check the cron job of scripts/smart-export.sh',
+  'system.forecast_full_in': 'Full in about {days} days',
+  'system.forecast_full_now': 'Full within a day',
+  'system.forecast_hint':
+    'The forecast fits a line through the daily usage of the last days (kept for 90 days). It needs at least three days of data and is hidden when usage is flat or shrinking.',
+  'system.forecast_window': 'Days used for the forecast',
+  'system.forecast_alert': 'Notify when full in fewer than … days',
+  'settings.section.forecast': 'Disk forecast',
 } as const;
 
 /** Every message key. */
