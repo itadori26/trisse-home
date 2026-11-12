@@ -261,6 +261,41 @@ test('the widget picker is searchable and works with the keyboard (#104)', async
   await expect(page.locator('time')).toBeVisible();
 });
 
+test('keyboard shortcuts switch tabs, toggle edit mode and show an overview (#95)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.locator('body').click();
+
+  await page.keyboard.press('?');
+  await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
+  await expect(page.getByText('Switch to tab 1 to 9')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await page.keyboard.press('2');
+  await expect(page.getByRole('button', { name: 'Server', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await page.keyboard.press('1');
+  await expect(page.getByRole('button', { name: 'Home', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+
+  await page.keyboard.press('e');
+  await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeVisible();
+  await page.keyboard.press('e');
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+
+  await page.keyboard.press('/');
+  await expect(page.getByRole('dialog', { name: /Quick search/ })).toBeVisible();
+  // Typing in the search field must not trigger shortcuts.
+  await page.keyboard.type('e2');
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

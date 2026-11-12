@@ -1023,4 +1023,12 @@ export const de: Record<MessageKey, string> = {
   'picker.category.information': 'Informationen',
   'picker.category.server': 'Server',
   'picker.category.network': 'Netzwerk & Integrationen',
+  'shortcuts.title': 'Tastenkürzel',
+  'shortcuts.or': 'oder',
+  'shortcuts.search': 'Schnellsuche öffnen',
+  'shortcuts.tabs': 'Zu Tab 1 bis 9 wechseln',
+  'shortcuts.edit': 'Bearbeitungsmodus starten oder beenden',
+  'shortcuts.help': 'Diese Übersicht anzeigen',
+  'shortcuts.hint':
+    'Tastenkürzel wirken nicht, während du in einem Feld tippst oder ein Dialog offen ist. Im Bearbeitungsmodus lassen sich Widgets mit den Pfeiltasten verschieben.',
 };

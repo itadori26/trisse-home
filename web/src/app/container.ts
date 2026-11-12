@@ -4,6 +4,7 @@
  * adapters, so features stay independent of each other.
  */
 import { createRefreshScheduler, type RefreshScheduler } from '../shared/refresh';
+import { ShortcutRegistry } from '../shared/shortcuts/registry';
 import { AdGuardApi } from '../features/adguard/adapter/api/adguardApi';
 import { AdGuardUseCases } from '../features/adguard/usecase/adguardUseCases';
 import { FritzBoxApi } from '../features/fritzbox/adapter/api/fritzboxApi';
@@ -95,6 +96,8 @@ export interface Container {
   speedtest: SpeedtestUseCases;
   /** Shared refresh scheduler of all widgets (#117). */
   refresh: RefreshScheduler;
+  /** Global keyboard shortcuts (#95). */
+  shortcuts: ShortcutRegistry;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -135,6 +138,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     diskhealth: new DiskHealthUseCases(new DiskHealthApi(http)),
     speedtest: new SpeedtestUseCases(new SpeedtestApi(http)),
     refresh: createRefreshScheduler(),
+    shortcuts: new ShortcutRegistry(),
     // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),

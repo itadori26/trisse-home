@@ -62,6 +62,12 @@
     }
   }
 
+  /** Selects the n-th tab (0-based), e.g. from the 1–9 shortcuts (#95). */
+  export function selectTabAt(index: number) {
+    const tab = tabs[index];
+    if (tab) select(tab.id);
+  }
+
   function select(id: string) {
     activeId = id;
     try {

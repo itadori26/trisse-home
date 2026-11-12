@@ -7,7 +7,7 @@
   import type { Container } from './container';
   import { provideRefresh } from '../shared/refresh';
   import DashboardPage from './DashboardPage.svelte';
-  import { opensQuickSearch } from './quickSearch';
+  import { attachShortcuts } from '../shared/shortcuts';
 
   /** Props of the authenticated application shell. */
   interface Props {
@@ -32,6 +32,53 @@
   let widgetKinds = $state<Set<string>>(new Set());
   let touring = $state(false);
   let quickSearch = $state(false);
+  let shortcutHelp = $state(false);
+  let dashboard = $state<{ selectTabAt: (index: number) => void }>();
+
+  // Global shortcuts (#95): one registry, one listener.
+  $effect(() => {
+    const r = container.shortcuts;
+    const offs = [
+      r.register({
+        id: 'search.open',
+        combos: ['Mod+K', '/'],
+        display: [t('app.ctrl_k'), '/'],
+        label: 'shortcuts.search',
+        whileTyping: false,
+        run: () => (quickSearch = true),
+      }),
+      r.register({
+        id: 'tabs.select',
+        combos: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+        display: ['1–9'],
+        label: 'shortcuts.tabs',
+        run: (combo) => dashboard?.selectTabAt(Number(combo) - 1),
+      }),
+      ...(container.auth.guest
+        ? []
+        : [
+            r.register({
+              id: 'edit.toggle',
+              combos: ['e'],
+              display: ['E'],
+              label: 'shortcuts.edit',
+              run: () => (editing = !editing),
+            }),
+          ]),
+      r.register({
+        id: 'shortcuts.help',
+        combos: ['?'],
+        display: ['?'],
+        label: 'shortcuts.help',
+        run: () => (shortcutHelp = true),
+      }),
+    ];
+    const detach = attachShortcuts(r);
+    return () => {
+      detach();
+      offs.forEach((off) => off());
+    };
+  });
   let offline = $state(!navigator.onLine);
 
   $effect(() => applyTheme(appearance.theme));
@@ -103,16 +150,7 @@
   init();
 </script>
 
-<svelte:window
-  ononline={() => (offline = false)}
-  onoffline={() => (offline = true)}
-  onkeydown={(e) => {
-    if (!quickSearch && !settingsOpen && opensQuickSearch(e, e.target)) {
-      e.preventDefault();
-      quickSearch = true;
-    }
-  }}
-/>
+<svelte:window ononline={() => (offline = false)} onoffline={() => (offline = true)} />
 
 <header class="topbar">
   <strong class="brand">trisse-home</strong>
@@ -152,7 +190,7 @@
     {#if modules.has('notifications') && !container.auth.guest}<MaintenanceBanner
         notifications={container.notifications}
       />{/if}
-    <DashboardPage {container} {editing} {widgetKinds} />
+    <DashboardPage bind:this={dashboard} {container} {editing} {widgetKinds} />
   {/if}
 </main>
 
@@ -173,6 +211,12 @@
 {#if quickSearch && modules}
   {#await import('./QuickSearch.svelte') then { default: QuickSearch }}
     <QuickSearch {container} {modules} onclose={() => (quickSearch = false)} />
+  {/await}
+{/if}
+
+{#if shortcutHelp}
+  {#await import('./ShortcutsDialog.svelte') then { default: ShortcutsDialog }}
+    <ShortcutsDialog shortcuts={container.shortcuts.all()} onclose={() => (shortcutHelp = false)} />
   {/await}
 {/if}
 

@@ -13,10 +13,18 @@
   }
   let { container, editing, widgetKinds }: Props = $props();
 
+  let view = $state<{ selectTabAt: (index: number) => void }>();
+
+  /** Selects the n-th tab (0-based). */
+  export function selectTabAt(index: number) {
+    view?.selectTabAt(index);
+  }
+
   const types = $derived(widgetDefinitions.filter((d) => widgetKinds.has(d.type.kind)).map((d) => d.type));
 </script>
 
 <DashboardView
+  bind:this={view}
   uc={container.dashboard}
   {editing}
   widgetTypes={types}

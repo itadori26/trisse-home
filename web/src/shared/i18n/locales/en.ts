@@ -999,6 +999,14 @@ export const en = {
   'picker.category.information': 'Information',
   'picker.category.server': 'Server',
   'picker.category.network': 'Network & integrations',
+  'shortcuts.title': 'Keyboard shortcuts',
+  'shortcuts.or': 'or',
+  'shortcuts.search': 'Open the quick search',
+  'shortcuts.tabs': 'Switch to tab 1 to 9',
+  'shortcuts.edit': 'Start or finish edit mode',
+  'shortcuts.help': 'Show this overview',
+  'shortcuts.hint':
+    'Shortcuts are ignored while you type in a field or a dialog is open. In edit mode, widgets move with the arrow keys.',
 } as const;
 
 /** Every message key. */
