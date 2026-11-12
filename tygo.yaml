@@ -146,3 +146,8 @@ packages:
   - path: "trisse-home/internal/modules/briefing/adapter/controller"
     output_path: "web/src/shared/api-client/generated/briefing-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/countdown/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/countdown.ts"
+  - path: "trisse-home/internal/modules/countdown/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/countdown-requests.ts"
+    include_files: ["dto.go"]

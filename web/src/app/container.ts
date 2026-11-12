@@ -70,6 +70,8 @@ import type { InfoResponse } from '../shared/api-client/generated/modules';
 import { FetchHttpClient } from '../shared/api-client/http';
 import { BriefingApi } from '../features/briefing/adapter/api/briefingApi';
 import { BriefingUseCases } from '../features/briefing/usecase/briefingUseCases';
+import { CountdownApi } from '../features/countdown/adapter/api/countdownApi';
+import { CountdownUseCases } from '../features/countdown/usecase/countdownUseCases';
 
 /** All use cases available to the UI. */
 export interface Container {
@@ -105,6 +107,7 @@ export interface Container {
   /** Quick capture and palette commands (#105, #67). */
   quickActions: QuickActionsUseCases;
   briefing: BriefingUseCases;
+  countdown: CountdownUseCases;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -147,6 +150,7 @@ export function createContainer(onUnauthorized: () => void): Container {
     refresh: createRefreshScheduler(),
     shortcuts: new ShortcutRegistry(),
     briefing: new BriefingUseCases(new BriefingApi(http)),
+    countdown: new CountdownUseCases(new CountdownApi(http)),
     // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),

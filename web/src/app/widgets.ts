@@ -602,6 +602,29 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (_config, c) => ({ briefing: c.briefing }),
     ),
   },
+  {
+    type: {
+      kind: 'countdown',
+      category: 'everyday',
+      keywords: ['days', 'deadline', 'exam', 'holiday', 'countdown', 'tage', 'frist', 'prüfung', 'urlaub'],
+      get title() {
+        return t('widget.countdown.title');
+      },
+      get description() {
+        return t('widget.countdown.description');
+      },
+      defaultSize: { w: 4, h: 4 },
+    },
+    icon: 'hourglass',
+    view: lazy(
+      () => import('../features/countdown/ui/CountdownWidget.svelte'),
+      (config, c) => ({ config, countdown: c.countdown }),
+    ),
+    settings: lazy(
+      () => import('../features/countdown/ui/CountdownSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];
 
