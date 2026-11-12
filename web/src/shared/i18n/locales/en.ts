@@ -830,6 +830,17 @@ export const en = {
   'notifications.everything': 'everything',
   'common.edit': 'Edit',
   'common.cancel': 'Cancel',
+  'backupmonitor.state.running': 'Running',
+  'backupmonitor.kind': 'Kind',
+  'backupmonitor.kind_backup': 'Backup',
+  'backupmonitor.kind_check': 'Heartbeat check',
+  'backupmonitor.schedule': 'Schedule',
+  'backupmonitor.schedule_interval': 'at least every … hours',
+  'backupmonitor.schedule_cron': 'cron schedule',
+  'backupmonitor.cron': 'Cron expression',
+  'backupmonitor.grace_minutes': 'Grace period in minutes',
+  'backupmonitor.every_h': 'every {hours} h',
+  'backupmonitor.grace_short': '+{minutes} min grace',
 } as const;
 
 /** Every message key. */

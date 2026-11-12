@@ -49,12 +49,19 @@ func (m *Module) WidgetKinds() []string { return []string{"backup-status"} }
 // RegisterRoutes implements modules.Module.
 func (m *Module) RegisterRoutes(r modules.Router) {
 	h := m.handlers
-	r.Protected("GET /api/backup-status/sources", h.List)
-	r.Protected("POST /api/backup-status/sources", h.Create)
-	r.Protected("PUT /api/backup-status/sources/{id}", h.Update)
-	r.Protected("DELETE /api/backup-status/sources/{id}", h.Delete)
-	r.Protected("POST /api/backup-status/sources/{id}/token", h.RotateToken)
-	r.Public("POST /api/backup-status/ping/{token}", h.Ping)
+	// /api/checks is the general name (#100); /api/backup-status stays as an
+	// alias so existing backup scripts and ping URLs keep working.
+	for _, base := range []string{"/api/backup-status", "/api/checks"} {
+		r.Protected("GET "+base+"/sources", h.List)
+		r.Protected("POST "+base+"/sources", h.Create)
+		r.Protected("PUT "+base+"/sources/{id}", h.Update)
+		r.Protected("DELETE "+base+"/sources/{id}", h.Delete)
+		r.Protected("POST "+base+"/sources/{id}/token", h.RotateToken)
+		for _, method := range []string{"GET", "POST"} {
+			r.Public(method+" "+base+"/ping/{token}", h.Ping)
+			r.Public(method+" "+base+"/ping/{token}/{event}", h.Ping)
+		}
+	}
 }
 
 // Jobs implements modules.Module.

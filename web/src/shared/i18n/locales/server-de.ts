@@ -236,6 +236,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_9f6aa27e5380b437: 'Der Ordner existiert nicht.',
   // The folder name must be between 1 and 60 characters long.
   srv_c95a6275d4517459: 'Der Ordnername muss zwischen 1 und 60 Zeichen lang sein.',
+  // The grace period must be between 0 minutes and 7 days.
+  srv_dcd48aa7c1edb891: 'Die Karenzzeit muss zwischen 0 Minuten und 7 Tagen liegen.',
   // The guest does not exist.
   srv_23575e607ab8d86b: 'Der Gast existiert nicht.',
   // The height must be between 1 and 24 rows.
@@ -255,6 +257,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Der Eintrag wurde gleichzeitig in einer anderen App geändert. Bitte erneut versuchen.',
   // The keyword must consist of 1 to 16 letters or digits.
   srv_d6e09729bc0d1f3b: 'Das Schlüsselwort muss aus 1 bis 16 Buchstaben oder Ziffern bestehen.',
+  // The kind must be backup or check.
+  srv_0dbc446d2a829ab3: 'Die Art muss backup oder check sein.',
   // The label must be at most 60 characters long.
   srv_64e5ff21727bf802: 'Die Bezeichnung darf höchstens 60 Zeichen lang sein.',
   // The language must be en, de or empty (browser).
@@ -422,6 +426,9 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_fc5b4d698d5d3c6f: 'Unbekannte Benachrichtigungsart {type}.',
   // Unknown search provider.
   srv_dea670a71d2295ca: 'Unbekannte Suchmaschine.',
+  // Use a cron expression with five fields, e.g. 0 3 * * * (daily at 03:00).
+  srv_564c3b1fecfb1093:
+    'Bitte einen Cron-Ausdruck mit fünf Feldern verwenden, z. B. 0 3 * * * (täglich um 03:00).',
   // Username and app password are required.
   srv_8fe21afcca496dfb: 'Benutzername und App-Passwort sind erforderlich.',
   // Username and password are required.

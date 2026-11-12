@@ -11,15 +11,30 @@ import (
 
 // SourceInput carries the editable fields of a source.
 type SourceInput struct {
-	Name   string
-	MaxAge time.Duration
+	Name     string
+	Schedule domain.Schedule
 }
+
+// PingEvent is what a ping reports.
+type PingEvent string
+
+// Ping events: a finished run, a failed run or the start of a run.
+const (
+	PingSuccess PingEvent = "success"
+	PingFail    PingEvent = "fail"
+	PingStart   PingEvent = "start"
+)
 
 // SourceView is a source with its evaluated state.
 type SourceView struct {
 	ID            string
 	Name          string
 	MaxAge        time.Duration
+	Kind          string
+	Cron          string
+	Grace         time.Duration
+	LastStartAt   time.Time
+	LastDuration  time.Duration
 	State         string
 	LastSuccessAt time.Time
 	LastFailureAt time.Time
@@ -41,7 +56,7 @@ type Monitor interface {
 	Delete(ctx context.Context, id string) error
 	RotateToken(ctx context.Context, id string) (CreatedSource, error)
 	// Ping records a run reported by a backup script.
-	Ping(ctx context.Context, token string, success bool, message string) error
+	Ping(ctx context.Context, token string, event PingEvent, message string) error
 	// Report sends the state of every source to the observation sink (job).
 	Report(ctx context.Context) error
 }
@@ -75,7 +90,9 @@ type monitor struct{ d Deps }
 func NewMonitor(d Deps) Monitor { return &monitor{d: d} }
 
 func (uc *monitor) view(s domain.Source) SourceView {
-	return SourceView{ID: s.ID, Name: s.Name, MaxAge: s.MaxAge, State: string(s.StateAt(uc.d.Clock.Now())),
+	sch := s.Schedule()
+	return SourceView{ID: s.ID, Name: s.Name, MaxAge: s.MaxAge, Kind: sch.Kind, Cron: sch.Cron, Grace: s.Grace,
+		LastStartAt: s.LastStartAt, LastDuration: s.LastDuration, State: string(s.StateAt(uc.d.Clock.Now())),
 		LastSuccessAt: s.LastSuccessAt, LastFailureAt: s.LastFailureAt, LastMessage: s.LastMessage}
 }
 
@@ -98,7 +115,7 @@ func (uc *monitor) Create(ctx context.Context, in SourceInput) (CreatedSource, e
 	if err != nil {
 		return CreatedSource{}, fmt.Errorf("generate token: %w", err)
 	}
-	s, err := domain.NewSource(uc.d.IDs.NewID(), in.Name, in.MaxAge, domain.HashToken(token), uc.d.Clock.Now())
+	s, err := domain.NewSource(uc.d.IDs.NewID(), in.Name, in.Schedule, domain.HashToken(token), uc.d.Clock.Now())
 	if err != nil {
 		return CreatedSource{}, err
 	}
@@ -114,7 +131,7 @@ func (uc *monitor) Update(ctx context.Context, id string, in SourceInput) (Sourc
 	if err != nil {
 		return SourceView{}, err
 	}
-	if err := s.Edit(in.Name, in.MaxAge); err != nil {
+	if err := s.Edit(in.Name, in.Schedule); err != nil {
 		return SourceView{}, err
 	}
 	if err := uc.d.Repo.Save(ctx, s); err != nil {
@@ -149,7 +166,7 @@ func (uc *monitor) RotateToken(ctx context.Context, id string) (CreatedSource, e
 }
 
 // Ping implements Monitor.
-func (uc *monitor) Ping(ctx context.Context, token string, success bool, message string) error {
+func (uc *monitor) Ping(ctx context.Context, token string, event PingEvent, message string) error {
 	if token == "" {
 		return domain.ErrSourceNotFound
 	}
@@ -157,7 +174,14 @@ func (uc *monitor) Ping(ctx context.Context, token string, success bool, message
 	if err != nil {
 		return err
 	}
-	s.RecordRun(success, message, uc.d.Clock.Now())
+	switch event {
+	case PingStart:
+		s.RecordStart(uc.d.Clock.Now())
+	case PingFail:
+		s.RecordRun(false, message, uc.d.Clock.Now())
+	default:
+		s.RecordRun(true, message, uc.d.Clock.Now())
+	}
 	if err := uc.d.Repo.Save(ctx, s); err != nil {
 		return fmt.Errorf("save source: %w", err)
 	}
@@ -184,6 +208,7 @@ func (uc *monitor) observe(ctx context.Context, s domain.Source) {
 		detail += ": " + s.LastMessage
 	}
 	uc.d.Observations.Observe(ctx, kernel.Observation{
-		Kind: "backup", Key: s.ID, Label: s.Name, Healthy: state == domain.StateOK || state == domain.StateWaiting, Detail: detail,
+		Kind: s.Kind, Key: s.ID, Label: s.Name, Detail: detail,
+		Healthy: state == domain.StateOK || state == domain.StateWaiting || state == domain.StateRunning,
 	})
 }

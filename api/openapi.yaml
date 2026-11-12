@@ -195,6 +195,13 @@ paths:
       tags: [backup-status]
       summary: Generate a new ping URL; the old one stops working
       responses: { "200": { description: OK (source + pingUrl) } }
+  /api/checks/ping/{token}/{event}:
+    post:
+      tags: [backupmonitor]
+      summary: "Heartbeat ping with event start (job began, measures duration) or fail (body: message); GET works too. /api/backup-status/ping/... is an alias"
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }, { name: event, in: path, required: true, schema: { type: string, enum: [start, fail] } }]
+      responses: { "204": { description: Recorded }, "404": { description: Unknown token } }
   /api/backup-status/ping/{token}:
     post:
       tags: [backup-status]

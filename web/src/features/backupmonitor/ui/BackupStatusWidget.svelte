@@ -31,6 +31,7 @@
     overdue: 'backupmonitor.state.overdue',
     failed: 'backupmonitor.state.failed',
     waiting: 'backupmonitor.state.waiting',
+    running: 'backupmonitor.state.running',
   } as const;
 </script>
 
@@ -80,6 +81,9 @@
     border-radius: 50%;
     flex: none;
     background: var(--color-text-muted);
+  }
+  .dot.running {
+    background: var(--color-accent);
   }
   .dot.ok {
     background: var(--color-success);

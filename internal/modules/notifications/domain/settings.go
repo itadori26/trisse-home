@@ -85,7 +85,7 @@ func (r Rules) Judge(o kernel.Observation) (relevant, healthy bool) {
 		return r.Services, o.Healthy
 	case "container":
 		return r.Containers, o.Healthy
-	case "backup":
+	case "backup", "check":
 		return r.Backups, o.Healthy
 	case "disk":
 		return r.Disk, o.Value < r.DiskThreshold

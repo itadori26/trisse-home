@@ -239,19 +239,27 @@ may contain secrets — only list containers whose logs you are fine seeing on t
 
 ## Notifications and backup monitoring
 
-**Notifications** (Settings → Notifications) publish to an [ntfy](https://ntfy.sh) topic. A state change is only
-reported after two consecutive checks (no flapping) and the first observation after a restart only sets the
-baseline. Topics on public servers are readable by anyone who knows the name — use a long random topic (one is
-suggested) or your own ntfy server with an access token; the token is stored encrypted with `SECRET_KEY`.
+**Notifications** (Settings → Notifications) publish to an [ntfy](https://ntfy.sh) topic and, optionally, to
+Gotify, a webhook (HMAC-signed with `X-Trisse-Signature: sha256=…` if a secret is set) or e-mail via SMTP. A
+state change is only reported after two consecutive checks (no flapping) and the first observation after a
+restart only sets the baseline. Every type has an importance (info, warning, critical); each channel can be
+limited to a minimum importance and to selected types. **Quiet hours** hold back everything but critical
+messages and send one summary afterwards. **Maintenance windows** (e.g. "NAS for 60 minutes") mute the selected
+services and containers and show a banner on the dashboard. Topics on public ntfy servers are readable by anyone
+who knows the name — use a long random topic (one is suggested) or your own ntfy server with an access token;
+all channel secrets are stored encrypted with `SECRET_KEY`.
 
-**Backup monitoring** (Settings → Backup monitoring) gives every backup job a secret ping URL, shown once. Call it
-at the end of your backup script:
+**Backup monitoring and heartbeat checks** (Settings → Backup monitoring) give every backup or any other job (cron
+jobs, certificate renewals, …) a secret ping URL, shown once:
 
 ```sh
-restic backup /data && curl -fsS -X POST "$PING_URL" || curl -fsS -X POST --data "restic failed" "$PING_URL?status=fail"
+curl -fsS -X POST "$PING_URL/start"     # optional: marks the job as running and measures its duration
+restic backup /data && curl -fsS -X POST "$PING_URL" || curl -fsS -X POST --data "restic failed" "$PING_URL/fail"
 ```
 
-A source is *overdue* when no successful run arrives within its maximum age. The ping endpoint needs no login but
+The schedule is either "at least every N hours" or a cron expression (`0 3 * * *`, `*/15 * * * *`, `@daily`),
+plus a grace period. A check is *overdue* when its expected run plus the grace period passes without a success.
+`/api/checks/...` and the older `/api/backup-status/...` URLs (including `?status=fail`) both keep working. The ping endpoint needs no login but
 is still subject to `ALLOWED_CIDRS`; only a SHA-256 hash of the token is stored, and a new URL can be generated at
 any time.
 
