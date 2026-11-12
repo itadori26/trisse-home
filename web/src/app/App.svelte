@@ -1,10 +1,13 @@
 <script lang="ts">
-  import { t } from '../shared/i18n';
-  import { LoginPage, SetupPage, type AuthView } from '../features/auth';
+  import { loadLanguage, t } from '../shared/i18n';
+  import type { AuthView } from '../features/auth';
   import { errorMessage } from '../shared/api-client/http';
   import { canStartOffline, clearOfflineData, rememberSignedIn } from '../shared/pwa';
   import { createContainer } from './container';
-  import Shell from './Shell.svelte';
+  // The dashboard shell is fetched right away, in parallel with the session
+  // check, but kept out of the initial bundle (#116); sign-in pages load
+  // only when needed.
+  const shell = import('./Shell.svelte');
 
   let view = $state<AuthView | 'loading'>('loading');
   let loadError = $state('');
@@ -13,6 +16,8 @@
 
   async function refresh() {
     try {
+      // The browser language's catalogue first, so the page never flashes English.
+      await loadLanguage().catch(() => undefined);
       view = await container.auth.currentView();
       loadError = '';
       rememberSignedIn(view === 'app');
@@ -30,14 +35,22 @@
 {#if loadError}
   <p class="error" role="alert">{t('app.could_not_reach_the_server', { loadError: loadError })}</p>
 {:else if view === 'setup'}
-  <SetupPage auth={container.auth} ondone={refresh} />
+  {#await import('../features/auth/ui/SetupPage.svelte') then { default: SetupPage }}
+    <SetupPage auth={container.auth} ondone={refresh} />
+  {/await}
 {:else if view === 'login'}
-  <LoginPage auth={container.auth} ondone={refresh} />
+  {#await import('../features/auth/ui/LoginPage.svelte') then { default: LoginPage }}
+    <LoginPage auth={container.auth} ondone={refresh} />
+  {/await}
 {:else if view === 'app'}
   {#if container.auth.demo}
     <p class="demo-banner" role="note">{t('app.demo_banner')}</p>
   {/if}
-  <Shell {container} onlogout={refresh} />
+  {#await shell then { default: Shell }}
+    <Shell {container} onlogout={refresh} />
+  {:catch err}
+    <p class="error" role="alert">{t('app.could_not_reach_the_server', { loadError: errorMessage(err) })}</p>
+  {/await}
 {/if}
 
 <style>

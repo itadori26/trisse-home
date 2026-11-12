@@ -21,7 +21,8 @@ type Handlers struct{ uc usecase.Monitor }
 func NewHandlers(uc usecase.Monitor) *Handlers { return &Handlers{uc: uc} }
 
 func (d SourceInputDTO) toInput() usecase.SourceInput {
-	return usecase.SourceInput{Name: d.Name, MaxAge: time.Duration(d.MaxAgeHours * float64(time.Hour))}
+	return usecase.SourceInput{Name: d.Name, Schedule: domain.Schedule{Kind: d.Kind, Cron: d.Cron,
+		MaxAge: time.Duration(d.MaxAgeHours * float64(time.Hour)), Grace: time.Duration(d.GraceMinutes * float64(time.Minute))}}
 }
 
 func baseURL(r *http.Request) string {
@@ -98,8 +99,21 @@ func (h *Handlers) RotateToken(w http.ResponseWriter, r *http.Request) {
 // authenticates the call. The optional body is stored as message.
 func (h *Handlers) Ping(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(io.LimitReader(r.Body, domain.MaxMessageLength))
-	success := r.URL.Query().Get("status") != "fail"
-	if err := h.uc.Ping(r.Context(), r.PathValue("token"), success, string(body)); err != nil {
+	event := usecase.PingSuccess
+	switch r.PathValue("event") {
+	case "start":
+		event = usecase.PingStart
+	case "fail":
+		event = usecase.PingFail
+	case "":
+		if r.URL.Query().Get("status") == "fail" { // older backup scripts
+			event = usecase.PingFail
+		}
+	default:
+		httpapi.WriteDomainError(w, r, domain.ErrSourceNotFound)
+		return
+	}
+	if err := h.uc.Ping(r.Context(), r.PathValue("token"), event, string(body)); err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}

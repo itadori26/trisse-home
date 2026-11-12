@@ -2,6 +2,7 @@
 .env
 data/
 /wireguard/
+/smart/
 *.db
 *.db-shm
 *.db-wal
@@ -24,3 +25,4 @@ web/playwright-report/
 
 # Binary built in the repository root (go build ./cmd/server)
 /server
+/.claude/

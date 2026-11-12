@@ -25,6 +25,8 @@ type Deps struct {
 	IDs            kernel.IDGenerator
 	Observations   kernel.ObservationSink
 	Waker          usecase.Waker
+	// Maintenance excludes planned downtime from the uptime; may be nil.
+	Maintenance usecase.MaintenanceReader
 }
 
 // Module wires the services rings and implements modules.Module.
@@ -41,6 +43,7 @@ func New(d Deps) *Module {
 	deps := usecase.Deps{
 		Repo: gateway.NewRepository(d.DB), Status: gateway.NewStatusStore(),
 		Checker: gateway.NewHTTPChecker(d.Client, d.InsecureClient), History: gateway.NewHistoryStore(d.DB), Waker: d.Waker, Observations: d.Observations, Clock: d.Clock, IDs: d.IDs,
+		Uptime: gateway.NewUptimeStore(d.DB), Maintenance: d.Maintenance, Location: time.Local,
 	}
 	uc := usecase.NewServices(deps)
 	return &Module{Transferable: modules.Transferable{DB: d.DB, Tables: gateway.TransferTables}, uc: uc, seed: usecase.NewSeedSampleData(deps), handlers: controller.NewHandlers(uc)}
@@ -68,7 +71,7 @@ func (m *Module) Name() string { return "services" }
 func (m *Module) Migrations() fs.FS { return gateway.Migrations() }
 
 // WidgetKinds implements modules.Module.
-func (m *Module) WidgetKinds() []string { return []string{"services"} }
+func (m *Module) WidgetKinds() []string { return []string{"services", "status-overview"} }
 
 // RegisterRoutes implements modules.Module.
 func (m *Module) RegisterRoutes(r modules.Router) {
@@ -77,6 +80,8 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("POST /api/services", h.Create)
 	r.Protected("POST /api/services/check", h.Check)
 	r.Protected("GET /api/services/history", h.History)
+	r.Protected("GET /api/services/uptime", h.Uptime)
+	r.Protected("GET /api/services/incidents", h.Incidents)
 	r.Protected("PUT /api/services/order", h.Reorder)
 	r.Protected("PUT /api/services/{id}", h.Update)
 	r.Protected("DELETE /api/services/{id}", h.Delete)
@@ -88,4 +93,27 @@ func (m *Module) Jobs() []modules.Job {
 	return []modules.Job{{Name: "services.health-check", Interval: checkInterval, Run: func(ctx context.Context) error {
 		return m.uc.CheckAll(ctx)
 	}}}
+}
+
+// Metrics implements kernel.MetricSource (#109): availability, response
+// time and certificate expiry per service.
+func (m *Module) Metrics(ctx context.Context) []kernel.MetricSample {
+	list, err := m.uc.List(ctx)
+	if err != nil {
+		return nil
+	}
+	out := make([]kernel.MetricSample, 0, 3*len(list))
+	for _, s := range list {
+		if s.State == "unknown" {
+			continue
+		}
+		l := kernel.Label{Name: "service", Value: s.Name}
+		out = append(out,
+			kernel.Gauge("trisse_service_up", "Whether the service answered its last check (1) or not (0).", kernel.Bool(s.State == "online"), l),
+			kernel.Gauge("trisse_service_response_seconds", "Response time of the last check in seconds.", float64(s.LatencyMs)/1000, l))
+		if !s.CertExpiresAt.IsZero() {
+			out = append(out, kernel.Gauge("trisse_service_cert_expiry_timestamp_seconds", "Expiry of the TLS certificate since the Unix epoch.", float64(s.CertExpiresAt.Unix()), l))
+		}
+	}
+	return out
 }

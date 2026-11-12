@@ -45,3 +45,35 @@ export interface ListDTO {
   updatedAt: string /* RFC 3339 */;
   error: string;
 }
+
+//////////
+// source: updates.go
+
+/**
+ * ImageUpdateDTO is one running image with its update state (#107).
+ */
+export interface ImageUpdateDTO {
+  ref: string;
+  containers: string[];
+  status: 'unknown' | 'up_to_date' | 'update_available' | 'pinned' | 'local' | 'error';
+  newerTag: string;
+  releaseUrl: string;
+  checkedAt: string /* RFC 3339 */;
+  error: string;
+}
+/**
+ * RegistryDTO is a stored registry login; the password is never returned.
+ */
+export interface RegistryDTO {
+  host: string;
+  username: string;
+  hasPassword: boolean;
+}
+/**
+ * UpdateSettingsDTO is returned by GET/PUT /api/docker/updates/settings.
+ */
+export interface UpdateSettingsDTO {
+  enabled: boolean;
+  semverTags: boolean;
+  registries: RegistryDTO[];
+}

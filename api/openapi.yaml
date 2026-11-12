@@ -129,6 +129,47 @@ paths:
       tags: [notifications]
       summary: Send a test message
       responses: { "204": { description: Sent }, "503": { description: ntfy server not reachable } }
+  /api/notifications/channels:
+    get:
+      tags: [notifications]
+      summary: Additional channels (Gotify, webhook, e-mail) without secrets
+      responses: { "200": { description: OK } }
+    post:
+      tags: [notifications]
+      summary: Add a channel with minimum importance and optional alert types
+      responses: { "200": { description: Created } }
+  /api/notifications/channels/{id}:
+    put:
+      tags: [notifications]
+      summary: Update a channel (empty secret keeps the stored one)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [notifications]
+      summary: Delete a channel
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted } }
+  /api/notifications/channels/{id}/test:
+    post:
+      tags: [notifications]
+      summary: Send a test message through one channel
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Sent } }
+  /api/notifications/maintenance:
+    get:
+      tags: [notifications]
+      summary: Active and upcoming maintenance windows
+      responses: { "200": { description: "List of {id, scope, start, end, note}" } }
+    post:
+      tags: [notifications]
+      summary: "Start a maintenance window: {scope: [\"service:NAS\", \"container:x\" or \"*\"], minutes | start+end, note}"
+      responses: { "201": { description: Created } }
+  /api/notifications/maintenance/{id}:
+    delete:
+      tags: [notifications]
+      summary: End an active window now or remove a planned one
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Ended } }
   /api/backup-status/sources:
     get:
       tags: [backup-status]
@@ -154,6 +195,13 @@ paths:
       tags: [backup-status]
       summary: Generate a new ping URL; the old one stops working
       responses: { "200": { description: OK (source + pingUrl) } }
+  /api/checks/ping/{token}/{event}:
+    post:
+      tags: [backupmonitor]
+      summary: "Heartbeat ping with event start (job began, measures duration) or fail (body: message); GET works too. /api/backup-status/ping/... is an alias"
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }, { name: event, in: path, required: true, schema: { type: string, enum: [start, fail] } }]
+      responses: { "204": { description: Recorded }, "404": { description: Unknown token } }
   /api/backup-status/ping/{token}:
     post:
       tags: [backup-status]
@@ -183,6 +231,55 @@ paths:
       responses:
         "200": { description: SQLite database, content: { application/vnd.sqlite3: { schema: { type: string, format: binary } } } }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/backups/remote:
+    get:
+      tags: [backup]
+      summary: Off-site backups in the WebDAV folder, newest first
+      responses: { "200": { description: List of backup files }, "404": { description: No target configured } }
+  /api/backups/remote/settings:
+    get:
+      tags: [backup]
+      summary: Off-site target (the password is never returned)
+      responses: { "200": { description: "{configured, url, username, hasPassword, retention}" } }
+    put:
+      tags: [backup]
+      summary: Test and save the WebDAV target; an empty password keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, username: { type: string }, password: { type: string }, retention: { type: integer, minimum: 1, maximum: 365 } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid or not usable } }
+    delete:
+      tags: [backup]
+      summary: Stop off-site copies (remote files are kept)
+      responses: { "204": { description: Removed } }
+  /api/backups/remote/test:
+    post:
+      tags: [backup]
+      summary: Check that the folder exists and is writable (writes and deletes a small test file)
+      responses: { "204": { description: Usable }, "422": { description: Not usable } }
+  /api/backups/restore:
+    post:
+      tags: [backup]
+      summary: Restore a backup and restart (owner only; password and 2FA code are re-checked)
+      description: >
+        multipart/form-data with password, code, source (local | remote | upload), name (local/remote) and, last, file
+        (upload). The file is validated (integrity, trisse-home schema not newer than the running version) before the
+        swap is scheduled; the previous database is kept as trisse-home.db.before-restore.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                password: { type: string }
+                code: { type: string }
+                source: { type: string, enum: [local, remote, upload] }
+                name: { type: string }
+                file: { type: string, format: binary }
+      responses:
+        "202": { description: Restore scheduled, the server restarts }
+        "401": { description: Wrong password or code }
+        "403": { description: Guests and API tokens cannot restore }
+        "422": { description: Not a valid or too new backup }
 
   # ---------------------------------------------------------------- onboarding
   /api/onboarding:
@@ -353,7 +450,7 @@ paths:
   /api/dashboard:
     get:
       tags: [dashboard]
-      summary: All tabs with their widgets (creates a default tab on first use)
+      summary: All tabs with their widgets and the default tab by rules (creates a default tab on first use)
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Dashboard" } } } }
   /api/dashboard/tabs:
@@ -422,6 +519,19 @@ paths:
       security: [{ session: [], csrf: [] }]
       requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { background: { type: string } } } } } }
       responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" }, "422": { description: Invalid URL } }
+  /api/dashboard/tabs/{id}/rules:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Set the rules that open a tab by default (at most 10; the first tab with a matching rule wins)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [rules], properties: { rules: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/TabRule" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
   /api/dashboard/templates:
     get:
       tags: [dashboard]
@@ -600,6 +710,16 @@ paths:
         "204": { description: Sent }
         "400": { description: No MAC address stored }
         "503": { description: The relay did not answer (profile "wol" not enabled) }
+  /api/services/uptime:
+    get:
+      tags: [services]
+      summary: Uptime per service in percent over 24 h, 7, 30 and 90 days plus 90 daily values (null without data); maintenance windows are excluded
+      responses: { "200": { description: OK } }
+  /api/services/incidents:
+    get:
+      tags: [services]
+      summary: Outages, newest first (?service=<id>&limit=<n>); open incidents have end null
+      responses: { "200": { description: OK } }
   /api/services/history:
     get:
       tags: [services]
@@ -749,6 +869,47 @@ paths:
         "204": { description: Deleted }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  # ---------------------------------------------------------------- metrics
+  /metrics:
+    get:
+      tags: [system]
+      summary: Prometheus text exposition (only with METRICS_ENABLED=true; Authorization Bearer METRICS_TOKEN), see docs/metrics.md
+      security: []
+      responses: { "200": { description: "text/plain; version=0.0.4" }, "401": { description: Missing or wrong token } }
+
+  # ---------------------------------------------------------------- speedtest
+  /api/speedtest/settings:
+    get:
+      tags: [speedtest]
+      summary: Speedtest Tracker connection and thresholds (the token is never returned)
+      responses: { "200": { description: "{configured, url, hasToken, minDownMbps, minUpMbps}" } }
+    put:
+      tags: [speedtest]
+      summary: Test and save the connection; an empty token keeps the stored one, thresholds of 0 are off
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, token: { type: string }, minDownMbps: { type: number }, minUpMbps: { type: number } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid or not reachable } }
+  /api/speedtest/results:
+    get:
+      tags: [speedtest]
+      summary: Latest result and history in Mbit/s and ms (?hours=24|168, default 168; cached, refreshed every 10 minutes)
+      responses: { "200": { description: "{latest, history, updatedAt, error}" }, "404": { description: Not configured } }
+
+  # ---------------------------------------------------------------- timeline
+  /api/timeline:
+    get:
+      tags: [timeline]
+      summary: Timeline events, newest first (?source=&severity=info|warning|critical&before=<RFC 3339>&limit=)
+      responses: { "200": { description: "List of {id, at, source, severity, subject, message}" } }
+  /api/timeline/settings:
+    get:
+      tags: [timeline]
+      summary: Retention of the timeline in days
+      responses: { "200": { description: OK } }
+    put:
+      tags: [timeline]
+      summary: Set the retention (1-365 days)
+      responses: { "200": { description: OK }, "422": { description: Invalid } }
+
   # ---------------------------------------------------------------- todos
   /api/todos:
     get:
@@ -872,6 +1033,16 @@ paths:
       summary: Enable or disable the daily update check against the GitHub releases API (default off)
       requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean } } } } } }
       responses: { "200": { description: OK } }
+  /api/system/forecast-settings:
+    get:
+      tags: [system]
+      summary: Disk forecast window and warning threshold in days (defaults 14/14)
+      responses: { "200": { description: "{windowDays, alertDays}" } }
+    put:
+      tags: [system]
+      summary: Set the forecast window (3-90 days) and warning threshold (1-365 days)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { windowDays: { type: integer }, alertDays: { type: integer } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid } }
   /api/system/history:
     get:
       tags: [system]
@@ -885,6 +1056,24 @@ paths:
       summary: Containers via the read-only socket proxy (refreshed every 20 seconds)
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContainerList" } } } }
+  /api/docker/updates:
+    get:
+      tags: [docker]
+      summary: Running images with their update state (only when the update check is enabled; 404 otherwise)
+      description: >
+        Status up_to_date | update_available | pinned | local | error | unknown, optional newerTag (semver),
+        releaseUrl from the org.opencontainers.image.source label. Registries are asked at most every 6 hours per image.
+      responses: { "200": { description: OK }, "404": { description: Update check disabled } }
+  /api/docker/updates/settings:
+    get:
+      tags: [docker]
+      summary: Update check settings (registry passwords are never returned)
+      responses: { "200": { description: "{enabled, semverTags, registries: [{host, username, hasPassword}]}" } }
+    put:
+      tags: [docker]
+      summary: Save the settings; an empty password keeps the stored one of the same host
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, semverTags: { type: boolean }, registries: { type: array, items: { type: object, properties: { host: { type: string }, username: { type: string }, password: { type: string } } } } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid } }
   /api/docker/actions:
     get:
       tags: [docker]
@@ -1055,6 +1244,16 @@ paths:
       tags: [waste]
       summary: Next three dates per waste type, ordered by the next collection (refreshed every 6 hours)
       responses: { "200": { description: OK }, "404": { description: Not configured } }
+
+  # ---------------------------------------------------------------- diskhealth
+  /api/diskhealth:
+    get:
+      tags: [diskhealth]
+      summary: S.M.A.R.T. health per disk from the export of scripts/smart-export.sh
+      description: >
+        Status ok|warning|critical|unknown with findings, temperature, power-on hours, reallocated and pending
+        sectors (ATA) and wear (NVMe). Exports older than DISKHEALTH_STALE_AFTER are unknown.
+      responses: { "200": { description: List of disks }, "404": { description: No export found } }
 
   # ---------------------------------------------------------------- wireguard
   /api/wireguard/peers:
@@ -1233,7 +1432,20 @@ components:
     IdList: { type: object, required: [ids], properties: { ids: { type: array, items: { type: string } } } }
     TabName: { type: object, required: [name], properties: { name: { type: string, maxLength: 40 } } }
     TabOrder: { type: object, required: [tabIds], properties: { tabIds: { type: array, items: { type: string } } } }
-    Dashboard: { type: object, required: [tabs], properties: { tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } } } }
+    Dashboard:
+      type: object
+      required: [tabs, defaultTabId]
+      properties:
+        tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } }
+        defaultTabId: { type: string, description: 'Tab whose rules match the server time and the client address; "" = keep the last used tab' }
+    TabRule:
+      type: object
+      description: Opens a tab by default. Empty parts always match; a range like 22:00–02:00 runs over midnight and belongs to the weekday it starts on.
+      properties:
+        days: { type: array, maxItems: 7, items: { type: integer, minimum: 0, maximum: 6 }, description: Weekdays, 0 = Sunday }
+        from: { type: string, example: "07:00", description: HH:MM, empty together with `to` = whole day }
+        to: { type: string, example: "09:30" }
+        networks: { type: array, maxItems: 10, items: { type: string, example: 192.168.178.0/24 }, description: CIDR ranges matched against the client address }
     Tab:
       type: object
       required: [id, name, position, widgets]
@@ -1241,6 +1453,8 @@ components:
         id: { type: string }
         name: { type: string }
         position: { type: integer }
+        background: { type: string }
+        rules: { type: array, items: { $ref: "#/components/schemas/TabRule" } }
         widgets: { type: array, items: { $ref: "#/components/schemas/Widget" } }
     Rect:
       type: object
@@ -1429,7 +1643,22 @@ components:
         load: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
         memory: { $ref: "#/components/schemas/Usage" }
         swap: { $ref: "#/components/schemas/Usage" }
-        disks: { type: array, items: { type: object, properties: { label: { type: string }, usage: { $ref: "#/components/schemas/Usage" } } } }
+        disks:
+          type: array
+          items:
+            type: object
+            properties:
+              label: { type: string }
+              usage: { $ref: "#/components/schemas/Usage" }
+              forecast:
+                type: object
+                nullable: true
+                description: Disk forecast from daily aggregates (null before the first aggregate)
+                properties:
+                  status: { type: string, enum: [filling, flat, insufficient] }
+                  daysUntilFull: { type: number }
+                  bytesPerDay: { type: number }
+                  confidence: { type: number, description: R² of the regression (0-1) }
         uptimeSeconds: { type: integer }
         temperature: { type: number, description: °C, 0 if unknown }
         takenAt: { type: string, format: date-time }

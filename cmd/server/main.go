@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 	_ "time/tzdata" // the distroless image has no zoneinfo; calendars need time zones
@@ -22,6 +23,7 @@ import (
 	"trisse-home/internal/platform/demo"
 	"trisse-home/internal/platform/httpserver"
 	"trisse-home/internal/platform/logging"
+	"trisse-home/internal/platform/metrics"
 	"trisse-home/internal/platform/middleware"
 	"trisse-home/internal/platform/router"
 	"trisse-home/internal/platform/scheduler"
@@ -61,6 +63,23 @@ func main() {
 	}
 }
 
+// restartDelay gives the restore response time to reach the browser.
+const restartDelay = 500 * time.Millisecond
+
+// errRestart ends serve with a non-zero exit code after a restore.
+var errRestart = errors.New("restarting to apply a restored backup")
+
+// restartRequests is signalled by requestRestart (restore, #46).
+var restartRequests = make(chan struct{}, 1)
+
+// requestRestart asks serve to shut down gracefully.
+func requestRestart() {
+	select {
+	case restartRequests <- struct{}{}:
+	default:
+	}
+}
+
 // app holds everything built from the configuration.
 type app struct {
 	cfg      config.Config
@@ -83,6 +102,13 @@ func loadConfig() (config.Config, *slog.Logger, error) {
 
 // build opens the database, constructs all enabled modules and applies their migrations.
 func build(ctx context.Context, cfg config.Config, log *slog.Logger) (*app, error) {
+	// A restore scheduled in the settings (#46) replaces the database
+	// before it is opened.
+	if applied, err := database.ApplyPendingRestore(cfg.DatabasePath); err != nil {
+		return nil, err
+	} else if applied {
+		log.Warn("restored the database from a backup; the previous one is kept as .before-restore", "path", cfg.DatabasePath)
+	}
 	db, err := database.Open(ctx, cfg.DatabasePath)
 	if err != nil {
 		return nil, err
@@ -137,9 +163,30 @@ func serve() error {
 	} else if err := a.auth.AnnounceSetup(ctx); err != nil {
 		return err
 	}
+	// A restore asks for a restart: shut down gracefully and exit with a
+	// non-zero code so Docker's restart policy starts the new database.
+	ctx, restart := context.WithCancel(ctx)
+	defer restart()
+	var restarting atomic.Bool
+	go func() {
+		select {
+		case <-restartRequests:
+			a.log.Warn("restarting to apply a restored backup")
+			restarting.Store(true)
+			time.Sleep(restartDelay) // let the HTTP response reach the browser
+			restart()
+		case <-ctx.Done():
+		}
+	}()
 	sched.Start(ctx)
 	defer sched.Wait()
-	return httpserver.Run(ctx, a.cfg.ListenAddr, newHandler(a), a.cfg.ShutdownTimeout, a.log)
+	if err := httpserver.Run(ctx, a.cfg.ListenAddr, newHandler(a), a.cfg.ShutdownTimeout, a.log); err != nil {
+		return err
+	}
+	if restarting.Load() {
+		return errRestart
+	}
+	return nil
 }
 
 // newHandler builds the router with all module routes and the middleware chain.
@@ -150,11 +197,19 @@ func newHandler(a *app) http.Handler {
 	}
 	r.Protected("GET /api/modules", a.registry.Handler(frontendOnlyWidgetKinds))
 	r.Handle("GET /healthz", router.HealthCheck(a.db.PingContext))
+	var httpStats *metrics.HTTPStats
+	if a.cfg.MetricsEnabled {
+		httpStats = metrics.NewHTTPStats()
+		r.Handle("GET /metrics", metricsHandler(a, httpStats))
+	}
 	r.Handle("/", spa.Handler(webui.Dist()))
 
 	var h http.Handler = r
 	if a.cfg.DemoMode {
 		h = demo.Block(r)
+	}
+	if httpStats != nil {
+		h = httpStats.Middleware(h)
 	}
 	return middleware.Chain(h,
 		middleware.Recover(a.log),

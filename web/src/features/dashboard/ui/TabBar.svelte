@@ -15,6 +15,8 @@
     onmove: (tab: Tab, delta: number) => void;
     /** Opens the background dialog of a tab. */
     onbackground: (tab: Tab) => void;
+    /** Opens the default-tab rules of a tab (#71). */
+    onrules: (tab: Tab) => void;
     /** Saves a tab as template. */
     ontemplate: (tab: Tab) => void;
   }
@@ -28,6 +30,7 @@
     ondelete,
     onmove,
     onbackground,
+    onrules,
     ontemplate,
   }: Props = $props();
 </script>
@@ -71,6 +74,13 @@
           aria-label={t('dashboard.tab_background')}
           title={t('dashboard.background')}
           onclick={() => onbackground(tab)}>🖼</button
+        >
+        <button
+          class="btn btn-icon"
+          type="button"
+          aria-label={t('dashboard.tab_rules')}
+          title={t('dashboard.tab_rules')}
+          onclick={() => onrules(tab)}>⏱</button
         >
         <button
           class="btn btn-icon"

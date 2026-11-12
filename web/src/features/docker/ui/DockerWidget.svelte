@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
@@ -10,6 +11,7 @@
     indicator,
     parseDockerConfig,
   } from '../domain/container';
+  import { type ImageUpdate, updatesByContainer } from '../domain/imageUpdate';
   import type { DockerUseCases } from '../usecase/dockerUseCases';
 
   /** Props of the docker widget. */
@@ -18,6 +20,7 @@
     config: Record<string, unknown>;
   }
   let { docker, config }: Props = $props();
+  const poll = usePolling();
 
   const POLL_MS = 20_000;
   const cfg = $derived(parseDockerConfig(config));
@@ -27,6 +30,17 @@
   let actions = $state<DockerActions | null>(null);
   let busy = $state('');
   let logs = $state<{ name: string; lines: string[] | null; error: string } | null>(null);
+  let updates = $state(new Map<string, ImageUpdate>());
+
+  // Image update hints (#107); silently absent while disabled.
+  $effect(() => {
+    const load = () =>
+      docker
+        .updates()
+        .then((l) => (updates = updatesByContainer(l ?? [])))
+        .catch(() => {});
+    return poll(load, 10 * 60_000);
+  });
 
   $effect(() => {
     docker
@@ -64,10 +78,11 @@
       docker
         .containers()
         .then((d) => ((data = d), (error = '')))
-        .catch((err) => (error = errorMessage(err)));
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+        .catch((err) => {
+          error = errorMessage(err);
+          throw err;
+        });
+    return poll(load, POLL_MS);
   });
 </script>
 
@@ -82,9 +97,20 @@
   {#if data.error}<p class="error small">{data.error}</p>{/if}
   <ul class="list">
     {#each shown as c (c.id)}
+      {@const u = updates.get(c.name)}
       <li title="{c.image}\n{c.status}">
         <span class="dot {indicator(c)}" aria-label={c.state}></span>
         <span class="name">{c.name}</span>
+        {#if u}
+          <a
+            class="update"
+            href={u.releaseUrl || undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={u.newerTag ? t('docker.newer_tag', { tag: u.newerTag }) : t('docker.update_available')}
+            aria-label={t('docker.update_available_for', { name: c.name })}>⬆</a
+          >
+        {/if}
         <span class="muted small status">{c.status}</span>
         {#if canAct(actions, c.name)}
           <button
@@ -122,6 +148,11 @@
 {/if}
 
 <style>
+  .update {
+    color: var(--color-warning);
+    text-decoration: none;
+    font-size: 0.85em;
+  }
   .act {
     padding: 0 4px;
     line-height: 1.2;

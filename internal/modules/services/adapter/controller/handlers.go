@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"trisse-home/internal/modules/services/adapter/presenter"
 	"trisse-home/internal/modules/services/usecase"
@@ -105,4 +106,25 @@ func (h *Handlers) History(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpapi.WriteJSON(w, http.StatusOK, presenter.History(res))
+}
+
+// Uptime handles GET /api/services/uptime.
+func (h *Handlers) Uptime(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Uptime(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Uptime(res))
+}
+
+// Incidents handles GET /api/services/incidents?service=<id>&limit=<n>.
+func (h *Handlers) Incidents(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit")) // invalid or missing means the default
+	res, err := h.uc.Incidents(r.Context(), r.URL.Query().Get("service"), limit)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Incidents(res, time.Now()))
 }

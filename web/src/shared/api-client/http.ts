@@ -34,6 +34,11 @@ export interface HttpClient {
   delete<T = void>(path: string): Promise<T>;
   /** POSTs a raw text body such as an uploaded HTML file. */
   postText<T>(path: string, text: string, contentType: string): Promise<T>;
+  /**
+   * POSTs multipart form data (e.g. a file). A 401 here means a wrong
+   * password re-entered in the form, so it does not end the session.
+   */
+  postForm<T>(path: string, form: FormData): Promise<T>;
 }
 
 /** fetch-based HttpClient that adds the CSRF header and parses error envelopes. */
@@ -66,22 +71,27 @@ export class FetchHttpClient implements HttpClient {
   postText<T>(path: string, text: string, contentType: string): Promise<T> {
     return this.request<T>('POST', path, text, contentType);
   }
+  postForm<T>(path: string, form: FormData): Promise<T> {
+    return this.request<T>('POST', path, form);
+  }
 
   private async request<T>(method: string, path: string, body?: unknown, rawType?: string): Promise<T> {
+    const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
     const headers: Record<string, string> = { Accept: 'application/json' };
-    if (body !== undefined) headers['Content-Type'] = rawType ?? 'application/json';
+    // The browser sets the multipart boundary itself.
+    if (body !== undefined && !isForm) headers['Content-Type'] = rawType ?? 'application/json';
     if (method !== 'GET' && this.csrfToken) headers[CSRF_HEADER] = this.csrfToken;
     const res = await fetch(path, {
       method,
       headers,
       credentials: 'same-origin',
-      body: body === undefined ? undefined : rawType ? String(body) : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? body : rawType ? String(body) : JSON.stringify(body),
     });
     if (res.status === 204) return undefined as T;
     const payload: unknown = await res.json().catch(() => undefined);
     if (!res.ok) {
       const err = (payload as ErrorBody | undefined)?.error;
-      if (res.status === 401 && !path.startsWith('/api/auth/')) this.onUnauthorized();
+      if (res.status === 401 && !path.startsWith('/api/auth/') && !isForm) this.onUnauthorized();
       throw new ApiError(
         err?.message ?? res.statusText,
         res.status,

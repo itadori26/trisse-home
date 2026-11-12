@@ -18,41 +18,41 @@ func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
 // ListTabs returns all tabs ordered by position.
 func (r *Repository) ListTabs(ctx context.Context) ([]domain.Tab, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, name, position, background FROM dashboard_tabs ORDER BY position, name`)
+	rows, err := r.db.QueryContext(ctx, `SELECT id, name, position, background, rules FROM dashboard_tabs ORDER BY position, name`)
 	if err != nil {
 		return nil, fmt.Errorf("query tabs: %w", err)
 	}
 	defer rows.Close()
 	var tabs []domain.Tab
 	for rows.Next() {
-		var id, name, bg string
+		var id, name, bg, rules string
 		var pos int
-		if err := rows.Scan(&id, &name, &pos, &bg); err != nil {
+		if err := rows.Scan(&id, &name, &pos, &bg, &rules); err != nil {
 			return nil, fmt.Errorf("scan tab: %w", err)
 		}
-		tabs = append(tabs, domain.RestoreTab(id, name, pos, bg))
+		tabs = append(tabs, domain.RestoreTab(id, name, pos, bg).WithRules(decodeRules(rules)))
 	}
 	return tabs, rows.Err()
 }
 
 // GetTab returns one tab or domain.ErrTabNotFound.
 func (r *Repository) GetTab(ctx context.Context, id string) (domain.Tab, error) {
-	var name, bg string
+	var name, bg, rules string
 	var pos int
-	err := r.db.QueryRowContext(ctx, `SELECT name, position, background FROM dashboard_tabs WHERE id = ?`, id).Scan(&name, &pos, &bg)
+	err := r.db.QueryRowContext(ctx, `SELECT name, position, background, rules FROM dashboard_tabs WHERE id = ?`, id).Scan(&name, &pos, &bg, &rules)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Tab{}, domain.ErrTabNotFound
 	}
 	if err != nil {
 		return domain.Tab{}, fmt.Errorf("select tab: %w", err)
 	}
-	return domain.RestoreTab(id, name, pos, bg), nil
+	return domain.RestoreTab(id, name, pos, bg).WithRules(decodeRules(rules)), nil
 }
 
 // CreateTab inserts a tab.
 func (r *Repository) CreateTab(ctx context.Context, t domain.Tab) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO dashboard_tabs (id, name, position, background) VALUES (?, ?, ?, ?)`,
-		t.ID(), t.Name(), t.Position(), t.Background())
+	_, err := r.db.ExecContext(ctx, `INSERT INTO dashboard_tabs (id, name, position, background, rules) VALUES (?, ?, ?, ?, ?)`,
+		t.ID(), t.Name(), t.Position(), t.Background(), encodeRules(t.Rules()))
 	if err != nil {
 		return fmt.Errorf("insert tab: %w", err)
 	}
@@ -61,8 +61,8 @@ func (r *Repository) CreateTab(ctx context.Context, t domain.Tab) error {
 
 // UpdateTab stores name and position of a tab.
 func (r *Repository) UpdateTab(ctx context.Context, t domain.Tab) error {
-	res, err := r.db.ExecContext(ctx, `UPDATE dashboard_tabs SET name = ?, position = ?, background = ? WHERE id = ?`,
-		t.Name(), t.Position(), t.Background(), t.ID())
+	res, err := r.db.ExecContext(ctx, `UPDATE dashboard_tabs SET name = ?, position = ?, background = ?, rules = ? WHERE id = ?`,
+		t.Name(), t.Position(), t.Background(), encodeRules(t.Rules()), t.ID())
 	if err != nil {
 		return fmt.Errorf("update tab: %w", err)
 	}

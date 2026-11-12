@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { intlLocale, t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { formatUptime } from '../../../shared/ui/format';
@@ -11,6 +12,7 @@
     fritzbox: FritzBoxUseCases;
   }
   let { fritzbox }: Props = $props();
+  const poll = usePolling();
 
   const POLL_MS = 15_000;
   let status = $state<FritzBoxStatus | null>(null);
@@ -25,10 +27,9 @@
         .catch((err) => {
           unconfigured = err instanceof ApiError && err.status === 404;
           error = errorMessage(err);
+          throw err;
         });
-    load();
-    const timer = setInterval(load, POLL_MS);
-    return () => clearInterval(timer);
+    return poll(load, POLL_MS);
   });
 
   const when = (d: Date) =>

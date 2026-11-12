@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usePolling } from '../../../shared/refresh';
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { type Departure, minutesUntil, modeIcon, parseTransitConfig } from '../domain/transit';
@@ -10,6 +11,7 @@
     config: Record<string, unknown>;
   }
   let { transit, config }: Props = $props();
+  const poll = usePolling();
 
   const POLL_MS = 60_000;
   const cfg = $derived(parseTransitConfig(config));
@@ -21,22 +23,22 @@
   $effect(() => {
     const c = cfg;
     if (!c) return;
-    const load = () => {
-      // Only refresh while the page is visible: the data comes from a community service.
-      if (document.visibilityState !== 'visible') return;
+    // The shared scheduler pauses while the page is hidden (#117), which
+    // matters here: the data comes from a community service.
+    const load = () =>
       transit
         .departures(c)
         .then((d) => ((departures = d), (loaded = true), (now = new Date()), (error = '')))
-        .catch((err) => (error = errorMessage(err)));
-    };
-    load();
-    const timer = setInterval(load, POLL_MS);
+        .catch((err) => {
+          error = errorMessage(err);
+          throw err;
+        });
+    const stop = poll(load, POLL_MS);
+    // Only re-renders "in x min"; no request.
     const tick = setInterval(() => (now = new Date()), 15_000);
-    document.addEventListener('visibilitychange', load);
     return () => {
-      clearInterval(timer);
+      stop();
       clearInterval(tick);
-      document.removeEventListener('visibilitychange', load);
     };
   });
 

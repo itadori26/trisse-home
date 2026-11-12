@@ -3,6 +3,7 @@ package presenter
 import (
 	"time"
 
+	"trisse-home/internal/modules/services/domain"
 	"trisse-home/internal/modules/services/usecase"
 )
 
@@ -66,6 +67,49 @@ func Services(vs []usecase.ServiceView) []ServiceDTO {
 	out := make([]ServiceDTO, 0, len(vs))
 	for _, v := range vs {
 		out = append(out, Service(v))
+	}
+	return out
+}
+
+// UptimeDTO summarises one service; percentages are null without data.
+type UptimeDTO struct {
+	ServiceID string     `json:"serviceId"`
+	Day       *float64   `json:"day"`
+	Week      *float64   `json:"week"`
+	Month     *float64   `json:"month"`
+	Quarter   *float64   `json:"quarter"`
+	Days      []*float64 `json:"days"`
+}
+
+// Uptime maps the uptime summaries.
+func Uptime(list []usecase.UptimeView) []UptimeDTO {
+	out := make([]UptimeDTO, 0, len(list))
+	for _, v := range list {
+		out = append(out, UptimeDTO(v))
+	}
+	return out
+}
+
+// IncidentDTO is one outage.
+type IncidentDTO struct {
+	ID              string     `json:"id"`
+	ServiceID       string     `json:"serviceId"`
+	Start           time.Time  `json:"start"`
+	End             *time.Time `json:"end"`
+	DurationSeconds float64    `json:"durationSeconds"`
+	Cause           string     `json:"cause"`
+}
+
+// Incidents maps incidents; open ones last until now.
+func Incidents(list []domain.Incident, now time.Time) []IncidentDTO {
+	out := make([]IncidentDTO, 0, len(list))
+	for _, i := range list {
+		dto := IncidentDTO{ID: i.ID, ServiceID: i.ServiceID, Start: i.Start, DurationSeconds: i.Duration(now).Seconds(), Cause: i.Cause}
+		if !i.Open() {
+			end := i.End
+			dto.End = &end
+		}
+		out = append(out, dto)
 	}
 	return out
 }

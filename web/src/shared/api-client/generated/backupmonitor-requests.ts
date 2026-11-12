@@ -9,4 +9,13 @@
 export interface SourceInputDTO {
   name: string;
   maxAgeHours: number /* float64 */;
+  /**
+   * Kind is "backup" (default) or "check".
+   */
+  kind?: string;
+  /**
+   * Cron replaces maxAgeHours, e.g. "0 3 * * *".
+   */
+  cron?: string;
+  graceMinutes?: number /* float64 */;
 }

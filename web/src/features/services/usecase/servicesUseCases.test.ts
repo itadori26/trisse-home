@@ -28,6 +28,8 @@ function setup() {
     checkNow: vi.fn(),
     history: vi.fn(),
     wake: vi.fn(),
+    uptime: vi.fn(),
+    incidents: vi.fn(),
   } satisfies ServicesGateway;
   return { uc: new ServicesUseCases(gateway), gateway };
 }

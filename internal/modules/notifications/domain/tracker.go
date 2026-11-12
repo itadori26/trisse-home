@@ -47,6 +47,9 @@ type Message struct {
 	Body     string
 	Priority int
 	Tags     []string
+	// Type is the alert type ("service", "security", …, "digest").
+	Type     string
+	Severity Severity
 }
 
 // Priorities as defined by ntfy.
@@ -75,6 +78,12 @@ func problemTitle(o kernel.Observation) string {
 		return fmt.Sprintf("Certificate of %s expires in %d days", o.Label, int(math.Floor(o.Value)))
 	case "backup":
 		return "Backup " + o.Label + " needs attention"
+	case "diskhealth":
+		return "Disk " + o.Label + " is degrading"
+	case "image":
+		return "Update available for " + o.Label
+	case "forecast":
+		return fmt.Sprintf("Disk %s is full in about %.0f days", o.Label, o.Value)
 	default:
 		return o.Label + " needs attention"
 	}

@@ -1,7 +1,13 @@
 <script lang="ts">
-  import { t } from '../../../shared/i18n';
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
-  import { suggestTopic } from '../domain/notifications';
+  import { alertTypes, suggestTopic } from '../domain/notifications';
+  import ChannelsSettings from './ChannelsSettings.svelte';
+  import MaintenanceSettings from './MaintenanceSettings.svelte';
+
+  const weekdays = [1, 2, 3, 4, 5, 6, 0];
+  const dayName = (d: number) =>
+    new Date(2026, 10, 8 + d).toLocaleDateString(intlLocale(), { weekday: 'short' });
   import type { NotificationSettingsInput, NotificationsUseCases } from '../usecase/notificationsUseCases';
 
   /** Props of the notification settings section. */
@@ -27,6 +33,7 @@
           topic: s.topic || suggestTopic(),
           token: '',
           rules: s.rules,
+          policy: s.policy,
         };
         hasToken = s.hasToken;
         lastError = s.lastError;
@@ -118,6 +125,48 @@
         {t('notifications.rule_security')}</label
       >
     </fieldset>
+    <fieldset>
+      <legend>{t('notifications.severities')}</legend>
+      <div class="grid">
+        {#each alertTypes as type (type)}
+          <label class="inline"
+            ><span class="type">{t(`notifications.type.${type}`)}</span>
+            <select class="input" bind:value={form.policy.severities[type]}>
+              <option value="info">{t('notifications.severity.info')}</option>
+              <option value="warning">{t('notifications.severity.warning')}</option>
+              <option value="critical">{t('notifications.severity.critical')}</option>
+            </select></label
+          >
+        {/each}
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>{t('notifications.quiet_hours')}</legend>
+      <label class="inline">
+        <input type="checkbox" bind:checked={form.policy.quiet.enabled} />
+        {t('notifications.quiet_from')}
+        <input class="input time" type="time" bind:value={form.policy.quiet.start} />
+        {t('notifications.quiet_to')}
+        <input class="input time" type="time" bind:value={form.policy.quiet.end} />
+      </label>
+      <div class="days">
+        {#each weekdays as d (d)}
+          <label
+            ><input
+              type="checkbox"
+              checked={form.policy.quiet.days.includes(d)}
+              onchange={(e) =>
+                form &&
+                (form.policy.quiet.days = e.currentTarget.checked
+                  ? [...form.policy.quiet.days, d]
+                  : form.policy.quiet.days.filter((x) => x !== d))}
+            />
+            {dayName(d)}</label
+          >
+        {/each}
+      </div>
+      <p class="muted small">{t('notifications.quiet_hint')}</p>
+    </fieldset>
     {#if lastError}<p class="error">
         {t('notifications.last_delivery_failed', { lastError: lastError })}
       </p>{/if}
@@ -130,6 +179,8 @@
       >
     </p>
   </form>
+  <ChannelsSettings {notifications} />
+  <MaintenanceSettings {notifications} />
 {:else if error}
   <p class="error">{error}</p>
 {/if}
@@ -155,6 +206,25 @@
   .num {
     width: 4.5rem;
     padding: 2px 6px;
+  }
+  .time {
+    width: 7rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    gap: var(--space-1);
+  }
+  .type {
+    flex: 1;
+  }
+  .days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .small {
+    font-size: 0.85em;
   }
   .actions {
     display: flex;

@@ -1,14 +1,17 @@
 import {
+  type Dashboard,
   reorder,
   type Tab,
+  type TabRule,
   type TabTemplate,
   validateBackground,
+  validateRules,
   validateTabName,
   type Widget,
   type WidgetConfig,
   type WidgetType,
 } from '../domain/dashboard';
-import { findFreeSpot, type LayoutItem, sameLayout } from '../domain/layout';
+import { collides, findFreeSpot, type LayoutItem, sameLayout } from '../domain/layout';
 import type { DashboardGateway } from './ports';
 
 /** Error for input rejected before it reaches the backend. */
@@ -22,8 +25,13 @@ export class DashboardUseCases {
 
   /** Loads all tabs with their widgets, sorted by position. */
   async load(): Promise<Tab[]> {
-    const tabs = await this.gateway.load();
-    return [...tabs].sort((a, b) => a.position - b.position);
+    return (await this.open()).tabs;
+  }
+
+  /** Loads the dashboard with the tab whose rules match now (#71). */
+  async open(): Promise<Dashboard> {
+    const { tabs, defaultTabId } = await this.gateway.load();
+    return { tabs: [...tabs].sort((a, b) => a.position - b.position), defaultTabId };
   }
 
   /** Creates a tab after validating its name. */
@@ -73,11 +81,38 @@ export class DashboardUseCases {
     return this.gateway.addWidget(tab.id, widget.kind, rect, structuredClone(widget.config));
   }
 
+  /**
+   * Re-creates a deleted widget with its kind, size and configuration
+   * (undo, #93): at its old position, or the first free spot if that is
+   * taken now. The new widget has a new ID.
+   */
+  restoreWidget(tab: Tab, widget: Widget): Promise<Widget> {
+    const others = tab.widgets.filter((w) => w.id !== widget.id);
+    const free = !others.some((w) => collides(w, widget));
+    const rect = free
+      ? { x: widget.x, y: widget.y, w: widget.w, h: widget.h }
+      : findFreeSpot(others, widget.w, widget.h);
+    return this.gateway.addWidget(tab.id, widget.kind, rect, structuredClone(widget.config));
+  }
+
   /** Sets the background image of a tab ("" = global background). */
   async setBackground(tabId: string, background: string): Promise<Tab> {
     const problem = validateBackground(background);
     if (problem) throw new DashboardValidationError(problem);
     return this.gateway.setBackground(tabId, background.trim());
+  }
+
+  /** Sets the rules that open a tab by default (#71). */
+  async setRules(tabId: string, rules: TabRule[]): Promise<Tab> {
+    const clean = rules.map((r) => ({
+      days: [...new Set(r.days)].sort((a, b) => a - b),
+      from: r.from.trim(),
+      to: r.to.trim(),
+      networks: r.networks.map((n) => n.trim()).filter((n) => n !== ''),
+    }));
+    const problem = validateRules(clean);
+    if (problem) throw new DashboardValidationError(problem);
+    return this.gateway.setRules(tabId, clean);
   }
 
   listTemplates(): Promise<TabTemplate[]> {

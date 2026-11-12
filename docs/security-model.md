@@ -28,6 +28,8 @@ flowchart LR
     procfs["/proc, /sys, / (read-only)"]
     wgdir["./wireguard\n(peer status, no keys)"]
     cron["cron: wireguard-export.sh"]
+    smartdir["./smart\n(smartctl JSON)"]
+    smartcron["cron: smart-export.sh"]
     relay["wol-relay (optional)\nhost network, magic packets only"]
   end
 
@@ -39,6 +41,8 @@ flowchart LR
   app -- "read" --> procfs
   app -- "read" --> wgdir
   cron -- "wg show dump\n(keys stripped)" --> wgdir
+  app -- "read" --> smartdir
+  smartcron -- "smartctl --json -a" --> smartdir
   app -. "magic packet" .-> relay -. "broadcast" .-> LAN
   app -- "only configured\nintegrations" --> internet
 ```
@@ -48,10 +52,11 @@ optional component.
 
 | Component | Can | Cannot |
 | --- | --- | --- |
-| **trisse-home** container | Read container list and stats through the read-only proxy, read host metrics from read-only mounts, read the WireGuard peer export, call the integrations you configured | Write to Docker, read files outside its mounts, gain privileges (non-root, no capabilities, `no-new-privileges`, read-only root FS), be reached from outside `ALLOWED_CIDRS` |
-| **docker-socket-proxy** | Forward `GET` requests to the container endpoints (plus ping/version) | Write anything (`POST: 0`), read system info, images, volumes, networks or secrets |
+| **trisse-home** container | Read container list and stats through the read-only proxy, read host metrics from read-only mounts, read the WireGuard peer and S.M.A.R.T. exports, call the integrations you configured | Write to Docker, read files outside its mounts, gain privileges (non-root, no capabilities, `no-new-privileges`, read-only root FS), be reached from outside `ALLOWED_CIDRS` |
+| **docker-socket-proxy** | Forward `GET` requests to the container and image endpoints (plus ping/version); `IMAGES=1` lets trisse-home read the repo digests and labels of the images of running containers for the update hints | Write anything (`POST: 0`) — it cannot pull, delete or build images — read system info, volumes, networks or secrets |
 | **docker-actions-proxy** (profile `docker-actions`) | Forward `POST /containers/<name>/stop\|restart\|kill` | Any read, create, exec, image or volume operation; trisse-home itself only calls *restart* for containers on `DOCKER_ACTIONS_CONTAINERS` |
 | **wireguard-export.sh** (cron, root) | Run `wg show all dump` and write peer public keys, endpoints, handshakes and traffic | Write private or preshared keys — the interface line is dropped and the PSK column blanked |
+| **smart-export.sh** (cron, root) | Run `smartctl --scan-open` and `smartctl --json -a` and write one JSON file per disk | Change disks or read their data — smartctl only reads the health log; the container gets no device access |
 | **wol-relay** (profile `wol`) | Accept valid magic packets on UDP 9009 and broadcast them into the LAN, rate-limited | Read data, Docker or secrets; forward anything that is not a magic packet; it has no capabilities and a read-only filesystem |
 | **Stored credentials** | Be used by the module they belong to | Be read back through the API or appear in logs: they are encrypted with AES-256-GCM using `SECRET_KEY` and only returned as "set / not set" |
 
@@ -79,6 +84,36 @@ put the whole VPN at risk. A tiny script on the host, run by cron, writes only
 the public peer status into a directory that is mounted read-only into
 trisse-home. The script is short enough to read in a minute:
 [`scripts/wireguard-export.sh`](../scripts/wireguard-export.sh).
+
+### Backup restore
+
+Restoring replaces every piece of data, so `POST /api/backups/restore` is
+owner-only (no guests, no API tokens), needs the password and — when enabled —
+a fresh 2FA code again (rate-limited and logged like a login), and validates the
+file with SQLite's integrity check and the schema version before anything is
+replaced. The swap happens on the next start, before the database is opened;
+the previous database stays next to it as `trisse-home.db.before-restore`.
+Off-site copies go to the WebDAV folder you configure; its password is
+encrypted with `SECRET_KEY`. The backups themselves contain your data (secrets
+stay encrypted with `SECRET_KEY`, passwords only as hashes), so use a folder only
+you can read.
+
+### Prometheus metrics
+
+`GET /metrics` exists only with `METRICS_ENABLED=true`. It needs a bearer
+token of at least 32 characters (compared in constant time) and is limited
+by `ALLOWED_CIDRS` like every other route. It reveals service, container and
+disk names, but no credentials and nothing from your data. See
+[metrics.md](metrics.md).
+
+### S.M.A.R.T. export
+
+Reading disk health needs raw device access (`/dev/sd*`, `CAP_SYS_RAWIO`),
+which would let a compromised dashboard read every disk. Instead a host
+script run by cron writes the JSON output of `smartctl` into a directory that
+is mounted read-only into trisse-home:
+[`scripts/smart-export.sh`](../scripts/smart-export.sh). The export contains
+model and serial numbers and health counters, nothing from the disks' contents.
 
 ### Wake-on-LAN relay
 
