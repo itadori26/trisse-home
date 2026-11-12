@@ -22,6 +22,8 @@ const base: Service = {
   error: '',
   certExpiresAt: null,
   certExpiresSoon: false,
+  container: '',
+  hidden: false,
   mac: '',
 };
 

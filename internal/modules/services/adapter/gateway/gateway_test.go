@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/services/domain"
+	"trisse-home/internal/modules/services/usecase"
 	"trisse-home/internal/platform/database/dbtest"
 )
 
@@ -110,5 +111,49 @@ func TestUptimeStore(t *testing.T) {
 	_ = store.PruneIncidentsBefore(ctx, start.Add(time.Hour))
 	if list, _ := store.Incidents(ctx, "s1", 10); len(list) != 0 {
 		t.Fatal("prune failed")
+	}
+}
+
+func TestRepositoryDiscoveryFields(t *testing.T) {
+	ctx := context.Background()
+	repo := NewRepository(dbtest.Open(t, "services", Migrations()))
+	s, _ := domain.NewService("1", "Media", "https://media.lan", "", "", "", false, 0)
+	s.Container = "jellyfin"
+	if err := repo.Create(ctx, s); err != nil {
+		t.Fatal(err)
+	}
+	s.Hidden, s.Edited = true, true
+	if err := repo.Update(ctx, s); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.Get(ctx, "1")
+	if err != nil || got.Container != "jellyfin" || !got.Hidden || !got.Edited {
+		t.Fatalf("round trip: %+v %v", got, err)
+	}
+}
+
+func TestDiscoveryStore(t *testing.T) {
+	ctx := context.Background()
+	store := NewDiscoveryStore(dbtest.Open(t, "services", Migrations()))
+	if s, err := store.DiscoverySettings(ctx); err != nil || s != domain.DefaultDiscoverySettings() {
+		t.Fatalf("defaults: %+v %v", s, err)
+	}
+	if last, err := store.LastSync(ctx); err != nil || !last.At.IsZero() {
+		t.Fatalf("no sync yet: %+v %v", last, err)
+	}
+	at := time.Date(2026, 11, 12, 12, 0, 0, 0, time.UTC)
+	// A sync before the first save keeps the default settings.
+	if err := store.SaveLastSync(ctx, usecase.SyncResult{At: at, Created: 3, Error: "x"}); err != nil {
+		t.Fatal(err)
+	}
+	want := domain.DiscoverySettings{Enabled: true, IntervalMinutes: 30, Rule: domain.ManualWins}
+	if err := store.SaveDiscoverySettings(ctx, want); err != nil {
+		t.Fatal(err)
+	}
+	if s, _ := store.DiscoverySettings(ctx); s != want {
+		t.Fatalf("settings: %+v", s)
+	}
+	if last, _ := store.LastSync(ctx); !last.At.Equal(at) || last.Created != 3 || last.Error != "x" {
+		t.Fatalf("saving settings keeps the last sync: %+v", last)
 	}
 }

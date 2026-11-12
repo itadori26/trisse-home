@@ -22,7 +22,9 @@ type Release struct {
 
 // VersionInfo is returned by Versions.Info.
 type VersionInfo struct {
-	Current         string
+	Current string
+	// InstallMethod tells how updates reach this instance.
+	InstallMethod   domain.InstallMethod
 	CheckEnabled    bool
 	Latest          *Release
 	UpdateAvailable bool
@@ -50,6 +52,7 @@ type UpdateSettings interface {
 
 type versions struct {
 	current  domain.Version
+	method   domain.InstallMethod
 	source   ReleaseSource
 	settings UpdateSettings
 	clock    kernel.Clock
@@ -59,9 +62,10 @@ type versions struct {
 	checkedAt time.Time
 }
 
-// NewVersions returns the version use cases for the running version current.
-func NewVersions(current string, source ReleaseSource, settings UpdateSettings, clock kernel.Clock) Versions {
-	return &versions{current: domain.ParseVersion(current), source: source, settings: settings, clock: clock}
+// NewVersions returns the version use cases for the running version current,
+// installed with method.
+func NewVersions(current string, method domain.InstallMethod, source ReleaseSource, settings UpdateSettings, clock kernel.Clock) Versions {
+	return &versions{current: domain.ParseVersion(current), method: method, source: source, settings: settings, clock: clock}
 }
 
 // Info implements Versions (cache-aside: looks up at most once a day).
@@ -80,7 +84,7 @@ func (uc *versions) Info(ctx context.Context) (VersionInfo, error) {
 	}
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
-	info := VersionInfo{Current: uc.current.String(), CheckEnabled: enabled, CheckedAt: uc.checkedAt}
+	info := VersionInfo{Current: uc.current.String(), InstallMethod: uc.method, CheckEnabled: enabled, CheckedAt: uc.checkedAt}
 	if enabled && uc.latest != nil {
 		l := *uc.latest
 		info.Latest = &l
