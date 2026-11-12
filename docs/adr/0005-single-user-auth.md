@@ -1,6 +1,6 @@
 # 0005 – Single-user auth with setup token and sessions
 
-- Status: Accepted
+- Status: Accepted, single-user scope superseded by [ADR 0012](0012-owner-and-guest-roles.md)
 - Date: 2026-11-10
 
 ## Context
@@ -27,5 +27,5 @@ by anyone else in the network after the first start.
 
 ## Consequences
 
-- No user management, roles or OAuth – deliberately out of scope.
+- No user management, roles or OAuth – deliberately out of scope. (Later superseded: roles by [ADR 0012](0012-owner-and-guest-roles.md), single sign-on by [ADR 0013](0013-single-sign-on.md).)
 - Integration credentials are encrypted with AES-256-GCM using `SECRET_KEY`.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"trisse-home/internal/modules/transfer/domain"
@@ -42,12 +43,14 @@ type Transfer interface {
 type transfer struct {
 	sections func() map[string]Section
 	clock    kernel.Clock
+	audit    kernel.AuditSink
 }
 
 // NewTransfer returns the use cases; sections is called on every request so
 // it sees all registered modules.
-func NewTransfer(sections func() map[string]Section, clock kernel.Clock) Transfer {
-	return &transfer{sections: sections, clock: clock}
+// Imports are reported to audit (the security event log).
+func NewTransfer(sections func() map[string]Section, clock kernel.Clock, audit kernel.AuditSink) Transfer {
+	return &transfer{sections: sections, clock: clock, audit: audit}
 }
 
 // Export implements Transfer.
@@ -87,6 +90,9 @@ func (uc *transfer) Import(ctx context.Context, doc Document) (ImportResult, err
 			continue
 		}
 		res.Imported = append(res.Imported, name)
+	}
+	if len(res.Imported) > 0 {
+		uc.audit.Audit(ctx, kernel.AuditEvent{Type: "data_imported", Detail: strings.Join(res.Imported, ", ")})
 	}
 	return res, nil
 }

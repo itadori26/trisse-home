@@ -66,7 +66,7 @@ Not sure whether trisse-home is the right fit? See the
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
 | **notifications** | Push messages via [ntfy](https://ntfy.sh) for offline services, containers, full disks, expiring certificates and failed backups |
 | **onboarding** | Guided tour after the first login, can be restarted from the settings                                 |
-| **auth**       | First-run setup, login, session overview with sign-out per device, password change (always enabled)   |
+| **auth**       | First-run setup, login with two-factor authentication, session overview with sign-out per device, password change, security log with ntfy alerts on new devices and lockouts (exponential backoff), read-only guest accounts with shared tabs ([ADR 0012](docs/adr/0012-owner-and-guest-roles.md)), scoped [API tokens](docs/api-tokens.md) for automations, optional single sign-on via OIDC or forward auth ([ADR 0013](docs/adr/0013-single-sign-on.md)), passkeys as second factor behind HTTPS ([ADR 0014](docs/adr/0014-passkeys.md)) — always enabled |
 
 ## Architecture in brief
 
@@ -295,6 +295,12 @@ service tiles are configured in the web interface.
 | `SAMPLE_DATA`       | `true`                            | Fill a fresh installation with example widgets and data after setup.         |
 | `DEMO_MODE`         | `false`                           | Public demo: no login, fixtures instead of integrations, see [docs/demo.md](docs/demo.md). |
 | `DEMO_RESET_INTERVAL` | `3h`                            | How often a demo restores its sample data.                                    |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL` | empty | OpenID Connect single sign-on for the owner ([guide](docs/reverse-proxy.md#single-sign-on-optional)). |
+| `OIDC_ALLOWED_EMAILS` / `OIDC_ALLOWED_SUBJECTS` | empty | Who may sign in via OIDC (verified e-mail or subject). |
+| `AUTH_PROXY_HEADER`, `AUTH_PROXY_USERS` | empty | Trust a user header from `TRUSTED_PROXIES` (forward auth). |
+| `PASSWORD_LOGIN` | `true` | `false` disables the owner's password login once SSO is configured. |
+| `SSO_REQUIRE_2FA` | `false` | Also ask for the local TOTP code after SSO. |
+| `PUBLIC_URL` | empty | Public `https://` origin (e.g. `https://home.example.org`); enables passkeys. WebAuthn does not work on plain `http://<ip>`. |
 | `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
 | `SAMPLE_FEEDS`      | Go Blog, Hacker News              | Example feeds, comma separated.                                              |
 

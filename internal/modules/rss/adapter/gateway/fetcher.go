@@ -35,7 +35,7 @@ func (f *HTTPFetcher) Fetch(ctx context.Context, url string) (usecase.FetchedFee
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return usecase.FetchedFeed{}, kernel.NewPublicError(kernel.ErrUnavailable, "the server answered "+res.Status)
+		return usecase.FetchedFeed{}, kernel.NewPublicErrorf(kernel.ErrUnavailable, "The server answered {status}.", "status", res.Status)
 	}
 	parsed, err := gofeed.NewParser().Parse(io.LimitReader(res.Body, maxFeedBytes))
 	if err != nil {

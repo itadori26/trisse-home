@@ -14,6 +14,7 @@ export interface RulesInputDTO {
   tls: boolean;
   tlsDays: number /* int */;
   backups: boolean;
+  security: boolean;
 }
 /**
  * SettingsInputDTO is the body of PUT /api/notifications/settings; an empty

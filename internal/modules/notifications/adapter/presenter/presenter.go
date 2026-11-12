@@ -18,6 +18,7 @@ type RulesDTO struct {
 	TLS           bool    `json:"tls"`
 	TLSDays       int     `json:"tlsDays"`
 	Backups       bool    `json:"backups"`
+	Security      bool    `json:"security"`
 }
 
 // SettingsDTO is returned by the settings endpoints; the token is never returned.

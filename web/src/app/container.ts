@@ -3,32 +3,59 @@
  * and the use cases, and hands them to the UI. Nothing else instantiates
  * adapters, so features stay independent of each other.
  */
-import { AdGuardApi, AdGuardUseCases } from '../features/adguard';
-import { FritzBoxApi, FritzBoxUseCases } from '../features/fritzbox';
-import { NextcloudApi, NextcloudUseCases } from '../features/nextcloud';
-import { ShoppingApi, ShoppingUseCases } from '../features/shopping';
-import { ParcelsApi, ParcelsUseCases } from '../features/parcels';
-import { TransferApi, TransferUseCases } from '../features/transfer';
-import { TransitApi, TransitUseCases } from '../features/transit';
-import { WasteApi, WasteUseCases } from '../features/waste';
-import { WireGuardApi, WireGuardUseCases } from '../features/wireguard';
-import { AppearanceApi, AppearanceUseCases } from '../features/appearance';
-import { AuthApi, AuthUseCases } from '../features/auth';
-import { BackupApi, BackupUseCases } from '../features/backup';
-import { BackupMonitorApi, BackupMonitorUseCases } from '../features/backupmonitor';
-import { BookmarksApi, BookmarksUseCases } from '../features/bookmarks';
-import { CalendarApi, CalendarUseCases } from '../features/calendar';
-import { DashboardApi, DashboardUseCases } from '../features/dashboard';
-import { DockerApi, DockerUseCases } from '../features/docker';
-import { NotesApi, NotesUseCases } from '../features/notes';
-import { NotificationsApi, NotificationsUseCases } from '../features/notifications';
-import { OnboardingApi, OnboardingUseCases } from '../features/onboarding';
-import { RssApi, RssUseCases } from '../features/rss';
-import { SearchApi, SearchUseCases } from '../features/search';
-import { ServicesApi, ServicesUseCases } from '../features/services';
-import { SystemApi, SystemUseCases } from '../features/system';
-import { TodosApi, TodosUseCases } from '../features/todos';
-import { WeatherApi, WeatherUseCases } from '../features/weather';
+import { AdGuardApi } from '../features/adguard/adapter/api/adguardApi';
+import { AdGuardUseCases } from '../features/adguard/usecase/adguardUseCases';
+import { FritzBoxApi } from '../features/fritzbox/adapter/api/fritzboxApi';
+import { FritzBoxUseCases } from '../features/fritzbox/usecase/fritzboxUseCases';
+import { NextcloudApi } from '../features/nextcloud/adapter/api/nextcloudApi';
+import { NextcloudUseCases } from '../features/nextcloud/usecase/nextcloudUseCases';
+import { ShoppingApi } from '../features/shopping/adapter/api/shoppingApi';
+import { ShoppingUseCases } from '../features/shopping/usecase/shoppingUseCases';
+import { ParcelsApi } from '../features/parcels/adapter/api/parcelsApi';
+import { ParcelsUseCases } from '../features/parcels/usecase/parcelsUseCases';
+import { TransferApi } from '../features/transfer/adapter/api/transferApi';
+import { TransferUseCases } from '../features/transfer/usecase/transferUseCases';
+import { TransitApi } from '../features/transit/adapter/api/transitApi';
+import { TransitUseCases } from '../features/transit/usecase/transitUseCases';
+import { WasteApi } from '../features/waste/adapter/api/wasteApi';
+import { WasteUseCases } from '../features/waste/usecase/wasteUseCases';
+import { WireGuardApi } from '../features/wireguard/adapter/api/wireguardApi';
+import { WireGuardUseCases } from '../features/wireguard/usecase/wireguardUseCases';
+import { AppearanceApi } from '../features/appearance/adapter/api/appearanceApi';
+import { AppearanceUseCases } from '../features/appearance/usecase/appearanceUseCases';
+import { AuthApi } from '../features/auth/adapter/api/authApi';
+import { AuthUseCases } from '../features/auth/usecase/authUseCases';
+import { BrowserPasskeys } from '../features/auth/adapter/browser/webauthn';
+import { BackupApi } from '../features/backup/adapter/api/backupApi';
+import { BackupUseCases } from '../features/backup/usecase/backupUseCases';
+import { BackupMonitorApi } from '../features/backupmonitor/adapter/api/backupMonitorApi';
+import { BackupMonitorUseCases } from '../features/backupmonitor/usecase/backupMonitorUseCases';
+import { BookmarksApi } from '../features/bookmarks/adapter/api/bookmarksApi';
+import { BookmarksUseCases } from '../features/bookmarks/usecase/bookmarksUseCases';
+import { CalendarApi } from '../features/calendar/adapter/api/calendarApi';
+import { CalendarUseCases } from '../features/calendar/usecase/calendarUseCases';
+import { DashboardApi } from '../features/dashboard/adapter/api/dashboardApi';
+import { DashboardUseCases } from '../features/dashboard/usecase/dashboardUseCases';
+import { DockerApi } from '../features/docker/adapter/api/dockerApi';
+import { DockerUseCases } from '../features/docker/usecase/dockerUseCases';
+import { NotesApi } from '../features/notes/adapter/api/notesApi';
+import { NotesUseCases } from '../features/notes/usecase/notesUseCases';
+import { NotificationsApi } from '../features/notifications/adapter/api/notificationsApi';
+import { NotificationsUseCases } from '../features/notifications/usecase/notificationsUseCases';
+import { OnboardingApi } from '../features/onboarding/adapter/api/onboardingApi';
+import { OnboardingUseCases } from '../features/onboarding/usecase/onboardingUseCases';
+import { RssApi } from '../features/rss/adapter/api/rssApi';
+import { RssUseCases } from '../features/rss/usecase/rssUseCases';
+import { SearchApi } from '../features/search/adapter/api/searchApi';
+import { SearchUseCases } from '../features/search/usecase/searchUseCases';
+import { ServicesApi } from '../features/services/adapter/api/servicesApi';
+import { ServicesUseCases } from '../features/services/usecase/servicesUseCases';
+import { SystemApi } from '../features/system/adapter/api/systemApi';
+import { SystemUseCases } from '../features/system/usecase/systemUseCases';
+import { TodosApi } from '../features/todos/adapter/api/todosApi';
+import { TodosUseCases } from '../features/todos/usecase/todosUseCases';
+import { WeatherApi } from '../features/weather/adapter/api/weatherApi';
+import { WeatherUseCases } from '../features/weather/usecase/weatherUseCases';
 import type { InfoResponse } from '../shared/api-client/generated/modules';
 import { FetchHttpClient } from '../shared/api-client/http';
 
@@ -71,7 +98,7 @@ export function createContainer(onUnauthorized: () => void): Container {
   const http = new FetchHttpClient(onUnauthorized);
   return {
     http,
-    auth: new AuthUseCases(new AuthApi(http), http),
+    auth: new AuthUseCases(new AuthApi(http), http, new BrowserPasskeys()),
     dashboard: new DashboardUseCases(new DashboardApi(http)),
     appearance: new AppearanceUseCases(new AppearanceApi(http)),
     search: new SearchUseCases(new SearchApi(http)),

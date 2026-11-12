@@ -23,10 +23,11 @@ jobs:
           version: v2.15.0
       - name: Test
         run: go test -race -count=1 ./...
-      - name: Generated TypeScript types are up to date
+      - name: Generated TypeScript types and backend messages are up to date
         run: |
           go install github.com/gzuidhof/tygo@latest
           tygo generate
+          go run ./scripts/servermessages
           cd web && npm ci --no-audit --no-fund && npx prettier --write src/shared/api-client/generated >/dev/null
           git diff --exit-code -- src/shared/api-client/generated
 
@@ -118,7 +119,7 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
       - name: Upload scan results
-        if: always() && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: always() && hashFiles('trivy.sarif') != '' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: trivy.sarif

@@ -79,3 +79,30 @@ func TestNotifier(t *testing.T) {
 		t.Fatal("last delivery error not recorded")
 	}
 }
+
+func TestAlert(t *testing.T) {
+	ctx := context.Background()
+	sender := &fakeSender{}
+	n := NewNotifier(&memRepo{}, sender, clk{})
+	nn := n.(*notifier)
+	alert := kernel.Alert{Kind: "security", Title: "New sign-in", Urgent: true}
+	n.Alert(ctx, alert)
+	nn.Wait()
+	if len(sender.sent) != 0 {
+		t.Fatal("sent while disabled")
+	}
+	rules := domain.DefaultRules()
+	_, _ = n.SaveSettings(ctx, SettingsInput{Enabled: true, Topic: "home", Rules: rules})
+	n.Alert(ctx, alert)
+	nn.Wait()
+	if len(sender.sent) != 1 || sender.sent[0].Priority != domain.PriorityHigh {
+		t.Fatalf("%+v", sender.sent)
+	}
+	rules.Security = false
+	_, _ = n.SaveSettings(ctx, SettingsInput{Enabled: true, Topic: "home", Rules: rules})
+	n.Alert(ctx, alert)
+	nn.Wait()
+	if len(sender.sent) != 1 {
+		t.Fatal("security rule off must suppress the alert")
+	}
+}

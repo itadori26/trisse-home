@@ -19,6 +19,7 @@ type Module struct {
 	modules.Transferable
 	handlers *controller.Handlers
 	seed     usecase.SeedSampleData
+	scope    usecase.TabScope
 }
 
 // SampleWeather is the location of the example weather widget.
@@ -36,7 +37,8 @@ func New(db *sql.DB, ids kernel.IDGenerator, widgetKinds []string, weather Sampl
 	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables},
 		handlers: controller.NewHandlers(usecase.NewGetDashboard(deps), usecase.NewManageTabs(deps), usecase.NewManageWidgets(deps),
 			usecase.NewManageTemplates(deps)),
-		seed: usecase.NewSeedSampleData(deps, usecase.SampleLayout(string(weatherConfig))),
+		seed:  usecase.NewSeedSampleData(deps, usecase.SampleLayout(string(weatherConfig))),
+		scope: usecase.NewTabScope(deps),
 	}
 }
 
@@ -66,4 +68,10 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("POST /api/dashboard/templates", h.SaveTemplate)
 	r.Protected("DELETE /api/dashboard/templates/{id}", h.DeleteTemplate)
 	r.Protected("POST /api/dashboard/templates/{id}/tabs", h.CreateTabFromTemplate)
+}
+
+// WidgetKindsOnTabs returns the widget kinds placed on the given tabs (used
+// to scope guest accounts).
+func (m *Module) WidgetKindsOnTabs(ctx context.Context, tabIDs []string) ([]string, error) {
+	return m.scope.WidgetKindsOnTabs(ctx, tabIDs)
 }

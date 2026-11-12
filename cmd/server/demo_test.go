@@ -91,7 +91,7 @@ func TestDemoModeRefusesProductionDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := a.db.ExecContext(ctx, `INSERT INTO auth_account (id, password_hash, created_at, updated_at) VALUES (1, 'x', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`); err != nil {
+	if _, err := a.db.ExecContext(ctx, `INSERT INTO auth_accounts (id, role, name, password_hash, created_at, updated_at) VALUES ('owner', 'owner', 'owner', 'x', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`); err != nil {
 		t.Fatal(err)
 	}
 	_ = a.db.Close()

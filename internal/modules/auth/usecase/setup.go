@@ -19,6 +19,15 @@ type Deps struct {
 	TTL      SessionTTL
 	IDs      kernel.IDGenerator
 	OTP      OneTimePasswords
+	// Events records security events; nil disables the log (tests).
+	Events *Recorder
+	// PasswordLoginDisabled turns off the owner's password login once SSO
+	// works (guests keep their passwords; reset-account still recovers).
+	PasswordLoginDisabled bool
+	// Passkeys, WebAuthn and Challenges enable passkeys; nil disables them.
+	Passkeys   PasskeyRepository
+	WebAuthn   WebAuthnVerifier
+	Challenges *Challenges
 }
 
 func (d Deps) issuer() sessionIssuer {
@@ -72,5 +81,7 @@ func (uc *setupAccount) Execute(ctx context.Context, req SetupRequest) (SessionR
 	}
 	uc.deps.Limiter.Reset(req.ClientKey)
 	uc.observer.AccountCreated(ctx)
-	return uc.deps.issuer().issue(ctx, domain.NewClient(req.UserAgent, req.ClientKey))
+	client := domain.NewClient(req.UserAgent, req.ClientKey)
+	uc.deps.Events.loginSucceeded(ctx, domain.OwnerID, client, "setup")
+	return uc.deps.issuer().issue(ctx, domain.OwnerID, client)
 }

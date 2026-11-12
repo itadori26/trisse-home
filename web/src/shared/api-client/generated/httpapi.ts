@@ -17,4 +17,10 @@ export interface ErrorDetail {
   code: string;
   message: string;
   field?: string;
+  /**
+   * MessageKey identifies the English template of Message so clients can
+   * show a translation; Params fill its {placeholders}.
+   */
+  messageKey?: string;
+  params?: { [key: string]: string};
 }

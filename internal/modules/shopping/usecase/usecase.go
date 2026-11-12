@@ -61,7 +61,7 @@ func unavailable(err error) error {
 	if errors.As(err, &pe) {
 		return err
 	}
-	return kernel.NewPublicError(kernel.ErrUnavailable, "The task list is not reachable: "+err.Error())
+	return kernel.NewPublicErrorf(kernel.ErrUnavailable, "The task list is not reachable: {detail}", "detail", err.Error())
 }
 
 // Settings implements Shopping.
@@ -88,7 +88,7 @@ func (uc *shopping) SaveSettings(ctx context.Context, listURL, username, passwor
 		return SettingsView{}, err
 	}
 	if _, err := uc.store.List(ctx, s); err != nil {
-		return SettingsView{}, kernel.NewPublicError(kernel.ErrInvalid, "Could not read the task list: "+err.Error())
+		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not read the task list: {detail}", "detail", err.Error())
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)

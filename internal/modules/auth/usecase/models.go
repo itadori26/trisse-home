@@ -1,6 +1,10 @@
 package usecase
 
-import "time"
+import (
+	"time"
+
+	"trisse-home/internal/shared/kernel"
+)
 
 // StatusRequest carries the (possibly empty) session token of the caller.
 type StatusRequest struct {
@@ -12,6 +16,9 @@ type StatusResponse struct {
 	SetupRequired bool
 	Authenticated bool
 	CSRFToken     string
+	// Role and Username of the signed-in account.
+	Role     string
+	Username string
 }
 
 // SetupRequest is the input of SetupAccount.
@@ -25,6 +32,8 @@ type SetupRequest struct {
 // LoginRequest is the input of Login. ClientKey identifies the client for
 // rate limiting (usually its IP address).
 type LoginRequest struct {
+	// Username is empty for the owner and the guest's name otherwise.
+	Username  string
 	Password  string
 	TOTPCode  string
 	ClientKey string
@@ -66,6 +75,7 @@ type AuthenticateResponse struct {
 	CSRFToken string
 	ExpiresAt time.Time
 	Refreshed bool
+	Principal kernel.Principal
 }
 
 // ChangePasswordRequest is the input of ChangePassword.

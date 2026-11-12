@@ -31,6 +31,28 @@ export function intlLocale(): string {
 export function setLanguage(preference: string): void {
   state.locale = resolveLocale(preference, browserLanguages());
   if (typeof document !== 'undefined') document.documentElement.lang = state.locale;
+  void loadServerMessages();
 }
 
 export type { MessageKey };
+
+/**
+ * Translates a backend error message (#102). Returns undefined for unknown
+ * keys, so callers fall back to the English text sent by the server.
+ */
+export function serverMessage(key: string | undefined, params?: Record<string, string>): string | undefined {
+  // The server already answers in English; translations are loaded lazily.
+  if (!key || state.locale !== 'de' || !serverCatalogue.de) return undefined;
+  const template = serverCatalogue.de[key];
+  return template === undefined ? undefined : formatMessage(template, params);
+}
+
+/** Lazily loaded backend message translations (not in the initial bundle, ADR 0011). */
+const serverCatalogue: { de?: Record<string, string> } = {};
+
+/** Loads the backend message translations of the active language. */
+export async function loadServerMessages(): Promise<void> {
+  if (state.locale === 'de' && !serverCatalogue.de) {
+    serverCatalogue.de = (await import('./locales/server-de')).serverDe;
+  }
+}

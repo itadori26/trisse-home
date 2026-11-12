@@ -56,3 +56,16 @@ func TestDecodeJSONRejectsUnknownFields(t *testing.T) {
 		t.Fatalf("unexpected result %v %q", err, dst.A)
 	}
 }
+
+func TestWriteDomainErrorCarriesMessageKey(t *testing.T) {
+	rec := httptest.NewRecorder()
+	err := kernel.NewValidationErrorf("file", "At most {max} bookmarks can be imported at once.", "max", 500)
+	WriteDomainError(rec, httptest.NewRequest(http.MethodPost, "/", nil), err)
+	var body ErrorBody
+	_ = json.NewDecoder(rec.Body).Decode(&body)
+	d := body.Error
+	if d.Message != "At most 500 bookmarks can be imported at once." || d.MessageKey != kernel.MessageKey("At most {max} bookmarks can be imported at once.") ||
+		d.Params["max"] != "500" || d.Field != "file" {
+		t.Fatalf("%+v", d)
+	}
+}

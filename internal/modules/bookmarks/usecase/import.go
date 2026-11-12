@@ -31,7 +31,7 @@ func NewImportBookmarks(d Deps) ImportBookmarks { return &importBookmarks{d: d} 
 // (case-insensitive) or created; URLs that already exist are skipped.
 func (uc *importBookmarks) Execute(ctx context.Context, items []domain.ImportCandidate) (ImportResult, error) {
 	if len(items) > domain.MaxImport {
-		return ImportResult{}, kernel.NewValidationError("file", fmt.Sprintf("At most %d bookmarks can be imported at once.", domain.MaxImport))
+		return ImportResult{}, kernel.NewValidationErrorf("file", "At most {max} bookmarks can be imported at once.", "max", domain.MaxImport)
 	}
 	existing, err := uc.d.Repo.ListBookmarks(ctx)
 	if err != nil {

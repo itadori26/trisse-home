@@ -7,3 +7,8 @@ export { default as LoginPage } from './ui/LoginPage.svelte';
 export { default as ChangePasswordForm } from './ui/ChangePasswordForm.svelte';
 export { default as SessionsList } from './ui/SessionsList.svelte';
 export { default as TwoFactorSettings } from './ui/TwoFactorSettings.svelte';
+export { default as SecurityLog } from './ui/SecurityLog.svelte';
+export { default as GuestsSettings } from './ui/GuestsSettings.svelte';
+export { default as ApiTokensSettings } from './ui/ApiTokensSettings.svelte';
+export { BrowserPasskeys } from './adapter/browser/webauthn';
+export { default as PasskeySettings } from './ui/PasskeySettings.svelte';

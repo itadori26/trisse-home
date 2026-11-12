@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"trisse-home/internal/modules/auth/adapter/presenter"
 	"trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/auth/usecase"
+	"trisse-home/internal/shared/kernel"
 )
 
 type fakeLogin struct{ err error }
@@ -23,10 +25,15 @@ func (f fakeLogin) Execute(context.Context, usecase.LoginRequest) (usecase.Sessi
 type fakeAuth struct{ err error }
 
 func (f fakeAuth) Execute(_ context.Context, req usecase.AuthenticateRequest) (usecase.AuthenticateResponse, error) {
-	if f.err != nil || req.SessionToken != "tok" {
-		return usecase.AuthenticateResponse{}, domain.ErrSessionInvalid
+	switch {
+	case f.err != nil:
+		return usecase.AuthenticateResponse{}, f.err
+	case req.SessionToken == "tok":
+		return usecase.AuthenticateResponse{CSRFToken: "csrf", Principal: kernel.Principal{AccountID: "owner", Role: "owner"}}, nil
+	case req.SessionToken == "guest":
+		return usecase.AuthenticateResponse{CSRFToken: "csrf", Principal: kernel.Principal{AccountID: "g1", Role: "guest"}}, nil
 	}
-	return usecase.AuthenticateResponse{CSRFToken: "csrf"}, nil
+	return usecase.AuthenticateResponse{}, domain.ErrSessionInvalid
 }
 
 func TestLoginSetsHardenedCookie(t *testing.T) {
@@ -67,7 +74,7 @@ func TestSecureCookieUsesHostPrefix(t *testing.T) {
 }
 
 func TestGuard(t *testing.T) {
-	h := NewHandlers(UseCases{Authenticate: fakeAuth{}}, CookieConfig{})
+	h := NewHandlers(UseCases{Authenticate: fakeAuth{}, Authorizer: usecase.NewAuthorizer(nil)}, CookieConfig{})
 	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	guarded := h.Guard(next)
 	tests := []struct {
@@ -79,6 +86,8 @@ func TestGuard(t *testing.T) {
 		{"post without csrf", http.MethodPost, "tok", "", http.StatusForbidden},
 		{"post wrong csrf", http.MethodPost, "tok", "nope", http.StatusForbidden},
 		{"post with csrf", http.MethodPost, "tok", "csrf", http.StatusNoContent},
+		{"guest write denied", http.MethodPost, "guest", "csrf", http.StatusForbidden},
+		{"guest read outside scope denied", http.MethodGet, "guest", "", http.StatusForbidden},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,5 +104,48 @@ func TestGuard(t *testing.T) {
 				t.Fatalf("status %d, want %d", rec.Code, tt.want)
 			}
 		})
+	}
+}
+
+type fakeSSO struct{ usecase.SSO }
+
+func (fakeSSO) Status() usecase.SSOStatus { return usecase.SSOStatus{Header: true, LocalLogin: true} }
+func (fakeSSO) HeaderLogin(_ context.Context, user string, _ domain.Client) (usecase.SessionResponse, string, error) {
+	if user != "me" {
+		return usecase.SessionResponse{}, "", domain.ErrSSONotAllowed
+	}
+	return usecase.SessionResponse{SessionToken: "s", CSRFToken: "c"}, "", nil
+}
+
+func TestHeaderLoginOnlyFromTrustedProxy(t *testing.T) {
+	h := NewHandlers(UseCases{SSO: fakeSSO{}}, CookieConfig{}).
+		WithProxyAuth(ProxyAuth{Header: "Remote-User", Proxies: []netip.Prefix{netip.MustParsePrefix("172.20.0.2/32")}})
+	for _, c := range []struct {
+		peer, user string
+		want       int
+	}{
+		{"172.20.0.2:5000", "me", http.StatusOK},
+		{"172.20.0.2:5000", "eve", http.StatusForbidden},
+		{"192.168.1.50:5000", "me", http.StatusNotFound}, // header from a client: ignored
+	} {
+		r := httptest.NewRequest(http.MethodPost, "/api/auth/sso/header", nil)
+		r.RemoteAddr = c.peer
+		r.Header.Set("Remote-User", c.user)
+		rec := httptest.NewRecorder()
+		h.HeaderLogin(rec, r)
+		if rec.Code != c.want {
+			t.Errorf("%s %s: %d, want %d", c.peer, c.user, rec.Code, c.want)
+		}
+	}
+}
+
+func TestOIDCCallbackChecksStateCookie(t *testing.T) {
+	h := NewHandlers(UseCases{SSO: fakeSSO{}}, CookieConfig{})
+	r := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=abc&code=x", nil)
+	r.AddCookie(&http.Cookie{Name: oidcStateCookie, Value: "other"})
+	rec := httptest.NewRecorder()
+	h.OIDCCallback(rec, r)
+	if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/?sso_error=state" {
+		t.Fatalf("%d %s", rec.Code, rec.Header().Get("Location"))
 	}
 }

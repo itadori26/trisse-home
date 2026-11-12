@@ -1,11 +1,19 @@
 package controller
 
 import (
+	"encoding/base64"
+	"errors"
+	"net"
 	"net/http"
+	"net/netip"
+	"net/url"
+	"strings"
 
 	"trisse-home/internal/modules/auth/adapter/presenter"
+	"trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/auth/usecase"
 	"trisse-home/internal/shared/httpapi"
+	"trisse-home/internal/shared/kernel"
 )
 
 // UseCases bundles the input ports the auth controller calls.
@@ -18,6 +26,13 @@ type UseCases struct {
 	ChangePassword usecase.ChangePassword
 	Sessions       usecase.ManageSessions
 	TwoFactor      usecase.TwoFactor
+	SecurityLog    usecase.SecurityLog
+	Authorizer     usecase.Authorizer
+	Guests         usecase.Guests
+	APITokens      usecase.APITokens
+	// SSO is nil when no single sign-on method is configured.
+	SSO      usecase.SSO
+	Passkeys usecase.Passkeys
 	// DemoLogin is nil unless the instance runs in demo mode.
 	DemoLogin usecase.DemoLogin
 }
@@ -26,6 +41,38 @@ type UseCases struct {
 type Handlers struct {
 	uc      UseCases
 	cookies CookieConfig
+	proxy   ProxyAuth
+}
+
+// ProxyAuth configures login via a header set by a trusted reverse proxy.
+type ProxyAuth struct {
+	// Header carries the authenticated user name, e.g. "Remote-User".
+	Header string
+	// Proxies are the only peers whose header is believed.
+	Proxies []netip.Prefix
+}
+
+// WithProxyAuth enables the trusted header login.
+func (h *Handlers) WithProxyAuth(p ProxyAuth) *Handlers { h.proxy = p; return h }
+
+// fromTrustedProxy reports whether the TCP peer (not a forwarded address)
+// is one of the configured proxies. Headers from anyone else are ignored.
+func (h *Handlers) fromTrustedProxy(r *http.Request) bool {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
+		return false
+	}
+	addr = addr.Unmap()
+	for _, p := range h.proxy.Proxies {
+		if p.Contains(addr) {
+			return true
+		}
+	}
+	return false
 }
 
 // NewHandlers returns auth handlers.
@@ -42,6 +89,12 @@ func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
 	}
 	dto := presenter.Status(res)
 	dto.Demo = h.uc.DemoLogin != nil
+	if h.uc.SSO != nil {
+		st := h.uc.SSO.Status()
+		dto.SSO = presenter.SSOStatusDTO{OIDC: st.OIDC, Header: st.Header && h.proxy.Header != "" && h.fromTrustedProxy(r), LocalLogin: st.LocalLogin}
+	} else {
+		dto.SSO = presenter.SSOStatusDTO{LocalLogin: true}
+	}
 	httpapi.WriteJSON(w, http.StatusOK, dto)
 }
 
@@ -71,7 +124,12 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	res, err := h.uc.Login.Execute(r.Context(), usecase.LoginRequest{Password: dto.Password, TOTPCode: dto.Code, ClientKey: clientKey(r), UserAgent: r.UserAgent()})
+	res, err := h.uc.Login.Execute(r.Context(), usecase.LoginRequest{Username: dto.Username, Password: dto.Password, TOTPCode: dto.Code, ClientKey: clientKey(r), UserAgent: r.UserAgent()})
+	var sf *usecase.SecondFactorRequired
+	if errors.As(err, &sf) {
+		httpapi.WriteJSON(w, http.StatusAccepted, presenter.SecondFactor(sf))
+		return
+	}
 	h.respondWithSession(w, r, res, err)
 }
 
@@ -190,4 +248,264 @@ func (h *Handlers) respondWithSession(w http.ResponseWriter, r *http.Request, re
 
 func clientKey(r *http.Request) string {
 	return httpapi.ClientIP(r.Context()).String()
+}
+
+// SecurityEvents handles GET /api/auth/events.
+func (h *Handlers) SecurityEvents(w http.ResponseWriter, r *http.Request) {
+	list, err := h.uc.SecurityLog.List(r.Context(), 200)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.SecurityEvents(list))
+}
+
+// ListGuests handles GET /api/auth/guests.
+func (h *Handlers) ListGuests(w http.ResponseWriter, r *http.Request) {
+	list, err := h.uc.Guests.List(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Guests(list))
+}
+
+// CreateGuest handles POST /api/auth/guests.
+func (h *Handlers) CreateGuest(w http.ResponseWriter, r *http.Request) {
+	var dto GuestRequestDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	g, err := h.uc.Guests.Create(r.Context(), usecase.NewGuestRequest{Name: dto.Name, Password: dto.Password, Tabs: dto.Tabs})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.Guest(g))
+}
+
+// UpdateGuest handles PUT /api/auth/guests/{id}.
+func (h *Handlers) UpdateGuest(w http.ResponseWriter, r *http.Request) {
+	var dto GuestRequestDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	g, err := h.uc.Guests.Update(r.Context(), usecase.UpdateGuestRequest{ID: r.PathValue("id"), Tabs: dto.Tabs, Disabled: dto.Disabled, Password: dto.Password})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Guest(g))
+}
+
+// DeleteGuest handles DELETE /api/auth/guests/{id}.
+func (h *Handlers) DeleteGuest(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.Guests.Delete(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ListTokens handles GET /api/auth/tokens.
+func (h *Handlers) ListTokens(w http.ResponseWriter, r *http.Request) {
+	list, err := h.uc.APITokens.List(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Tokens(list))
+}
+
+// CreateToken handles POST /api/auth/tokens; the token is returned once.
+func (h *Handlers) CreateToken(w http.ResponseWriter, r *http.Request) {
+	var dto TokenRequestDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	t, err := h.uc.APITokens.Create(r.Context(), usecase.NewTokenRequest{Name: dto.Name, Scopes: dto.Scopes, ExpiresInDays: dto.ExpiresInDays})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.CreatedToken(t))
+}
+
+// RevokeToken handles DELETE /api/auth/tokens/{id}.
+func (h *Handlers) RevokeToken(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.APITokens.Revoke(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+const oidcStateCookie = "trisse_oidc_state"
+
+// OIDCStart handles GET /api/auth/oidc/start: redirect to the provider and
+// bind the state to this browser (protects against login CSRF).
+func (h *Handlers) OIDCStart(w http.ResponseWriter, r *http.Request) {
+	if h.uc.SSO == nil {
+		httpapi.WriteDomainError(w, r, domain.ErrSSOUnavailable)
+		return
+	}
+	url, state, err := h.uc.SSO.BeginOIDC(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	// SameSite=Lax: the provider redirects back with a top-level GET.
+	// Secure follows COOKIE_SECURE like the session cookie (plain HTTP in the LAN by default).
+	http.SetCookie(w, &http.Cookie{Name: oidcStateCookie, Value: state, Path: "/api/auth/oidc/", HttpOnly: true, //nolint:gosec // see above
+		Secure: h.cookies.Secure, SameSite: http.SameSiteLaxMode, MaxAge: 600})
+	http.Redirect(w, r, url, http.StatusFound)
+}
+
+// OIDCCallback handles GET /api/auth/oidc/callback.
+func (h *Handlers) OIDCCallback(w http.ResponseWriter, r *http.Request) {
+	clearState := &http.Cookie{Name: oidcStateCookie, Path: "/api/auth/oidc/", MaxAge: -1, HttpOnly: true, //nolint:gosec // Secure follows COOKIE_SECURE
+		Secure: h.cookies.Secure, SameSite: http.SameSiteLaxMode}
+	state := r.URL.Query().Get("state")
+	c, err := r.Cookie(oidcStateCookie)
+	if h.uc.SSO == nil || err != nil || state == "" || !validCSRF(c.Value, state) {
+		http.SetCookie(w, clearState)
+		http.Redirect(w, r, "/?sso_error=state", http.StatusFound)
+		return
+	}
+	http.SetCookie(w, clearState)
+	if e := r.URL.Query().Get("error"); e != "" {
+		http.Redirect(w, r, "/?sso_error=provider", http.StatusFound)
+		return
+	}
+	client := domain.NewClient(r.UserAgent(), clientKey(r))
+	res, ticket, err := h.uc.SSO.CompleteOIDC(r.Context(), state, r.URL.Query().Get("code"), client)
+	h.redirectAfterSSO(w, r, res, ticket, err)
+}
+
+func (h *Handlers) redirectAfterSSO(w http.ResponseWriter, r *http.Request, res usecase.SessionResponse, ticket string, err error) {
+	switch {
+	case errors.Is(err, domain.ErrSSOSecondFactorNeed):
+		http.Redirect(w, r, "/?sso_ticket="+url.QueryEscape(ticket), http.StatusFound)
+	case errors.Is(err, domain.ErrSSONotAllowed):
+		http.Redirect(w, r, "/?sso_error=not_allowed", http.StatusFound)
+	case err != nil:
+		http.Redirect(w, r, "/?sso_error=failed", http.StatusFound)
+	default:
+		h.cookies.set(w, res.SessionToken, res.ExpiresAt)
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
+}
+
+// HeaderLogin handles POST /api/auth/sso/header: the trusted proxy already
+// authenticated the user and passes the name in the configured header.
+func (h *Handlers) HeaderLogin(w http.ResponseWriter, r *http.Request) {
+	if h.uc.SSO == nil || h.proxy.Header == "" || !h.fromTrustedProxy(r) {
+		httpapi.WriteDomainError(w, r, domain.ErrSSOUnavailable)
+		return
+	}
+	client := domain.NewClient(r.UserAgent(), clientKey(r))
+	res, ticket, err := h.uc.SSO.HeaderLogin(r.Context(), r.Header.Get(h.proxy.Header), client)
+	if errors.Is(err, domain.ErrSSOSecondFactorNeed) {
+		httpapi.WriteJSON(w, http.StatusAccepted, presenter.SSOTicketDTO{Ticket: ticket})
+		return
+	}
+	h.respondWithSession(w, r, res, err)
+}
+
+// SSOSecondFactor handles POST /api/auth/sso/2fa.
+func (h *Handlers) SSOSecondFactor(w http.ResponseWriter, r *http.Request) {
+	var dto SSOSecondFactorDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	if h.uc.SSO == nil {
+		httpapi.WriteDomainError(w, r, domain.ErrSSOUnavailable)
+		return
+	}
+	res, err := h.uc.SSO.CompleteSecondFactor(r.Context(), dto.Ticket, dto.Code, domain.NewClient(r.UserAgent(), clientKey(r)))
+	h.respondWithSession(w, r, res, err)
+}
+
+// ListPasskeys handles GET /api/auth/passkeys.
+func (h *Handlers) ListPasskeys(w http.ResponseWriter, r *http.Request) {
+	list, err := h.uc.Passkeys.List(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Passkeys(h.uc.Passkeys.Available(), list))
+}
+
+// BeginPasskeyRegistration handles POST /api/auth/passkeys/register/begin.
+func (h *Handlers) BeginPasskeyRegistration(w http.ResponseWriter, r *http.Request) {
+	opts, err := h.uc.Passkeys.BeginRegistration(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.RegistrationOptions(opts))
+}
+
+func decodeB64(fields map[string]string) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	for k, v := range fields {
+		b, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(v, "="))
+		if err != nil {
+			return nil, kernel.NewValidationError(k, "must be base64url")
+		}
+		out[k] = b
+	}
+	return out, nil
+}
+
+// FinishPasskeyRegistration handles POST /api/auth/passkeys/register/finish.
+func (h *Handlers) FinishPasskeyRegistration(w http.ResponseWriter, r *http.Request) {
+	var dto PasskeyRegistrationDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	b, err := decodeB64(map[string]string{"clientDataJSON": dto.ClientDataJSON, "attestationObject": dto.AttestationObject})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	view, codes, err := h.uc.Passkeys.FinishRegistration(r.Context(), dto.Name, b["clientDataJSON"], b["attestationObject"])
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.RegisteredPasskey(view, codes))
+}
+
+// DeletePasskey handles DELETE /api/auth/passkeys/{id}.
+func (h *Handlers) DeletePasskey(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.Passkeys.Delete(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// PasskeyLogin handles POST /api/auth/passkeys/login (second login step).
+func (h *Handlers) PasskeyLogin(w http.ResponseWriter, r *http.Request) {
+	var dto PasskeyLoginDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	b, err := decodeB64(map[string]string{"credentialId": dto.CredentialID, "clientDataJSON": dto.ClientDataJSON,
+		"authenticatorData": dto.AuthenticatorData, "signature": dto.Signature})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.uc.Passkeys.FinishLogin(r.Context(), dto.Ticket, usecase.PasskeyAssertion{CredentialID: b["credentialId"],
+		ClientDataJSON: b["clientDataJSON"], AuthenticatorData: b["authenticatorData"], Signature: b["signature"]},
+		domain.NewClient(r.UserAgent(), clientKey(r)))
+	h.respondWithSession(w, r, res, err)
 }

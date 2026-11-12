@@ -19,6 +19,7 @@ export interface RulesDTO {
   tls: boolean;
   tlsDays: number /* int */;
   backups: boolean;
+  security: boolean;
 }
 /**
  * SettingsDTO is returned by the settings endpoints; the token is never returned.

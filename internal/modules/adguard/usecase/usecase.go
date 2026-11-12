@@ -103,7 +103,7 @@ func (uc *adguard) SaveSettings(ctx context.Context, in SettingsInput) (Settings
 	}
 	stats, err := uc.source.Stats(ctx, s)
 	if err != nil {
-		return SettingsView{}, kernel.NewPublicError(kernel.ErrInvalid, "Could not connect to AdGuard Home: "+err.Error())
+		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not connect to AdGuard Home: {detail}", "detail", err.Error())
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)

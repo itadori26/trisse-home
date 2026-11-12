@@ -31,7 +31,7 @@ func (clk) Now() time.Time { return time.Unix(0, 0) }
 func TestTransfer(t *testing.T) {
 	ctx := context.Background()
 	notes, todos := &memSection{data: []byte(`{"notes":[]}`)}, &memSection{fail: true}
-	uc := NewTransfer(func() map[string]Section { return map[string]Section{"notes": notes, "todos": todos} }, clk{})
+	uc := NewTransfer(func() map[string]Section { return map[string]Section{"notes": notes, "todos": todos} }, clk{}, kernel.DiscardAudit{})
 	doc, err := uc.Export(ctx)
 	if err != nil || doc.Format != domain.Format || len(doc.Sections) != 2 {
 		t.Fatalf("%+v %v", doc, err)

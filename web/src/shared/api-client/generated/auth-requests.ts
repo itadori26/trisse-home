@@ -14,6 +14,10 @@ export interface SetupRequestDTO {
  * LoginRequestDTO is the body of POST /api/auth/login.
  */
 export interface LoginRequestDTO {
+  /**
+   * Username is empty for the owner.
+   */
+  username?: string;
   password: string;
   /**
    * Code is the TOTP or recovery code when two-factor authentication is enabled.
@@ -39,4 +43,47 @@ export interface DisableTwoFactorDTO {
 export interface ChangePasswordRequestDTO {
   currentPassword: string;
   newPassword: string;
+}
+/**
+ * GuestRequestDTO creates or updates a guest; an empty password keeps it.
+ */
+export interface GuestRequestDTO {
+  name?: string;
+  password?: string;
+  tabs: string[];
+  disabled: boolean;
+}
+/**
+ * TokenRequestDTO creates an API token; ExpiresInDays 0 means never.
+ */
+export interface TokenRequestDTO {
+  name: string;
+  scopes: string[];
+  expiresInDays: number /* int */;
+}
+/**
+ * SSOSecondFactorDTO finishes an SSO sign-in that needs the local code.
+ */
+export interface SSOSecondFactorDTO {
+  ticket: string;
+  code: string;
+}
+/**
+ * PasskeyRegistrationDTO carries navigator.credentials.create() (base64url).
+ */
+export interface PasskeyRegistrationDTO {
+  name: string;
+  clientDataJSON: string;
+  attestationObject: string;
+}
+/**
+ * PasskeyLoginDTO carries navigator.credentials.get() (base64url) and the
+ * ticket from the password step.
+ */
+export interface PasskeyLoginDTO {
+  ticket: string;
+  credentialId: string;
+  clientDataJSON: string;
+  authenticatorData: string;
+  signature: string;
 }

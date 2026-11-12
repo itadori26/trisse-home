@@ -35,5 +35,5 @@ func (uc *demoLogin) Execute(ctx context.Context, req DemoLoginRequest) (Session
 	if !exists {
 		return SessionResponse{}, domain.ErrSetupRequired
 	}
-	return uc.deps.issuer().issue(ctx, domain.NewClient(req.UserAgent, req.ClientKey))
+	return uc.deps.issuer().issue(ctx, domain.OwnerID, domain.NewClient(req.UserAgent, req.ClientKey))
 }

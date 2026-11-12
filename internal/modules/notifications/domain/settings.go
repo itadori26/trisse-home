@@ -29,11 +29,13 @@ type Rules struct {
 	TLS           bool
 	TLSDays       int
 	Backups       bool
+	// Security delivers security alerts (new sign-ins, lockouts).
+	Security bool
 }
 
 // DefaultRules enable everything with sensible thresholds.
 func DefaultRules() Rules {
-	return Rules{Services: true, Containers: true, Disk: true, DiskThreshold: DefaultDiskThreshold, TLS: true, TLSDays: DefaultTLSDays, Backups: true}
+	return Rules{Services: true, Containers: true, Disk: true, DiskThreshold: DefaultDiskThreshold, TLS: true, TLSDays: DefaultTLSDays, Backups: true, Security: true}
 }
 
 // Settings configure delivery via ntfy.

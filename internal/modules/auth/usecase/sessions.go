@@ -28,7 +28,7 @@ type sessionIssuer struct {
 	ttl      time.Duration
 }
 
-func (i sessionIssuer) issue(ctx context.Context, client domain.Client) (SessionResponse, error) {
+func (i sessionIssuer) issue(ctx context.Context, accountID string, client domain.Client) (SessionResponse, error) {
 	raw, err := i.tokens.NewToken()
 	if err != nil {
 		return SessionResponse{}, fmt.Errorf("generate session token: %w", err)
@@ -37,7 +37,7 @@ func (i sessionIssuer) issue(ctx context.Context, client domain.Client) (Session
 	if err != nil {
 		return SessionResponse{}, fmt.Errorf("generate csrf token: %w", err)
 	}
-	s, err := domain.NewSession(domain.HashToken(raw), i.ids.NewID(), csrf, client, i.clock.Now(), i.ttl)
+	s, err := domain.NewSession(accountID, domain.HashToken(raw), i.ids.NewID(), csrf, client, i.clock.Now(), i.ttl)
 	if err != nil {
 		return SessionResponse{}, err
 	}
@@ -65,9 +65,12 @@ func validSession(ctx context.Context, repo SessionRepository, raw string, now t
 	return s, nil
 }
 
-// loadAccount returns the account and whether it exists.
+// me returns the account ID of the caller (the owner outside requests).
+func me(ctx context.Context) string { return kernel.PrincipalFrom(ctx).AccountID }
+
+// loadAccount returns the owner account and whether it exists.
 func loadAccount(ctx context.Context, accounts AccountRepository) (domain.Account, bool, error) {
-	a, err := accounts.Get(ctx)
+	a, err := accounts.Get(ctx, domain.OwnerID)
 	if errors.Is(err, domain.ErrAccountNotFound) {
 		return domain.Account{}, false, nil
 	}

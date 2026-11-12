@@ -40,7 +40,7 @@ func (s PortableSection) Import(ctx context.Context, raw []byte) error {
 	}
 	if err := s.P.ImportData(ctx, data); err != nil {
 		if errors.Is(err, sqlutil.ErrInvalidExport) {
-			return kernel.NewPublicError(kernel.ErrInvalid, err.Error())
+			return kernel.NewPublicErrorf(kernel.ErrInvalid, "The data could not be imported: {detail}", "detail", err.Error())
 		}
 		return err
 	}

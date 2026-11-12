@@ -19,6 +19,10 @@ type ErrorDetail struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 	Field   string `json:"field,omitempty"`
+	// MessageKey identifies the English template of Message so clients can
+	// show a translation; Params fill its {placeholders}.
+	MessageKey string            `json:"messageKey,omitempty"`
+	Params     map[string]string `json:"params,omitempty"`
 }
 
 // WriteError writes an error envelope with the given status, code and message.
@@ -61,8 +65,10 @@ func WriteDomainError(w http.ResponseWriter, r *http.Request, err error) {
 		switch {
 		case errors.As(err, &verr):
 			detail.Message, detail.Field = verr.Message, verr.Field
+			detail.MessageKey, detail.Params = messageKey(verr.Template), verr.Params
 		case errors.As(err, &perr):
 			detail.Message = perr.Message
+			detail.MessageKey, detail.Params = messageKey(perr.Template), perr.Params
 		}
 		if m.status >= http.StatusInternalServerError {
 			slog.WarnContext(r.Context(), "upstream failure", "path", r.URL.Path, "err", err)
@@ -72,4 +78,11 @@ func WriteDomainError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 	slog.ErrorContext(r.Context(), "unhandled error", "path", r.URL.Path, "err", err)
 	WriteError(w, http.StatusInternalServerError, "internal", "An internal error occurred.")
+}
+
+func messageKey(template string) string {
+	if template == "" {
+		return ""
+	}
+	return kernel.MessageKey(template)
 }

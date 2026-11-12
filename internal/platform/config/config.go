@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/netip"
+	"net/url"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -57,6 +58,20 @@ type Config struct {
 	// DemoResetInterval, no outbound requests and no stored credentials.
 	DemoMode          bool
 	DemoResetInterval time.Duration
+	// Single sign-on for the owner (ADR 0013).
+	OIDCIssuer          string
+	OIDCClientID        string
+	OIDCClientSecret    string
+	OIDCRedirectURL     string
+	OIDCAllowedSubjects []string
+	OIDCAllowedEmails   []string
+	AuthProxyHeader     string
+	AuthProxyUsers      []string
+	PasswordLogin       bool
+	SSORequire2FA       bool
+	// PublicURL is the address users open, e.g. https://home.example.org;
+	// required for passkeys (WebAuthn needs a fixed origin and HTTPS).
+	PublicURL *url.URL
 	// SampleWeather is the location of the example weather widget.
 	SampleWeather SampleLocation
 	// SampleFeeds are subscribed as example RSS feeds.
@@ -114,6 +129,26 @@ func Load(getenv func(string) string) (Config, error) {
 		BackupRetention:         l.integer("BACKUP_RETENTION", 7),
 		DemoMode:                l.boolean("DEMO_MODE", false),
 		DemoResetInterval:       l.duration("DEMO_RESET_INTERVAL", 3*time.Hour),
+		OIDCIssuer:              l.str("OIDC_ISSUER", ""),
+		OIDCClientID:            l.str("OIDC_CLIENT_ID", ""),
+		OIDCClientSecret:        l.str("OIDC_CLIENT_SECRET", ""),
+		OIDCRedirectURL:         l.str("OIDC_REDIRECT_URL", ""),
+		OIDCAllowedSubjects:     l.rawList("OIDC_ALLOWED_SUBJECTS", ""),
+		OIDCAllowedEmails:       l.rawList("OIDC_ALLOWED_EMAILS", ""),
+		AuthProxyHeader:         l.str("AUTH_PROXY_HEADER", ""),
+		AuthProxyUsers:          l.rawList("AUTH_PROXY_USERS", ""),
+		PasswordLogin:           l.boolean("PASSWORD_LOGIN", true),
+		SSORequire2FA:           l.boolean("SSO_REQUIRE_2FA", false),
+	}
+	if raw := l.getenv("PUBLIC_URL"); raw != "" {
+		u, err := url.Parse(strings.TrimRight(raw, "/"))
+		local := err == nil && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1")
+		secure := err == nil && (u.Scheme == "https" || (u.Scheme == "http" && local))
+		if !secure || u.Host == "" || u.Path != "" {
+			l.fail("PUBLIC_URL", "must be an https:// origin without path, e.g. https://home.example.org")
+		} else {
+			cfg.PublicURL = u
+		}
 	}
 	cfg.BackupDir = l.str("BACKUP_DIR", filepath.Join(filepath.Dir(cfg.DatabasePath), "backups"))
 	if len(cfg.AllowedCIDRs) == 0 && l.getenv("ALLOWED_CIDRS") != "" {
@@ -129,6 +164,20 @@ func Load(getenv func(string) string) (Config, error) {
 				l.fail(key, "must not be set together with DEMO_MODE=true (a demo must not reach real systems)")
 			}
 		}
+	}
+	if cfg.OIDCIssuer != "" {
+		if cfg.OIDCClientID == "" || cfg.OIDCRedirectURL == "" {
+			l.fail("OIDC_CLIENT_ID", "OIDC_CLIENT_ID and OIDC_REDIRECT_URL are required with OIDC_ISSUER")
+		}
+		if len(cfg.OIDCAllowedSubjects) == 0 && len(cfg.OIDCAllowedEmails) == 0 {
+			l.fail("OIDC_ALLOWED_EMAILS", "list who may sign in (OIDC_ALLOWED_EMAILS or OIDC_ALLOWED_SUBJECTS)")
+		}
+	}
+	if cfg.AuthProxyHeader != "" && (len(cfg.TrustedProxies) == 0 || len(cfg.AuthProxyUsers) == 0) {
+		l.fail("AUTH_PROXY_HEADER", "needs TRUSTED_PROXIES (the proxy that sets the header) and AUTH_PROXY_USERS")
+	}
+	if !cfg.PasswordLogin && cfg.OIDCIssuer == "" && cfg.AuthProxyHeader == "" {
+		l.fail("PASSWORD_LOGIN", "can only be false when OIDC or the proxy header login is configured")
 	}
 	if len(cfg.SetupToken) > 0 && len(cfg.SetupToken) < 16 {
 		l.fail("SETUP_TOKEN", "must be at least 16 characters long")

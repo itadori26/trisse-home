@@ -91,7 +91,7 @@ func (uc *nextcloud) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 	}
 	st, err := uc.source.Status(ctx, s)
 	if err != nil {
-		return SettingsView{}, kernel.NewPublicError(kernel.ErrInvalid, "Could not connect to Nextcloud: "+err.Error())
+		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not connect to Nextcloud: {detail}", "detail", err.Error())
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)

@@ -9,6 +9,35 @@ export interface AuthStatus {
   csrfToken: string | null;
   /** Public demo instance: signs in without a password. */
   demo: boolean;
+  /** Read-only guest account (ADR 0012). */
+  guest: boolean;
+  /** Available sign-in methods (ADR 0013). */
+  sso: { oidc: boolean; header: boolean; localLogin: boolean };
+}
+
+/** Result of a single sign-on attempt. */
+export type SsoResult = { kind: 'signed-in' } | { kind: 'needs-code'; ticket: string };
+
+/** Message key for an error the provider redirect reported (?sso_error=…). */
+export function ssoErrorKey(
+  code: string | null,
+): 'auth.sso_error.not_allowed' | 'auth.sso_error.failed' | null {
+  if (!code) return null;
+  return code === 'not_allowed' ? 'auth.sso_error.not_allowed' : 'auth.sso_error.failed';
+}
+
+/** A read-only guest account as managed by the owner. */
+export interface Guest {
+  id: string;
+  name: string;
+  tabs: string[];
+  disabled: boolean;
+  createdAt: Date;
+}
+
+/** Guest names: 2–32 lowercase letters, digits, dots, dashes, underscores. */
+export function validGuestName(name: string): boolean {
+  return /^[a-z0-9][a-z0-9._-]{1,31}$/.test(name) && name !== 'owner';
 }
 
 /** A freshly started session. */

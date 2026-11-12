@@ -37,7 +37,7 @@ func TestNewPassword(t *testing.T) {
 func TestSessionLifecycle(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	ttl := 24 * time.Hour
-	s, err := NewSession(HashToken("raw"), "pub", "csrf", NewClient("ua", "1.2.3.4"), now, ttl)
+	s, err := NewSession(OwnerID, HashToken("raw"), "pub", "csrf", NewClient("ua", "1.2.3.4"), now, ttl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,10 +57,10 @@ func TestSessionLifecycle(t *testing.T) {
 }
 
 func TestNewSessionRejectsInvalidInput(t *testing.T) {
-	if _, err := NewSession("", "pub", "csrf", Client{}, time.Now(), time.Hour); err == nil {
+	if _, err := NewSession(OwnerID, "", "pub", "csrf", Client{}, time.Now(), time.Hour); err == nil {
 		t.Fatal("expected error for empty token hash")
 	}
-	if _, err := NewSession("h", "pub", "csrf", Client{}, time.Now(), 0); err == nil {
+	if _, err := NewSession(OwnerID, "h", "pub", "csrf", Client{}, time.Now(), 0); err == nil {
 		t.Fatal("expected error for zero ttl")
 	}
 }
@@ -90,5 +90,45 @@ func TestNewClientTruncatesUserAgent(t *testing.T) {
 	c := NewClient(strings.Repeat("x", 1000), "10.0.0.1")
 	if len(c.UserAgent) != maxUserAgentLength || c.IP != "10.0.0.1" {
 		t.Fatalf("unexpected %d %q", len(c.UserAgent), c.IP)
+	}
+}
+
+func TestGuestAccount(t *testing.T) {
+	now := time.Unix(0, 0)
+	g, err := NewGuest("g1", "anna", "hash", []string{"t1", "t1", "", "t2"}, now)
+	if err != nil || g.IsOwner() || len(g.Tabs()) != 2 || !g.CanSee("t2") || g.CanSee("t3") {
+		t.Fatalf("%+v %v", g, err)
+	}
+	for _, bad := range []string{"", "a", "Anna", "owner", "has space", "x/y"} {
+		if _, err := NewGuest("g", bad, "hash", nil, now); err == nil {
+			t.Errorf("name %q accepted", bad)
+		}
+	}
+	_ = g.SetGuestAccess([]string{"t3"}, true, now)
+	if !g.Disabled() || !g.CanSee("t3") || g.CanSee("t1") {
+		t.Fatal("access not updated")
+	}
+	owner, _ := NewAccount("hash", now)
+	if !owner.CanSee("anything") || owner.SetGuestAccess(nil, true, now) == nil {
+		t.Fatal("owner sees everything and is not a guest")
+	}
+}
+
+func TestIdentityMapping(t *testing.T) {
+	m := IdentityMapping{Subjects: []string{"sub-1"}, Emails: []string{"Me@Example.org"}}
+	cases := []struct {
+		id   ExternalIdentity
+		want bool
+	}{
+		{ExternalIdentity{Subject: "sub-1"}, true},
+		{ExternalIdentity{Subject: "x", Email: "me@example.org", EmailVerified: true}, true},
+		{ExternalIdentity{Subject: "x", Email: "me@example.org", EmailVerified: false}, false},
+		{ExternalIdentity{Subject: "x", Email: "other@example.org", EmailVerified: true}, false},
+		{ExternalIdentity{}, false},
+	}
+	for _, c := range cases {
+		if got := m.Allows(c.id); got != c.want {
+			t.Errorf("%+v: %v, want %v", c.id, got, c.want)
+		}
 	}
 }

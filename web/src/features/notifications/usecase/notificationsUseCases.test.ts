@@ -22,6 +22,7 @@ describe('NotificationsUseCases', () => {
       tls: true,
       tlsDays: 14,
       backups: true,
+      security: true,
     };
     await new NotificationsUseCases(gateway).saveAndTest({
       enabled: true,

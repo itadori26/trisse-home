@@ -17,3 +17,6 @@ that supersedes the old one.
 | [0008](0008-sample-data-on-setup.md)        | Sample data after the first setup             | Accepted |
 | [0010](0010-internationalisation.md)        | Internationalisation without a framework      | Accepted |
 | [0011](0011-lean-by-default.md)             | Lean by default: dependency policy and resource budgets | Accepted |
+| [0012](0012-owner-and-guest-roles.md)       | Owner and read-only guest accounts (supersedes the single-user scope of 0005) | Accepted |
+| [0013](0013-single-sign-on.md)              | Single sign-on with OpenID Connect and trusted proxy headers | Accepted |
+| [0014](0014-passkeys.md)                    | Passkeys as second factor with a minimal WebAuthn implementation | Accepted |

@@ -38,6 +38,7 @@ type SettingsView struct {
 // kernel.ObservationSink so other modules can report to it.
 type Notifier interface {
 	kernel.ObservationSink
+	kernel.AlertSink
 	Settings(ctx context.Context) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
 	SendTest(ctx context.Context) error
@@ -175,6 +176,29 @@ func (uc *notifier) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 // ErrNotConfigured is returned by SendTest without a topic.
 var ErrNotConfigured = kernel.NewPublicError(kernel.ErrInvalid, "Please enter and save a topic first.")
 
+// Alert implements kernel.AlertSink: one-off messages such as security
+// alerts, delivered in the background when their rule is enabled.
+func (uc *notifier) Alert(ctx context.Context, a kernel.Alert) {
+	s, err := uc.current(ctx)
+	if err != nil || !s.Enabled || s.Topic == "" {
+		return
+	}
+	if a.Kind == "security" && !s.Rules.Security {
+		return
+	}
+	msg := domain.Message{Title: a.Title, Body: a.Body, Priority: domain.PriorityDefault, Tags: []string{"lock"}}
+	if a.Urgent {
+		msg.Priority, msg.Tags = domain.PriorityHigh, []string{"rotating_light"}
+	}
+	uc.wg.Add(1)
+	go func() {
+		defer uc.wg.Done()
+		dctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), deliveryTimeout)
+		defer cancel()
+		uc.record(uc.sender.Send(dctx, s, msg))
+	}()
+}
+
 // SendTest implements Notifier; it delivers synchronously so errors are shown.
 func (uc *notifier) SendTest(ctx context.Context) error {
 	s, err := uc.current(ctx)
@@ -191,7 +215,7 @@ func (uc *notifier) SendTest(ctx context.Context) error {
 		if errors.As(err, &pe) {
 			return err
 		}
-		return kernel.NewPublicError(kernel.ErrUnavailable, "The ntfy server could not be reached: "+err.Error())
+		return kernel.NewPublicErrorf(kernel.ErrUnavailable, "The ntfy server could not be reached: {detail}", "detail", err.Error())
 	}
 	return nil
 }

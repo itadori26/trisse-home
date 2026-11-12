@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"slices"
 	"time"
 
 	"trisse-home/internal/modules"
@@ -40,6 +41,8 @@ import (
 	"trisse-home/internal/platform/demo"
 	"trisse-home/internal/platform/httpclient"
 	"trisse-home/internal/platform/idgen"
+	"trisse-home/internal/platform/oidc"
+	"trisse-home/internal/platform/webauthn"
 	"trisse-home/internal/platform/wol"
 	"trisse-home/internal/shared/kernel"
 )
@@ -59,14 +62,18 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	out := newOutbound(cfg, clk, cipher)
 	client, secrets := out.client, out.secrets
 	registry := &modules.Registry{}
+	alerts := &alertRelay{}
+	scope := &guestScope{registry: registry}
 
 	authModule, err := auth.New(
 		auth.Config{
 			CookieSecure: cfg.CookieSecure, SessionTTL: cfg.SessionTTL, SetupToken: cfg.SetupToken,
 			OnAccountCreated: func(ctx context.Context) { onAccountCreated(ctx, cfg, log, registry) },
 			Demo:             cfg.DemoMode,
+			SSO:              ssoConfig(cfg, out.client, clk),
+			WebAuthn:         relyingParty(cfg),
 		},
-		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log},
+		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log, Alerts: alerts, GuestScope: scope},
 	)
 	if err != nil {
 		return nil, nil, err
@@ -80,6 +87,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		n := notifications.New(db, secrets, client, clk)
 		registry.Register(n)
 		sink = n
+		alerts.target = n
 	}
 
 	optional := []struct {
@@ -110,7 +118,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, client, clk) }},
 		{"parcels", func() modules.Module { return parcels.New(db, secrets, client, clk, ids) }},
-		{"transfer", func() modules.Module { return transfer.New(registry.Portables, clk) }},
+		{"transfer", func() modules.Module { return transfer.New(registry.Portables, clk, authModule) }},
 		{"transit", func() modules.Module { return transit.New(client, cfg.TransitAPIURL, clk) }},
 		{"shopping", func() modules.Module { return shopping.New(db, secrets, client, ids) }},
 		{"waste", func() modules.Module { return waste.New(db, client, clk, time.Local) }},
@@ -137,7 +145,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 
 	kinds := append(append([]string{}, frontendOnlyWidgetKinds...), registry.WidgetKinds()...)
 	sample := dashboard.SampleWeather{Label: cfg.SampleWeather.Name, Lat: cfg.SampleWeather.Lat, Lon: cfg.SampleWeather.Lon}
-	registry.Register(dashboard.New(db, ids, kinds, sample))
+	dash := dashboard.New(db, ids, kinds, sample)
+	registry.Register(dash)
+	scope.dashboard = dash
 	return authModule, registry, nil
 }
 
@@ -207,4 +217,62 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 		waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
 		secrets:        cipher,
 	}
+}
+
+// alertRelay forwards security alerts of the auth module (built first) to
+// the notifications module once that exists; without it alerts are dropped.
+type alertRelay struct{ target kernel.AlertSink }
+
+// Alert implements kernel.AlertSink.
+func (a *alertRelay) Alert(ctx context.Context, al kernel.Alert) {
+	if a.target != nil {
+		a.target.Alert(ctx, al)
+	}
+}
+
+// guestScope implements the auth module's GuestScope port: the modules a
+// guest may read are those whose widgets are on the guest's tabs.
+type guestScope struct {
+	registry  *modules.Registry
+	dashboard *dashboard.Module
+}
+
+// ModulesForTabs implements auth's usecase.GuestScope.
+func (g *guestScope) ModulesForTabs(ctx context.Context, tabs []string) (map[string]bool, error) {
+	out := map[string]bool{}
+	if g.dashboard == nil || len(tabs) == 0 {
+		return out, nil
+	}
+	kinds, err := g.dashboard.WidgetKindsOnTabs(ctx, tabs)
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range g.registry.All() {
+		for _, k := range m.WidgetKinds() {
+			if slices.Contains(kinds, k) {
+				out[m.Name()] = true
+			}
+		}
+	}
+	return out, nil
+}
+
+// ssoConfig builds the single sign-on settings of the auth module.
+func ssoConfig(cfg config.Config, client *http.Client, clk clock.System) auth.SSOConfig {
+	sso := auth.SSOConfig{AllowedSubjects: cfg.OIDCAllowedSubjects, AllowedEmails: cfg.OIDCAllowedEmails,
+		ProxyHeader: cfg.AuthProxyHeader, ProxyUsers: cfg.AuthProxyUsers, TrustedProxies: cfg.TrustedProxies,
+		PasswordLogin: cfg.PasswordLogin, Require2FA: cfg.SSORequire2FA}
+	if cfg.OIDCIssuer != "" {
+		sso.OIDC = oidc.New(oidc.Config{Issuer: cfg.OIDCIssuer, ClientID: cfg.OIDCClientID, ClientSecret: cfg.OIDCClientSecret,
+			RedirectURL: cfg.OIDCRedirectURL}, client, clk.Now)
+	}
+	return sso
+}
+
+// relyingParty returns the WebAuthn relying party; passkeys need PUBLIC_URL.
+func relyingParty(cfg config.Config) *webauthn.RelyingParty {
+	if cfg.PublicURL == nil {
+		return nil
+	}
+	return &webauthn.RelyingParty{ID: cfg.PublicURL.Hostname(), Origin: cfg.PublicURL.Scheme + "://" + cfg.PublicURL.Host}
 }

@@ -75,7 +75,7 @@ func TestAuthenticateLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	auth := NewAuthenticate(e.sessions, e.clock, e.deps.TTL)
+	auth := NewAuthenticate(e.sessions, e.accounts, e.clock, e.deps.TTL)
 	got, err := auth.Execute(ctx, AuthenticateRequest{SessionToken: res.SessionToken})
 	if err != nil || got.CSRFToken != res.CSRFToken || got.Refreshed {
 		t.Fatalf("authenticate: %+v %v", got, err)
@@ -124,7 +124,7 @@ func TestChangePasswordRevokesSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	auth := NewAuthenticate(e.sessions, e.clock, e.deps.TTL)
+	auth := NewAuthenticate(e.sessions, e.accounts, e.clock, e.deps.TTL)
 	if _, err := auth.Execute(ctx, AuthenticateRequest{SessionToken: old.SessionToken}); err == nil {
 		t.Fatal("old session survived password change")
 	}
@@ -148,7 +148,7 @@ func TestManageSessions(t *testing.T) {
 	e := newEnv().withAccount()
 	a, _ := NewLogin(e.deps).Execute(ctx, LoginRequest{Password: goodPassword, ClientKey: "10.0.0.1", UserAgent: "Firefox"})
 	b, _ := NewLogin(e.deps).Execute(ctx, LoginRequest{Password: goodPassword, ClientKey: "10.0.0.2", UserAgent: "Chrome"})
-	uc := NewManageSessions(e.sessions, e.clock)
+	uc := NewManageSessions(e.sessions, e.clock, nil)
 	list, err := uc.List(ctx, a.SessionToken)
 	if err != nil || len(list) != 2 {
 		t.Fatalf("list: %v %v", list, err)
@@ -165,7 +165,7 @@ func TestManageSessions(t *testing.T) {
 	if err := uc.Revoke(ctx, a.SessionToken, otherID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewAuthenticate(e.sessions, e.clock, e.deps.TTL).Execute(ctx, AuthenticateRequest{SessionToken: b.SessionToken}); err == nil {
+	if _, err := NewAuthenticate(e.sessions, e.accounts, e.clock, e.deps.TTL).Execute(ctx, AuthenticateRequest{SessionToken: b.SessionToken}); err == nil {
 		t.Fatal("revoked session still valid")
 	}
 	_, _ = NewLogin(e.deps).Execute(ctx, LoginRequest{Password: goodPassword, ClientKey: "10.0.0.3"})

@@ -21,6 +21,7 @@ servers:
   - url: http://localhost:8090
 security:
   - session: []
+  - apiToken: []
 tags:
   - name: auth
   - name: backup
@@ -231,6 +232,100 @@ paths:
         "204": { description: Disabled }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/oidc/start:
+    get:
+      tags: [auth]
+      summary: Redirect to the OpenID provider (sets a short-lived state cookie); 404 when OIDC is not configured
+      security: []
+      responses: { "302": { description: Redirect to the provider } }
+  /api/auth/oidc/callback:
+    get:
+      tags: [auth]
+      summary: Return from the provider; sets the session cookie and redirects to / (or /?sso_error=… / /?sso_ticket=…)
+      security: []
+      responses: { "302": { description: Redirect into the app } }
+  /api/auth/sso/header:
+    post:
+      tags: [auth]
+      summary: Sign in with the user header of a trusted proxy (AUTH_PROXY_HEADER, only from TRUSTED_PROXIES)
+      security: []
+      responses: { "200": { description: Session started }, "202": { description: "Local code required: {ticket}" }, "403": { description: User not allowed }, "404": { description: Not configured or not from a trusted proxy } }
+  /api/auth/sso/2fa:
+    post:
+      tags: [auth]
+      summary: Finish an SSO sign-in with the local TOTP or recovery code (SSO_REQUIRE_2FA)
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { ticket: { type: string }, code: { type: string } } } } } }
+      responses: { "200": { description: Session started } }
+  /api/auth/passkeys:
+    get:
+      tags: [auth]
+      summary: Passkeys of the signed-in account and whether passkeys are available (needs PUBLIC_URL)
+      responses: { "200": { description: "{available, passkeys: [{id, name, createdAt, lastUsedAt}]}" } }
+  /api/auth/passkeys/register/begin:
+    post:
+      tags: [auth]
+      summary: Parameters for navigator.credentials.create() (base64url challenge, rpId, userId, excludeCredentials)
+      responses: { "200": { description: OK } }
+  /api/auth/passkeys/register/finish:
+    post:
+      tags: [auth]
+      summary: Store a passkey from the browser's attestation (base64url clientDataJSON, attestationObject); returns recovery codes when first issued
+      responses: { "201": { description: "{passkey, recoveryCodes}" } }
+  /api/auth/passkeys/{id}:
+    delete:
+      tags: [auth]
+      summary: Remove a passkey of the signed-in account
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Removed } }
+  /api/auth/passkeys/login:
+    post:
+      tags: [auth]
+      summary: Second login step - the ticket from the 202 login answer plus the signed assertion (base64url)
+      security: []
+      responses: { "200": { description: Session started }, "401": { description: Rejected or ticket expired } }
+  /api/auth/tokens:
+    get:
+      tags: [auth]
+      summary: List personal API tokens without their secrets (owner session only)
+      responses: { "200": { description: "List of {id, name, scopes, createdAt, expiresAt, lastUsedAt, lastUsedIp}" } }
+    post:
+      tags: [auth]
+      summary: Create a token with scopes such as todos:write; the secret (th_…) is returned once. See docs/api-tokens.md
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string }, scopes: { type: array, items: { type: string } }, expiresInDays: { type: integer } } } } } }
+      responses: { "201": { description: "Created, includes token" }, "422": { description: Invalid name or scopes } }
+  /api/auth/tokens/{id}:
+    delete:
+      tags: [auth]
+      summary: Revoke a token
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Revoked } }
+  /api/auth/guests:
+    get:
+      tags: [auth]
+      summary: List read-only guest accounts (owner only)
+      responses: { "200": { description: "List of {id, name, tabs, disabled, createdAt}" }, "403": { description: Not the owner } }
+    post:
+      tags: [auth]
+      summary: Create a guest with name, password and shared tab IDs (owner only)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string }, password: { type: string }, tabs: { type: array, items: { type: string } } } } } } }
+      responses: { "201": { description: Created }, "409": { description: Name taken }, "422": { description: Invalid name or password } }
+  /api/auth/guests/{id}:
+    put:
+      tags: [auth]
+      summary: Change shared tabs, disable/enable, or set a new password (empty keeps it); disabling or a new password ends the guest's sessions
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [auth]
+      summary: Delete a guest and its sessions
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted } }
+  /api/auth/events:
+    get:
+      tags: [auth]
+      summary: Security log of the last 90 days (sign-ins, failures, lockouts, new devices, password and 2FA changes, data imports), newest first
+      responses: { "200": { description: "List of {id, at, type, accountId, ip, userAgent, detail}" } }
   /api/auth/sessions:
     get:
       tags: [auth]
@@ -1058,6 +1153,10 @@ components:
       in: header
       name: X-CSRF-Token
       description: Per-session CSRF token, required for state-changing requests.
+    apiToken:
+      type: http
+      scheme: bearer
+      description: Personal API token (th_…) with module scopes such as todos:write; no CSRF token needed. Cannot reach /api/auth. See docs/api-tokens.md.
   parameters:
     id: { name: id, in: path, required: true, schema: { type: string } }
   responses:
