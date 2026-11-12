@@ -335,7 +335,7 @@ test('quick capture creates items from the search bar and the palette (#105, #67
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await page.getByRole('button', { name: 'Home', exact: true }).click();
-  const search = page.getByRole('searchbox', { name: 'Search' });
+  const search = page.getByRole('searchbox', { name: 'Search', exact: true });
 
   await search.fill('t Milch kaufen morgen');
   await expect(page.getByText('Enter: create to-do “Milch kaufen” (Tomorrow)')).toBeVisible();
