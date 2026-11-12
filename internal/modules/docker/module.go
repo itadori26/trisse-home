@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"io/fs"
 	"net/http"
 	"time"
@@ -107,4 +108,22 @@ func (m *Module) Metrics(ctx context.Context) []kernel.MetricSample {
 			kernel.Bool(c.State == "running"), kernel.Label{Name: "container", Value: c.Name}))
 	}
 	return out
+}
+
+// ErrContainersUnavailable is returned by Containers while the Docker API
+// is not reachable.
+var ErrContainersUnavailable = errors.New("docker api not reachable")
+
+// Containers is a read model for other modules (wired in cmd/server): the
+// cached container list with labels. It fails while the Docker API is not
+// reachable, so readers never mistake a stale or empty list for the truth.
+func (m *Module) Containers(ctx context.Context) ([]usecase.ContainerView, error) {
+	res, err := m.uc.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if res.Error != "" {
+		return nil, ErrContainersUnavailable
+	}
+	return res.Containers, nil
 }

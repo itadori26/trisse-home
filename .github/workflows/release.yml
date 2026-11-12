@@ -3,7 +3,8 @@ name: Release
 # A tag vX.Y.Z builds multi-arch images, pushes them to GHCR, smoke-tests the
 # arm64 image under QEMU, attaches an SBOM and publishes a GitHub release with
 # notes generated from Conventional Commits (scripts/release-notes.sh). The
-# native .deb packages (amd64, arm64) are attached to the same release.
+# native .deb packages (amd64, arm64) and the Raspberry Pi image are attached
+# to the same release.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -117,6 +118,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "$GITHUB_REF_NAME" dist/*.deb dist/*.sha256 --clobber
+
+  # Raspberry Pi appliance image (ADR 0015), built from the arm64 package.
+  raspberrypi-image:
+    needs: [image, release]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/pi-image.yml
+    with:
+      version: ${{ needs.image.outputs.version }}
+      publish: true
 
   screenshots:
     runs-on: ubuntu-latest

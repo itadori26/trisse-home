@@ -29,6 +29,7 @@ import (
 	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
+	servicesusecase "trisse-home/internal/modules/services/usecase"
 	"trisse-home/internal/modules/shopping"
 	"trisse-home/internal/modules/speedtest"
 	"trisse-home/internal/modules/system"
@@ -105,6 +106,17 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	}
 	var sink kernel.ObservationSink = sinks
 
+	// The docker module is built ahead of the list: the services module
+	// reads its containers for autodiscovery (#78).
+	var dockerModule *docker.Module
+	var containers servicesusecase.ContainerSource
+	if cfg.ModuleEnabled("docker") {
+		dockerModule = docker.New(client, docker.Config{ProxyURL: cfg.DockerProxyURL, Actions: cfg.DockerActions,
+			ActionsContainers: cfg.DockerActionsContainers, ActionsProxyURL: cfg.DockerActionsProxyURL,
+			DB: db, Cipher: secrets, Registry: client}, sink, clk)
+		containers = containerLabels{docker: dockerModule}
+	}
+
 	optional := []struct {
 		name  string
 		build func() modules.Module
@@ -117,6 +129,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			return services.New(services.Deps{
 				DB: db, Clock: clk, IDs: ids, Observations: sink,
 				Waker: out.waker, Client: out.health, InsecureClient: out.insecureHealth, Maintenance: maintenance,
+				Containers: containers,
 			})
 		}},
 		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids) }},
@@ -126,11 +139,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"system", func() modules.Module {
 			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths, Version: version, Client: client}, db, sink, clk)
 		}},
-		{"docker", func() modules.Module {
-			return docker.New(client, docker.Config{ProxyURL: cfg.DockerProxyURL, Actions: cfg.DockerActions,
-				ActionsContainers: cfg.DockerActionsContainers, ActionsProxyURL: cfg.DockerActionsProxyURL,
-				DB: db, Cipher: secrets, Registry: client}, sink, clk)
-		}},
+		{"docker", func() modules.Module { return dockerModule }},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, client, clk) }},
 		{"parcels", func() modules.Module { return parcels.New(db, secrets, client, clk, ids) }},

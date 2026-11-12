@@ -737,6 +737,30 @@ paths:
       responses:
         "204": { description: Saved }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/services/discovery:
+    get:
+      tags: [services]
+      summary: Docker autodiscovery settings and the result of the last sync (#78)
+      security: [{ session: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Discovery" } } } }
+    put:
+      tags: [services]
+      summary: Save the Docker autodiscovery settings
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DiscoveryInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Discovery" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/services/discovery/sync:
+    post:
+      tags: [services]
+      summary: Read the container labels now and create, update or hide tiles
+      description: A Docker API error is reported in `lastSync.error`, not as an HTTP error.
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Discovery" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
   /api/services/{id}:
     parameters: [{ $ref: "#/components/parameters/id" }]
     put:
@@ -1617,6 +1641,31 @@ components:
             error: { type: string }
             certExpiresAt: { type: [string, "null"], format: date-time }
             certExpiresSoon: { type: boolean, description: TLS certificate expires within 14 days }
+            container: { type: string, description: Source container of a discovered tile, empty for manual tiles }
+            hidden: { type: boolean, description: The container is gone; the tile is not shown on the dashboard }
+    DiscoveryInput:
+      type: object
+      required: [enabled, intervalMinutes, rule]
+      properties:
+        enabled: { type: boolean }
+        intervalMinutes: { type: integer, minimum: 1, maximum: 1440 }
+        rule: { type: string, enum: [labels, manual], description: "labels: label values overwrite manual edits; manual: edited tiles are kept" }
+    Discovery:
+      allOf:
+        - $ref: "#/components/schemas/DiscoveryInput"
+        - type: object
+          properties:
+            available: { type: boolean, description: False when the docker module is disabled }
+            lastSync:
+              type: [object, "null"]
+              properties:
+                at: { type: string, format: date-time }
+                error: { type: string }
+                created: { type: integer }
+                updated: { type: integer }
+                hidden: { type: integer }
+                shown: { type: integer }
+                skipped: { type: integer, description: Containers with invalid labels }
     BookmarkInput:
       type: object
       required: [url]

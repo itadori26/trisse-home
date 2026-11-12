@@ -26,6 +26,10 @@ type ServiceDTO struct {
 	// CertExpiresAt is the TLS certificate expiry (null for plain HTTP).
 	CertExpiresAt   *time.Time `json:"certExpiresAt"`
 	CertExpiresSoon bool       `json:"certExpiresSoon"`
+	// Container is the source container of a discovered tile, empty for
+	// manual tiles; Hidden tiles lost their container (#78).
+	Container string `json:"container"`
+	Hidden    bool   `json:"hidden"`
 }
 
 // LatencyPointDTO is one point of a response time history.
@@ -41,6 +45,7 @@ func Service(v usecase.ServiceView) ServiceDTO {
 		ID: v.ID, Name: v.Name, URL: v.URL, CheckURL: v.CheckURL, Icon: v.Icon, Description: v.Description,
 		SkipTLSVerify: v.SkipTLSVerify, MAC: v.MAC, Position: v.Position, State: v.State, HTTPStatus: v.HTTPStatus,
 		LatencyMs: v.LatencyMs, CheckedAt: v.CheckedAt, Error: v.Error, CertExpiresSoon: v.CertExpiresSoon,
+		Container: v.Container, Hidden: v.Hidden,
 	}
 	if !v.CertExpiresAt.IsZero() {
 		t := v.CertExpiresAt
