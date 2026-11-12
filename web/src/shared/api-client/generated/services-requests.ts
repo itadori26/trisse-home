@@ -21,3 +21,11 @@ export interface ServiceInputDTO {
 export interface OrderDTO {
   ids: string[];
 }
+/**
+ * DiscoveryInputDTO is the body of PUT /api/services/discovery.
+ */
+export interface DiscoveryInputDTO {
+  enabled: boolean;
+  intervalMinutes: number /* int */;
+  rule: 'labels' | 'manual';
+}

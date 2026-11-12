@@ -5,6 +5,7 @@
   import { errorMessage } from '../../../shared/api-client/http';
   import { emptyServiceInput, type Service, type ServiceInput, statusText } from '../domain/service';
   import type { ServicesUseCases } from '../usecase/servicesUseCases';
+  import ServiceDiscoverySettings from './ServiceDiscoverySettings.svelte';
   import ServiceIcon from './ServiceIcon.svelte';
 
   /** Props of the services management section in the settings. */
@@ -49,7 +50,7 @@
     e.preventDefault();
     run(async () => {
       await services.save(form, editingId ?? undefined);
-      list = await services.list();
+      list = await services.listAll();
       reset();
     });
   }
@@ -63,7 +64,7 @@
   }
 
   run(async () => {
-    list = await services.list();
+    list = await services.listAll();
   });
 
   let wolSetup = $state<WolSetup>('relay');
@@ -78,7 +79,14 @@
   {#each list as s, i (s.id)}
     <li>
       <ServiceIcon icon={s.icon} name={s.name} />
-      <span class="name" title={statusText(s)}>{s.name}</span>
+      <span class="name" title={statusText(s)}
+        >{s.name}
+        {#if s.hidden}
+          <small class="muted">{t('services.hidden_hint', { container: s.container })}</small>
+        {:else if s.container}
+          <small class="muted">{t('services.discovered', { container: s.container })}</small>
+        {/if}
+      </span>
       <button
         class="btn btn-icon"
         type="button"
@@ -114,6 +122,14 @@
     </li>
   {/each}
 </ul>
+
+<ServiceDiscoverySettings
+  {services}
+  onsynced={() =>
+    run(async () => {
+      list = await services.listAll();
+    })}
+/>
 
 <form onsubmit={submit}>
   <h4>{editingId ? t('services.edit_service') : t('services.add_service')}</h4>
@@ -225,6 +241,7 @@
   }
   .name {
     flex: 1;
+    display: grid;
   }
   .row {
     display: grid;
