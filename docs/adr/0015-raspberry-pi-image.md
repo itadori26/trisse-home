@@ -123,5 +123,11 @@ Constraints on a Raspberry Pi differ from a home server:
 - The image size becomes a budget in `budgets.json` (ADR 0011).
 - The Docker setup remains the primary, fully supported way to run
   trisse-home on a server; documentation presents both.
-- Kiosk use with an attached display (#140) builds on this image as a
-  separate, larger variant so that the default image stays lean.
+- **One image, two display modes (#140).** After the account setup, Pi
+  installs ask whether the device is a server only (default) or should also
+  show the dashboard full-screen on an attached display; the choice can be
+  changed later in the settings. Kiosk components (a minimal Wayland
+  compositor and browser) are a separate package installed on demand, so
+  the default image stays lean. The app stays unprivileged: it can only
+  write a requested mode into its state directory, and a root-owned systemd
+  path unit applies it with a fixed, validating script.
