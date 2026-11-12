@@ -128,6 +128,14 @@ if [ -s "$root/etc/machine-id" ] && [ "$(cat "$root/etc/machine-id")" != uniniti
 [ "$fail" -eq 0 ] || { echo "image contains secrets" >&2; exit 1; }
 echo "ok"
 
+log "zero free space (smaller download)"
+# Deleted package caches leave non-zero blocks that compress badly.
+dd if=/dev/zero of="$root/zero.fill" bs=4M status=none 2>/dev/null || true
+rm -f "$root/zero.fill"
+dd if=/dev/zero of="$root/boot/firmware/zero.fill" bs=1M status=none 2>/dev/null || true
+rm -f "$root/boot/firmware/zero.fill"
+sync
+
 log "finish"
 cleanup
 loop=""
@@ -136,5 +144,7 @@ size=$(stat -c %s "$image")
 xz -T0 -6 -c "$image" >"$out/$name.img.xz"
 (cd "$out" && sha256sum "$name.img.xz" >"$name.img.xz.sha256")
 "$here/os-list.sh" "$out/$name.img.xz" "$size" "$version" >"$out/os_list.json"
+# Hand the results to the calling user (CI uploads them without sudo).
+chown -R "${SUDO_UID:-0}:${SUDO_GID:-0}" "$out"
 ls -l "$out"
 echo "$image" >"$work/last-image"
