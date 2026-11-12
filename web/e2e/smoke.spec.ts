@@ -365,6 +365,38 @@ test('quick capture creates items from the search bar and the palette (#105, #67
   await expect(page.getByText('To-do “Steuer” created')).toBeVisible();
 });
 
+test('phones get their own layout that hides widgets independently (#92)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByText('Phone layout follows the desktop grid.', { exact: false })).toBeVisible();
+  await page.getByRole('group', { name: 'Phone layout of “Clock”' }).getByLabel('Hide on phones').check();
+  await expect(page.getByRole('button', { name: 'Reset from desktop layout' })).toBeVisible();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.locator('time')).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await expect(page.getByText('Try edit mode: drag and resize a widget')).toBeVisible();
+  await expect(page.locator('time')).toHaveCount(0);
+
+  // The desktop grid is unaffected.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.locator('time')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Reset from desktop layout' }).click();
+  await expect(page.getByText('Phone layout follows the desktop grid.', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

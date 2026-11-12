@@ -73,6 +73,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_099fe605093d8b87: 'DHL hat den API-Schlüssel abgelehnt.',
   // Delivered parcels can be kept for 0 to 30 days.
   srv_7cb71b2e113119ec: 'Zugestellte Sendungen können 0 bis 30 Tage angezeigt werden.',
+  // Every widget may appear only once.
+  srv_cd8384030060ee99: 'Jedes Widget darf nur einmal vorkommen.',
   // Each registry may only be listed once.
   srv_4ae76664f7b46c6b: 'Jede Registry darf nur einmal eingetragen sein.',
   // Each registry needs a host name (e.g. ghcr.io) and a user name.

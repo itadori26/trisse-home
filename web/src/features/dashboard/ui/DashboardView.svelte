@@ -16,6 +16,8 @@
   import type { LayoutItem } from '../domain/layout';
   import type { DashboardUseCases } from '../usecase/dashboardUseCases';
   import Grid from './Grid.svelte';
+  import MobileList from './MobileList.svelte';
+  import { deriveMobile, type MobileItem, PHONE_QUERY, resolveMobile } from '../domain/mobile';
   import NewTabDialog from './NewTabDialog.svelte';
   import TabBar from './TabBar.svelte';
   import TabRulesDialog from './TabRulesDialog.svelte';
@@ -62,6 +64,33 @@
   >(null);
 
   const active = $derived(tabs.find((t) => t.id === activeId) ?? tabs[0]);
+
+  // Phones get their own single-column layout per tab (#92).
+  const phoneQuery = typeof matchMedia === 'function' ? matchMedia(PHONE_QUERY) : null;
+  let phone = $state(phoneQuery?.matches ?? false);
+  $effect(() => {
+    if (!phoneQuery) return;
+    const update = () => (phone = phoneQuery.matches);
+    phoneQuery.addEventListener('change', update);
+    return () => phoneQuery.removeEventListener('change', update);
+  });
+
+  function onmobile(tab: Tab, layout: MobileItem[]) {
+    replaceTab({ ...tab, mobile: layout, mobileCustom: true });
+    run(async () => {
+      const saved = await uc.saveMobileLayout(tab.id, layout);
+      const current = tabOf(tab.id);
+      if (current) replaceTab({ ...current, mobile: saved.mobile, mobileCustom: saved.mobileCustom });
+    });
+  }
+
+  function resetMobile(tab: Tab) {
+    run(async () => {
+      const saved = await uc.resetMobileLayout(tab.id);
+      const current = tabOf(tab.id);
+      if (current) replaceTab({ ...current, mobile: saved.mobile, mobileCustom: false });
+    });
+  }
   const titles = $derived(new Map(widgetTypes.map((t) => [t.kind, t.title])));
   const available = $derived(new Set(widgetTypes.map((t) => t.kind)));
 
@@ -341,21 +370,41 @@
 
   {#if active}
     {@const visible = active.widgets.filter((w) => available.has(w.kind))}
-    <Grid items={visible} {editing} {onlayout} label={(w) => titles.get(w.kind) ?? w.kind}>
-      {#snippet item(widget: Widget, handle: { onpointerdown: (e: PointerEvent) => void })}
-        <WidgetFrame
-          title={titles.get(widget.kind) ?? widget.kind}
-          {editing}
-          {handle}
-          chromeless={chromeless(widget.kind)}
-          onsettings={hasSettings(widget.kind) ? () => (dialog = { kind: 'settings', widget }) : undefined}
-          ondelete={() => removeWidget(widget)}
-          onduplicate={() => duplicateWidget(widget)}
-        >
-          {@render content(widget)}
-        </WidgetFrame>
-      {/snippet}
-    </Grid>
+    {#snippet frame(widget: Widget, handle: { onpointerdown: (e: PointerEvent) => void })}
+      <WidgetFrame
+        title={titles.get(widget.kind) ?? widget.kind}
+        {editing}
+        {handle}
+        chromeless={chromeless(widget.kind)}
+        onsettings={hasSettings(widget.kind) ? () => (dialog = { kind: 'settings', widget }) : undefined}
+        ondelete={() => removeWidget(widget)}
+        onduplicate={() => duplicateWidget(widget)}
+      >
+        {@render content(widget)}
+      </WidgetFrame>
+    {/snippet}
+    {#if phone}
+      {@const tab = active}
+      <MobileList
+        layout={tab.mobileCustom ? resolveMobile(tab.mobile, visible) : deriveMobile(visible)}
+        widgets={new Map(visible.map((w) => [w.id, w]))}
+        {editing}
+        custom={tab.mobileCustom}
+        onchange={(layout) => onmobile(tab, layout)}
+        onreset={() => resetMobile(tab)}
+        label={(w) => titles.get(w.kind) ?? w.kind}
+      >
+        {#snippet item(widget: Widget)}
+          {@render frame(widget, { onpointerdown: () => {} })}
+        {/snippet}
+      </MobileList>
+    {:else}
+      <Grid items={visible} {editing} {onlayout} label={(w) => titles.get(w.kind) ?? w.kind}>
+        {#snippet item(widget: Widget, handle: { onpointerdown: (e: PointerEvent) => void })}
+          {@render frame(widget, handle)}
+        {/snippet}
+      </Grid>
+    {/if}
     {#if visible.length === 0 && loaded}
       <p class="empty muted">
         This tab is empty. {#if editing}Use “Add widget” to place one.{:else}Switch to edit mode to add

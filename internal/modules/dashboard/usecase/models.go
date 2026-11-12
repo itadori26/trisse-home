@@ -22,6 +22,17 @@ type TabResponse struct {
 	Background string
 	Rules      []RuleView
 	Widgets    []WidgetResponse
+	// Mobile is the phone layout in display order (#92); MobileCustom is
+	// false while it is derived from the desktop grid.
+	Mobile       []MobileView
+	MobileCustom bool
+}
+
+// MobileView is one widget of the phone layout.
+type MobileView struct {
+	WidgetID string
+	Hidden   bool
+	Rows     int
 }
 
 // TemplateResponse describes a tab template.

@@ -41,6 +41,7 @@ export const serverMessages = {
   srv_38ba62864162fcec: "Events can be at most one year long.",
   srv_ffb97fcecc45c54a: "Every calendar URL must start with http:// or https://.",
   srv_8e50b118b5e6b205: "Every rule needs a match text of at most 40 characters.",
+  srv_cd8384030060ee99: "Every widget may appear only once.",
   srv_43fe335aacf98b3c: "Export version {version} is not supported by this version of trisse-home.",
   srv_79bf20d17f6aa6eb: "Guests can only view this dashboard.",
   srv_b854584a505d6c89: "Host metrics are not available. Are /proc and /sys mounted?",

@@ -17,10 +17,18 @@ func toTabResponse(t domain.Tab, widgets []domain.Widget) TabResponse {
 		from, to := r.Range()
 		res.Rules = append(res.Rules, RuleView{Days: r.Days(), From: from, To: to, Networks: r.Networks()})
 	}
+	var own []domain.Widget
 	for _, w := range widgets {
 		if w.TabID() == t.ID() {
+			own = append(own, w)
 			res.Widgets = append(res.Widgets, toWidgetResponse(w))
 		}
+	}
+	mobile := domain.ResolveMobileLayout(t.Mobile(), own)
+	res.MobileCustom = mobile.Custom()
+	res.Mobile = []MobileView{}
+	for _, e := range mobile.Entries() {
+		res.Mobile = append(res.Mobile, MobileView{WidgetID: e.WidgetID, Hidden: e.Hidden, Rows: e.Rows})
 	}
 	return res
 }

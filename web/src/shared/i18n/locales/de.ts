@@ -1035,6 +1035,17 @@ export const de: Record<MessageKey, string> = {
   'dashboard.redo': 'Wiederholen',
   'dashboard.widget_deleted': '„{name}“ entfernt.',
   'dashboard.undo_tab_gone': 'Der Tab dieses Widgets existiert nicht mehr.',
+  'dashboard.mobile_derived':
+    'Das Handy-Layout folgt dem Desktop-Raster. Änderungen hier legen ein eigenes Handy-Layout an.',
+  'dashboard.mobile_custom': 'Dieser Tab hat ein eigenes Handy-Layout.',
+  'dashboard.mobile_reset': 'Aus Desktop-Layout zurücksetzen',
+  'dashboard.mobile_controls': 'Handy-Layout von „{name}“',
+  'dashboard.mobile_up': '„{name}“ nach oben',
+  'dashboard.mobile_down': '„{name}“ nach unten',
+  'dashboard.mobile_shorter': '„{name}“ niedriger',
+  'dashboard.mobile_taller': '„{name}“ höher',
+  'dashboard.mobile_hide': 'Auf Handys ausblenden',
+  'dashboard.mobile_moved': '„{name}“ an Position {position} verschoben.',
   'dashboard.tab_rules': 'Automatisch öffnen',
   'dashboard.rules_of': 'Wann „{name}“ öffnen',
   'dashboard.rules_hint':

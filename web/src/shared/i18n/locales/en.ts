@@ -1011,6 +1011,17 @@ export const en = {
   'dashboard.redo': 'Redo',
   'dashboard.widget_deleted': '“{name}” removed.',
   'dashboard.undo_tab_gone': 'The tab of this widget no longer exists.',
+  'dashboard.mobile_derived':
+    'Phone layout follows the desktop grid. Changes here create a separate phone layout.',
+  'dashboard.mobile_custom': 'This tab has its own phone layout.',
+  'dashboard.mobile_reset': 'Reset from desktop layout',
+  'dashboard.mobile_controls': 'Phone layout of “{name}”',
+  'dashboard.mobile_up': 'Move “{name}” up',
+  'dashboard.mobile_down': 'Move “{name}” down',
+  'dashboard.mobile_shorter': 'Make “{name}” shorter',
+  'dashboard.mobile_taller': 'Make “{name}” taller',
+  'dashboard.mobile_hide': 'Hide on phones',
+  'dashboard.mobile_moved': '“{name}” moved to position {position}.',
   'dashboard.tab_rules': 'Open by default',
   'dashboard.rules_of': 'When to open “{name}”',
   'dashboard.rules_hint':

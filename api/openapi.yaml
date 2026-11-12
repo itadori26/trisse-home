@@ -532,6 +532,26 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}/mobile-layout:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Store the phone layout of a tab (order, hidden on phones, height); widgets left out are appended
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [items], properties: { items: { type: array, items: { $ref: "#/components/schemas/MobileItem" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [dashboard]
+      summary: Reset the phone layout so it follows the desktop grid again
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/dashboard/templates:
     get:
       tags: [dashboard]
@@ -1438,6 +1458,13 @@ components:
       properties:
         tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } }
         defaultTabId: { type: string, description: 'Tab whose rules match the server time and the client address; "" = keep the last used tab' }
+    MobileItem:
+      type: object
+      required: [id, hidden, rows]
+      properties:
+        id: { type: string, description: Widget ID }
+        hidden: { type: boolean, description: Hidden on phones only }
+        rows: { type: integer, minimum: 1, maximum: 24, description: Minimum height in grid rows }
     TabRule:
       type: object
       description: Opens a tab by default. Empty parts always match; a range like 22:00–02:00 runs over midnight and belongs to the weekday it starts on.
@@ -1456,6 +1483,8 @@ components:
         background: { type: string }
         rules: { type: array, items: { $ref: "#/components/schemas/TabRule" } }
         widgets: { type: array, items: { $ref: "#/components/schemas/Widget" } }
+        mobile: { type: array, items: { $ref: "#/components/schemas/MobileItem" }, description: Phone layout in display order (derived from the desktop grid until edited) }
+        mobileCustom: { type: boolean, description: "false = the phone layout follows the desktop grid" }
     Rect:
       type: object
       required: [x, y, w, h]
