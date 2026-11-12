@@ -20,6 +20,7 @@ import (
 	"trisse-home/internal/modules/diskhealth"
 	"trisse-home/internal/modules/docker"
 	"trisse-home/internal/modules/fritzbox"
+	"trisse-home/internal/modules/immich"
 	"trisse-home/internal/modules/nextcloud"
 	"trisse-home/internal/modules/notes"
 	"trisse-home/internal/modules/notifications"
@@ -147,6 +148,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
+		{"immich", func() modules.Module { return immich.New(db, secrets, client, clk) }},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {

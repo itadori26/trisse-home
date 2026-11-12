@@ -583,6 +583,29 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (_config, c) => ({ speedtest: c.speedtest }),
     ),
   },
+  {
+    type: {
+      kind: 'immich',
+      category: 'network',
+      keywords: ['photos', 'fotos', 'gallery', 'memories', 'erinnerungen'],
+      get title() {
+        return t('widget.immich.title');
+      },
+      get description() {
+        return t('widget.immich.description');
+      },
+      defaultSize: { w: 4, h: 5 },
+    },
+    icon: 'archive',
+    view: lazy(
+      () => import('../features/immich/ui/ImmichWidget.svelte'),
+      (config, c) => ({ config, immich: c.immich }),
+    ),
+    settings: lazy(
+      () => import('../features/immich/ui/ImmichWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];
 

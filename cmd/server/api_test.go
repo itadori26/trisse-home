@@ -128,6 +128,17 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /control/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
+	// Immich (#85).
+	mux.HandleFunc("GET /immich/api/assets/statistics", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("x-api-key") != "immich-key" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `{"images":10,"videos":2}`)
+	})
+	mux.HandleFunc("GET /immich/api/server/version", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"major":1,"minor":120,"patch":0}`)
+	})
 	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut && r.Header.Get("If-None-Match") == "*" && strings.HasSuffix(r.URL.Path, ".ics") {
 			body, _ := io.ReadAll(r.Body)
@@ -577,6 +588,15 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodGet, "/api/adguard/stats", nil, http.StatusOK, &stats)
 	if stats["blockedPercent"] != float64(25) {
 		t.Fatalf("adguard: %v", stats)
+	}
+
+	// --- Immich (#85): optional parts (storage, memories) may be forbidden ---
+	c.do(http.MethodGet, "/api/immich/overview", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/immich/settings", obj{"url": up.URL + "/immich", "apiKey": "immich-key"}, http.StatusOK, nil)
+	var immich obj
+	c.json(http.MethodGet, "/api/immich/overview", nil, http.StatusOK, &immich)
+	if immich["photos"] != float64(10) || immich["version"] != "1.120.0" || len(immich["memories"].([]any)) != 0 {
+		t.Fatalf("immich: %v", immich)
 	}
 
 	// --- calendar ---
