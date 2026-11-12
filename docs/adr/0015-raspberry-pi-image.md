@@ -1,6 +1,7 @@
 # ADR 0015: Raspberry Pi appliance image
 
-- Status: Proposed (becomes Accepted after the build-tool spike, #132)
+- Status: Proposed (becomes Accepted once the image was flashed with
+  Raspberry Pi Imager on real hardware, see decision 7)
 - Date: 2026-11-12
 - Tracking: #130
 
@@ -79,19 +80,35 @@ Constraints on a Raspberry Pi differ from a home server:
    A Raspberry Pi Imager repository file (`os_list.json`,
    `init_format: cloudinit-rpi`) lets users pick the image inside Imager.
 
-7. **Build tool: pi-gen (tentative, confirmed by #132).**
-   pi-gen builds Raspberry Pi OS itself, so a custom stage on top of
-   `stage2` (Lite) gets exactly the official base including cloud-init and
-   Imager compatibility. rpi-image-gen is the newer, declarative tool with
-   SBOM and CVE reports and may be the better long-term choice; the spike
-   builds a minimal image with both and records build time, size,
-   reproducibility and Imager customisation before this ADR is accepted.
+7. **Build method: customise the official Raspberry Pi OS Lite image**
+   (result of the spike, #132). `deploy/raspberrypi/build-image.sh` starts
+   from the released Lite image, pinned by URL and SHA-256 in `base.env`,
+   grows the root partition, installs the package in a chroot on a native
+   arm64 runner (no emulation), adds the files from `rootfs/` and zeroes
+   the free space. The result is byte for byte Raspberry Pi OS Lite plus a
+   small, reviewable layer, so cloud-init, the first-boot resize and Imager's
+   customisation behave exactly as on the official image.
 
-8. **SD-card care.** journald size-limited, `noatime`, swap on zram, the
-   existing WAL + `synchronous=NORMAL` SQLite settings (consistent after a
-   power loss, at worst the last transaction is lost), and a systemd
-   watchdog through a small `sd_notify` helper in `internal/platform`
-   that is a no-op outside systemd (#136).
+   Measured in CI on `ubuntu-24.04-arm` (2026-11-12): image build 220–260 s,
+   boot test 25 s, whole job about 6.5 minutes; `.img.xz` 557.5 MB
+   (the base is 525 MB). The size is a budget in `budgets.json`.
+
+   Not chosen: **pi-gen** rebuilds Raspberry Pi OS from packages, so every
+   build is much longer and the result only approximates the released image;
+   **rpi-image-gen** starts from its own minimal Debian base with a
+   different first-boot path and is still under active development. Neither
+   was built in the spike: the customised image already met every goal, and
+   switching later only touches `deploy/raspberrypi/`.
+
+   Still to verify on hardware before this ADR is accepted: flashing with
+   Raspberry Pi Imager 2.x including its customisation (Wi-Fi, user, SSH,
+   hostname) on a Pi 4 or 5.
+
+8. **SD-card care.** journald size-limited, `noatime`, swap as Raspberry
+   Pi OS configures it, the existing WAL + `synchronous=NORMAL` SQLite
+   settings (consistent after a power loss, at worst the last transaction
+   is lost), and a systemd watchdog through a small `sd_notify` helper in
+   `internal/platform` that is a no-op outside systemd (#136).
 
 ## Alternatives considered
 

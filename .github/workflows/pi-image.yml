@@ -88,6 +88,8 @@ jobs:
             echo "| --- | ---: |"
             for f in dist/image/*; do echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |"; done
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Check the image size budget (ADR 0011)
+        run: go run ./scripts/budgets -pi-image dist/image/*.img.xz
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: raspberrypi-image
