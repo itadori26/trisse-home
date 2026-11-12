@@ -1,0 +1,10 @@
+[Unit]
+Description=Show the trisse-home setup token until the account exists
+
+[Timer]
+OnBootSec=20s
+OnUnitActiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

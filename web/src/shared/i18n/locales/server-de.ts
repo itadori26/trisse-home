@@ -533,4 +533,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_5fd12f163f5132ff: 'Die Farbe muss wie #3b6ef5 aussehen.',
   // The refresh interval must be between 15 minutes and 24 hours.
   srv_99e5a87eee94b355: 'Das Aktualisierungsintervall muss zwischen 15 Minuten und 24 Stunden liegen.',
+  // Docker discovery needs the docker module to be enabled.
+  srv_1f3976061912504c: 'Die Docker-Autodiscovery braucht das aktivierte Docker-Modul.',
+  // The interval must be between 1 and {max} minutes.
+  srv_c2aa1fabd915da16: 'Das Intervall muss zwischen 1 und {max} Minuten liegen.',
+  // Unknown merge rule.
+  srv_c64f8cf81797f821: 'Unbekannte Abgleichsregel.',
 };
