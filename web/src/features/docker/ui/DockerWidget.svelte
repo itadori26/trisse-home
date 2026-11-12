@@ -10,6 +10,7 @@
     indicator,
     parseDockerConfig,
   } from '../domain/container';
+  import { type ImageUpdate, updatesByContainer } from '../domain/imageUpdate';
   import type { DockerUseCases } from '../usecase/dockerUseCases';
 
   /** Props of the docker widget. */
@@ -27,6 +28,19 @@
   let actions = $state<DockerActions | null>(null);
   let busy = $state('');
   let logs = $state<{ name: string; lines: string[] | null; error: string } | null>(null);
+  let updates = $state(new Map<string, ImageUpdate>());
+
+  // Image update hints (#107); silently absent while disabled.
+  $effect(() => {
+    const load = () =>
+      docker
+        .updates()
+        .then((l) => (updates = updatesByContainer(l ?? [])))
+        .catch(() => {});
+    load();
+    const timer = setInterval(load, 10 * 60_000);
+    return () => clearInterval(timer);
+  });
 
   $effect(() => {
     docker
@@ -82,9 +96,20 @@
   {#if data.error}<p class="error small">{data.error}</p>{/if}
   <ul class="list">
     {#each shown as c (c.id)}
+      {@const u = updates.get(c.name)}
       <li title="{c.image}\n{c.status}">
         <span class="dot {indicator(c)}" aria-label={c.state}></span>
         <span class="name">{c.name}</span>
+        {#if u}
+          <a
+            class="update"
+            href={u.releaseUrl || undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={u.newerTag ? t('docker.newer_tag', { tag: u.newerTag }) : t('docker.update_available')}
+            aria-label={t('docker.update_available_for', { name: c.name })}>⬆</a
+          >
+        {/if}
         <span class="muted small status">{c.status}</span>
         {#if canAct(actions, c.name)}
           <button
@@ -122,6 +147,11 @@
 {/if}
 
 <style>
+  .update {
+    color: var(--color-warning);
+    text-decoration: none;
+    font-size: 0.85em;
+  }
   .act {
     padding: 0 4px;
     line-height: 1.2;

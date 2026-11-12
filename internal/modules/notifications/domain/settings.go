@@ -91,6 +91,8 @@ func (r Rules) Judge(o kernel.Observation) (relevant, healthy bool) {
 		return r.Disk, o.Value < r.DiskThreshold
 	case "diskhealth", "forecast":
 		return r.Disk, o.Healthy
+	case "image":
+		return r.Containers, o.Healthy
 	case "speedtest":
 		// Opt-in by setting thresholds in the speedtest module.
 		return true, o.Healthy

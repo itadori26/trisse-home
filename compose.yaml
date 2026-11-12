@@ -53,6 +53,9 @@ services:
     restart: unless-stopped
     environment:
       CONTAINERS: 1
+      # Image update hints (#107): GET /images/{id}/json for repo digests
+      # and labels; still read-only because POST is 0.
+      IMAGES: 1
       POST: 0
       INFO: 0
       IMAGES: 0

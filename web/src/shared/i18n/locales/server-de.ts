@@ -14,6 +14,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_a912b3e2ea2b8170: 'Ein Wartungsfenster muss nach seinem Beginn enden und darf höchstens 7 Tage dauern.',
   // A note needs a title or some text.
   srv_cf47637ff80f03dc: 'Eine Notiz braucht einen Titel oder etwas Text.',
+  // A password or access token is required for new registries.
+  srv_865d0fdde8c133ca: 'Für neue Registries ist ein Passwort oder Zugriffstoken erforderlich.',
   // A shortcut with this keyword already exists.
   srv_76a5625367cbe997: 'Es gibt bereits ein Kürzel mit diesem Schlüsselwort.',
   // Actions are not enabled for this container (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).
@@ -27,6 +29,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_d05b6c7e6905729f: 'Ein API-Token mit dem Bereich results:read ist erforderlich.',
   // At most 10 calendars are supported.
   srv_326bb72e415244d3: 'Es werden höchstens 10 Kalender unterstützt.',
+  // At most 20 registries can be stored.
+  srv_2ad8dffbd734017a: 'Es können höchstens 20 Registries gespeichert werden.',
   // At most 20 rules are supported.
   srv_741879779a784a6e: 'Es werden höchstens 20 Regeln unterstützt.',
   // At most 30 parcels can be tracked.
@@ -65,6 +69,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_099fe605093d8b87: 'DHL hat den API-Schlüssel abgelehnt.',
   // Delivered parcels can be kept for 0 to 30 days.
   srv_7cb71b2e113119ec: 'Zugestellte Sendungen können 0 bis 30 Tage angezeigt werden.',
+  // Each registry may only be listed once.
+  srv_4ae76664f7b46c6b: 'Jede Registry darf nur einmal eingetragen sein.',
+  // Each registry needs a host name (e.g. ghcr.io) and a user name.
+  srv_e9bcefee5bd2a359: 'Jede Registry braucht einen Hostnamen (z. B. ghcr.io) und einen Benutzernamen.',
   // Enter your authentication code to finish signing in.
   srv_1eb555800ce2927d: 'Gib deinen Authentifizierungscode ein, um die Anmeldung abzuschließen.',
   // Events can be at most one year long.
@@ -162,6 +170,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_8ba7cc04f14ed353: 'TLS muss starttls, tls oder none sein.',
   // Tags may only contain letters, digits, - and _ (max. 30 characters).
   srv_7cdf99ade35d99e3: 'Tags dürfen nur Buchstaben, Ziffern, - und _ enthalten (max. 30 Zeichen).',
+  // The Docker API is not reachable. Does the socket proxy allow IMAGES=1?
+  srv_1120b37481579f63: 'Die Docker-API ist nicht erreichbar. Erlaubt der Socket-Proxy IMAGES=1?',
   // The FRITZ!Box is not configured yet.
   srv_6f0fbfbef4b05402: 'Die FRITZ!Box ist noch nicht eingerichtet.',
   // The ICS URL must start with https://, http:// or webcal://.
@@ -265,6 +275,9 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_62951ebf93a06287: 'Der Identity Provider ist nicht erreichbar: {detail}',
   // The identity provider did not confirm the sign-in: {detail}
   srv_af05df00dfc4dc1a: 'Der Identity Provider hat die Anmeldung nicht bestätigt: {detail}',
+  // The image update check is disabled. Enable it in Settings → Docker updates.
+  srv_c9b09323ab5702c6:
+    'Die Prüfung auf Image-Updates ist ausgeschaltet. Sie lässt sich unter Einstellungen → Docker-Updates einschalten.',
   // The item does not exist (any more).
   srv_77686a482211f04a: 'Der Eintrag existiert nicht (mehr).',
   // The item does not exist.

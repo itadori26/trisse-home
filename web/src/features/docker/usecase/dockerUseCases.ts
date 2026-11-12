@@ -1,4 +1,5 @@
 import type { ContainerList, DockerActions } from '../domain/container';
+import type { ImageUpdate, RegistryInput, UpdateSettings } from '../domain/imageUpdate';
 
 /** Output port: docker backend. */
 export interface DockerGateway {
@@ -6,6 +7,14 @@ export interface DockerGateway {
   actions(): Promise<DockerActions>;
   restart(name: string): Promise<void>;
   logs(name: string): Promise<string[]>;
+  /** null while the update check is disabled. */
+  updates(): Promise<ImageUpdate[] | null>;
+  updateSettings(): Promise<UpdateSettings>;
+  saveUpdateSettings(
+    enabled: boolean,
+    semverTags: boolean,
+    registries: RegistryInput[],
+  ): Promise<UpdateSettings>;
 }
 
 /** Application logic of the docker feature. */
@@ -33,5 +42,25 @@ export class DockerUseCases {
 
   logs(name: string): Promise<string[]> {
     return this.gateway.logs(name);
+  }
+
+  /** Image update hints (#107); null while disabled. */
+  updates(): Promise<ImageUpdate[] | null> {
+    return this.gateway.updates();
+  }
+
+  updateSettings(): Promise<UpdateSettings> {
+    return this.gateway.updateSettings();
+  }
+
+  saveUpdateSettings(
+    enabled: boolean,
+    semverTags: boolean,
+    registries: RegistryInput[],
+  ): Promise<UpdateSettings> {
+    const cleaned = registries
+      .map((r) => ({ host: r.host.trim().toLowerCase(), username: r.username.trim(), password: r.password }))
+      .filter((r) => r.host !== '' || r.username !== '' || r.password !== '');
+    return this.gateway.saveUpdateSettings(enabled, semverTags, cleaned);
   }
 }

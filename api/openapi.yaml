@@ -994,6 +994,24 @@ paths:
       summary: Containers via the read-only socket proxy (refreshed every 20 seconds)
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContainerList" } } } }
+  /api/docker/updates:
+    get:
+      tags: [docker]
+      summary: Running images with their update state (only when the update check is enabled; 404 otherwise)
+      description: >
+        Status up_to_date | update_available | pinned | local | error | unknown, optional newerTag (semver),
+        releaseUrl from the org.opencontainers.image.source label. Registries are asked at most every 6 hours per image.
+      responses: { "200": { description: OK }, "404": { description: Update check disabled } }
+  /api/docker/updates/settings:
+    get:
+      tags: [docker]
+      summary: Update check settings (registry passwords are never returned)
+      responses: { "200": { description: "{enabled, semverTags, registries: [{host, username, hasPassword}]}" } }
+    put:
+      tags: [docker]
+      summary: Save the settings; an empty password keeps the stored one of the same host
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, semverTags: { type: boolean }, registries: { type: array, items: { type: object, properties: { host: { type: string }, username: { type: string }, password: { type: string } } } } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid } }
   /api/docker/actions:
     get:
       tags: [docker]

@@ -51,6 +51,7 @@ func TestRulesJudge(t *testing.T) {
 		{kernel.Observation{Kind: "diskhealth", Healthy: false}, true, false},
 		{kernel.Observation{Kind: "forecast", Healthy: false, Value: 9}, true, false},
 		{kernel.Observation{Kind: "speedtest", Healthy: false}, true, false},
+		{kernel.Observation{Kind: "image", Healthy: false}, true, false},
 		{kernel.Observation{Kind: "other"}, false, true},
 	}
 	for _, c := range cases {

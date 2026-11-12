@@ -53,7 +53,7 @@ optional component.
 | Component | Can | Cannot |
 | --- | --- | --- |
 | **trisse-home** container | Read container list and stats through the read-only proxy, read host metrics from read-only mounts, read the WireGuard peer and S.M.A.R.T. exports, call the integrations you configured | Write to Docker, read files outside its mounts, gain privileges (non-root, no capabilities, `no-new-privileges`, read-only root FS), be reached from outside `ALLOWED_CIDRS` |
-| **docker-socket-proxy** | Forward `GET` requests to the container endpoints (plus ping/version) | Write anything (`POST: 0`), read system info, images, volumes, networks or secrets |
+| **docker-socket-proxy** | Forward `GET` requests to the container and image endpoints (plus ping/version); `IMAGES=1` lets trisse-home read the repo digests and labels of the images of running containers for the update hints | Write anything (`POST: 0`) — it cannot pull, delete or build images — read system info, volumes, networks or secrets |
 | **docker-actions-proxy** (profile `docker-actions`) | Forward `POST /containers/<name>/stop\|restart\|kill` | Any read, create, exec, image or volume operation; trisse-home itself only calls *restart* for containers on `DOCKER_ACTIONS_CONTAINERS` |
 | **wireguard-export.sh** (cron, root) | Run `wg show all dump` and write peer public keys, endpoints, handshakes and traffic | Write private or preshared keys — the interface line is dropped and the PSK column blanked |
 | **smart-export.sh** (cron, root) | Run `smartctl --scan-open` and `smartctl --json -a` and write one JSON file per disk | Change disks or read their data — smartctl only reads the health log; the container gets no device access |

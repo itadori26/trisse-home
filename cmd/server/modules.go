@@ -126,7 +126,8 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"docker", func() modules.Module {
 			return docker.New(client, docker.Config{ProxyURL: cfg.DockerProxyURL, Actions: cfg.DockerActions,
-				ActionsContainers: cfg.DockerActionsContainers, ActionsProxyURL: cfg.DockerActionsProxyURL}, sink, clk)
+				ActionsContainers: cfg.DockerActionsContainers, ActionsProxyURL: cfg.DockerActionsProxyURL,
+				DB: db, Cipher: secrets, Registry: client}, sink, clk)
 		}},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, client, clk) }},

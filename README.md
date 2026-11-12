@@ -51,7 +51,7 @@ Not sure whether trisse-home is the right fit? See the
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |
-| **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view       |
+| **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view; opt-in image update hints (digest compared with the registry at most every 6 h, optional newer version tags, release notes link, notification) |
 | **adguard**    | AdGuard Home statistics                                                                               |
 | **speedtest**  | Internet speed from an existing [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker): latest download/upload/ping, 24 h and 7 day sparklines, optional notification below a threshold (runs no tests itself) |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
@@ -369,7 +369,8 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, Speedtest Tracker (every 10 minutes), the FRITZ!Box and your
+RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, Speedtest Tracker (every 10 minutes), the registries of your running images
+(only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
 ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can
 configure them (session + CSRF protection, IP allowlist). Weather data comes

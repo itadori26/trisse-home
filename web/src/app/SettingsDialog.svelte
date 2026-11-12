@@ -4,6 +4,7 @@
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
   import { SpeedtestSettings } from '../features/speedtest';
+  import { ImageUpdateSettings } from '../features/docker';
   import { FritzBoxSettings } from '../features/fritzbox';
   import { NextcloudSettings } from '../features/nextcloud';
   import { ShoppingSettings, suggestListUrl } from '../features/shopping';
@@ -54,6 +55,7 @@
     { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
     { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
     { id: 'speedtest', label: 'settings.section.speedtest', module: 'speedtest' },
+    { id: 'docker-updates', label: 'settings.section.docker_updates', module: 'docker' },
     { id: 'nextcloud', label: 'settings.section.nextcloud', module: 'nextcloud' },
     { id: 'fritzbox', label: 'settings.section.fritzbox', module: 'fritzbox' },
     { id: 'wireguard', label: 'settings.section.wireguard', module: 'wireguard' },
@@ -142,6 +144,8 @@
     <FritzBoxSettings fritzbox={container.fritzbox} />
   {:else if current === 'nextcloud'}
     <NextcloudSettings nextcloud={container.nextcloud} />
+  {:else if current === 'docker-updates'}
+    <ImageUpdateSettings docker={container.docker} />
   {:else if current === 'speedtest'}
     <SpeedtestSettings speedtest={container.speedtest} />
   {:else if current === 'adguard'}

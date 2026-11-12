@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -639,6 +640,17 @@ func TestAPIEndToEnd(t *testing.T) {
 	// --- disk forecast settings (#108) ---
 	c.do(http.MethodPut, "/api/system/forecast-settings", obj{"windowDays": 2, "alertDays": 14}, http.StatusUnprocessableEntity)
 	c.do(http.MethodPut, "/api/system/forecast-settings", obj{"windowDays": 30, "alertDays": 7}, http.StatusOK)
+
+	// --- docker image updates (#107): off by default ---
+	c.do(http.MethodGet, "/api/docker/updates", nil, http.StatusNotFound)
+	c.do(http.MethodPut, "/api/docker/updates/settings", obj{"enabled": false, "registries": []obj{{"host": "ghcr.io", "username": "me"}}}, http.StatusUnprocessableEntity)
+	var us obj
+	c.json(http.MethodPut, "/api/docker/updates/settings", obj{"enabled": true, "semverTags": true,
+		"registries": []obj{{"host": "ghcr.io", "username": "me", "password": "token"}}}, http.StatusOK, &us)
+	if regs, _ := us["registries"].([]any); len(regs) != 1 || strings.Contains(fmt.Sprint(us), "token") {
+		t.Fatalf("update settings: %+v", us)
+	}
+	c.do(http.MethodPut, "/api/docker/updates/settings", obj{"enabled": false}, http.StatusOK)
 
 	// --- speedtest (#60): off until configured ---
 	c.do(http.MethodGet, "/api/speedtest/results", nil, http.StatusNotFound)

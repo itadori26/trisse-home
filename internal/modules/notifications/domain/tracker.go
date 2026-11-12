@@ -80,6 +80,8 @@ func problemTitle(o kernel.Observation) string {
 		return "Backup " + o.Label + " needs attention"
 	case "diskhealth":
 		return "Disk " + o.Label + " is degrading"
+	case "image":
+		return "Update available for " + o.Label
 	case "forecast":
 		return fmt.Sprintf("Disk %s is full in about %.0f days", o.Label, o.Value)
 	default:

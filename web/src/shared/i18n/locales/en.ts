@@ -931,6 +931,29 @@ export const en = {
   'speedtest.min_up': 'Notify below upload (Mbit/s, 0 = off)',
   'speedtest.threshold_hint':
     'The token is stored encrypted and never shown again. Thresholds are checked against the latest result.',
+  'docker.update_available': 'Update available',
+  'docker.update_available_for': 'Update available for {name}',
+  'docker.newer_tag': 'Newer version {tag} available',
+  'settings.section.docker_updates': 'Docker updates',
+  'docker_updates.hint':
+    'trisse-home compares the image digest of every running container with its registry (at most every 6 hours per image) and only shows hints – it never pulls or updates. Requests go to the registries of your images.',
+  'docker_updates.enabled': 'Check for image updates',
+  'docker_updates.semver': 'Also show newer version tags (e.g. 1.28.0 for 1.27.1)',
+  'docker_updates.registries': 'Registry logins (optional, for private images or higher rate limits)',
+  'docker_updates.host': 'Registry host',
+  'docker_updates.username': 'User name',
+  'docker_updates.password': 'Password or token {value}',
+  'docker_updates.add_registry': 'Add registry',
+  'docker_updates.remove_registry': 'Remove {host}',
+  'docker_updates.images': 'Running images',
+  'docker_updates.not_checked': 'The first check runs within an hour.',
+  'docker_updates.release_notes': 'Release notes',
+  'docker_updates.status.unknown': 'Not checked yet',
+  'docker_updates.status.up_to_date': 'Up to date',
+  'docker_updates.status.update_available': 'Update available',
+  'docker_updates.status.pinned': 'Pinned digest',
+  'docker_updates.status.local': 'Built locally',
+  'docker_updates.status.error': 'Check failed',
 } as const;
 
 /** Every message key. */
