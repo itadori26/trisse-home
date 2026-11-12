@@ -20,3 +20,4 @@ that supersedes the old one.
 | [0012](0012-owner-and-guest-roles.md)       | Owner and read-only guest accounts (supersedes the single-user scope of 0005) | Accepted |
 | [0013](0013-single-sign-on.md)              | Single sign-on with OpenID Connect and trusted proxy headers | Accepted |
 | [0014](0014-passkeys.md)                    | Passkeys as second factor with a minimal WebAuthn implementation | Accepted |
+| [0016](0016-cross-module-read-models.md)    | Cross-module read models: consumer-owned ports, adapters in the composition root | Accepted |

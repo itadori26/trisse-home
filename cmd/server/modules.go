@@ -15,6 +15,7 @@ import (
 	"trisse-home/internal/modules/backup"
 	"trisse-home/internal/modules/backupmonitor"
 	"trisse-home/internal/modules/bookmarks"
+	"trisse-home/internal/modules/briefing"
 	"trisse-home/internal/modules/calendar"
 	"trisse-home/internal/modules/dashboard"
 	"trisse-home/internal/modules/diskhealth"
@@ -89,8 +90,10 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	// The timeline records the same observations and alerts (#74).
 	sinks := observationFanOut{}
 	var maintenance maintenanceReader
+	var notifier kernel.AlertSink
 	if cfg.ModuleEnabled("notifications") {
 		n := notifications.New(db, secrets, client, clk, ids)
+		notifier = n
 		registry.Register(n)
 		sinks = append(sinks, n)
 		alerts.targets = append(alerts.targets, n)
@@ -162,6 +165,15 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			return nil, nil, err
 		}
 		registry.Register(b)
+	}
+
+	// The briefing reads other modules, so it is built after them (#52).
+	if cfg.ModuleEnabled("briefing") {
+		bc := briefing.Config{Sources: briefingSources(registry), DefaultLat: cfg.SampleWeather.Lat, DefaultLon: cfg.SampleWeather.Lon}
+		if notifier != nil {
+			bc.Publisher = briefingPublisher{notifier}
+		}
+		registry.Register(briefing.New(db, clk, bc))
 	}
 
 	kinds := append(append([]string{}, frontendOnlyWidgetKinds...), registry.WidgetKinds()...)

@@ -50,7 +50,7 @@
     {@const w = widgets.get(e.id)}
     {#if w}
       {@const name = label(w)}
-      <div class="cell" class:hidden={e.hidden} style:--rows={e.rows}>
+      <div class="cell" class:hidden={e.hidden} style:--rows={e.rows} data-widget-id={e.id}>
         {#if editing}
           <div class="controls" role="group" aria-label={t('dashboard.mobile_controls', { name })}>
             <button

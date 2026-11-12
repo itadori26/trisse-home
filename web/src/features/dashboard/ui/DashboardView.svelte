@@ -20,6 +20,8 @@
   import { deriveMobile, type MobileItem, PHONE_QUERY, resolveMobile } from '../domain/mobile';
   import NewTabDialog from './NewTabDialog.svelte';
   import TabBar from './TabBar.svelte';
+  import { tick } from 'svelte';
+  import { onWidgetFocusRequest, pickWidget } from '../../../shared/ui/widgetFocus';
   import TabRulesDialog from './TabRulesDialog.svelte';
   import TextPrompt from './TextPrompt.svelte';
   import WidgetFrame from './WidgetFrame.svelte';
@@ -74,6 +76,20 @@
     phoneQuery.addEventListener('change', update);
     return () => phoneQuery.removeEventListener('change', update);
   });
+
+  // Other widgets can ask to show a widget, e.g. the briefing (#52).
+  $effect(() =>
+    onWidgetFocusRequest(async (kinds) => {
+      const target = pickWidget(tabs, active?.id ?? '', kinds);
+      if (!target) return;
+      if (target.tabId !== active?.id) select(target.tabId);
+      await tick();
+      const el = document.querySelector<HTMLElement>(`[data-widget-id="${CSS.escape(target.widgetId)}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el?.classList.add('flash');
+      setTimeout(() => el?.classList.remove('flash'), 1500);
+    }),
+  );
 
   function onmobile(tab: Tab, layout: MobileItem[]) {
     replaceTab({ ...tab, mobile: layout, mobileCustom: true });
@@ -541,5 +557,11 @@
     border: 1px solid var(--color-border);
     box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
     z-index: 20;
+  }
+  :global(.flash) {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius);
+    transition: outline-color 1.5s;
   }
 </style>
