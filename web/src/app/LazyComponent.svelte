@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { combine, type Freshness } from '../shared/freshness/status';
   import { t } from '../shared/i18n';
+  import WidgetStatusBadge from '../shared/ui/WidgetStatusBadge.svelte';
   import {
     observeViewport,
     provideRefresh,
@@ -14,8 +16,10 @@
     props: Record<string, unknown>;
     /** Shared scheduler; the wrapper reports the widget's viewport state (#117). */
     scheduler: RefreshScheduler;
+    /** Shows the data freshness badge for polling widgets (#94). */
+    showStatus?: boolean;
   }
-  let { renderer, props, scheduler }: Props = $props();
+  let { renderer, props, scheduler, showStatus = true }: Props = $props();
 
   // Polling jobs of the widget learn whether its card is on screen.
   const handles: RefreshHandle[] = []; // not reactive on purpose
@@ -28,8 +32,35 @@
     track(h) {
       handles.push(h);
       h.setInViewport(onScreen);
-      return () => void handles.splice(handles.indexOf(h) >>> 0, 1);
+      const off = h.onSettled(updateStatus);
+      updateStatus();
+      return () => {
+        off();
+        handles.splice(handles.indexOf(h) >>> 0, 1);
+        updateStatus();
+      };
     },
+  });
+
+  // Data freshness of the widget's polling jobs (#94).
+  let now = $state(Date.now());
+  let status = $state<{ freshness: Freshness; fetchedAt: number | null; lastError: string | null } | null>(
+    null,
+  );
+  function updateStatus() {
+    now = Date.now();
+    status = handles.length
+      ? combine(
+          handles.map((h) => h.status()),
+          now,
+        )
+      : null;
+  }
+  $effect(() => {
+    if (!showStatus) return;
+    // Keeps "x min ago" and the stale marker current; cheap, no requests.
+    const id = setInterval(updateStatus, 30_000);
+    return () => clearInterval(id);
   });
   $effect(() => {
     if (!root) return;
@@ -53,6 +84,15 @@
     <div class="skeleton" aria-busy="true" aria-label={t('app.loading_widget')}></div>
   {:then Component}
     <Component {...props} />
+    {#if showStatus && status}
+      <WidgetStatusBadge
+        freshness={status.freshness}
+        fetchedAt={status.fetchedAt}
+        lastError={status.lastError}
+        {now}
+        onrefresh={() => handles.forEach((h) => h.refreshNow())}
+      />
+    {/if}
   {:catch}
     <p class="error">
       {t('app.widget_failed_to_load')}
@@ -63,6 +103,7 @@
 
 <style>
   .lazy-root {
+    position: relative;
     height: 100%;
   }
   .skeleton {

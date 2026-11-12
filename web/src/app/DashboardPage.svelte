@@ -40,6 +40,7 @@
         renderer={def.settings}
         props={{ ...def.settings.props(widget.config, container), onsave: save }}
         scheduler={container.refresh}
+        showStatus={false}
       />
     {/if}
   {/snippet}

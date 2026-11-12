@@ -118,6 +118,27 @@ describe('refresh scheduler (#117)', () => {
     expect(s.size).toBe(0);
   });
 
+  it('reports fetch time and the last error (#94)', async () => {
+    const { s, clock, advance } = setup();
+    let fail = false;
+    let settled = 0;
+    const h = s.register(async () => {
+      if (fail) throw new Error('timeout');
+    }, 10_000);
+    h.onSettled(() => settled++);
+    await flush();
+    expect(h.status()).toEqual({ fetchedAt: 0, lastError: null, intervalMs: 10_000 });
+    fail = true;
+    await advance(11_000);
+    expect(h.status().lastError).toBe('timeout');
+    expect(h.status().fetchedAt).toBe(0);
+    fail = false;
+    h.refreshNow();
+    await flush();
+    expect(h.status()).toEqual({ fetchedAt: clock.t, lastError: null, intervalMs: 10_000 });
+    expect(settled).toBe(3); // initial run, failed run, manual refresh
+  });
+
   it('caps the backoff and adds jitter', () => {
     const job: JobState = { intervalMs: 60_000, lastRun: 0, failures: 10, inViewport: true, running: false };
     expect(effectiveDelay(job, { ...defaultOptions, random: () => 0 })).toBe(15 * 60_000 * 0.9);

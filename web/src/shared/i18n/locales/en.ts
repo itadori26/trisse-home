@@ -983,6 +983,14 @@ export const en = {
   'app.loading_widget': 'Loading widget…',
   'app.widget_failed_to_load': 'This widget could not be loaded.',
   'app.retry': 'Retry',
+  'freshness.not_loaded': 'not loaded yet',
+  'freshness.just_now': 'updated just now',
+  'freshness.minutes_ago': 'updated {minutes} min ago',
+  'freshness.stale': 'outdated – {age}',
+  'freshness.failed': 'refresh failed – {age}',
+  'freshness.updated_at': 'Last updated: {time}',
+  'freshness.last_error': 'Last error: {error}',
+  'freshness.refresh': 'Refresh now',
 } as const;
 
 /** Every message key. */

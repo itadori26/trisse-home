@@ -1007,4 +1007,12 @@ export const de: Record<MessageKey, string> = {
   'app.loading_widget': 'Widget wird geladen …',
   'app.widget_failed_to_load': 'Dieses Widget konnte nicht geladen werden.',
   'app.retry': 'Erneut versuchen',
+  'freshness.not_loaded': 'noch nicht geladen',
+  'freshness.just_now': 'gerade aktualisiert',
+  'freshness.minutes_ago': 'vor {minutes} Min. aktualisiert',
+  'freshness.stale': 'veraltet – {age}',
+  'freshness.failed': 'Aktualisierung fehlgeschlagen – {age}',
+  'freshness.updated_at': 'Zuletzt aktualisiert: {time}',
+  'freshness.last_error': 'Letzter Fehler: {error}',
+  'freshness.refresh': 'Jetzt aktualisieren',
 };

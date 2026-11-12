@@ -77,11 +77,27 @@ export interface RefreshHandle {
   setInViewport(visible: boolean): void;
   /** Runs the job now (e.g. after the user changed a filter). */
   refreshNow(): void;
+  /** Data freshness of the job (#94). */
+  status(): JobStatus;
+  /** Calls fn after every run; returns a function that unsubscribes. */
+  onSettled(fn: () => void): () => void;
+}
+
+/** Freshness facts of a job (#94). */
+export interface JobStatus {
+  fetchedAt: number | null;
+  lastError: string | null;
+  intervalMs: number;
 }
 
 interface Job extends JobState {
   run: () => Promise<unknown>;
+  fetchedAt: number | null;
+  lastError: string | null;
+  listeners: Set<() => void>;
 }
+
+const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 /** The shared scheduler. */
 export class RefreshScheduler {
@@ -107,7 +123,17 @@ export class RefreshScheduler {
    * every intervalMs. A rejected promise counts as a failure.
    */
   register(run: () => Promise<unknown>, intervalMs: number): RefreshHandle {
-    const job: Job = { run, intervalMs, lastRun: -Infinity, failures: 0, inViewport: true, running: false };
+    const job: Job = {
+      run,
+      intervalMs,
+      lastRun: -Infinity,
+      failures: 0,
+      inViewport: true,
+      running: false,
+      fetchedAt: null,
+      lastError: null,
+      listeners: new Set(),
+    };
     this.jobs.add(job);
     this.stopTicker ??= this.ticker.every(this.o.tickMs, () => this.tick());
     if (this.visibility.visible()) this.start(job);
@@ -127,6 +153,11 @@ export class RefreshScheduler {
       },
       refreshNow: () => {
         if (!job.running) this.start(job);
+      },
+      status: () => ({ fetchedAt: job.fetchedAt, lastError: job.lastError, intervalMs: job.intervalMs }),
+      onSettled: (fn) => {
+        job.listeners.add(fn);
+        return () => job.listeners.delete(fn);
       },
     };
   }
@@ -151,11 +182,19 @@ export class RefreshScheduler {
     job
       .run()
       .then(
-        () => (job.failures = 0),
-        () => (job.failures = Math.min(job.failures + 1, 20)),
+        () => {
+          job.failures = 0;
+          job.fetchedAt = this.clock.now();
+          job.lastError = null;
+        },
+        (err: unknown) => {
+          job.failures = Math.min(job.failures + 1, 20);
+          job.lastError = message(err);
+        },
       )
       .finally(() => {
         job.running = false;
+        for (const fn of job.listeners) fn();
         // Measure the interval from the end of a slow request.
         job.lastRun = this.clock.now();
       });
