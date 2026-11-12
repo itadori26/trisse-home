@@ -8,7 +8,7 @@ import {
   type WidgetConfig,
   type WidgetType,
 } from '../domain/dashboard';
-import { findFreeSpot, type LayoutItem, sameLayout } from '../domain/layout';
+import { collides, findFreeSpot, type LayoutItem, sameLayout } from '../domain/layout';
 import type { DashboardGateway } from './ports';
 
 /** Error for input rejected before it reaches the backend. */
@@ -70,6 +70,20 @@ export class DashboardUseCases {
   /** Copies a widget (kind, size and configuration) to the first free spot of its tab. */
   duplicateWidget(tab: Tab, widget: Widget): Promise<Widget> {
     const rect = findFreeSpot(tab.widgets, widget.w, widget.h);
+    return this.gateway.addWidget(tab.id, widget.kind, rect, structuredClone(widget.config));
+  }
+
+  /**
+   * Re-creates a deleted widget with its kind, size and configuration
+   * (undo, #93): at its old position, or the first free spot if that is
+   * taken now. The new widget has a new ID.
+   */
+  restoreWidget(tab: Tab, widget: Widget): Promise<Widget> {
+    const others = tab.widgets.filter((w) => w.id !== widget.id);
+    const free = !others.some((w) => collides(w, widget));
+    const rect = free
+      ? { x: widget.x, y: widget.y, w: widget.w, h: widget.h }
+      : findFreeSpot(others, widget.w, widget.h);
     return this.gateway.addWidget(tab.id, widget.kind, rect, structuredClone(widget.config));
   }
 

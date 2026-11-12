@@ -1031,4 +1031,13 @@ export const de: Record<MessageKey, string> = {
   'shortcuts.help': 'Diese Übersicht anzeigen',
   'shortcuts.hint':
     'Tastenkürzel wirken nicht, während du in einem Feld tippst oder ein Dialog offen ist. Im Bearbeitungsmodus lassen sich Widgets mit den Pfeiltasten verschieben.',
+  'dashboard.undo': 'Rückgängig',
+  'dashboard.redo': 'Wiederholen',
+  'dashboard.widget_deleted': '„{name}“ entfernt.',
+  'dashboard.undo_tab_gone': 'Der Tab dieses Widgets existiert nicht mehr.',
+  'shortcuts.undo': 'Letzte Änderung rückgängig machen (Bearbeitungsmodus)',
+  'shortcuts.redo': 'Wiederholen (Bearbeitungsmodus)',
+  'shortcuts.ctrl_z': 'Strg+Z',
+  'shortcuts.ctrl_shift_z': 'Strg+Umschalt+Z',
+  'shortcuts.ctrl_y': 'Strg+Y',
 };

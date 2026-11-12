@@ -19,6 +19,7 @@ describe('shortcut registry (#95)', () => {
   it('normalises combos', () => {
     expect(comboOf(key('k', { ctrl: true }))).toBe('Mod+K');
     expect(comboOf(key('K', { meta: true }))).toBe('Mod+K');
+    expect(comboOf(key('Z', { ctrl: true, shift: true }))).toBe('Mod+Shift+Z');
     expect(comboOf(key('?', { shift: true }))).toBe('?');
     expect(comboOf(key('e', { alt: true }))).toBeNull();
     expect(comboOf(key('ArrowDown'))).toBeNull();
@@ -42,7 +43,7 @@ describe('shortcut registry (#95)', () => {
       combos: ['Mod+K'],
       display: ['Ctrl+K'],
       label: 'x',
-      whileTyping: true,
+      typingCombos: ['Mod+K'],
       run: () => ran.push('search'),
     });
     r.register({
@@ -56,13 +57,15 @@ describe('shortcut registry (#95)', () => {
     expect(r.handle(key('e'), el('BODY'), false)).toBe(true);
     expect(r.handle(key('e'), el('INPUT', { type: 'text' }), false)).toBe(false);
     expect(r.handle(key('k', { ctrl: true }), el('INPUT', { type: 'text' }), false)).toBe(true);
-    r.register({ id: 'slash', combos: ['/', 'Mod+J'], display: ['/'], label: 'x', run: (c) => ran.push(c) });
+    r.register({ id: 'undo', combos: ['/', 'Mod+Z'], display: ['/'], label: 'x', run: (c) => ran.push(c) });
     expect(r.handle(key('/'), el('INPUT', { type: 'text' }), false)).toBe(false);
-    expect(r.handle(key('j', { ctrl: true }), el('INPUT', { type: 'text' }), false)).toBe(true);
+    // Ctrl+Z inside a field stays the field's own undo.
+    expect(r.handle(key('z', { ctrl: true }), el('INPUT', { type: 'text' }), false)).toBe(false);
+    expect(r.handle(key('z', { ctrl: true }), el('BODY'), false)).toBe(true);
     expect(r.handle(key('2'), el('BODY'), false)).toBe(true);
     expect(r.handle(key('e'), el('BODY'), true)).toBe(false);
     expect(r.handle(key('x'), el('BODY'), false)).toBe(false);
-    expect(ran).toEqual(['edit', 'search', 'Mod+J', 'tab 2']);
+    expect(ran).toEqual(['edit', 'search', 'Mod+Z', 'tab 2']);
   });
 
   it('rejects conflicts and can unregister', () => {

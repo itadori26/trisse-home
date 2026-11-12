@@ -13,11 +13,19 @@
   }
   let { container, editing, widgetKinds }: Props = $props();
 
-  let view = $state<{ selectTabAt: (index: number) => void }>();
+  let view = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
 
   /** Selects the n-th tab (0-based). */
   export function selectTabAt(index: number) {
     view?.selectTabAt(index);
+  }
+
+  /** Undo/redo in edit mode (#93). */
+  export function undo() {
+    view?.undo();
+  }
+  export function redo() {
+    view?.redo();
   }
 
   const types = $derived(widgetDefinitions.filter((d) => widgetKinds.has(d.type.kind)).map((d) => d.type));

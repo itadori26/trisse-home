@@ -296,6 +296,40 @@ test('keyboard shortcuts switch tabs, toggle edit mode and show an overview (#95
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
 });
 
+test('removed widgets come back with undo, and redo works (#93)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Undo');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('button', { name: /^Clock/ }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Remove widget' }).click();
+  await expect(page.locator('time')).toHaveCount(0);
+  await page.getByRole('status').filter({ hasText: 'removed' }).getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('time')).toBeVisible();
+
+  // History now: add, configure (the clock's settings were saved). Undo
+  // both with the keyboard: the widget is gone again.
+  await page.locator('body').click();
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('time')).toHaveCount(0);
+  await page.keyboard.press('Control+Shift+z');
+  await expect(page.locator('time')).toBeVisible();
+
+  // The restored widget survives a reload.
+  await page.reload();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

@@ -1007,6 +1007,15 @@ export const en = {
   'shortcuts.help': 'Show this overview',
   'shortcuts.hint':
     'Shortcuts are ignored while you type in a field or a dialog is open. In edit mode, widgets move with the arrow keys.',
+  'dashboard.undo': 'Undo',
+  'dashboard.redo': 'Redo',
+  'dashboard.widget_deleted': '“{name}” removed.',
+  'dashboard.undo_tab_gone': 'The tab of this widget no longer exists.',
+  'shortcuts.undo': 'Undo the last change (edit mode)',
+  'shortcuts.redo': 'Redo (edit mode)',
+  'shortcuts.ctrl_z': 'Ctrl+Z',
+  'shortcuts.ctrl_shift_z': 'Ctrl+Shift+Z',
+  'shortcuts.ctrl_y': 'Ctrl+Y',
 } as const;
 
 /** Every message key. */
