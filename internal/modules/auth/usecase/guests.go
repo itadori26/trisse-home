@@ -162,6 +162,11 @@ func (uc *guests) Delete(ctx context.Context, id string) error {
 	if err := uc.deps.Sessions.DeleteAllFor(ctx, g.ID()); err != nil {
 		return fmt.Errorf("end guest sessions: %w", err)
 	}
+	if uc.deps.Passkeys != nil {
+		if err := uc.deps.Passkeys.DeleteByAccount(ctx, g.ID()); err != nil {
+			return err
+		}
+	}
 	if err := uc.deps.Accounts.Delete(ctx, g.ID()); err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/netip"
+	"net/url"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -68,6 +69,9 @@ type Config struct {
 	AuthProxyUsers      []string
 	PasswordLogin       bool
 	SSORequire2FA       bool
+	// PublicURL is the address users open, e.g. https://home.example.org;
+	// required for passkeys (WebAuthn needs a fixed origin and HTTPS).
+	PublicURL *url.URL
 	// SampleWeather is the location of the example weather widget.
 	SampleWeather SampleLocation
 	// SampleFeeds are subscribed as example RSS feeds.
@@ -135,6 +139,16 @@ func Load(getenv func(string) string) (Config, error) {
 		AuthProxyUsers:          l.rawList("AUTH_PROXY_USERS", ""),
 		PasswordLogin:           l.boolean("PASSWORD_LOGIN", true),
 		SSORequire2FA:           l.boolean("SSO_REQUIRE_2FA", false),
+	}
+	if raw := l.getenv("PUBLIC_URL"); raw != "" {
+		u, err := url.Parse(strings.TrimRight(raw, "/"))
+		local := err == nil && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1")
+		secure := err == nil && (u.Scheme == "https" || (u.Scheme == "http" && local))
+		if !secure || u.Host == "" || u.Path != "" {
+			l.fail("PUBLIC_URL", "must be an https:// origin without path, e.g. https://home.example.org")
+		} else {
+			cfg.PublicURL = u
+		}
 	}
 	cfg.BackupDir = l.str("BACKUP_DIR", filepath.Join(filepath.Dir(cfg.DatabasePath), "backups"))
 	if len(cfg.AllowedCIDRs) == 0 && l.getenv("ALLOWED_CIDRS") != "" {

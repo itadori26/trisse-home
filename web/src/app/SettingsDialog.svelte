@@ -13,6 +13,7 @@
   import {
     ApiTokensSettings,
     ChangePasswordForm,
+    PasskeySettings,
     GuestsSettings,
     SecurityLog,
     SessionsList,
@@ -148,6 +149,7 @@
     {/if}
     <h3>{t('app.two_factor_authentication')}</h3>
     <TwoFactorSettings auth={container.auth} />
+    <PasskeySettings auth={container.auth} />
     <h3>{t('app.active_sessions')}</h3>
     <SessionsList auth={container.auth} />
     <h3>{t('app.change_password')}</h3>

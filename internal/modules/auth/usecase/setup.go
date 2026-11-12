@@ -24,6 +24,10 @@ type Deps struct {
 	// PasswordLoginDisabled turns off the owner's password login once SSO
 	// works (guests keep their passwords; reset-account still recovers).
 	PasswordLoginDisabled bool
+	// Passkeys, WebAuthn and Challenges enable passkeys; nil disables them.
+	Passkeys   PasskeyRepository
+	WebAuthn   WebAuthnVerifier
+	Challenges *Challenges
 }
 
 func (d Deps) issuer() sessionIssuer {

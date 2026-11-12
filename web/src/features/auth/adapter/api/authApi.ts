@@ -11,6 +11,10 @@ import type {
   TwoFactorStatusDTO,
   CreatedTokenDTO,
   GuestDTO,
+  PasskeysDTO,
+  RegisteredPasskeyDTO,
+  RegistrationOptionsDTO,
+  SecondFactorDTO,
   SecurityEventDTO,
 } from '../../../../shared/api-client/generated/auth';
 import type {
@@ -18,12 +22,21 @@ import type {
   DisableTwoFactorDTO,
   GuestRequestDTO,
   LoginRequestDTO,
+  PasskeyLoginDTO,
+  PasskeyRegistrationDTO,
   SetupRequestDTO,
   SSOSecondFactorDTO,
   TokenRequestDTO,
   TwoFactorCodeDTO,
 } from '../../../../shared/api-client/generated/auth-requests';
 import type { ApiToken } from '../../domain/apiToken';
+import type {
+  Passkey,
+  PasskeyAssertion,
+  PasskeyAttestation,
+  PasskeyRegistrationOptions,
+  SecondFactorChallenge,
+} from '../../domain/passkey';
 import type { AuthStatus, Guest, Session } from '../../domain/auth';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../../domain/twoFactor';
 import type { SecurityEvent } from '../../domain/securityEvent';
@@ -60,9 +73,46 @@ export class AuthApi implements AuthGateway {
     return toSession(await this.http.post<SessionDTO>('/api/auth/setup', body));
   }
 
-  async login(password: string, code?: string, username?: string): Promise<Session> {
+  async login(password: string, code?: string, username?: string): Promise<Session | SecondFactorChallenge> {
     const body: LoginRequestDTO = { password, ...(code ? { code } : {}), ...(username ? { username } : {}) };
-    return toSession(await this.http.post<SessionDTO>('/api/auth/login', body));
+    const res = await this.http.post<SessionDTO | SecondFactorDTO>('/api/auth/login', body);
+    return 'secondFactor' in res
+      ? { ...res.secondFactor, allowCredentials: res.secondFactor.allowCredentials ?? [] }
+      : toSession(res);
+  }
+
+  async passkeyLogin(ticket: string, a: PasskeyAssertion): Promise<Session> {
+    const body: PasskeyLoginDTO = { ticket, ...a };
+    return toSession(await this.http.post<SessionDTO>('/api/auth/passkeys/login', body));
+  }
+
+  async passkeys(): Promise<{ available: boolean; passkeys: Passkey[] }> {
+    const res = await this.http.get<PasskeysDTO>('/api/auth/passkeys');
+    return {
+      available: res.available,
+      passkeys: (res.passkeys ?? []).map((p) => ({
+        ...p,
+        createdAt: new Date(p.createdAt),
+        lastUsedAt: p.lastUsedAt ? new Date(p.lastUsedAt) : null,
+      })),
+    };
+  }
+
+  async beginPasskeyRegistration(): Promise<PasskeyRegistrationOptions> {
+    const o = await this.http.post<RegistrationOptionsDTO>('/api/auth/passkeys/register/begin');
+    return { ...o, excludeCredentials: o.excludeCredentials ?? [] };
+  }
+
+  async finishPasskeyRegistration(name: string, a: PasskeyAttestation): Promise<string[]> {
+    const body: PasskeyRegistrationDTO = { name, ...a };
+    return (
+      (await this.http.post<RegisteredPasskeyDTO>('/api/auth/passkeys/register/finish', body))
+        .recoveryCodes ?? []
+    );
+  }
+
+  deletePasskey(id: string): Promise<void> {
+    return this.http.delete(`/api/auth/passkeys/${encodeURIComponent(id)}`);
   }
 
   async logout(): Promise<void> {

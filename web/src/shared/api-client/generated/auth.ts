@@ -125,3 +125,49 @@ export interface CreatedTokenDTO {
   TokenDTO: TokenDTO;
   token: string;
 }
+/**
+ * SecondFactorDTO is returned with 202 when the login needs a second step.
+ */
+export interface SecondFactorDTO {
+  secondFactor: {
+    ticket: string;
+    challenge: string;
+    rpId: string;
+    allowCredentials: string[];
+    totp: boolean;
+  };
+}
+/**
+ * PasskeyDTO describes a registered passkey.
+ */
+export interface PasskeyDTO {
+  id: string;
+  name: string;
+  createdAt: string /* RFC 3339 */;
+  lastUsedAt?: string /* RFC 3339 */;
+}
+/**
+ * PasskeysDTO is returned by GET /api/auth/passkeys.
+ */
+export interface PasskeysDTO {
+  available: boolean;
+  passkeys: PasskeyDTO[];
+}
+/**
+ * RegisteredPasskeyDTO is returned after a registration; RecoveryCodes are
+ * only set when new codes were issued (shown once).
+ */
+export interface RegisteredPasskeyDTO {
+  passkey: PasskeyDTO;
+  recoveryCodes: string[];
+}
+/**
+ * RegistrationOptionsDTO holds the parameters for navigator.credentials.create().
+ */
+export interface RegistrationOptionsDTO {
+  challenge: string;
+  rpId: string;
+  userId: string;
+  userName: string;
+  excludeCredentials: string[];
+}

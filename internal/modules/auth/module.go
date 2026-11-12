@@ -16,6 +16,7 @@ import (
 	"trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/auth/usecase"
 	"trisse-home/internal/platform/oidc"
+	"trisse-home/internal/platform/webauthn"
 	"trisse-home/internal/shared/kernel"
 )
 
@@ -37,6 +38,22 @@ type Config struct {
 	Demo bool
 	// SSO configures single sign-on for the owner (ADR 0013).
 	SSO SSOConfig
+	// WebAuthn enables passkeys; nil when PUBLIC_URL is not set (ADR 0014).
+	WebAuthn *webauthn.RelyingParty
+}
+
+// webauthnAdapter maps the platform verifier to the use case port.
+type webauthnAdapter struct{ rp webauthn.RelyingParty }
+
+func (a webauthnAdapter) RPID() string { return a.rp.ID }
+
+func (a webauthnAdapter) VerifyRegistration(challenge, cd, att []byte) (usecase.PasskeyCredential, error) {
+	c, err := a.rp.VerifyRegistration(challenge, cd, att)
+	return usecase.PasskeyCredential(c), err
+}
+
+func (a webauthnAdapter) VerifyAssertion(challenge []byte, cred usecase.PasskeyCredential, cd, ad, sig []byte) (uint32, error) {
+	return a.rp.VerifyAssertion(challenge, webauthn.Credential(cred), cd, ad, sig)
 }
 
 // SSOConfig configures OpenID Connect and the trusted proxy header login.
@@ -127,7 +144,10 @@ func New(cfg Config, d Deps) (*Module, error) {
 	deps := usecase.Deps{
 		Accounts: accounts, Sessions: sessions, Hasher: d.Hasher, Tokens: d.Tokens,
 		Limiter: gateway.NewAttemptLimiter(domain.DefaultLoginThrottle), Clock: d.Clock, TTL: ttl, IDs: d.IDs, OTP: d.OTP,
-		Events: events, PasswordLoginDisabled: !cfg.SSO.PasswordLogin && (cfg.SSO.OIDC != nil || cfg.SSO.ProxyHeader != ""),
+		Events: events, Passkeys: gateway.NewPasskeyRepository(d.DB), Challenges: usecase.NewChallenges(), PasswordLoginDisabled: !cfg.SSO.PasswordLogin && (cfg.SSO.OIDC != nil || cfg.SSO.ProxyHeader != ""),
+	}
+	if cfg.WebAuthn != nil {
+		deps.WebAuthn = webauthnAdapter{*cfg.WebAuthn}
 	}
 	securityLog := usecase.NewSecurityLog(events)
 	status := usecase.NewGetStatus(accounts, sessions, d.Clock)
@@ -141,6 +161,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 		Guests:         usecase.NewGuests(deps),
 		APITokens:      usecase.NewAPITokens(deps, gateway.NewTokenRepository(d.DB)),
 		SSO:            newSSO(deps, cfg.SSO),
+		Passkeys:       usecase.NewPasskeys(deps),
 		ChangePassword: usecase.NewChangePassword(deps),
 		Sessions:       usecase.NewManageSessions(sessions, d.Clock, events),
 		SecurityLog:    securityLog,
@@ -179,6 +200,11 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Public("GET /api/auth/oidc/callback", m.handlers.OIDCCallback)
 	r.Public("POST /api/auth/sso/header", m.handlers.HeaderLogin)
 	r.Public("POST /api/auth/sso/2fa", m.handlers.SSOSecondFactor)
+	r.Public("POST /api/auth/passkeys/login", m.handlers.PasskeyLogin)
+	r.Protected("GET /api/auth/passkeys", m.handlers.ListPasskeys)
+	r.Protected("POST /api/auth/passkeys/register/begin", m.handlers.BeginPasskeyRegistration)
+	r.Protected("POST /api/auth/passkeys/register/finish", m.handlers.FinishPasskeyRegistration)
+	r.Protected("DELETE /api/auth/passkeys/{id}", m.handlers.DeletePasskey)
 	if m.demo {
 		r.Public("POST /api/auth/demo", m.handlers.DemoLogin)
 	}

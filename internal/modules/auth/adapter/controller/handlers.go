@@ -1,16 +1,19 @@
 package controller
 
 import (
+	"encoding/base64"
 	"errors"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
+	"strings"
 
 	"trisse-home/internal/modules/auth/adapter/presenter"
 	"trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/auth/usecase"
 	"trisse-home/internal/shared/httpapi"
+	"trisse-home/internal/shared/kernel"
 )
 
 // UseCases bundles the input ports the auth controller calls.
@@ -28,7 +31,8 @@ type UseCases struct {
 	Guests         usecase.Guests
 	APITokens      usecase.APITokens
 	// SSO is nil when no single sign-on method is configured.
-	SSO usecase.SSO
+	SSO      usecase.SSO
+	Passkeys usecase.Passkeys
 	// DemoLogin is nil unless the instance runs in demo mode.
 	DemoLogin usecase.DemoLogin
 }
@@ -121,6 +125,11 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := h.uc.Login.Execute(r.Context(), usecase.LoginRequest{Username: dto.Username, Password: dto.Password, TOTPCode: dto.Code, ClientKey: clientKey(r), UserAgent: r.UserAgent()})
+	var sf *usecase.SecondFactorRequired
+	if errors.As(err, &sf) {
+		httpapi.WriteJSON(w, http.StatusAccepted, presenter.SecondFactor(sf))
+		return
+	}
 	h.respondWithSession(w, r, res, err)
 }
 
@@ -418,5 +427,85 @@ func (h *Handlers) SSOSecondFactor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := h.uc.SSO.CompleteSecondFactor(r.Context(), dto.Ticket, dto.Code, domain.NewClient(r.UserAgent(), clientKey(r)))
+	h.respondWithSession(w, r, res, err)
+}
+
+// ListPasskeys handles GET /api/auth/passkeys.
+func (h *Handlers) ListPasskeys(w http.ResponseWriter, r *http.Request) {
+	list, err := h.uc.Passkeys.List(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Passkeys(h.uc.Passkeys.Available(), list))
+}
+
+// BeginPasskeyRegistration handles POST /api/auth/passkeys/register/begin.
+func (h *Handlers) BeginPasskeyRegistration(w http.ResponseWriter, r *http.Request) {
+	opts, err := h.uc.Passkeys.BeginRegistration(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.RegistrationOptions(opts))
+}
+
+func decodeB64(fields map[string]string) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	for k, v := range fields {
+		b, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(v, "="))
+		if err != nil {
+			return nil, kernel.NewValidationError(k, "must be base64url")
+		}
+		out[k] = b
+	}
+	return out, nil
+}
+
+// FinishPasskeyRegistration handles POST /api/auth/passkeys/register/finish.
+func (h *Handlers) FinishPasskeyRegistration(w http.ResponseWriter, r *http.Request) {
+	var dto PasskeyRegistrationDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	b, err := decodeB64(map[string]string{"clientDataJSON": dto.ClientDataJSON, "attestationObject": dto.AttestationObject})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	view, codes, err := h.uc.Passkeys.FinishRegistration(r.Context(), dto.Name, b["clientDataJSON"], b["attestationObject"])
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.RegisteredPasskey(view, codes))
+}
+
+// DeletePasskey handles DELETE /api/auth/passkeys/{id}.
+func (h *Handlers) DeletePasskey(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.Passkeys.Delete(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// PasskeyLogin handles POST /api/auth/passkeys/login (second login step).
+func (h *Handlers) PasskeyLogin(w http.ResponseWriter, r *http.Request) {
+	var dto PasskeyLoginDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	b, err := decodeB64(map[string]string{"credentialId": dto.CredentialID, "clientDataJSON": dto.ClientDataJSON,
+		"authenticatorData": dto.AuthenticatorData, "signature": dto.Signature})
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.uc.Passkeys.FinishLogin(r.Context(), dto.Ticket, usecase.PasskeyAssertion{CredentialID: b["credentialId"],
+		ClientDataJSON: b["clientDataJSON"], AuthenticatorData: b["authenticatorData"], Signature: b["signature"]},
+		domain.NewClient(r.UserAgent(), clientKey(r)))
 	h.respondWithSession(w, r, res, err)
 }

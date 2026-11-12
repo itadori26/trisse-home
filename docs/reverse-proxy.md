@@ -110,3 +110,15 @@ Recovery: if the identity provider is down and the password login is
 disabled, run `docker compose exec trisse-home /trisse-home reset-account`
 and set a new password with the setup token from the log.
 
+## Passkeys
+
+Passkeys (Settings → Account) need a secure context and a fixed origin. Set
+the address users open:
+
+```sh
+PUBLIC_URL=https://home.example.org
+```
+
+Then add a passkey in Settings → Account; the next login asks for it after
+the password. TOTP and recovery codes keep working as alternatives.
+

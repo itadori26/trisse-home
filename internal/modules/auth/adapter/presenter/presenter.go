@@ -1,6 +1,7 @@
 package presenter
 
 import (
+	"encoding/base64"
 	"time"
 
 	"trisse-home/internal/modules/auth/usecase"
@@ -174,4 +175,88 @@ func Tokens(list []usecase.TokenView) []TokenDTO {
 // CreatedToken maps a new token including its secret.
 func CreatedToken(t usecase.CreatedToken) CreatedTokenDTO {
 	return CreatedTokenDTO{TokenDTO: Token(t.TokenView), Token: t.Token}
+}
+
+func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }
+
+// SecondFactorDTO is returned with 202 when the login needs a second step.
+type SecondFactorDTO struct {
+	SecondFactor struct {
+		Ticket           string   `json:"ticket"`
+		Challenge        string   `json:"challenge"`
+		RPID             string   `json:"rpId"`
+		AllowCredentials []string `json:"allowCredentials"`
+		TOTP             bool     `json:"totp"`
+	} `json:"secondFactor"`
+}
+
+// SecondFactor maps the passkey challenge of the login.
+func SecondFactor(s *usecase.SecondFactorRequired) SecondFactorDTO {
+	var dto SecondFactorDTO
+	dto.SecondFactor.Ticket, dto.SecondFactor.Challenge, dto.SecondFactor.RPID, dto.SecondFactor.TOTP = s.Ticket, b64(s.Challenge), s.RPID, s.TOTP
+	dto.SecondFactor.AllowCredentials = []string{}
+	for _, c := range s.Credentials {
+		dto.SecondFactor.AllowCredentials = append(dto.SecondFactor.AllowCredentials, b64(c))
+	}
+	return dto
+}
+
+// PasskeyDTO describes a registered passkey.
+type PasskeyDTO struct {
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	LastUsedAt *time.Time `json:"lastUsedAt"`
+}
+
+// PasskeysDTO is returned by GET /api/auth/passkeys.
+type PasskeysDTO struct {
+	Available bool         `json:"available"`
+	Passkeys  []PasskeyDTO `json:"passkeys"`
+}
+
+func passkey(p usecase.PasskeyView) PasskeyDTO {
+	return PasskeyDTO{ID: p.ID, Name: p.Name, CreatedAt: p.CreatedAt, LastUsedAt: optional(p.LastUsedAt)}
+}
+
+// Passkeys maps the passkey list.
+func Passkeys(available bool, list []usecase.PasskeyView) PasskeysDTO {
+	out := PasskeysDTO{Available: available, Passkeys: []PasskeyDTO{}}
+	for _, p := range list {
+		out.Passkeys = append(out.Passkeys, passkey(p))
+	}
+	return out
+}
+
+// RegisteredPasskeyDTO is returned after a registration; RecoveryCodes are
+// only set when new codes were issued (shown once).
+type RegisteredPasskeyDTO struct {
+	Passkey       PasskeyDTO `json:"passkey"`
+	RecoveryCodes []string   `json:"recoveryCodes"`
+}
+
+// RegisteredPasskey maps a new passkey.
+func RegisteredPasskey(p usecase.PasskeyView, codes []string) RegisteredPasskeyDTO {
+	if codes == nil {
+		codes = []string{}
+	}
+	return RegisteredPasskeyDTO{Passkey: passkey(p), RecoveryCodes: codes}
+}
+
+// RegistrationOptionsDTO holds the parameters for navigator.credentials.create().
+type RegistrationOptionsDTO struct {
+	Challenge string   `json:"challenge"`
+	RPID      string   `json:"rpId"`
+	UserID    string   `json:"userId"`
+	UserName  string   `json:"userName"`
+	Exclude   []string `json:"excludeCredentials"`
+}
+
+// RegistrationOptions maps the registration parameters.
+func RegistrationOptions(o usecase.RegistrationOptions) RegistrationOptionsDTO {
+	dto := RegistrationOptionsDTO{Challenge: b64(o.Challenge), RPID: o.RPID, UserID: b64(o.UserID), UserName: o.UserName, Exclude: []string{}}
+	for _, c := range o.Exclude {
+		dto.Exclude = append(dto.Exclude, b64(c))
+	}
+	return dto
 }

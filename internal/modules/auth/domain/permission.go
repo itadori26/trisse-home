@@ -4,7 +4,7 @@ import "strings"
 
 // guestSelfService are the auth endpoints a guest may use for its own
 // account (password, two-factor, sessions, logout) with any method.
-var guestSelfService = []string{"/api/auth/logout", "/api/auth/password", "/api/auth/totp", "/api/auth/sessions"}
+var guestSelfService = []string{"/api/auth/logout", "/api/auth/password", "/api/auth/totp", "/api/auth/sessions", "/api/auth/passkeys"}
 
 // guestReadable are read endpoints every guest needs to render the page.
 var guestReadable = []string{"/api/dashboard", "/api/modules", "/api/appearance", "/api/auth/status"}

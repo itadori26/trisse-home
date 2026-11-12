@@ -26,6 +26,8 @@ const labels: Record<string, MessageKey> = {
   token_created: 'auth.event.token_created',
   token_revoked: 'auth.event.token_revoked',
   token_used: 'auth.event.token_used',
+  passkey_added: 'auth.event.passkey_added',
+  passkey_removed: 'auth.event.passkey_removed',
 };
 
 /** Message key for an event type; unknown types fall back to a generic label. */

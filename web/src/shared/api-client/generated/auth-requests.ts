@@ -68,3 +68,22 @@ export interface SSOSecondFactorDTO {
   ticket: string;
   code: string;
 }
+/**
+ * PasskeyRegistrationDTO carries navigator.credentials.create() (base64url).
+ */
+export interface PasskeyRegistrationDTO {
+  name: string;
+  clientDataJSON: string;
+  attestationObject: string;
+}
+/**
+ * PasskeyLoginDTO carries navigator.credentials.get() (base64url) and the
+ * ticket from the password step.
+ */
+export interface PasskeyLoginDTO {
+  ticket: string;
+  credentialId: string;
+  clientDataJSON: string;
+  authenticatorData: string;
+  signature: string;
+}

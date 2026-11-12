@@ -13,7 +13,7 @@ import { TransitApi, TransitUseCases } from '../features/transit';
 import { WasteApi, WasteUseCases } from '../features/waste';
 import { WireGuardApi, WireGuardUseCases } from '../features/wireguard';
 import { AppearanceApi, AppearanceUseCases } from '../features/appearance';
-import { AuthApi, AuthUseCases } from '../features/auth';
+import { AuthApi, AuthUseCases, BrowserPasskeys } from '../features/auth';
 import { BackupApi, BackupUseCases } from '../features/backup';
 import { BackupMonitorApi, BackupMonitorUseCases } from '../features/backupmonitor';
 import { BookmarksApi, BookmarksUseCases } from '../features/bookmarks';
@@ -71,7 +71,7 @@ export function createContainer(onUnauthorized: () => void): Container {
   const http = new FetchHttpClient(onUnauthorized);
   return {
     http,
-    auth: new AuthUseCases(new AuthApi(http), http),
+    auth: new AuthUseCases(new AuthApi(http), http, new BrowserPasskeys()),
     dashboard: new DashboardUseCases(new DashboardApi(http)),
     appearance: new AppearanceUseCases(new AppearanceApi(http)),
     search: new SearchUseCases(new SearchApi(http)),

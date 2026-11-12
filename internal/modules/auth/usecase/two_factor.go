@@ -29,6 +29,11 @@ func (d Deps) checkSecondFactor(ctx context.Context, a *domain.Account, code str
 		d.Events.record(ctx, domain.EventRecoveryCodeUsed, a.ID(), domain.Client{}, "")
 		return nil
 	}
+	// Without TOTP (e.g. passkeys only) only recovery codes are valid: a code
+	// for an empty secret would be computable by anyone.
+	if !a.TOTPEnabled() {
+		return domain.ErrInvalidTOTPCode
+	}
 	step, ok := d.OTP.Verify(a.TwoFactor().Secret, code, now)
 	if !ok {
 		return domain.ErrInvalidTOTPCode

@@ -102,3 +102,15 @@ func normaliseRecoveryCode(code string) string {
 }
 
 func hashRecoveryCode(code string) TokenHash { return HashToken(normaliseRecoveryCode(code)) }
+
+// IssueRecoveryCodes replaces the recovery codes, e.g. when the first
+// passkey is registered on an account without TOTP.
+func (a *Account) IssueRecoveryCodes(codes []string) {
+	a.totp.RecoveryCodes = nil
+	for _, c := range codes {
+		a.totp.RecoveryCodes = append(a.totp.RecoveryCodes, hashRecoveryCode(c))
+	}
+}
+
+// HasRecoveryCodes reports whether unused recovery codes exist.
+func (a Account) HasRecoveryCodes() bool { return len(a.totp.RecoveryCodes) > 0 }

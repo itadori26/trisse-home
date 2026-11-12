@@ -257,6 +257,33 @@ paths:
       security: []
       requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { ticket: { type: string }, code: { type: string } } } } } }
       responses: { "200": { description: Session started } }
+  /api/auth/passkeys:
+    get:
+      tags: [auth]
+      summary: Passkeys of the signed-in account and whether passkeys are available (needs PUBLIC_URL)
+      responses: { "200": { description: "{available, passkeys: [{id, name, createdAt, lastUsedAt}]}" } }
+  /api/auth/passkeys/register/begin:
+    post:
+      tags: [auth]
+      summary: Parameters for navigator.credentials.create() (base64url challenge, rpId, userId, excludeCredentials)
+      responses: { "200": { description: OK } }
+  /api/auth/passkeys/register/finish:
+    post:
+      tags: [auth]
+      summary: Store a passkey from the browser's attestation (base64url clientDataJSON, attestationObject); returns recovery codes when first issued
+      responses: { "201": { description: "{passkey, recoveryCodes}" } }
+  /api/auth/passkeys/{id}:
+    delete:
+      tags: [auth]
+      summary: Remove a passkey of the signed-in account
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Removed } }
+  /api/auth/passkeys/login:
+    post:
+      tags: [auth]
+      summary: Second login step - the ticket from the 202 login answer plus the signed assertion (base64url)
+      security: []
+      responses: { "200": { description: Session started }, "401": { description: Rejected or ticket expired } }
   /api/auth/tokens:
     get:
       tags: [auth]

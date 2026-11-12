@@ -4,7 +4,8 @@ import { type AuthView, type Guest, validGuestName, validateNewPassword, viewFor
 import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
-import type { AuthGateway, CsrfTokenStore } from './ports';
+import type { Passkey, SecondFactorChallenge } from '../domain/passkey';
+import type { AuthGateway, CsrfTokenStore, PasskeyAuthenticator } from './ports';
 
 /** Error for input rejected before it reaches the backend. */
 export class ValidationError extends Error {
@@ -16,7 +17,13 @@ export class AuthUseCases {
   constructor(
     private readonly gateway: AuthGateway,
     private readonly csrf: CsrfTokenStore,
+    private readonly authenticator?: PasskeyAuthenticator,
   ) {}
+
+  /** Whether this browser can use passkeys here (secure context). */
+  passkeysSupported(): boolean {
+    return this.authenticator?.supported() ?? false;
+  }
 
   /** True on a public demo instance (set by currentView). */
   demo = false;
@@ -68,11 +75,37 @@ export class AuthUseCases {
    * Logs in with the password and, if two-factor authentication is enabled,
    * a code. Guests also give their name.
    */
-  async login(password: string, code?: string, username?: string): Promise<void> {
+  async login(password: string, code?: string, username?: string): Promise<SecondFactorChallenge | null> {
     if (password === '') throw new ValidationError(t('auth.enter_password'));
     const name = username?.trim().toLowerCase() || undefined;
-    const session = await this.gateway.login(password, code?.trim() || undefined, name);
+    const res = await this.gateway.login(password, code?.trim() || undefined, name);
+    if ('ticket' in res) return res;
+    this.csrf.setCsrfToken(res.csrfToken);
+    return null;
+  }
+
+  /** Second login step: sign the challenge with a passkey. */
+  async loginWithPasskey(challenge: SecondFactorChallenge): Promise<void> {
+    if (!this.authenticator) throw new ValidationError(t('auth.passkeys_unsupported'));
+    const assertion = await this.authenticator.get(challenge);
+    const session = await this.gateway.passkeyLogin(challenge.ticket, assertion);
     this.csrf.setCsrfToken(session.csrfToken);
+  }
+
+  passkeys(): Promise<{ available: boolean; passkeys: Passkey[] }> {
+    return this.gateway.passkeys();
+  }
+
+  /** Registers a passkey; returns new recovery codes when they were issued. */
+  async addPasskey(name: string): Promise<string[]> {
+    if (!this.authenticator?.supported()) throw new ValidationError(t('auth.passkeys_unsupported'));
+    const options = await this.gateway.beginPasskeyRegistration();
+    const attestation = await this.authenticator.create(options);
+    return this.gateway.finishPasskeyRegistration(name.trim(), attestation);
+  }
+
+  deletePasskey(id: string): Promise<void> {
+    return this.gateway.deletePasskey(id);
   }
 
   /** Finishes an SSO sign-in that needs the local authentication code. */

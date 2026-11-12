@@ -775,4 +775,23 @@ export const de: Record<MessageKey, string> = {
   'auth.sign_in_with_sso': 'Mit Single Sign-on anmelden',
   'auth.sso_error.not_allowed': 'Dein Konto beim Identity Provider darf sich hier nicht anmelden.',
   'auth.sso_error.failed': 'Single Sign-on hat nicht funktioniert. Bitte erneut versuchen.',
+  'auth.passkeys': 'Passkeys',
+  'auth.passkeys_hint':
+    'Nutze einen Sicherheitsschlüssel, dein Handy oder den Fingerabdrucksensor als zweiten Faktor statt einen Code einzutippen.',
+  'auth.passkeys_need_https':
+    'Passkeys brauchen HTTPS: trisse-home hinter einem Reverse Proxy betreiben und PUBLIC_URL setzen (siehe docs/reverse-proxy.md).',
+  'auth.passkeys_unsupported': 'Dieser Browser kann hier keine Passkeys nutzen.',
+  'auth.passkey_default_name': 'Passkey',
+  'auth.passkey_name': 'Name, z. B. „YubiKey“ oder „iPhone“',
+  'auth.add_passkey': 'Passkey hinzufügen',
+  'auth.passkey_delete': 'Entfernen',
+  'auth.passkey_delete_confirm': 'Den Passkey „{name}“ entfernen?',
+  'auth.no_passkeys': 'Noch keine Passkeys.',
+  'auth.passkey_last_used': 'zuletzt genutzt {when}',
+  'auth.passkey_recovery_codes':
+    'Speichere diese Wiederherstellungscodes: Jeder funktioniert einmal, falls du deinen Passkey verlierst.',
+  'auth.use_passkey': 'Mit Passkey bestätigen',
+  'auth.or_enter_code': 'Oder einen Code aus deiner App bzw. einen Wiederherstellungscode eingeben:',
+  'auth.event.passkey_added': 'Passkey hinzugefügt',
+  'auth.event.passkey_removed': 'Passkey entfernt',
 };

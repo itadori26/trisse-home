@@ -42,6 +42,7 @@ import (
 	"trisse-home/internal/platform/httpclient"
 	"trisse-home/internal/platform/idgen"
 	"trisse-home/internal/platform/oidc"
+	"trisse-home/internal/platform/webauthn"
 	"trisse-home/internal/platform/wol"
 	"trisse-home/internal/shared/kernel"
 )
@@ -70,6 +71,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			OnAccountCreated: func(ctx context.Context) { onAccountCreated(ctx, cfg, log, registry) },
 			Demo:             cfg.DemoMode,
 			SSO:              ssoConfig(cfg, out.client, clk),
+			WebAuthn:         relyingParty(cfg),
 		},
 		auth.Deps{DB: db, Clock: clk, Hasher: crypto.NewArgon2id(crypto.DefaultArgon2idParams), Tokens: crypto.RandomTokens{}, IDs: ids, OTP: crypto.TOTP{}, Cipher: secrets, Log: log, Alerts: alerts, GuestScope: scope},
 	)
@@ -265,4 +267,12 @@ func ssoConfig(cfg config.Config, client *http.Client, clk clock.System) auth.SS
 			RedirectURL: cfg.OIDCRedirectURL}, client, clk.Now)
 	}
 	return sso
+}
+
+// relyingParty returns the WebAuthn relying party; passkeys need PUBLIC_URL.
+func relyingParty(cfg config.Config) *webauthn.RelyingParty {
+	if cfg.PublicURL == nil {
+		return nil
+	}
+	return &webauthn.RelyingParty{ID: cfg.PublicURL.Hostname(), Origin: cfg.PublicURL.Scheme + "://" + cfg.PublicURL.Host}
 }

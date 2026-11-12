@@ -3,6 +3,7 @@
   import { t } from '../../../shared/i18n';
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { ssoErrorKey } from '../domain/auth';
+  import type { SecondFactorChallenge } from '../domain/passkey';
   import type { AuthUseCases } from '../usecase/authUseCases';
   import AuthCard from './AuthCard.svelte';
 
@@ -26,6 +27,26 @@
   let code = $state('');
   /** True once the server asked for the second factor. */
   let needsCode = $state(false);
+  /** Passkey challenge of the second login step. */
+  let challenge = $state<SecondFactorChallenge | null>(null);
+
+  async function usePasskey() {
+    if (!challenge) return;
+    busy = true;
+    error = '';
+    try {
+      await auth.loginWithPasskey(challenge);
+      password = code = '';
+      ondone();
+    } catch (err) {
+      // The ticket is single use: start again with the password.
+      error = errorMessage(err);
+      challenge = null;
+      needsCode = false;
+    } finally {
+      busy = false;
+    }
+  }
   const passwordHidden = $derived(needsCode || !!ticket || (!auth.sso.localLogin && !asGuest));
   let error = $state('');
   let busy = $state(false);
@@ -40,7 +61,12 @@
         ondone();
         return;
       }
-      await auth.login(password, needsCode ? code : undefined, asGuest ? username : undefined);
+      const second = await auth.login(password, needsCode ? code : undefined, asGuest ? username : undefined);
+      if (second) {
+        challenge = second;
+        needsCode = true;
+        return;
+      }
       password = code = '';
       ondone();
     } catch (err) {
@@ -87,6 +113,12 @@
         required={!passwordHidden}
       />
     </label>
+    {#if challenge}
+      <button class="btn btn-primary" type="button" disabled={busy} onclick={usePasskey}
+        >{t('auth.use_passkey')}</button
+      >
+      <p class="muted">{t('auth.or_enter_code')}</p>
+    {/if}
     {#if needsCode || ticket}
       <label class="field">
         <span>{t('auth.authentication_code_or_recovery_code')}</span>
@@ -97,7 +129,7 @@
           inputmode="text"
           autocomplete="one-time-code"
           bind:value={code}
-          autofocus
+          autofocus={!challenge}
           required
         />
       </label>

@@ -1,4 +1,11 @@
 import type { ApiToken } from '../domain/apiToken';
+import type {
+  Passkey,
+  PasskeyAssertion,
+  PasskeyAttestation,
+  PasskeyRegistrationOptions,
+  SecondFactorChallenge,
+} from '../domain/passkey';
 import type { AuthStatus, Guest, Session } from '../domain/auth';
 import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
@@ -8,7 +15,13 @@ import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
 export interface AuthGateway {
   status(): Promise<AuthStatus>;
   setup(setupToken: string, password: string): Promise<Session>;
-  login(password: string, code?: string, username?: string): Promise<Session>;
+  /** Returns a challenge instead of a session when a passkey is registered. */
+  login(password: string, code?: string, username?: string): Promise<Session | SecondFactorChallenge>;
+  passkeyLogin(ticket: string, assertion: PasskeyAssertion): Promise<Session>;
+  passkeys(): Promise<{ available: boolean; passkeys: Passkey[] }>;
+  beginPasskeyRegistration(): Promise<PasskeyRegistrationOptions>;
+  finishPasskeyRegistration(name: string, attestation: PasskeyAttestation): Promise<string[]>;
+  deletePasskey(id: string): Promise<void>;
   guests(): Promise<Guest[]>;
   createGuest(name: string, password: string, tabs: string[]): Promise<Guest>;
   updateGuest(id: string, tabs: string[], disabled: boolean, password: string): Promise<Guest>;
@@ -36,4 +49,11 @@ export interface AuthGateway {
 /** Output port: receives the CSRF token so later requests can send it. */
 export interface CsrfTokenStore {
   setCsrfToken(token: string): void;
+}
+
+/** Output port: the browser's WebAuthn API (isolated so use cases stay testable). */
+export interface PasskeyAuthenticator {
+  supported(): boolean;
+  create(options: PasskeyRegistrationOptions): Promise<PasskeyAttestation>;
+  get(challenge: SecondFactorChallenge): Promise<PasskeyAssertion>;
 }

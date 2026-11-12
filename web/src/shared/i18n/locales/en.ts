@@ -754,6 +754,24 @@ export const en = {
   'auth.sign_in_with_sso': 'Sign in with single sign-on',
   'auth.sso_error.not_allowed': 'Your account at the identity provider is not allowed to sign in here.',
   'auth.sso_error.failed': 'Single sign-on did not work. Please try again.',
+  'auth.passkeys': 'Passkeys',
+  'auth.passkeys_hint':
+    'Use a security key, your phone or the fingerprint reader as second factor instead of typing a code.',
+  'auth.passkeys_need_https':
+    'Passkeys need HTTPS: run trisse-home behind a reverse proxy and set PUBLIC_URL (see docs/reverse-proxy.md).',
+  'auth.passkeys_unsupported': 'This browser cannot use passkeys here.',
+  'auth.passkey_default_name': 'Passkey',
+  'auth.passkey_name': 'Name, e.g. "YubiKey" or "iPhone"',
+  'auth.add_passkey': 'Add passkey',
+  'auth.passkey_delete': 'Remove',
+  'auth.passkey_delete_confirm': 'Remove the passkey “{name}”?',
+  'auth.no_passkeys': 'No passkeys yet.',
+  'auth.passkey_last_used': 'last used {when}',
+  'auth.passkey_recovery_codes': 'Save these recovery codes: each works once if you lose your passkey.',
+  'auth.use_passkey': 'Confirm with passkey',
+  'auth.or_enter_code': 'Or enter a code from your app or a recovery code:',
+  'auth.event.passkey_added': 'Passkey added',
+  'auth.event.passkey_removed': 'Passkey removed',
 } as const;
 
 /** Every message key. */

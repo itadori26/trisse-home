@@ -26,6 +26,8 @@ const (
 	EventTokenCreated      EventType = "token_created"
 	EventTokenRevoked      EventType = "token_revoked"
 	EventTokenUsed         EventType = "token_used"
+	EventPasskeyAdded      EventType = "passkey_added"
+	EventPasskeyRemoved    EventType = "passkey_removed"
 	EventExternal          EventType = "external"
 )
 

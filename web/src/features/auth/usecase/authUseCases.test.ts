@@ -20,6 +20,17 @@ function setup(status: Partial<AuthStatus> = {}) {
     login: vi.fn().mockResolvedValue(session),
     demoLogin: vi.fn().mockResolvedValue(session),
     headerLogin: vi.fn().mockResolvedValue(session),
+    passkeyLogin: vi.fn().mockResolvedValue(session),
+    passkeys: vi.fn().mockResolvedValue({ available: true, passkeys: [] }),
+    beginPasskeyRegistration: vi.fn().mockResolvedValue({
+      challenge: 'c',
+      rpId: 'h',
+      userId: 'u',
+      userName: 'owner',
+      excludeCredentials: [],
+    }),
+    finishPasskeyRegistration: vi.fn().mockResolvedValue(['abcd-efgh']),
+    deletePasskey: vi.fn(),
     ssoSecondFactor: vi.fn().mockResolvedValue(session),
     guests: vi.fn().mockResolvedValue([]),
     createGuest: vi.fn(),
@@ -99,6 +110,29 @@ describe('AuthUseCases', () => {
     expect(uc.ssoTicket).toBe('t1');
     await uc.completeSso('t1', '123456');
     expect(gateway.ssoSecondFactor).toHaveBeenCalledWith('t1', '123456');
+  });
+
+  it('runs the passkey step when the server asks for it', async () => {
+    const { gateway, csrf } = setup();
+    const challenge = { ticket: 't', challenge: 'c', rpId: 'h', allowCredentials: ['id'], totp: false };
+    vi.mocked(gateway.login).mockResolvedValue(challenge);
+    const authenticator = {
+      supported: () => true,
+      create: vi.fn().mockResolvedValue({ clientDataJSON: 'cd', attestationObject: 'ao' }),
+      get: vi.fn().mockResolvedValue({
+        credentialId: 'id',
+        clientDataJSON: 'cd',
+        authenticatorData: 'ad',
+        signature: 's',
+      }),
+    };
+    const uc = new AuthUseCases(gateway, csrf, authenticator);
+    expect(await uc.login('pw')).toEqual(challenge);
+    await uc.loginWithPasskey(challenge);
+    expect(gateway.passkeyLogin).toHaveBeenCalledWith('t', expect.objectContaining({ signature: 's' }));
+    expect(csrf.setCsrfToken).toHaveBeenLastCalledWith('csrf-1');
+    expect(await uc.addPasskey('Key')).toEqual(['abcd-efgh']);
+    expect(authenticator.create).toHaveBeenCalled();
   });
 
   it('remembers a guest session', async () => {

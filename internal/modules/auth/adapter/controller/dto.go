@@ -52,3 +52,20 @@ type SSOSecondFactorDTO struct {
 	Ticket string `json:"ticket"`
 	Code   string `json:"code"`
 }
+
+// PasskeyRegistrationDTO carries navigator.credentials.create() (base64url).
+type PasskeyRegistrationDTO struct {
+	Name              string `json:"name"`
+	ClientDataJSON    string `json:"clientDataJSON"`
+	AttestationObject string `json:"attestationObject"`
+}
+
+// PasskeyLoginDTO carries navigator.credentials.get() (base64url) and the
+// ticket from the password step.
+type PasskeyLoginDTO struct {
+	Ticket            string `json:"ticket"`
+	CredentialID      string `json:"credentialId"`
+	ClientDataJSON    string `json:"clientDataJSON"`
+	AuthenticatorData string `json:"authenticatorData"`
+	Signature         string `json:"signature"`
+}

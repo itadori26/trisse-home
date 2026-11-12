@@ -45,7 +45,15 @@ func (uc *login) Execute(ctx context.Context, req LoginRequest) (SessionResponse
 		uc.deps.Events.loginFailed(ctx, account.ID(), client, uc.deps.Limiter.RecordFailure(req.ClientKey, now))
 		return SessionResponse{}, domain.ErrInvalidCredentials
 	}
-	if account.TOTPEnabled() {
+	keys, err := uc.deps.passkeysOf(ctx, account.ID())
+	if err != nil {
+		return SessionResponse{}, fmt.Errorf("list passkeys: %w", err)
+	}
+	if len(keys) > 0 && strings.TrimSpace(req.TOTPCode) == "" {
+		// Second step: sign a challenge with a passkey (or send a code).
+		return SessionResponse{}, uc.deps.startPasskeyLogin(account, keys)
+	}
+	if account.TOTPEnabled() || len(keys) > 0 {
 		if err := uc.deps.checkSecondFactor(ctx, &account, req.TOTPCode, now); err != nil {
 			if errors.Is(err, domain.ErrInvalidTOTPCode) {
 				uc.deps.Events.loginFailed(ctx, account.ID(), client, uc.deps.Limiter.RecordFailure(req.ClientKey, now))
