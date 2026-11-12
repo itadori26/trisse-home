@@ -51,6 +51,8 @@ describe('DashboardUseCases', () => {
       title: 'Weather',
       description: '',
       defaultSize: { w: 4, h: 3 },
+      category: 'information',
+      keywords: [],
     });
     expect(gateway.addWidget).toHaveBeenCalledWith('a', 'weather', { x: 4, y: 0, w: 4, h: 3 }, {});
   });

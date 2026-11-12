@@ -991,6 +991,14 @@ export const en = {
   'freshness.updated_at': 'Last updated: {time}',
   'freshness.last_error': 'Last error: {error}',
   'freshness.refresh': 'Refresh now',
+  'picker.search': 'Search widgets…',
+  'picker.count': '{count} widgets',
+  'picker.no_match': 'No widget matches “{query}”.',
+  'picker.widgets': 'Widgets',
+  'picker.category.everyday': 'Everyday',
+  'picker.category.information': 'Information',
+  'picker.category.server': 'Server',
+  'picker.category.network': 'Network & integrations',
 } as const;
 
 /** Every message key. */

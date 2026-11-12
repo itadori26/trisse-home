@@ -9,9 +9,11 @@
     /** Called when the dialog is dismissed (Escape, backdrop, close button). */
     onclose: () => void;
     children: Snippet;
+    /** "wide" is a landscape dialog that becomes full-screen on phones. */
+    size?: 'normal' | 'wide';
   }
 
-  let { title, onclose, children }: Props = $props();
+  let { title, onclose, children, size = 'normal' }: Props = $props();
   let dialog: HTMLDialogElement;
 
   $effect(() => {
@@ -23,6 +25,7 @@
 <dialog
   bind:this={dialog}
   class="card"
+  class:wide={size === 'wide'}
   aria-label={title}
   oncancel={(e) => {
     e.preventDefault();
@@ -45,6 +48,19 @@
     max-height: calc(100vh - 64px);
     padding: 0;
     color: var(--color-text);
+  }
+  dialog.wide {
+    width: min(1100px, 95vw);
+  }
+  @media (max-width: 640px) {
+    dialog.wide {
+      width: 100vw;
+      max-width: 100vw;
+      height: 100dvh;
+      max-height: 100dvh;
+      margin: 0;
+      border-radius: 0;
+    }
   }
   dialog::backdrop {
     background: rgb(0 0 0 / 45%);

@@ -1015,4 +1015,12 @@ export const de: Record<MessageKey, string> = {
   'freshness.updated_at': 'Zuletzt aktualisiert: {time}',
   'freshness.last_error': 'Letzter Fehler: {error}',
   'freshness.refresh': 'Jetzt aktualisieren',
+  'picker.search': 'Widgets suchen …',
+  'picker.count': '{count} Widgets',
+  'picker.no_match': 'Kein Widget passt zu „{query}“.',
+  'picker.widgets': 'Widgets',
+  'picker.category.everyday': 'Alltag',
+  'picker.category.information': 'Informationen',
+  'picker.category.server': 'Server',
+  'picker.category.network': 'Netzwerk & Integrationen',
 };

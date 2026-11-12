@@ -231,6 +231,36 @@ test('every widget kind loads its lazy chunk (#116)', async ({ page }) => {
   await expect(page.getByText('This widget could not be loaded.')).toHaveCount(0);
 });
 
+test('the widget picker is searchable and works with the keyboard (#104)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Picker');
+  await page.getByRole('button', { name: 'Create' }).click();
+
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  const search = page.getByRole('searchbox', { name: 'Search widgets…' });
+  await expect(search).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Everyday' })).toBeVisible();
+  await search.fill('vpn');
+  await expect(page.getByRole('status')).toHaveText('1 widgets');
+  await expect(page.getByRole('button', { name: /^WireGuard/ })).toBeVisible();
+  await search.fill('zzz');
+  await expect(page.getByText('No widget matches “zzz”.')).toBeVisible();
+
+  await search.fill('uhr');
+  await search.press('ArrowDown');
+  await expect(page.getByRole('button', { name: /^Clock/ })).toBeFocused();
+  await page.keyboard.press('Enter');
+  // The clock has settings; they open right after adding.
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

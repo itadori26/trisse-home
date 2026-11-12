@@ -2,7 +2,7 @@
   import { DashboardView, type Widget, type WidgetConfig } from '../features/dashboard';
   import type { Container } from './container';
   import LazyComponent from './LazyComponent.svelte';
-  import { definitionFor, widgetDefinitions } from './widgets';
+  import { definitionFor, iconFor, widgetDefinitions } from './widgets';
 
   /** Props of the dashboard page. */
   interface Props {
@@ -20,6 +20,7 @@
   uc={container.dashboard}
   {editing}
   widgetTypes={types}
+  widgetIcon={iconFor}
   hasSettings={(kind) => !!definitionFor(kind)?.settings}
   chromeless={(kind) => !!definitionFor(kind)?.chromeless}
 >
