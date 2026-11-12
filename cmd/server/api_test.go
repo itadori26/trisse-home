@@ -128,6 +128,18 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /control/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
+	// Jellyfin (#61).
+	mux.HandleFunc("GET /jf/System/Info", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"ServerName":"Home"}`)
+	})
+	mux.HandleFunc("GET /jf/Items", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"Items":[{"Id":"abc","Name":"Film","Type":"Movie"}]}`)
+	})
+	mux.HandleFunc("GET /jf/Sessions", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `[]`) })
+	mux.HandleFunc("GET /jf/Items/abc/Images/Primary", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = io.WriteString(w, "png")
+	})
 	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut && r.Header.Get("If-None-Match") == "*" && strings.HasSuffix(r.URL.Path, ".ics") {
 			body, _ := io.ReadAll(r.Body)
@@ -578,6 +590,22 @@ func TestAPIEndToEnd(t *testing.T) {
 	if stats["blockedPercent"] != float64(25) {
 		t.Fatalf("adguard: %v", stats)
 	}
+
+	// --- media server (#61): posters are proxied, the token never leaves ---
+	c.do(http.MethodGet, "/api/media/overview", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/media/settings", obj{"provider": "jellyfin", "url": up.URL + "/jf", "token": "jf-key"}, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/media/settings", nil, http.StatusOK)); strings.Contains(body, "jf-key") {
+		t.Fatal("media token leaked")
+	}
+	var media obj
+	c.json(http.MethodGet, "/api/media/overview", nil, http.StatusOK, &media)
+	if media["serverName"] != "Home" || len(media["recent"].([]any)) != 1 {
+		t.Fatalf("media: %v", media)
+	}
+	if body := string(c.do(http.MethodGet, "/api/media/posters/abc", nil, http.StatusOK)); body != "png" {
+		t.Fatalf("poster: %q", body)
+	}
+	c.do(http.MethodGet, "/api/media/posters/other", nil, http.StatusNotFound)
 
 	// --- calendar ---
 	c.do(http.MethodGet, "/api/calendar/events", nil, http.StatusNotFound)
