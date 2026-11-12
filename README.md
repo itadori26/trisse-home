@@ -95,6 +95,22 @@ web/src/
 api/openapi.yaml         API description
 ```
 
+## Quick start (Raspberry Pi)
+
+No server, no Docker? Flash the ready-made image: in
+[Raspberry Pi Imager](https://www.raspberrypi.com/software/) open
+*App Options → Content Repository → Use custom URL* and enter
+
+```
+https://github.com/itadori26/trisse-home/releases/latest/download/os_list.json
+```
+
+pick **trisse-home**, set user, Wi-Fi and SSH as usual and write the card.
+After the first boot open `http://trisse-home.local` and enter the setup
+token — it is on the screen attached to the Pi, in `trisse-home-setup.txt` on
+the SD card, or shown by `sudo trisse-home-setup-token`. Updates install
+themselves at night. Details: [docs/raspberry-pi.md](docs/raspberry-pi.md).
+
 ## Quick start (Docker Compose)
 
 Requirements: Docker with the Compose plugin.
