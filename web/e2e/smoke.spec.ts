@@ -31,8 +31,8 @@ test('setup, logout and login lead to the dashboard', async ({ page }) => {
   await expect(page.getByText('Try edit mode: drag and resize a widget')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Docker documentation' })).toBeVisible();
   await page.getByRole('button', { name: 'Server', exact: true }).click();
-  await expect(page.getByText('DuckDuckGo', { exact: true })).toBeVisible();
-  await expect(page.getByText(/CPU \(\d+ cores\)/)).toBeVisible();
+  await expect(page.getByText('DuckDuckGo', { exact: true })).toBeVisible({ timeout: 15_000 }); // lazy chunk + first fetch
+  await expect(page.getByText(/CPU \(\d+ cores\)/)).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Home', exact: true }).click();
 
   await page.getByRole('button', { name: 'Log out' }).click();
@@ -294,6 +294,75 @@ test('keyboard shortcuts switch tabs, toggle edit mode and show an overview (#95
   // Typing in the search field must not trigger shortcuts.
   await page.keyboard.type('e2');
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+});
+
+test('removed widgets come back with undo, and redo works (#93)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Undo');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('button', { name: /^Clock/ }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Remove widget' }).click();
+  await expect(page.locator('time')).toHaveCount(0);
+  await page.getByRole('status').filter({ hasText: 'removed' }).getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('time')).toBeVisible();
+
+  // History now: add, configure (the clock's settings were saved). Undo
+  // both with the keyboard: the widget is gone again.
+  await page.locator('body').click();
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('time')).toHaveCount(0);
+  await page.keyboard.press('Control+Shift+z');
+  await expect(page.locator('time')).toBeVisible();
+
+  // The restored widget survives a reload.
+  await page.reload();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+});
+
+test('quick capture creates items from the search bar and the palette (#105, #67)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  const search = page.getByRole('searchbox', { name: 'Search' });
+
+  await search.fill('t Milch kaufen morgen');
+  await expect(page.getByText('Enter: create to-do “Milch kaufen” (Tomorrow)')).toBeVisible();
+  await search.press('Enter');
+  await expect(page.getByText('To-do “Milch kaufen” created')).toBeVisible();
+  const todos = await (await page.request.get('/api/todos')).json();
+  expect(JSON.stringify(todos)).toContain('Milch kaufen');
+
+  await search.fill('n Idee Fahrradtour');
+  await search.press('Enter');
+  await expect(page.getByText('Note “Idee Fahrradtour” created')).toBeVisible();
+  await page.getByRole('status').filter({ hasText: 'created' }).getByRole('button', { name: 'Undo' }).click();
+
+  await search.fill('b example.org Beispiel');
+  await search.press('Enter');
+  await expect(page.getByText('Bookmark “Beispiel” saved')).toBeVisible();
+  await expect(page.getByRole('status').getByRole('link', { name: 'Open' })).toHaveAttribute(
+    'href',
+    'https://example.org/',
+  );
+
+  await page.keyboard.press('Control+k');
+  const palette = page.getByRole('combobox');
+  await palette.fill('todo: Steuer heute');
+  await expect(page.getByText('create to-do “Steuer” (Today)')).toBeVisible();
+  await palette.press('Enter');
+  await expect(page.getByText('To-do “Steuer” created')).toBeVisible();
 });
 
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {

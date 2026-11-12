@@ -5,6 +5,8 @@
  */
 import { createRefreshScheduler, type RefreshScheduler } from '../shared/refresh';
 import { ShortcutRegistry } from '../shared/shortcuts/registry';
+import { QuickActionsUseCases } from '../features/quickactions/usecase/quickActionsUseCases';
+import { quickTargets } from './quickTargets';
 import { AdGuardApi } from '../features/adguard/adapter/api/adguardApi';
 import { AdGuardUseCases } from '../features/adguard/usecase/adguardUseCases';
 import { FritzBoxApi } from '../features/fritzbox/adapter/api/fritzboxApi';
@@ -98,6 +100,8 @@ export interface Container {
   refresh: RefreshScheduler;
   /** Global keyboard shortcuts (#95). */
   shortcuts: ShortcutRegistry;
+  /** Quick capture and palette commands (#105, #67). */
+  quickActions: QuickActionsUseCases;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -111,7 +115,7 @@ export interface Container {
 /** Builds the container. `onUnauthorized` fires when the session expired. */
 export function createContainer(onUnauthorized: () => void): Container {
   const http = new FetchHttpClient(onUnauthorized);
-  return {
+  const c: Omit<Container, 'quickActions'> = {
     http,
     auth: new AuthUseCases(new AuthApi(http), http, new BrowserPasskeys()),
     dashboard: new DashboardUseCases(new DashboardApi(http)),
@@ -150,4 +154,5 @@ export function createContainer(onUnauthorized: () => void): Container {
       return { modules: new Set(info.modules), widgetKinds: new Set(info.widgetKinds) };
     },
   };
+  return { ...c, quickActions: new QuickActionsUseCases(quickTargets(c)) };
 }

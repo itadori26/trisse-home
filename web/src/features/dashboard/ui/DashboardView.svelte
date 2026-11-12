@@ -1,16 +1,24 @@
 <script lang="ts">
+  import { EditHistory, type EditCommand } from '../domain/history';
   import { t } from '../../../shared/i18n';
   import type { Snippet } from 'svelte';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
   import type { IconName } from '../../../shared/ui/icons/paths';
   import WidgetPicker from './WidgetPicker.svelte';
-  import type { Tab, Widget, WidgetConfig, WidgetType } from '../domain/dashboard';
+  import {
+    initialTabId,
+    type Tab,
+    type Widget,
+    type WidgetConfig,
+    type WidgetType,
+  } from '../domain/dashboard';
   import type { LayoutItem } from '../domain/layout';
   import type { DashboardUseCases } from '../usecase/dashboardUseCases';
   import Grid from './Grid.svelte';
   import NewTabDialog from './NewTabDialog.svelte';
   import TabBar from './TabBar.svelte';
+  import TabRulesDialog from './TabRulesDialog.svelte';
   import TextPrompt from './TextPrompt.svelte';
   import WidgetFrame from './WidgetFrame.svelte';
 
@@ -35,6 +43,8 @@
   let { uc, editing, widgetTypes, widgetIcon, content, settings, hasSettings, chromeless }: Props = $props();
 
   const ACTIVE_TAB_KEY = 'trisse-home.activeTab';
+  // A tab picked by hand wins over rules until the browser is closed (#71).
+  const MANUAL_TAB_KEY = 'trisse-home.manualTab';
 
   let tabs = $state<Tab[]>([]);
   let activeId = $state('');
@@ -45,6 +55,7 @@
     | { kind: 'new-tab' }
     | { kind: 'rename-tab'; tab: Tab }
     | { kind: 'background'; tab: Tab }
+    | { kind: 'rules'; tab: Tab }
     | { kind: 'template'; tab: Tab }
     | { kind: 'settings'; widget: Widget }
     | null
@@ -54,9 +65,9 @@
   const titles = $derived(new Map(widgetTypes.map((t) => [t.kind, t.title])));
   const available = $derived(new Set(widgetTypes.map((t) => t.kind)));
 
-  function readStoredTab(): string {
+  function readStored(storage: () => Storage, key: string): string {
     try {
-      return localStorage.getItem(ACTIVE_TAB_KEY) ?? '';
+      return storage().getItem(key) ?? '';
     } catch {
       return '';
     }
@@ -72,6 +83,7 @@
     activeId = id;
     try {
       localStorage.setItem(ACTIVE_TAB_KEY, id);
+      sessionStorage.setItem(MANUAL_TAB_KEY, id);
     } catch {
       // storage may be unavailable (private mode); the selection is just not remembered
     }
@@ -88,9 +100,16 @@
 
   async function load() {
     await run(async () => {
-      tabs = await uc.load();
-      const stored = readStoredTab();
-      activeId = tabs.some((t) => t.id === stored) ? stored : (tabs[0]?.id ?? '');
+      const dashboard = await uc.open();
+      tabs = dashboard.tabs;
+      activeId = initialTabId(
+        tabs.map((t) => t.id),
+        {
+          manual: readStored(() => sessionStorage, MANUAL_TAB_KEY),
+          byRule: dashboard.defaultTabId,
+          lastUsed: readStored(() => localStorage, ACTIVE_TAB_KEY),
+        },
+      );
     });
     loaded = true;
   }
@@ -99,12 +118,42 @@
     tabs = tabs.map((t) => (t.id === tab.id ? tab : t));
   }
 
+  // Undo/redo of edit-mode operations within the session (#93).
+  const history = new EditHistory();
+  let historyVersion = $state(0);
+  // The history is a plain object; historyVersion makes its state reactive.
+  const canUndo = $derived.by(() => {
+    void historyVersion;
+    return history.canUndo;
+  });
+  const canRedo = $derived.by(() => {
+    void historyVersion;
+    return history.canRedo;
+  });
+  let toast = $state<{ text: string; key: number } | null>(null);
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function record(c: EditCommand) {
+    history.record(c);
+    historyVersion++;
+  }
+
+  function showUndoToast(text: string) {
+    clearTimeout(toastTimer);
+    toast = { text, key: Date.now() };
+    toastTimer = setTimeout(() => (toast = null), 8000);
+  }
+
+  const layoutOf = (widgets: readonly LayoutItem[]): LayoutItem[] =>
+    widgets.map(({ id, x, y, w, h }) => ({ id, x, y, w, h }));
+
   function onlayout(items: LayoutItem[]) {
     const tab = active;
     if (!tab) return;
     const before = tab.widgets;
     const byId = new Map(items.map((i) => [i.id, i]));
     replaceTab({ ...tab, widgets: tab.widgets.map((w) => ({ ...w, ...byId.get(w.id) })) });
+    record({ type: 'layout', tabId: tab.id, before: layoutOf(before), after: layoutOf(items) });
     run(() => uc.saveLayout(tab.id, before, items));
   }
 
@@ -115,6 +164,7 @@
     run(async () => {
       const widget = await uc.addWidget(tab, type);
       replaceTab({ ...tab, widgets: [...tab.widgets, widget] });
+      record({ type: 'add', widget });
       if (hasSettings(type.kind)) dialog = { kind: 'settings', widget };
     });
   }
@@ -125,6 +175,92 @@
     run(async () => {
       const copy = await uc.duplicateWidget(tab, widget);
       replaceTab({ ...tab, widgets: [...tab.widgets, copy] });
+      record({ type: 'add', widget: copy });
+    });
+  }
+
+  const tabOf = (tabId: string) => tabs.find((t) => t.id === tabId);
+
+  async function deleteById(tabId: string, id: string) {
+    await uc.deleteWidget(id);
+    const tab = tabOf(tabId);
+    if (tab) replaceTab({ ...tab, widgets: tab.widgets.filter((w) => w.id !== id) });
+  }
+
+  async function recreate(widget: Widget) {
+    const tab = tabOf(widget.tabId);
+    if (!tab) throw new Error(t('dashboard.undo_tab_gone'));
+    const created = await uc.restoreWidget(tab, { ...widget, id: history.resolve(widget.id) });
+    history.remap(history.resolve(widget.id), created.id);
+    replaceTab({ ...tab, widgets: [...tab.widgets, created] });
+  }
+
+  /** Applies a recorded command backwards (undo) or forwards (redo). */
+  async function apply(c: EditCommand, undo: boolean) {
+    switch (c.type) {
+      case 'layout': {
+        const tab = tabOf(c.tabId);
+        if (!tab) return;
+        const present = new Set(tab.widgets.map((w) => w.id));
+        const items = history.resolveItems(undo ? c.before : c.after).filter((i) => present.has(i.id));
+        const before = tab.widgets;
+        const byId = new Map(items.map((i) => [i.id, i]));
+        replaceTab({ ...tab, widgets: tab.widgets.map((w) => ({ ...w, ...byId.get(w.id) })) });
+        await uc.saveLayout(tab.id, before, layoutOf(tabOf(c.tabId)?.widgets ?? []));
+        return;
+      }
+      case 'add':
+        if (undo) await deleteById(c.widget.tabId, history.resolve(c.widget.id));
+        else await recreate(c.widget);
+        return;
+      case 'delete':
+        if (undo) await recreate(c.widget);
+        else await deleteById(c.widget.tabId, history.resolve(c.widget.id));
+        return;
+      case 'configure': {
+        const id = history.resolve(c.widgetId);
+        const updated = await uc.configureWidget(id, undo ? c.before : c.after);
+        for (const tab of tabs) {
+          if (tab.widgets.some((w) => w.id === id))
+            replaceTab({
+              ...tab,
+              widgets: tab.widgets.map((w) => (w.id === id ? { ...w, config: updated.config } : w)),
+            });
+        }
+      }
+    }
+  }
+
+  /** Reverts the last edit-mode operation. */
+  export function undo() {
+    const c = history.takeUndo();
+    if (!c) return;
+    historyVersion++;
+    toast = null;
+    run(async () => {
+      try {
+        await apply(c, true);
+      } catch (err) {
+        history.restore(c, true);
+        historyVersion++;
+        throw err;
+      }
+    });
+  }
+
+  /** Applies the last undone operation again. */
+  export function redo() {
+    const c = history.takeRedo();
+    if (!c) return;
+    historyVersion++;
+    run(async () => {
+      try {
+        await apply(c, false);
+      } catch (err) {
+        history.restore(c, false);
+        historyVersion++;
+        throw err;
+      }
     });
   }
 
@@ -137,18 +273,27 @@
     return () => root.removeProperty('--tab-background-image');
   });
 
+  // No confirmation any more: a deleted widget can be restored with Undo.
   function removeWidget(widget: Widget) {
-    if (!confirm(t('dashboard.confirm_remove_widget', { name: titles.get(widget.kind) ?? widget.kind })))
-      return;
     run(async () => {
-      await uc.deleteWidget(widget.id);
-      const tab = tabs.find((t) => t.id === widget.tabId);
-      if (tab) replaceTab({ ...tab, widgets: tab.widgets.filter((w) => w.id !== widget.id) });
+      await deleteById(widget.tabId, widget.id);
+      record({
+        type: 'delete',
+        widget: { ...widget, config: structuredClone($state.snapshot(widget.config)) },
+      });
+      showUndoToast(t('dashboard.widget_deleted', { name: titles.get(widget.kind) ?? widget.kind }));
     });
   }
 
   async function saveConfig(widget: Widget, config: WidgetConfig) {
+    const before = structuredClone($state.snapshot(widget.config));
     const updated = await uc.configureWidget(widget.id, config);
+    record({
+      type: 'configure',
+      widgetId: widget.id,
+      before,
+      after: structuredClone($state.snapshot(updated.config)),
+    });
     const tab = tabs.find((t) => t.id === widget.tabId);
     if (tab)
       replaceTab({
@@ -188,6 +333,7 @@
     ondelete={deleteTab}
     onmove={moveTab}
     onbackground={(tab) => (dialog = { kind: 'background', tab })}
+    onrules={(tab) => (dialog = { kind: 'rules', tab })}
     ontemplate={(tab) => (dialog = { kind: 'template', tab })}
   />
 
@@ -217,12 +363,31 @@
       </p>
     {/if}
     {#if editing}
-      <button class="btn btn-primary add" type="button" onclick={() => (dialog = { kind: 'add-widget' })}
-        >{t('dashboard.add_widget')}</button
-      >
+      <div class="edit-actions">
+        <button class="btn btn-primary add" type="button" onclick={() => (dialog = { kind: 'add-widget' })}
+          >{t('dashboard.add_widget')}</button
+        >
+        <button class="btn" type="button" disabled={!canUndo} onclick={undo} aria-keyshortcuts="Control+Z"
+          >↶ {t('dashboard.undo')}</button
+        >
+        <button
+          class="btn"
+          type="button"
+          disabled={!canRedo}
+          onclick={redo}
+          aria-keyshortcuts="Control+Shift+Z">↷ {t('dashboard.redo')}</button
+        >
+      </div>
     {/if}
   {/if}
 </section>
+
+{#if toast}
+  <div class="toast" role="status">
+    {toast.text}
+    <button class="btn" type="button" onclick={undo}>{t('dashboard.undo')}</button>
+  </div>
+{/if}
 
 {#if dialog?.kind === 'add-widget'}
   <WidgetPicker types={widgetTypes} icon={widgetIcon} onpick={addWidget} onclose={() => (dialog = null)} />
@@ -249,6 +414,16 @@
     onsubmit={async (url) => {
       const updated = await uc.setBackground(tab.id, url);
       replaceTab({ ...tab, background: updated.background });
+    }}
+  />
+{:else if dialog?.kind === 'rules'}
+  {@const tab = dialog.tab}
+  <TabRulesDialog
+    {tab}
+    onclose={() => (dialog = null)}
+    onsubmit={async (rules) => {
+      const updated = await uc.setRules(tab.id, rules);
+      replaceTab({ ...tab, rules: updated.rules });
     }}
   />
 {:else if dialog?.kind === 'template'}
@@ -296,5 +471,26 @@
   }
   .add {
     align-self: center;
+  }
+  .edit-actions {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: var(--space-4);
+    transform: translateX(-50%);
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-small);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 20%);
+    z-index: 20;
   }
 </style>

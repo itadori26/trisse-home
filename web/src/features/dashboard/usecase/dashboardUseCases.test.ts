@@ -8,12 +8,13 @@ const tab = (id: string, position: number, widgets: Tab['widgets'] = []): Tab =>
   name: id,
   position,
   background: '',
+  rules: [],
   widgets,
 });
 
 function setup() {
   const gateway = {
-    load: vi.fn().mockResolvedValue([tab('b', 1), tab('a', 0)]),
+    load: vi.fn().mockResolvedValue({ tabs: [tab('b', 1), tab('a', 0)], defaultTabId: 'b' }),
     createTab: vi.fn(),
     renameTab: vi.fn(),
     deleteTab: vi.fn(),
@@ -23,6 +24,7 @@ function setup() {
     saveLayout: vi.fn().mockResolvedValue(undefined),
     deleteWidget: vi.fn(),
     setBackground: vi.fn(),
+    setRules: vi.fn().mockResolvedValue(tab('a', 0)),
     listTemplates: vi.fn(),
     saveTemplate: vi.fn(),
     deleteTemplate: vi.fn(),
@@ -35,6 +37,47 @@ describe('DashboardUseCases', () => {
   it('sorts tabs by position', async () => {
     const { uc } = setup();
     expect((await uc.load()).map((t) => t.id)).toEqual(['a', 'b']);
+  });
+
+  it('passes on the tab chosen by rules (#71)', async () => {
+    const { uc } = setup();
+    const d = await uc.open();
+    expect(d.defaultTabId).toBe('b');
+    expect(d.tabs.map((t) => t.id)).toEqual(['a', 'b']);
+  });
+
+  it('normalises and validates tab rules before saving (#71)', async () => {
+    const { uc, gateway } = setup();
+    await uc.setRules('a', [
+      { days: [5, 1, 5], from: ' 22:00', to: '02:00 ', networks: [' 10.0.0.0/8', ''] },
+    ]);
+    expect(gateway.setRules).toHaveBeenCalledWith('a', [
+      { days: [1, 5], from: '22:00', to: '02:00', networks: ['10.0.0.0/8'] },
+    ]);
+    await expect(
+      uc.setRules('a', [{ days: [], from: '07:00', to: '', networks: [] }]),
+    ).rejects.toBeInstanceOf(DashboardValidationError);
+    expect(gateway.setRules).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores a deleted widget at its old place or the first free spot (#93)', async () => {
+    const { uc, gateway } = setup();
+    const gone = { id: 'w2', tabId: 'a', kind: 'notes', config: { id: 'n1' }, x: 4, y: 0, w: 4, h: 3 };
+    await uc.restoreWidget(tab('a', 0), gone);
+    expect(gateway.addWidget).toHaveBeenLastCalledWith(
+      'a',
+      'notes',
+      { x: 4, y: 0, w: 4, h: 3 },
+      { id: 'n1' },
+    );
+    const blocker = { id: 'w3', tabId: 'a', kind: 'clock', config: {}, x: 4, y: 0, w: 4, h: 2 };
+    await uc.restoreWidget(tab('a', 0, [blocker]), gone);
+    expect(gateway.addWidget).toHaveBeenLastCalledWith(
+      'a',
+      'notes',
+      { x: 0, y: 0, w: 4, h: 3 },
+      { id: 'n1' },
+    );
   });
 
   it('rejects invalid tab names without calling the backend', async () => {

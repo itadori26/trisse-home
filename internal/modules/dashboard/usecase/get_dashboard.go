@@ -3,7 +3,9 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"slices"
+	"time"
 
 	"trisse-home/internal/modules/dashboard/domain"
 	"trisse-home/internal/shared/kernel"
@@ -32,6 +34,11 @@ func NewGetDashboard(deps Deps) GetDashboard { return &getDashboard{deps: deps} 
 
 // Execute implements GetDashboard.
 func (uc *getDashboard) Execute(ctx context.Context) (DashboardResponse, error) {
+	return uc.ExecuteFor(ctx, netip.Addr{})
+}
+
+// ExecuteFor implements GetDashboard.
+func (uc *getDashboard) ExecuteFor(ctx context.Context, client netip.Addr) (DashboardResponse, error) {
 	tabs, err := uc.deps.Tabs.ListTabs(ctx)
 	if err != nil {
 		return DashboardResponse{}, fmt.Errorf("list tabs: %w", err)
@@ -51,6 +58,13 @@ func (uc *getDashboard) Execute(ctx context.Context) (DashboardResponse, error) 
 		return DashboardResponse{}, fmt.Errorf("list widgets: %w", err)
 	}
 	res := DashboardResponse{Tabs: make([]TabResponse, 0, len(tabs))}
+	if uc.deps.Clock != nil {
+		loc := uc.deps.Location
+		if loc == nil {
+			loc = time.Local
+		}
+		res.DefaultTabID = domain.DefaultTabID(tabs, uc.deps.Clock.Now().In(loc), client)
+	}
 	for _, t := range tabs {
 		res.Tabs = append(res.Tabs, toTabResponse(t, widgets))
 	}

@@ -18,19 +18,22 @@ export interface Shortcut {
   display: string[];
   /** Translation key of the description. */
   label: string;
-  /** Also active while the user types in a field (only for Mod+ combos). */
-  whileTyping?: boolean;
+  /** Combos that also work while the user types in a field (e.g. "Mod+K"). */
+  typingCombos?: string[];
   run: (combo: string) => void;
 }
 
 /**
- * Normalises an event to a combo string: "Mod+K" for Ctrl or Cmd plus a
- * letter, the plain key otherwise (Shift is ignored for printable keys, so
- * "?" works on every layout); null for Alt combinations and other modifiers.
+ * Normalises an event to a combo string: "Mod+K" / "Mod+Shift+Z" for Ctrl
+ * or Cmd plus a letter, the plain key otherwise (Shift is ignored for
+ * printable keys, so "?" works on every layout); null for Alt combinations
+ * and other modifiers.
  */
 export function comboOf(e: KeyInput): string | null {
   if (e.altKey) return null;
-  if (e.ctrlKey || e.metaKey) return e.key.length === 1 ? `Mod+${e.key.toUpperCase()}` : null;
+  if (e.ctrlKey || e.metaKey) {
+    return e.key.length === 1 ? `Mod+${e.shiftKey ? 'Shift+' : ''}${e.key.toUpperCase()}` : null;
+  }
   return e.key.length === 1 ? e.key : null;
 }
 
@@ -74,16 +77,17 @@ export class ShortcutRegistry {
   }
 
   /**
-   * Runs the matching shortcut and reports whether one ran. Plain keys are
-   * ignored while typing; nothing runs while a modal dialog is open.
+   * Runs the matching shortcut and reports whether one ran. Keys are ignored
+   * while typing unless listed in typingCombos; nothing runs while a modal
+   * dialog is open.
    */
   handle(e: KeyInput, target: EventTarget | null, dialogOpen: boolean): boolean {
     const combo = comboOf(e);
     if (!combo || dialogOpen) return false;
     const s = this.byCombo.get(combo);
     if (!s) return false;
-    // Mod+ combos never type text, so they also work inside fields.
-    if (isTyping(target) && !s.whileTyping && !combo.startsWith('Mod+')) return false;
+    // Fields keep their own keys (e.g. Ctrl+Z) unless a combo opts in.
+    if (isTyping(target) && !s.typingCombos?.includes(combo)) return false;
     s.run(combo);
     return true;
   }

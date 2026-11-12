@@ -33,7 +33,29 @@
   let touring = $state(false);
   let quickSearch = $state(false);
   let shortcutHelp = $state(false);
-  let dashboard = $state<{ selectTabAt: (index: number) => void }>();
+  let dashboard = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
+
+  // Undo/redo shortcuts only exist in edit mode (#93).
+  $effect(() => {
+    if (!editing) return;
+    const offs = [
+      container.shortcuts.register({
+        id: 'edit.undo',
+        combos: ['Mod+Z'],
+        display: [t('shortcuts.ctrl_z')],
+        label: 'shortcuts.undo',
+        run: () => dashboard?.undo(),
+      }),
+      container.shortcuts.register({
+        id: 'edit.redo',
+        combos: ['Mod+Shift+Z', 'Mod+Y'],
+        display: [t('shortcuts.ctrl_shift_z'), t('shortcuts.ctrl_y')],
+        label: 'shortcuts.redo',
+        run: () => dashboard?.redo(),
+      }),
+    ];
+    return () => offs.forEach((off) => off());
+  });
 
   // Global shortcuts (#95): one registry, one listener.
   $effect(() => {
@@ -44,7 +66,7 @@
         combos: ['Mod+K', '/'],
         display: [t('app.ctrl_k'), '/'],
         label: 'shortcuts.search',
-        whileTyping: false,
+        typingCombos: ['Mod+K'],
         run: () => (quickSearch = true),
       }),
       r.register({

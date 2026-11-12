@@ -29,6 +29,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_d05b6c7e6905729f: 'Ein API-Token mit dem Bereich results:read ist erforderlich.',
   // At most 10 calendars are supported.
   srv_326bb72e415244d3: 'Es werden höchstens 10 Kalender unterstützt.',
+  // At most 10 rules per tab are supported.
+  srv_9c62e19aa7e4b027: 'Pro Tab werden höchstens 10 Regeln unterstützt.',
   // At most 20 registries can be stored.
   srv_2ad8dffbd734017a: 'Es können höchstens 20 Registries gespeichert werden.',
   // At most 20 rules are supported.
@@ -160,6 +162,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_e9295c1002fdd2ba: 'Bitte gültige Empfängeradressen eingeben, durch Kommas getrennt.',
   // Quiet hours need a start and an end such as 22:00 and 07:00.
   srv_04eab3a4b4f8b837: 'Ruhezeiten brauchen einen Beginn und ein Ende, z. B. 22:00 und 07:00.',
+  // Rules need weekdays 0–6, times like 07:30 and networks like 192.168.178.0/24.
+  srv_560f31f8940f8cfc: 'Regeln brauchen Wochentage 0–6, Uhrzeiten wie 07:30 und Netze wie 192.168.178.0/24.',
   // Session not found.
   srv_785eadcc6dca712c: 'Sitzung nicht gefunden.',
   // Single sign-on is not configured.

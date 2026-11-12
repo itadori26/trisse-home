@@ -56,6 +56,21 @@ export interface TabBackgroundDTO {
   background: string;
 }
 /**
+ * TabRuleDTO is one default-tab rule (#71).
+ */
+export interface TabRuleDTO {
+  days: number /* int */[];
+  from: string;
+  to: string;
+  networks: string[];
+}
+/**
+ * TabRulesDTO is the body of PUT /api/dashboard/tabs/{id}/rules.
+ */
+export interface TabRulesDTO {
+  rules: TabRuleDTO[];
+}
+/**
  * SaveTemplateDTO is the body of POST /api/dashboard/templates.
  */
 export interface SaveTemplateDTO {

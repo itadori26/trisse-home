@@ -39,7 +39,7 @@ Not sure whether trisse-home is the right fit? See the
 
 | Module         | What it does                                                                                          |
 | -------------- | ----------------------------------------------------------------------------------------------------- |
-| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates and per-tab backgrounds |
+| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates, per-tab backgrounds and rules that open a tab by default (weekdays, time of day, client network) |
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
@@ -313,7 +313,7 @@ service tiles are configured in the web interface.
 | `HOST_PORT`         | `8090`                            | Host port (compose only).                                                     |
 | `LISTEN_ADDR`       | `:8090`                           | Listen address inside the container.                                          |
 | `ALLOWED_CIDRS`     | loopback + private ranges         | Client networks allowed to connect. Loopback is always allowed.               |
-| `TRUSTED_PROXIES`   | empty                             | Reverse proxies whose `X-Forwarded-For` header is trusted.                    |
+| `TRUSTED_PROXIES`   | empty                             | Reverse proxies whose `X-Forwarded-For` header is trusted (needed for network-based tab rules behind a proxy). |
 | `COOKIE_SECURE`     | `false`                           | `true` once served via HTTPS: adds `Secure` and the `__Host-` cookie prefix.  |
 | `SESSION_TTL`       | `720h`                            | Sliding session lifetime.                                                     |
 | `SETUP_TOKEN`       | random, logged                    | Fixed setup token (≥ 16 characters) for automated setups.                     |
@@ -333,7 +333,7 @@ service tiles are configured in the web interface.
 | `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
 | `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
 | `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
-| `TZ`                | `UTC`                             | Time zone for logs and floating calendar times.                               |
+| `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
 | `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
 | `DATABASE_PATH`     | `/data/trisse-home.db`            | SQLite file.                                                                  |

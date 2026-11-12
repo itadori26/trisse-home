@@ -17,6 +17,16 @@ type Tab struct {
 	name       string
 	position   int
 	background string
+	rules      []TabRule
+}
+
+// Rules returns the default-tab rules (#71).
+func (t Tab) Rules() []TabRule { return t.rules }
+
+// WithRules returns the tab with rules (validated by NewTabRules or restored).
+func (t Tab) WithRules(r []TabRule) Tab {
+	t.rules = r
+	return t
 }
 
 // maxBackgroundLength limits the background image URL.
