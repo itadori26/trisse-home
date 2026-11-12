@@ -583,6 +583,29 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (_config, c) => ({ speedtest: c.speedtest }),
     ),
   },
+  {
+    type: {
+      kind: 'releases',
+      category: 'information',
+      keywords: ['music', 'musik', 'albums', 'musicbrainz', 'artists'],
+      get title() {
+        return t('widget.releases.title');
+      },
+      get description() {
+        return t('widget.releases.description');
+      },
+      defaultSize: { w: 4, h: 5 },
+    },
+    icon: 'activity',
+    view: lazy(
+      () => import('../features/releases/ui/ReleasesWidget.svelte'),
+      (config, c) => ({ config, releases: c.releases }),
+    ),
+    settings: lazy(
+      () => import('../features/releases/ui/ReleasesWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
   // scaffold:widgets - make new-module inserts new widgets above this line.
 ];
 

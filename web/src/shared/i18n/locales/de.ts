@@ -1103,4 +1103,18 @@ export const de: Record<MessageKey, string> = {
   'quick.prefix_todo': 'Präfix für To-dos',
   'quick.prefix_note': 'Präfix für Notizen',
   'quick.prefix_bookmark': 'Präfix für Lesezeichen',
+  'widget.releases.title': 'Neuerscheinungen',
+  'widget.releases.description': 'Neue Alben, Singles und EPs der Künstler, denen du folgst (MusicBrainz).',
+  'settings.section.releases': 'Neuerscheinungen',
+  'releases.none':
+    'Keine Neuerscheinungen in den letzten {weeks} Wochen. Folge Künstlern unter Einstellungen → Neuerscheinungen.',
+  'releases.weeks': 'Wochen',
+  'releases.hint':
+    'Folge Künstlern, um ihre neuen Alben, Singles und EPs zu sehen. Neuerscheinungen werden alle sechs Stunden geprüft.',
+  'releases.search': 'Künstler suchen',
+  'releases.follow': 'Folgen',
+  'releases.followed': 'Gefolgte Künstler ({count})',
+  'releases.unfollow': '{name} entfolgen',
+  'releases.no_artists': 'Du folgst noch keinem Künstler.',
+  'releases.attribution': 'Daten: MusicBrainz (CC0), Cover: Cover Art Archive.',
 };

@@ -529,4 +529,14 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_c2aa1fabd915da16: 'Das Intervall muss zwischen 1 und {max} Minuten liegen.',
   // Unknown merge rule.
   srv_c64f8cf81797f821: 'Unbekannte Abgleichsregel.',
+  // At most {max} artists can be followed.
+  srv_987624bba2ac796c: 'Du kannst höchstens {max} Künstlern folgen.',
+  // MusicBrainz is not reachable.
+  srv_f9e4cfbeb07400ea: 'MusicBrainz ist nicht erreichbar.',
+  // The artist ID is not a MusicBrainz ID.
+  srv_cfe2240227cb188a: 'Die Künstler-ID ist keine MusicBrainz-ID.',
+  // The artist name must be between 1 and 200 characters long.
+  srv_d3b1108c6fe0b7c0: 'Der Künstlername muss zwischen 1 und 200 Zeichen lang sein.',
+  // The cover does not exist.
+  srv_6e79db37847b991c: 'Das Cover existiert nicht.',
 };

@@ -25,6 +25,7 @@ import (
 	"trisse-home/internal/modules/notifications"
 	"trisse-home/internal/modules/onboarding"
 	"trisse-home/internal/modules/parcels"
+	"trisse-home/internal/modules/releases"
 	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
@@ -156,6 +157,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
+		{"releases", func() modules.Module { return releases.New(db, client, clk) }},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {

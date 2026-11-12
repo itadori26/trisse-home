@@ -1078,6 +1078,19 @@ export const en = {
   'quick.prefix_todo': 'Prefix for to-dos',
   'quick.prefix_note': 'Prefix for notes',
   'quick.prefix_bookmark': 'Prefix for bookmarks',
+  'widget.releases.title': 'New releases',
+  'widget.releases.description': 'New albums, singles and EPs of the artists you follow (MusicBrainz).',
+  'settings.section.releases': 'New releases',
+  'releases.none': 'No new releases in the last {weeks} weeks. Follow artists under Settings → New releases.',
+  'releases.weeks': 'Weeks',
+  'releases.hint':
+    'Follow artists to see their new albums, singles and EPs. Releases are checked every six hours.',
+  'releases.search': 'Search an artist',
+  'releases.follow': 'Follow',
+  'releases.followed': 'Followed artists ({count})',
+  'releases.unfollow': 'Unfollow {name}',
+  'releases.no_artists': 'You do not follow any artist yet.',
+  'releases.attribution': 'Data: MusicBrainz (CC0), covers: Cover Art Archive.',
 } as const;
 
 /** Every message key. */
