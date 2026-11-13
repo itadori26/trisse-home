@@ -1,0 +1,26 @@
+import { t } from '../../shared/i18n';
+import { lazy, type WidgetDefinition } from '../widgetKit';
+
+// Widgets are loaded lazily (#116) and need a picker category and icon (#104);
+// adjust both after scaffolding.
+export const widgets: WidgetDefinition[] = [
+  {
+    type: {
+      kind: '{{.Name}}',
+      category: 'everyday',
+      keywords: [],
+      get title() {
+        return t('widget.{{.Name}}.title');
+      },
+      get description() {
+        return t('widget.{{.Name}}.description');
+      },
+      defaultSize: { w: 4, h: 3 },
+    },
+    icon: 'box',
+    view: lazy(
+      () => import('../../features/{{.Name}}/ui/{{.Pascal}}Widget.svelte'),
+      (_config, c) => ({ {{.Name}}: c.{{.Name}} }),
+    ),
+  },
+];
