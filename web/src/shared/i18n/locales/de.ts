@@ -1311,7 +1311,7 @@ export const de: Record<MessageKey, string> = {
   'appearance.launcher_both': 'Dienste und Lesezeichen',
   'appearance.launcher_services': 'Nur Dienste',
   'appearance.launcher_bookmarks': 'Nur Lesezeichen',
-  'app.account': 'Konto',
+  'app.account': 'Kontomenü',
   'app.todo_due_one': '1 To-do heute fällig',
   'app.todos_due': '{n} To-dos heute fällig',
   'smart.answers': 'Antworten',

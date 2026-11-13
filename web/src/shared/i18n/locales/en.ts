@@ -1279,7 +1279,7 @@ export const en = {
   'appearance.launcher_both': 'Services and bookmarks',
   'appearance.launcher_services': 'Only services',
   'appearance.launcher_bookmarks': 'Only bookmarks',
-  'app.account': 'Account',
+  'app.account': 'Account menu',
   'app.todo_due_one': '1 to-do due today',
   'app.todos_due': '{n} to-dos due today',
   'smart.answers': 'Answers',

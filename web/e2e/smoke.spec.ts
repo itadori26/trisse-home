@@ -6,7 +6,7 @@ const password = 'smoke-test-password-123';
 
 /** Edit, Done, Settings and Log out live in the account menu of the top bar (#189). */
 async function account(page: Page, item: string) {
-  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await page.getByRole('button', { name: 'Account menu', exact: true }).click();
   await page.getByRole('menuitem', { name: item, exact: true }).click();
 }
 
@@ -172,8 +172,8 @@ test('the UI follows a German browser language', async ({ browser }) => {
   await page.getByLabel('Passwort').fill(password);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Konto', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Konto', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Kontomenü', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Kontomenü', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: 'Bearbeiten', exact: true })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: 'Einstellungen', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'de');
@@ -206,7 +206,7 @@ test('a guest sees only the shared tab and cannot edit', async ({ page }) => {
   // A single shared tab needs no tab bar (#167).
   await expect(page.getByRole('navigation', { name: 'Dashboard tabs' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Server', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Account', exact: true }).click();
+  await page.getByRole('button', { name: 'Account menu', exact: true }).click();
   await expect(page.getByRole('menuitem', { name: 'Edit', exact: true })).toHaveCount(0);
   await page.getByRole('menuitem', { name: 'Settings', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Guests', exact: true })).toHaveCount(0);
@@ -529,6 +529,11 @@ test('the focus timer runs on timestamps and counts finished sessions (#58)', as
 });
 
 test('header with greeting, search pill, launcher and account menu (#189)', async ({ page }) => {
+  // Any uncaught error (e.g. an effect loop) fails the test.
+  const errors: string[] = [];
+  let step = 'login';
+  page.on('pageerror', (e) => errors.push(`${step}: ${e.message}`));
+  page.on('console', (m) => m.type() === 'error' && console.log(`[${step}] console: ${m.text().slice(0, 2000)}`));
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
@@ -542,11 +547,13 @@ test('header with greeting, search pill, launcher and account menu (#189)', asyn
   expect(firstWidget?.y ?? 999).toBeLessThan(260);
 
   // Typing into the search pill continues in the quick search.
+  step = 'search';
   await page.getByRole('searchbox', { name: 'Quick search (Ctrl+K or /)' }).pressSequentially('Dock');
   await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toHaveValue('Dock');
   await page.keyboard.press('Escape');
 
   // Launcher: filter across services and bookmarks; Esc returns the focus.
+  step = 'launcher';
   const trigger = page.getByRole('button', { name: 'Services and bookmarks' });
   await trigger.click();
   const launcher = page.getByRole('dialog', { name: 'Services and bookmarks' });
@@ -559,7 +566,8 @@ test('header with greeting, search pill, launcher and account menu (#189)', asyn
   await expect(trigger).toBeFocused();
 
   // Account menu: keyboard operable, Esc returns the focus.
-  const accountButton = page.getByRole('button', { name: 'Account', exact: true });
+  step = 'account';
+  const accountButton = page.getByRole('button', { name: 'Account menu', exact: true });
   await accountButton.click();
   await expect(page.getByRole('menuitem', { name: 'Edit', exact: true })).toBeFocused();
   await page.keyboard.press('ArrowDown');
@@ -568,19 +576,20 @@ test('header with greeting, search pill, launcher and account menu (#189)', asyn
   await expect(accountButton).toBeFocused();
 
   // The greeting addresses the user by name; the launcher shows only bookmarks.
+  step = 'settings';
   await account(page, 'Settings');
   await page.getByRole('button', { name: 'Appearance', exact: true }).click();
   await page.getByLabel('Your name in the greeting (optional)').fill('Tristan');
   await page.getByLabel(/The launcher/).selectOption('bookmarks');
   await page.getByRole('button', { name: 'Save appearance' }).click();
   await page.getByRole('button', { name: 'Close' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    /^Good (morning|afternoon|evening|night), Tristan$/,
-  );
+  await expect(page.locator('.hero h1')).toHaveText(/^Good (morning|afternoon|evening|night), Tristan$/);
+  step = 'launcher bookmarks';
   await trigger.click();
   await expect(launcher.getByRole('heading', { name: 'Services' })).toHaveCount(0);
   await expect(launcher.getByRole('heading', { name: 'Bookmarks' })).toBeVisible();
   await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
 });
 
 test('the smart search answers questions about the server (#156)', async ({ page }) => {
