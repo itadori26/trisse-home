@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../../../../shared/i18n';
   import Meter from '../../../../shared/ui/Meter.svelte';
+  import { copyToClipboard } from '../../../../shared/ui/clipboard';
   import { type ActionItem, type Answer, dataAge } from '../../domain/smart/answer';
 
   /** Props of one answer of the smart search (#156); generic per answer kind. */
@@ -16,6 +17,14 @@
   let { answer, onopen, onexecute, onpick }: Props = $props();
 
   const age = $derived(dataAge(answer.at, new Date()));
+
+  // Calculator results can be copied (#160); Enter in the search does the same.
+  let copied = $state(false);
+  async function copy() {
+    if (answer.copy === undefined) return;
+    copied = await copyToClipboard(answer.copy);
+    if (copied) setTimeout(() => (copied = false), 1500);
+  }
 </script>
 
 <article class="answer" data-kind={answer.kind} aria-label={answer.title}>
@@ -62,6 +71,15 @@
           >{a.label}</button
         >
       {/each}
+    </p>
+  {/if}
+
+  {#if answer.copy !== undefined}
+    <p class="chips">
+      <button type="button" class="btn chip" onclick={copy}
+        >{t(copied ? 'smart.copied' : 'smart.copy')}</button
+      >
+      <span class="detail">{t('smart.enter_copies')}</span>
     </p>
   {/if}
 

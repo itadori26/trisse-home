@@ -6,13 +6,15 @@
   import Modal from '../shared/ui/Modal.svelte';
   import { errorMessage } from '../shared/api-client/http';
   import type { Container } from './container';
-  import { type QuickItem, search } from './quickSearch';
+  import { itemTarget, type QuickItem, search } from './quickSearch';
+  import { answerTarget, searchUsage } from './searchUsage';
   import { quickItemLoaders } from './quickItems';
   import { createSmartSearch } from './searchSources';
   import AnswerCard from '../features/search/ui/answers/AnswerCard.svelte';
   import type { ActionItem, Answer } from '../features/search/domain/smart/answer';
   import type { WeatherConfig } from '../features/weather/domain/weather';
   import { requestWidgetFocus } from '../shared/ui/widgetFocus';
+  import { copyToClipboard } from '../shared/ui/clipboard';
 
   /** Props of the quick search (command palette). */
   interface Props {
@@ -31,6 +33,7 @@
   const smart = createSmartSearch(container, modules, {
     canAct: !container.auth.guest,
     weatherLocation: () => weatherLocation,
+    score: (q, target, score) => searchUsage.score(q, target, score),
   });
 
   // svelte-ignore state_referenced_locally
@@ -57,7 +60,10 @@
       return snippet === undefined ? i : { ...i, detail: snippet, keywords: [...(i.keywords ?? []), query] };
     }),
   );
-  const groups = $derived(command ? [] : search(searchable, query));
+  // Results chosen before for this query rank higher (#159).
+  const groups = $derived(
+    command ? [] : search(searchable, query, 5, (it, s) => searchUsage.score(query, itemTarget(it), s)),
+  );
   let noteTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => {
     const q = query;
@@ -147,7 +153,8 @@
     };
   });
 
-  async function execute(item: ActionItem) {
+  async function execute(item: ActionItem, intent: string) {
+    searchUsage.record(query, answerTarget(intent));
     try {
       await smart.execute(item);
       status = t('smart.action_done', { name: item.target.name });
@@ -157,7 +164,8 @@
     }
   }
 
-  function openWidget(kind: string) {
+  function openWidget(kind: string, intent: string) {
+    searchUsage.record(query, answerTarget(intent));
     requestWidgetFocus([kind]);
     onclose();
   }
@@ -175,6 +183,8 @@
       if (target) window.location.assign(target);
       return;
     }
+    // Only a chosen result is remembered, never the query alone (#159).
+    searchUsage.record(query, itemTarget(item));
     if (item.url) {
       window.open(item.url, '_blank', 'noopener,noreferrer');
       onclose();
@@ -193,6 +203,10 @@
     }
   }
 
+  async function copyResult(text: string) {
+    status = (await copyToClipboard(text)) ? `${t('smart.copied')}: ${text}` : '';
+  }
+
   function onkeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       // A search input would only clear itself on the first Escape.
@@ -204,7 +218,10 @@
       document.getElementById(optionId(active))?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      // A calculator result is copied (#160); computed now, not debounced.
+      const calc = command ? undefined : smart.direct(query).find((a) => a.copy !== undefined);
       if (command) void runCommand(command);
+      else if (calc?.copy !== undefined) void copyResult(calc.copy);
       else choose(flat[active]);
     }
   }
@@ -241,8 +258,8 @@
         {#each answers as a (a.intent + a.title)}
           <AnswerCard
             answer={a}
-            onopen={openWidget}
-            onexecute={execute}
+            onopen={(kind) => openWidget(kind, a.intent)}
+            onexecute={(item) => execute(item, a.intent)}
             onpick={(name) => (query = `${query.trim()} ${name}`)}
           />
         {/each}

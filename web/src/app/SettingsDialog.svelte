@@ -30,7 +30,8 @@
   import { BookmarkImport, BookmarkLinkSettings, FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
-  import { SearchSettings } from '../features/search';
+  import { SearchHistorySettings, SearchSettings } from '../features/search';
+  import { searchUsage } from './searchUsage';
   import { ServicesManager } from '../features/services';
   import Modal from '../shared/ui/Modal.svelte';
   import type { Container } from './container';
@@ -112,6 +113,7 @@
     <AppearanceSettings appearance={container.appearance} current={appearance} onchange={onappearance} />
   {:else if current === 'search'}
     <SearchSettings search={container.search} />
+    <SearchHistorySettings usage={searchUsage} />
   {:else if current === 'services'}
     <ServicesManager services={container.services} />
   {:else if current === 'feeds'}

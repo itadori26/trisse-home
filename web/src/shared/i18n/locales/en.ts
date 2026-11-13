@@ -349,6 +349,12 @@ export const en = {
   'search.url_with': 'URL with {value}',
   'search.search_bangs_like_w_work': 'Search — !bangs like !w work',
   'search.search': 'Search',
+  'search.history_heading': 'Search history',
+  'search.history_learn': 'Learn from my choices and rank them higher',
+  'search.history_hint':
+    'Stays in this browser: only short query prefixes and the ids of chosen results, faded out after a few weeks.',
+  'search.history_clear': 'Clear search history',
+  'search.history_count': '{n} remembered choices',
   'search.open_results_in_a_new_tab': 'Open results in a new tab',
   'search.the_search_engine_and_custom_shortcuts':
     'The search engine and custom shortcuts are configured under Settings → Search.',
@@ -1330,6 +1336,11 @@ export const en = {
   'smart.which_title': 'Which one?',
   'smart.which_container': 'Which container do you mean?',
   'smart.which_service': 'Which service do you mean?',
+  'smart.calc': 'Calculator',
+  'smart.conversion': 'Conversion',
+  'smart.copy': 'Copy',
+  'smart.copied': 'Copied',
+  'smart.enter_copies': 'Enter copies the result',
   'common.plain_http_warning':
     'This address uses http://: the password or token travels unencrypted through your network. Prefer https:// where the device supports it.',
 } as const;

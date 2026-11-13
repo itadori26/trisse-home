@@ -14,13 +14,16 @@ const metric = (m: Match, value: string): Answer => ({
 
 function setup(opts: { canAct?: boolean; sources?: string[] } = {}) {
   let clock = 0;
-  const system: SearchSource = { id: 'system', resolve: vi.fn(async (m) => metric(m, '12 %')) };
-  const docker: SearchSource = {
+  const system = {
+    id: 'system',
+    resolve: vi.fn<(m: Match, s: AbortSignal) => Promise<Answer>>(async (m) => metric(m, '12 %')),
+  } satisfies SearchSource;
+  const docker = {
     id: 'docker',
     entities: vi.fn(async () => [{ kind: 'container', id: 'c1', name: 'jellyfin' }]),
-    resolve: vi.fn(async (m) => metric(m, 'running')),
+    resolve: vi.fn(async (m: Match) => metric(m, 'running')),
     execute: vi.fn(async () => {}),
-  };
+  } satisfies SearchSource;
   const all = { system, docker };
   const search = new SmartSearch({
     intents: INTENTS,
@@ -130,5 +133,50 @@ describe('SmartSearch', () => {
     });
     const answers = await search.answer('cpu', signal());
     expect(answers.map((a) => a.intent)).toEqual(['system.temperature']);
+  });
+
+  it('puts direct answers first and survives a throwing direct source', async () => {
+    const calc: SearchSource = {
+      id: 'calc',
+      direct: (q) =>
+        q === 'cpu' ? { kind: 'metric', intent: 'calc.expression', title: q, value: '1', at: null } : null,
+    };
+    const broken: SearchSource = {
+      id: 'broken',
+      direct: () => {
+        throw new Error('boom');
+      },
+    };
+    const search = new SmartSearch({
+      intents: INTENTS,
+      sources: [calc, broken, { id: 'system', resolve: async (m) => metric(m, '12 %') }],
+      canAct: false,
+      askBack: () => ({ kind: 'text', intent: '', title: '', text: '', at: null }),
+    });
+    const answers = await search.answer('cpu', signal());
+    expect(answers[0]?.intent).toBe('calc.expression');
+    expect(answers.length).toBeLessThanOrEqual(3);
+    expect(search.direct('wetter')).toEqual([]);
+  });
+
+  it('reorders answers by the learned boost but never lifts one over the threshold (#159)', async () => {
+    const make = (score?: (q: string, target: string, s: number) => number) =>
+      new SmartSearch({
+        intents: INTENTS,
+        sources: [{ id: 'system', resolve: async (m) => metric(m, '1') }],
+        canAct: false,
+        askBack: () => ({ kind: 'text', intent: '', title: '', text: '', at: null }),
+        score,
+      });
+    // "cpu" matches the CPU first and the temperature second.
+    expect(
+      make()
+        .matches('cpu')
+        .map((m) => m.intent.id),
+    ).toEqual(['system.cpu', 'system.temperature']);
+    const boosted = make((_, target, s) => (target === 'answer:system.temperature' ? s * 10 : s));
+    expect(boosted.matches('cpu').map((m) => m.intent.id)).toEqual(['system.temperature', 'system.cpu']);
+    const lifted = make((_, __, s) => s * 1000);
+    expect(lifted.matches('xyzzy')).toEqual([]);
   });
 });

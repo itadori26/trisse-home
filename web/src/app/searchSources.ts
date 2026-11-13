@@ -1,4 +1,5 @@
 import { canAct as dockerCanAct, indicator } from '../features/docker/domain/container';
+import { calculate } from '../features/search/domain/calc/calc';
 import type { Answer, State } from '../features/search/domain/smart/answer';
 import type { Entity, Match } from '../features/search/domain/smart/intent';
 import { INTENTS } from '../features/search/domain/smart/intents';
@@ -252,6 +253,45 @@ function weatherSource(c: Container, home: () => WeatherConfig | null): SearchSo
   };
 }
 
+/** Formats a calculated number, localised (10 significant digits, 6 for units). */
+function formatNumber(n: number, grouping: boolean, digits = 10): string {
+  const rounded = Number(n.toPrecision(digits));
+  return new Intl.NumberFormat(intlLocale(), {
+    maximumFractionDigits: 10,
+    useGrouping: grouping,
+  }).format(Object.is(rounded, -0) ? 0 : rounded);
+}
+
+/** Calculator and unit conversion (#160); in the browser, no module needed. */
+export function calcSource(): SearchSource {
+  return {
+    id: 'calc',
+    direct(query) {
+      const r = calculate(query);
+      if (!r) return null;
+      if (r.kind === 'expression')
+        return {
+          kind: 'metric',
+          intent: 'calc.expression',
+          title: `${r.expression} =`,
+          value: formatNumber(r.value, true),
+          copy: formatNumber(r.value, false),
+          at: null,
+        };
+      const unit = (x: { symbol: string }) => (x.symbol.startsWith('°') ? x.symbol : ` ${x.symbol}`);
+      return {
+        kind: 'metric',
+        intent: 'calc.conversion',
+        title: `${formatNumber(r.value, true)}${unit(r.from)} → ${r.to.symbol}`,
+        value: `${formatNumber(r.result, true, 6)}${unit(r.to)}`,
+        detail: t('smart.conversion'),
+        copy: formatNumber(r.result, false, 6),
+        at: null,
+      };
+    },
+  };
+}
+
 /** Answer when a required slot is missing (#158): ask back with suggestions. */
 function askBack(m: Match): Answer {
   const names = m.suggestions.map((e) => e.name);
@@ -269,12 +309,16 @@ function askBack(m: Match): Answer {
 export function createSmartSearch(
   c: Container,
   modules: Set<string>,
-  opts: { canAct: boolean; weatherLocation: () => WeatherConfig | null },
+  opts: {
+    canAct: boolean;
+    weatherLocation: () => WeatherConfig | null;
+    score?: (query: string, target: string, score: number) => number;
+  },
 ): SmartSearch {
-  const sources: SearchSource[] = [];
+  const sources: SearchSource[] = [calcSource()];
   if (modules.has('system')) sources.push(systemSource(c));
   if (modules.has('docker')) sources.push(dockerSource(c));
   if (modules.has('services')) sources.push(servicesSource(c));
   if (modules.has('weather')) sources.push(weatherSource(c, opts.weatherLocation));
-  return new SmartSearch({ intents: INTENTS, sources, canAct: opts.canAct, askBack });
+  return new SmartSearch({ intents: INTENTS, sources, canAct: opts.canAct, askBack, score: opts.score });
 }
