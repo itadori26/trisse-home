@@ -195,6 +195,10 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /pihole/api/stats/top_domains", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"domains":[{"domain":"ads.example","count":9}]}`)
 	})
+	// Tankerkönig (#53).
+	mux.HandleFunc("GET /tk/list.php", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"ok":true,"stations":[{"id":"a","name":"JET","place":"Berlin","dist":1.2,"price":1.739,"isOpen":true}]}`)
+	})
 	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut && r.Header.Get("If-None-Match") == "*" && strings.HasSuffix(r.URL.Path, ".ics") {
 			body, _ := io.ReadAll(r.Body)
@@ -299,7 +303,7 @@ func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) 
 		AllowedCIDRs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}, SessionTTL: time.Hour,
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
 		DockerActions: true, DockerActionsContainers: []string{"web"}, DockerActionsProxyURL: upstream,
-		WolBroadcast: wolTarget.LocalAddr().String(), TransitAPIURL: upstream,
+		WolBroadcast: wolTarget.LocalAddr().String(), TransitAPIURL: upstream, FuelAPIURL: upstream + "/tk",
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
 		BackupDir:       filepath.Join(t.TempDir(), "backups"), BackupInterval: 24 * time.Hour, BackupRetention: 3,
@@ -734,6 +738,16 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodGet, "/api/immich/overview", nil, http.StatusOK, &immich)
 	if immich["photos"] != float64(10) || immich["version"] != "1.120.0" || len(immich["memories"].([]any)) != 0 {
 		t.Fatalf("immich: %v", immich)
+	}
+
+	// --- fuel prices (#53) ---
+	c.do(http.MethodGet, "/api/fuel/overview", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/fuel/settings", obj{"apiKey": "00000000-0000-0000-0000-000000000002", "lat": 52.5, "lon": 13.4,
+		"place": "Berlin", "radiusKm": 5, "fuel": "e10"}, http.StatusOK, nil)
+	var fuel obj
+	c.json(http.MethodGet, "/api/fuel/overview", nil, http.StatusOK, &fuel)
+	if cheapest := fuel["cheapest"].([]any); len(cheapest) != 1 || cheapest[0].(obj)["price"] != 1.739 {
+		t.Fatalf("fuel: %v", fuel)
 	}
 
 	// --- calendar ---
