@@ -1,0 +1,42 @@
+import type { en } from './en';
+
+/** German UI texts of the study progress feature; the type makes every key mandatory. */
+export const de: Record<keyof typeof en, string> = {
+  'widget.study.title': 'Studienfortschritt',
+  'widget.study.description':
+    'Bestandene ECTS als Fortschrittsbalken, gewichteter Notenschnitt und laufende Module.',
+  'settings.section.study': 'Studienfortschritt',
+  'study.intro':
+    'Trage deine Module mit ECTS, Semester und Status ein. Noten nach deutscher Skala (1,0 beste, 4,0 bestanden); bestandene Module ohne Note zählen nur für die ECTS.',
+  'study.total_ects': 'ECTS des Studiengangs',
+  'study.modules': 'Module',
+  'study.name': 'Modul',
+  'study.ects': 'ECTS',
+  'study.semester': 'Semester',
+  'study.semester_none': '–',
+  'study.status': 'Status',
+  'study.status_open': 'offen',
+  'study.status_in_progress': 'läuft',
+  'study.status_passed': 'bestanden',
+  'study.grade': 'Note',
+  'study.grade_none': 'ohne Note',
+  'study.add': 'Modul hinzufügen',
+  'study.save': 'Speichern',
+  'study.cancel': 'Abbrechen',
+  'study.edit': '{name} bearbeiten',
+  'study.delete': '{name} löschen',
+  'study.delete_confirm': 'Das Modul „{name}“ löschen?',
+  'study.saved': 'Gespeichert.',
+  'study.no_modules': 'Noch keine Module.',
+  'study.set_up': 'Trage deine Module unter Einstellungen → Studienfortschritt ein.',
+  'study.of_ects': '{passed} von {total} ECTS',
+  'study.percent': '{n} %',
+  'study.average': 'Schnitt {grade}',
+  'study.average_hint': 'nach ECTS gewichtet, aus {ects} ECTS',
+  'study.passed_modules': '{n} von {total} Modulen bestanden',
+  'study.in_progress': 'Läuft gerade',
+  'study.name_required': 'Gib einen Modulnamen ein.',
+  'study.ects_invalid': 'ECTS müssen zwischen 0,5 und 60 in Schritten von 0,5 liegen.',
+  'study.grade_only_passed': 'Nur bestandene Module haben eine Note.',
+  'study.grade_invalid': 'Eine bestandene Note liegt zwischen 1,0 und 4,0.',
+};
