@@ -71,6 +71,20 @@ export interface TabRulesDTO {
   rules: TabRuleDTO[];
 }
 /**
+ * MobileItemInputDTO places a widget in the phone layout (#92).
+ */
+export interface MobileItemInputDTO {
+  id: string;
+  hidden: boolean;
+  rows: number /* int */;
+}
+/**
+ * MobileLayoutDTO is the body of PUT /api/dashboard/tabs/{id}/mobile-layout.
+ */
+export interface MobileLayoutDTO {
+  items: MobileItemInputDTO[];
+}
+/**
  * SaveTemplateDTO is the body of POST /api/dashboard/templates.
  */
 export interface SaveTemplateDTO {

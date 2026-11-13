@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { t } from '../../../shared/i18n';
+  import { intlLocale, t } from '../../../shared/i18n';
+  import TodoEditDialog from './TodoEditDialog.svelte';
   import { errorMessage } from '../../../shared/api-client/http';
-  import { formatDue, parseTodosConfig, type Todo } from '../domain/todo';
+  import { describeReminder, describeRepeat, formatDue, parseTodosConfig, type Todo } from '../domain/todo';
   import type { TodosUseCases } from '../usecase/todosUseCases';
 
   /** Props of the to-do widget. */
@@ -16,6 +17,9 @@
   let text = $state('');
   let error = $state('');
   const hasDone = $derived(list.some((t) => t.done));
+  let editing = $state<Todo | null>(null);
+  const dayName = (d: number) =>
+    new Date(2026, 10, 8 + d).toLocaleDateString(intlLocale(), { weekday: 'short' });
 
   async function run(action: () => Promise<unknown>) {
     error = '';
@@ -55,8 +59,22 @@
         <input type="checkbox" checked={todo.done} onchange={() => run(() => todos.toggle(todo))} />
         <span class="title">{todo.title}</span>
       </label>
+      {#if todo.repeat.kind}
+        {@const text = describeRepeat(todo.repeat, dayName)}
+        <span class="icon" title={text} aria-label={text} role="img">🔁</span>
+      {/if}
+      {#if todo.reminder.at}
+        {@const text = describeReminder(todo.reminder)}
+        <span class="icon" title={text} aria-label={text} role="img">🔔</span>
+      {/if}
       {#if todo.due}<span class="due" class:overdue={todo.overdue}>{formatDue(todo.due, new Date())}</span
         >{/if}
+      <button
+        class="btn btn-icon del"
+        type="button"
+        aria-label={t('todos.edit', { title: todo.title })}
+        onclick={() => (editing = todo)}>✎</button
+      >
       <button
         class="btn btn-icon del"
         type="button"
@@ -68,6 +86,14 @@
     <li class="muted">{t('todos.nothing_to_do')}</li>
   {/each}
 </ul>
+{#if editing}
+  <TodoEditDialog
+    todo={editing}
+    {todos}
+    onsaved={() => run(async () => {})}
+    onclose={() => (editing = null)}
+  />
+{/if}
 {#if hasDone}
   <button class="btn btn-icon muted" type="button" onclick={() => run(() => todos.clearCompleted())}
     >{t('todos.clear_completed')}</button
@@ -108,6 +134,9 @@
     font-size: 0.8em;
     color: var(--color-text-muted);
     white-space: nowrap;
+  }
+  .icon {
+    font-size: 0.75em;
   }
   .overdue {
     color: var(--color-danger);

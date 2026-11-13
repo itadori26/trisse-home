@@ -13,10 +13,12 @@ import type {
   TabNameDTO,
   TabOrderDTO,
   TabRulesDTO,
+  MobileLayoutDTO,
   WidgetConfigDTO,
 } from '../../../../shared/api-client/generated/dashboard-requests';
 import type { Dashboard, Tab, TabRule, TabTemplate, Widget, WidgetConfig } from '../../domain/dashboard';
 import type { LayoutItem, Rect } from '../../domain/layout';
+import type { MobileItem } from '../../domain/mobile';
 import type { DashboardGateway } from '../../usecase/ports';
 
 const toWidget = (dto: WidgetDTO): Widget => ({
@@ -42,6 +44,8 @@ const toTab = (dto: TabDTO): Tab => ({
     networks: r.networks ?? [],
   })),
   widgets: dto.widgets.map(toWidget),
+  mobile: (dto.mobile ?? []).map((m) => ({ id: m.id, hidden: m.hidden, rows: m.rows })),
+  mobileCustom: dto.mobileCustom ?? false,
 });
 
 /** DashboardGateway backed by the REST API. */
@@ -105,6 +109,19 @@ export class DashboardApi implements DashboardGateway {
   async setRules(tabId: string, rules: TabRule[]): Promise<Tab> {
     const body: TabRulesDTO = { rules };
     return toTab(await this.http.put<TabDTO>(`/api/dashboard/tabs/${encodeURIComponent(tabId)}/rules`, body));
+  }
+
+  async saveMobileLayout(tabId: string, items: MobileItem[]): Promise<Tab> {
+    const body: MobileLayoutDTO = { items: items.map(({ id, hidden, rows }) => ({ id, hidden, rows })) };
+    return toTab(
+      await this.http.put<TabDTO>(`/api/dashboard/tabs/${encodeURIComponent(tabId)}/mobile-layout`, body),
+    );
+  }
+
+  async resetMobileLayout(tabId: string): Promise<Tab> {
+    return toTab(
+      await this.http.delete<TabDTO>(`/api/dashboard/tabs/${encodeURIComponent(tabId)}/mobile-layout`),
+    );
   }
 
   async listTemplates(): Promise<TabTemplate[]> {

@@ -39,20 +39,25 @@ Not sure whether trisse-home is the right fit? See the
 
 | Module         | What it does                                                                                          |
 | -------------- | ----------------------------------------------------------------------------------------------------- |
-| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates, per-tab backgrounds and rules that open a tab by default (weekdays, time of day, client network) |
+| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates, per-tab backgrounds, a separate phone layout per tab (order, height, hide on phones) and rules that open a tab by default (weekdays, time of day, client network) |
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
 | **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded); optional [Docker autodiscovery](#docker-autodiscovery-optional) from container labels |
-| **bookmarks**  | Links in folders with tags, filterable                                                                |
-| **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
-| **todos**      | To-do list with due dates and overdue highlighting                                                    |
+| **bookmarks**  | Links in folders with tags, filterable; opt-in: title and favicon fetched on add (icons stored locally) and a weekly link check with a "broken links" filter |
+| **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering); full-text search with highlighting (also in the quick search), `[[wiki links]]` with backlinks, version history with diff and restore |
+| **todos**      | To-do list with due dates and overdue highlighting, recurring to-dos (daily, weekly on weekdays, monthly, N days after completion) and reminders via the notification channels |
+| **countdown**  | Countdowns to exams, holidays and deadlines: days left (hours and minutes on the last day), highlighted when fewer than N days remain, past ones hidden after a grace period |
+| **focus**      | Pomodoro focus timer (focus, short and long break; durations per widget) that keeps running in background tabs, optional browser notification at the end of a phase, finished sessions per day for the last week |
 | **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
+| **briefing**   | Daily briefing widget: weather warnings, failures since yesterday evening, offline services, due to-dos, appointments and waste collection at a glance (sections orderable, each optional); optional daily push at a set time ([ADR 0016](docs/adr/0016-cross-module-read-models.md)) |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view; opt-in image update hints (digest compared with the registry at most every 6 h, optional newer version tags, release notes link, notification) |
-| **adguard**    | AdGuard Home statistics                                                                               |
+| **adguard**    | DNS filter statistics of AdGuard Home or Pi-hole 6+ (queries, blocked share, top blocked domains, protection status); provider chosen per widget |
+| **proxmox**    | Proxmox VE node load (CPU, memory, root disk) and the status and uptime of VMs and LXC containers via a read-only API token; optional [start/shutdown](#proxmox-ve-optional) for allow-listed guests |
+| **smarthome**  | Home Assistant entities as tiles (state with unit, last change), picked per widget; optional [switches and buttons](#home-assistant-optional) for allow-listed entities |
 | **media**      | Jellyfin or Plex: what is playing right now (user, device, progress) and recently added movies, episodes and albums with posters (proxied by trisse-home, token stays on the server) |
 | **speedtest**  | Internet speed from an existing [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker): latest download/upload/ping, 24 h and 7 day sparklines, optional notification below a threshold (runs no tests itself) |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
@@ -98,6 +103,22 @@ web/src/
   shared/                API client, generated DTO types, theme, UI
 api/openapi.yaml         API description
 ```
+
+## Quick start (Raspberry Pi)
+
+No server, no Docker? Flash the ready-made image: in
+[Raspberry Pi Imager](https://www.raspberrypi.com/software/) open
+*App Options → Content Repository → Use custom URL* and enter
+
+```
+https://github.com/itadori26/trisse-home/releases/latest/download/os_list.json
+```
+
+pick **trisse-home**, set user, Wi-Fi and SSH as usual and write the card.
+After the first boot open `http://trisse-home.local` and enter the setup
+token — it is on the screen attached to the Pi, in `trisse-home-setup.txt` on
+the SD card, or shown by `sudo trisse-home-setup-token`. Updates install
+themselves at night. Details: [docs/raspberry-pi.md](docs/raspberry-pi.md).
 
 ## Quick start (Docker Compose)
 
@@ -289,6 +310,53 @@ The read-only proxy stays unchanged. The additional `docker-actions-proxy` only 
 trisse-home only calls *restart* for containers on the allow-list. Logs are read through the read-only proxy and
 may contain secrets — only list containers whose logs you are fine seeing on the dashboard.
 
+## Home Assistant (optional)
+
+The smart home widget shows the entities you pick (switches, lights, sensors with unit, …) with their state and
+last change. Create a **long-lived access token** in Home Assistant (*profile → Security*), then enter the URL and
+the token under *Settings → Home Assistant*. The token is stored encrypted and never shown again. States are
+read on demand, at most every 10 seconds, and only while a widget is open. Nothing is polled in the background.
+
+**Switches and buttons (off by default).** A Home Assistant token can do everything its user can, so trisse-home
+adds its own allow-list. Only the entities listed in `.env` get a button, and each use needs a confirmation:
+
+```sh
+SMARTHOME_ACTIONS_ENTITIES=switch.coffee_machine,button.garage_door
+```
+
+Switches, lights, fans and `input_boolean` toggle; buttons, `input_button`, scripts and scenes are pressed. Every
+action is written to the security event log. MQTT is not supported yet; it can come later as a second provider.
+## Proxmox VE (optional)
+
+The Proxmox widget shows each node's CPU, memory and root disk, plus every VM and LXC container with its status
+and uptime. trisse-home needs only a **read-only API token**. Create one on any node:
+
+```sh
+pveum user add monitor@pve
+pveum aclmod / -user monitor@pve -role PVEAuditor
+pveum user token add monitor@pve trisse-home --privsep 0   # prints the secret once
+```
+
+Enter the URL (`https://<node>:8006`), the token ID (`monitor@pve!trisse-home`) and the secret under
+*Settings → Proxmox*. The secret is stored encrypted and never shown again. Proxmox uses a self-signed
+certificate, so also paste its **SHA-256 fingerprint** (*node → System → Certificates*, or
+`openssl x509 -in /etc/pve/local/pve-ssl.pem -noout -fingerprint -sha256`). trisse-home then trusts exactly this
+certificate and rejects any other. TLS verification is never switched off.
+
+**Start and shutdown (off by default).** List the guest IDs in `.env` and give the token the right to power
+exactly these guests:
+
+```sh
+PROXMOX_ACTIONS_GUESTS=100,105
+```
+
+```sh
+pveum aclmod /vms/100 -user monitor@pve -role PVEVMUser   # repeat per guest; includes VM.PowerMgmt
+```
+
+The widget then offers *start* for stopped and *shutdown* (clean ACPI/LXC shutdown, never a hard stop) for running
+guests, each after a confirmation. Every action is written to the security event log. Only the environment can
+widen the allow-list, a browser session cannot.
 ## Docker autodiscovery (optional)
 
 Containers can bring their own service tile: add labels to a service in your compose file, then enable
@@ -384,6 +452,8 @@ service tiles are configured in the web interface.
 | `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
 | `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
 | `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
+| `SMARTHOME_ACTIONS_ENTITIES` | empty                     | Home Assistant entity IDs (e.g. `switch.coffee_machine`) that may be switched or pressed; empty = read-only. |
+| `PROXMOX_ACTIONS_GUESTS` | empty                         | Proxmox guest IDs (e.g. `100,105`) that may be started and shut down from the dashboard; empty = read-only. |
 | `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
 | `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
@@ -401,6 +471,7 @@ service tiles are configured in the web interface.
 | `PASSWORD_LOGIN` | `true` | `false` disables the owner's password login once SSO is configured. |
 | `SSO_REQUIRE_2FA` | `false` | Also ask for the local TOTP code after SSO. |
 | `PUBLIC_URL` | empty | Public `https://` origin (e.g. `https://home.example.org`); enables passkeys. WebAuthn does not work on plain `http://<ip>`. |
+| `INSTALL_METHOD` | set by the image, the package and the Pi image | `docker`, `package` or `appliance`; selects the update hint in the settings. |
 | `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
 | `SAMPLE_FEEDS`      | Go Blog, Hacker News              | Example feeds, comma separated.                                              |
 
@@ -427,7 +498,7 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars, AdGuard Home, Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
+RSS feeds, CalDAV calendars, AdGuard Home, Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 (only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
 ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can
@@ -438,6 +509,13 @@ radar image is proxied, so the browser never contacts DWD) and departures
 from the community-run [Transitous](https://transitous.org) API (cached one
 minute per stop; please respect its fair-use policy or run your own MOTIS)
 and, with your API key, the DHL tracking API (hourly, undelivered parcels only).
+If you enable it in the bookmark settings (off by default), the server also
+requests your bookmarked pages themselves: once when a bookmark is added (title
+and favicon, at most 512 KB per page and 64 KB per icon) and once a week for the
+link check. These requests time out after 8 seconds, follow at most five
+redirects and never connect to loopback, link-local (including cloud metadata
+addresses), unspecified or multicast addresses; LAN addresses stay allowed
+because home-server bookmarks point there on purpose.
 If you enable the update check (Settings → About), the GitHub releases API is
 asked for the latest version at most once a day.
 Nothing else leaves the server.

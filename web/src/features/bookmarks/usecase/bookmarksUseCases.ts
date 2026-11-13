@@ -1,5 +1,5 @@
 import { t } from '../../../shared/i18n';
-import type { Bookmark, BookmarkInput, Folder, Tag } from '../domain/bookmark';
+import type { Bookmark, BookmarkInput, BookmarkSettings, Folder, Tag } from '../domain/bookmark';
 
 /** Result of listing bookmarks. */
 export interface BookmarkList {
@@ -13,6 +13,8 @@ export interface BookmarkFilter {
   folderId?: string;
   tag?: string;
   query?: string;
+  /** Only bookmarks whose last link check failed (#72). */
+  broken?: boolean;
 }
 
 /** Output port: bookmarks backend. */
@@ -25,6 +27,10 @@ export interface BookmarksGateway {
   renameFolder(id: string, name: string): Promise<Folder>;
   deleteFolder(id: string): Promise<void>;
   importHtml(html: string): Promise<BookmarkImportResult>;
+  getSettings(): Promise<BookmarkSettings>;
+  saveSettings(s: BookmarkSettings): Promise<BookmarkSettings>;
+  enrich(id: string): Promise<Bookmark>;
+  checkLink(id: string): Promise<Bookmark>;
 }
 
 /** Result of a browser bookmark import. */
@@ -64,6 +70,24 @@ export class BookmarksUseCases {
 
   deleteFolder(id: string): Promise<void> {
     return this.gateway.deleteFolder(id);
+  }
+
+  getSettings(): Promise<BookmarkSettings> {
+    return this.gateway.getSettings();
+  }
+
+  saveSettings(s: BookmarkSettings): Promise<BookmarkSettings> {
+    return this.gateway.saveSettings(s);
+  }
+
+  /** Fetches title (if none was entered) and favicon again (#72). */
+  enrich(id: string): Promise<Bookmark> {
+    return this.gateway.enrich(id);
+  }
+
+  /** Checks a link right away (#72). */
+  checkLink(id: string): Promise<Bookmark> {
+    return this.gateway.checkLink(id);
   }
 
   /** Imports a browser bookmark export (HTML). */

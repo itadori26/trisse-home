@@ -4,13 +4,26 @@
   /** Props of the Markdown renderer. */
   interface Props {
     source: string;
+    /** Receives clicks on in-page links (href "#…"), e.g. links to other notes. */
+    onlink?: (href: string) => void;
   }
-  let { source }: Props = $props();
+  let { source, onlink }: Props = $props();
   const html = $derived(renderMarkdown(source));
+
+  function click(e: MouseEvent) {
+    const a = (e.target as Element | null)?.closest('a');
+    const href = a?.getAttribute('href') ?? '';
+    if (onlink && href.startsWith('#')) {
+      e.preventDefault();
+      onlink(href);
+    }
+  }
 </script>
 
+<!-- Links are focusable and activated by keyboard; the handler only intercepts their default. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitised by DOMPurify in renderMarkdown -->
-<div class="markdown">{@html html}</div>
+<div class="markdown" onclick={click}>{@html html}</div>
 
 <style>
   .markdown :global(:first-child) {

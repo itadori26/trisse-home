@@ -1,9 +1,12 @@
 <script lang="ts">
   import { TimelineSettings } from '../features/timeline';
+  import { BriefingSettings } from '../features/briefing';
   import { AboutSettings, ForecastSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
   import { MediaSettings } from '../features/media';
+  import { SmartHomeSettings } from '../features/smarthome';
+  import { ProxmoxSettings } from '../features/proxmox';
   import { SpeedtestSettings } from '../features/speedtest';
   import { ImageUpdateSettings } from '../features/docker';
   import { FritzBoxSettings } from '../features/fritzbox';
@@ -26,7 +29,7 @@
   import { BackupSettings } from '../features/backup';
   import { BackupSourcesManager } from '../features/backupmonitor';
   import { NotificationSettings } from '../features/notifications';
-  import { BookmarkImport, FoldersManager } from '../features/bookmarks';
+  import { BookmarkImport, BookmarkLinkSettings, FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
   import { SearchSettings } from '../features/search';
@@ -56,6 +59,8 @@
     { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
     { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
     { id: 'media', label: 'settings.section.media', module: 'media' },
+    { id: 'smarthome', label: 'settings.section.smarthome', module: 'smarthome' },
+    { id: 'proxmox', label: 'settings.section.proxmox', module: 'proxmox' },
     { id: 'speedtest', label: 'settings.section.speedtest', module: 'speedtest' },
     { id: 'docker-updates', label: 'settings.section.docker_updates', module: 'docker' },
     { id: 'nextcloud', label: 'settings.section.nextcloud', module: 'nextcloud' },
@@ -67,6 +72,7 @@
     { id: 'transfer', label: 'settings.section.transfer', module: 'transfer' },
     { id: 'notifications', label: 'settings.section.notifications', module: 'notifications' },
     { id: 'timeline', label: 'settings.section.timeline', module: 'timeline' },
+    { id: 'briefing', label: 'settings.section.briefing', module: 'briefing' },
     { id: 'backups', label: 'settings.section.backups', module: 'backup' },
     { id: 'backupmonitor', label: 'settings.section.backupmonitor', module: 'backupmonitor' },
     { id: 'account', label: 'settings.section.account' },
@@ -109,6 +115,7 @@
     <FeedsManager rss={container.rss} />
   {:else if current === 'folders'}
     <FoldersManager bookmarks={container.bookmarks} />
+    <BookmarkLinkSettings bookmarks={container.bookmarks} />
   {:else if current === 'calendar'}
     <CalendarSettings calendar={container.calendar} />
   {:else if current === 'transfer'}
@@ -122,6 +129,8 @@
     <GuestsSettings auth={container.auth} tabs={guestTabs} />
   {:else if current === 'timeline'}
     <TimelineSettings timeline={container.timeline} />
+  {:else if current === 'briefing'}
+    <BriefingSettings briefing={container.briefing} canPush={modules.has('notifications')} />
   {:else if current === 'forecast'}
     <ForecastSettings system={container.system} />
   {:else if current === 'about'}
@@ -154,6 +163,10 @@
     <AdGuardSettings adguard={container.adguard} />
   {:else if current === 'media'}
     <MediaSettings media={container.media} />
+  {:else if current === 'smarthome'}
+    <SmartHomeSettings smarthome={container.smarthome} />
+  {:else if current === 'proxmox'}
+    <ProxmoxSettings proxmox={container.proxmox} />
   {:else if current === 'notifications'}
     <NotificationSettings notifications={container.notifications} />
   {:else if current === 'backupmonitor'}

@@ -39,7 +39,12 @@ tags:
   - name: docker
   - name: adguard
   - name: media
+  - name: smarthome
+  - name: proxmox
   - name: calendar
+  - name: briefing
+  - name: countdown
+  - name: focus
   - name: platform
 
 paths:
@@ -533,6 +538,26 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}/mobile-layout:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Store the phone layout of a tab (order, hidden on phones, height); widgets left out are appended
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [items], properties: { items: { type: array, items: { $ref: "#/components/schemas/MobileItem" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [dashboard]
+      summary: Reset the phone layout so it follows the desktop grid again
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/dashboard/templates:
     get:
       tags: [dashboard]
@@ -781,6 +806,46 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   # ---------------------------------------------------------------- bookmarks
+  /api/bookmarks/settings:
+    get:
+      tags: [bookmarks]
+      summary: Opt-in outbound features (title/favicon fetching, weekly link check); both off by default
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkSettings" } } } } }
+    put:
+      tags: [bookmarks]
+      summary: Switch title/favicon fetching and the weekly link check
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkSettings" } } } }
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkSettings" } } } } }
+  /api/bookmarks/{id}/enrich:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [bookmarks]
+      summary: Fetch the favicon and – if the title is still the host name – the page title (requires the setting)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { description: Fetching is disabled }
+        "503": { description: The page could not be read }
+  /api/bookmarks/{id}/check:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [bookmarks]
+      summary: Check the link now (requires the setting)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { description: The link check is disabled }
+  /api/bookmarks/{id}/icon:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [bookmarks]
+      summary: Stored favicon (PNG, ICO, JPEG, GIF or WebP; served with nosniff and a sandbox CSP)
+      responses:
+        "200": { description: The image, content: { image/png: {}, image/x-icon: {}, image/jpeg: {}, image/gif: {}, image/webp: {} } }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/bookmarks:
     get:
       tags: [bookmarks]
@@ -789,6 +854,7 @@ paths:
         - { name: folder, in: query, schema: { type: string }, description: 'Folder ID, or "none" for bookmarks without folder' }
         - { name: tag, in: query, schema: { type: string } }
         - { name: q, in: query, schema: { type: string }, description: Text search in title, URL and description }
+        - { name: status, in: query, schema: { type: string, enum: [broken] }, description: Only bookmarks whose last link check failed }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkList" } } } }
     post:
@@ -869,6 +935,57 @@ paths:
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Note" } } } }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/notes/search:
+    get:
+      tags: [notes]
+      summary: Full-text search (FTS5, prefix match, diacritics folded); highlighted title and excerpt as text segments
+      parameters: [{ name: q, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200":
+          description: Best matches first (at most 20)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    title: { type: array, items: { $ref: "#/components/schemas/TextSegment" } }
+                    snippet: { type: array, items: { $ref: "#/components/schemas/TextSegment" } }
+  /api/notes/{id}/backlinks:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [notes]
+      summary: "Notes that link to this one with [[Title]]"
+      responses:
+        "200": { description: "OK (id, title)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notes/{id}/revisions:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [notes]
+      summary: Earlier versions, newest first (one per 10 minutes of editing, at most 50)
+      responses:
+        "200": { description: "OK (id, title, createdAt, size)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notes/{id}/revisions/{rev}:
+    parameters: [{ $ref: "#/components/parameters/id" }, { name: rev, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [notes]
+      summary: A version with its text and a line diff to the current note (op " ", "+", "-")
+      responses:
+        "200": { description: "OK (id, title, createdAt, size, body, diff)" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/notes/{id}/revisions/{rev}/restore:
+    parameters: [{ $ref: "#/components/parameters/id" }, { name: rev, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [notes]
+      summary: Restore a version; the current text is kept as a version
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: The restored note }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/notes/{id}:
     parameters: [{ $ref: "#/components/parameters/id" }]
     get:
@@ -918,6 +1035,95 @@ paths:
       tags: [speedtest]
       summary: Latest result and history in Mbit/s and ms (?hours=24|168, default 168; cached, refreshed every 10 minutes)
       responses: { "200": { description: "{latest, history, updatedAt, error}" }, "404": { description: Not configured } }
+
+  # ---------------------------------------------------------------- briefing
+  /api/briefing:
+    get:
+      tags: [briefing]
+      summary: "Today's briefing (#52): enabled, non-empty sections in the configured order – weather warnings, incidents since 18:00 yesterday, offline services, due/overdue to-dos, appointments and waste collection until the end of tomorrow"
+      responses:
+        "200":
+          description: "{sections: [{kind, items: [{text, detail, at, severity}], more}], unavailable: [kind], at}"
+  /api/briefing/settings:
+    get:
+      tags: [briefing]
+      summary: Section layout, daily push schedule and weather location; available lists sections whose source module is enabled
+      responses: { "200": { description: "{layout: [{kind, enabled}], pushOn, pushAt, pushDays, skipEmpty, lat, lon, available}" } }
+    put:
+      tags: [briefing]
+      summary: Save layout, push schedule (off by default; HH:MM, weekdays 0–6, empty = every day) and location
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/briefing/send:
+    post:
+      tags: [briefing]
+      summary: Push the briefing now through the notification channels (#70)
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Sent }, "503": { description: Notifications are disabled } }
+
+  # ---------------------------------------------------------------- countdown
+  /api/countdowns:
+    get:
+      tags: [countdown]
+      summary: "Countdowns sorted by their end (#54); past ones stay visible for graceDays full days (0–365, default 1)"
+      parameters: [{ name: graceDays, in: query, schema: { type: integer, minimum: 0, maximum: 365, default: 1 } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Countdown" } } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+    post:
+      tags: [countdown]
+      summary: Create a countdown
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CountdownInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Countdown" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/countdowns/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [countdown]
+      summary: Change title, emoji, date and time
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CountdownInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Countdown" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [countdown]
+      summary: Delete a countdown
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  # ---------------------------------------------------------------- focus
+  /api/focus/stats:
+    get:
+      tags: [focus]
+      summary: Finished focus sessions per day for the last seven days including today, oldest first (#58)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/FocusWeek" } } } }
+  /api/focus/sessions:
+    post:
+      tags: [focus]
+      summary: Record a finished focus phase (the running timer lives in the browser; breaks are not recorded); answers with the updated week
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [minutes, endedAt]
+              properties:
+                minutes: { type: integer, minimum: 1, maximum: 180 }
+                endedAt: { type: string, format: date-time, description: Within the last 24 hours }
+      responses:
+        "201": { description: Recorded, content: { application/json: { schema: { $ref: "#/components/schemas/FocusWeek" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
 
   # ---------------------------------------------------------------- timeline
   /api/timeline:
@@ -1051,7 +1257,7 @@ paths:
     get:
       tags: [system]
       summary: Running version and, if the opt-in update check is enabled, the latest release (looked up at most once a day)
-      responses: { "200": { description: "OK (current, checkEnabled, latest, updateAvailable)" } }
+      responses: { "200": { description: "OK (current, checkEnabled, latest, updateAvailable, installMethod: docker, package, appliance or empty)" } }
   /api/system/update-check:
     put:
       tags: [system]
@@ -1297,13 +1503,15 @@ paths:
   /api/adguard/settings:
     get:
       tags: [adguard]
-      summary: Connection settings (the password is never returned)
+      summary: Connection settings of AdGuard Home or Pi-hole (the password is never returned)
+      parameters: [{ name: provider, in: query, schema: { type: string, enum: [adguard, pihole], default: adguard } }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardSettings" } } } }
     put:
       tags: [adguard]
       summary: Test and save the connection (empty password keeps the stored one)
       security: [{ session: [], csrf: [] }]
+      parameters: [{ name: provider, in: query, schema: { type: string, enum: [adguard, pihole], default: adguard } }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardSettingsInput" } } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardSettings" } } } }
@@ -1311,7 +1519,8 @@ paths:
   /api/adguard/stats:
     get:
       tags: [adguard]
-      summary: Cached statistics (refreshed every minute)
+      summary: Cached statistics of AdGuard Home or Pi-hole (refreshed every minute)
+      parameters: [{ name: provider, in: query, schema: { type: string, enum: [adguard, pihole], default: adguard } }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardStats" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
@@ -1363,6 +1572,85 @@ paths:
       responses:
         "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
         "404": { description: Not one of the recently added items, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  # ---------------------------------------------------------------- smarthome
+  /api/smarthome/settings:
+    get:
+      tags: [smarthome]
+      summary: Home Assistant connection (the token is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SmartHomeSettings" } } } }
+    put:
+      tags: [smarthome]
+      summary: Test and save the connection (empty token keeps the stored one)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string }, token: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SmartHomeSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/smarthome/entities:
+    get:
+      tags: [smarthome]
+      summary: Every entity, sorted by name (for the widget's entity picker)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SmartHomeEntity" } } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/smarthome/states:
+    get:
+      tags: [smarthome]
+      summary: States of the given entities in the given order (cached for 10 seconds)
+      parameters: [{ name: ids, in: query, required: true, description: "Comma-separated entity IDs, at most 50", schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SmartHomeEntity" } } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/smarthome/entities/{id}/action:
+    post:
+      tags: [smarthome]
+      summary: Toggle or press an allow-listed entity (SMARTHOME_ACTIONS_ENTITIES)
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, example: switch.coffee_machine } }]
+      responses:
+        "204": { description: Done }
+        "403": { description: Entity not on the allow-list, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "404": { description: Unknown entity or not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  # ---------------------------------------------------------------- proxmox
+  /api/proxmox/settings:
+    get:
+      tags: [proxmox]
+      summary: Proxmox VE connection (the token secret is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ProxmoxSettings" } } } }
+    put:
+      tags: [proxmox]
+      summary: Test and save the connection (empty secret keeps the stored one)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ProxmoxSettingsInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ProxmoxSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/proxmox/status:
+    get:
+      tags: [proxmox]
+      summary: Cached nodes, guests and storages (refreshed every 30 seconds)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ProxmoxStatus" } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/proxmox/guests/{id}/{action}:
+    post:
+      tags: [proxmox]
+      summary: Start or shut down an allow-listed guest (PROXMOX_ACTIONS_GUESTS)
+      security: [{ session: [], csrf: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [start, shutdown] } }
+      responses:
+        "204": { description: Task started }
+        "403": { description: Guest not on the allow-list, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "404": { description: Unknown guest or not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
 
   # ---------------------------------------------------------------- calendar
   /api/calendar/settings:
@@ -1511,6 +1799,13 @@ components:
       properties:
         tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } }
         defaultTabId: { type: string, description: 'Tab whose rules match the server time and the client address; "" = keep the last used tab' }
+    MobileItem:
+      type: object
+      required: [id, hidden, rows]
+      properties:
+        id: { type: string, description: Widget ID }
+        hidden: { type: boolean, description: Hidden on phones only }
+        rows: { type: integer, minimum: 1, maximum: 24, description: Minimum height in grid rows }
     TabRule:
       type: object
       description: Opens a tab by default. Empty parts always match; a range like 22:00–02:00 runs over midnight and belongs to the weekday it starts on.
@@ -1529,6 +1824,8 @@ components:
         background: { type: string }
         rules: { type: array, items: { $ref: "#/components/schemas/TabRule" } }
         widgets: { type: array, items: { $ref: "#/components/schemas/Widget" } }
+        mobile: { type: array, items: { $ref: "#/components/schemas/MobileItem" }, description: Phone layout in display order (derived from the desktop grid until edited) }
+        mobileCustom: { type: boolean, description: "false = the phone layout follows the desktop grid" }
     Rect:
       type: object
       required: [x, y, w, h]
@@ -1675,7 +1972,19 @@ components:
       allOf:
         - $ref: "#/components/schemas/BookmarkInput"
         - type: object
-          properties: { id: { type: string }, createdAt: { type: string, format: date-time } }
+          properties:
+            id: { type: string }
+            createdAt: { type: string, format: date-time }
+            hasIcon: { type: boolean, description: "A favicon is stored (GET /api/bookmarks/{id}/icon)" }
+            link:
+              type: object
+              description: Result of the last link check
+              properties:
+                state: { type: string, enum: ["", ok, redirect, broken], description: '"" = not checked yet' }
+                code: { type: integer, description: HTTP status, 0 when unreachable }
+                target: { type: string, description: Final URL of a redirect }
+                checkedAt: { type: string, description: RFC 3339 or empty }
+    BookmarkSettings: { type: object, properties: { enrich: { type: boolean }, checkLinks: { type: boolean } } }
     Folder: { type: object, properties: { id: { type: string }, name: { type: string }, position: { type: integer }, count: { type: integer } } }
     BookmarkList:
       type: object
@@ -1683,6 +1992,7 @@ components:
         bookmarks: { type: array, items: { $ref: "#/components/schemas/Bookmark" } }
         folders: { type: array, items: { $ref: "#/components/schemas/Folder" } }
         tags: { type: array, items: { type: object, properties: { name: { type: string }, count: { type: integer } } } }
+    TextSegment: { type: object, properties: { text: { type: string, description: Plain text, never HTML }, hit: { type: boolean } } }
     NoteInput:
       type: object
       required: [title, body, pinned]
@@ -1695,13 +2005,55 @@ components:
         - $ref: "#/components/schemas/NoteInput"
         - type: object
           properties: { id: { type: string }, createdAt: { type: string, format: date-time }, updatedAt: { type: string, format: date-time } }
+    FocusWeek:
+      type: object
+      required: [days]
+      properties:
+        days:
+          type: array
+          items:
+            type: object
+            required: [date, sessions, minutes]
+            properties:
+              date: { type: string, format: date }
+              sessions: { type: integer }
+              minutes: { type: integer }
+    CountdownInput:
+      type: object
+      required: [title, date]
+      properties:
+        title: { type: string, maxLength: 120 }
+        emoji: { type: string, maxLength: 8, description: Optional single emoji }
+        date: { type: string, format: date, description: YYYY-MM-DD }
+        time: { type: string, description: "HH:MM, or empty for the whole day" }
+    Countdown:
+      allOf:
+        - { $ref: "#/components/schemas/CountdownInput" }
+        - type: object
+          required: [id, createdAt]
+          properties:
+            id: { type: string }
+            createdAt: { type: string, format: date-time }
     TodoInput:
       type: object
       required: [title]
       properties:
         title: { type: string, maxLength: 300 }
         due: { type: string, description: YYYY-MM-DD or empty }
-        done: { type: boolean }
+        done: { type: boolean, description: "Completing a recurring to-do creates its next occurrence" }
+        repeat: { $ref: "#/components/schemas/TodoRepeat", description: Omit to keep the stored rule }
+        reminder: { $ref: "#/components/schemas/TodoReminder", description: Omit to keep the stored reminder }
+    TodoRepeat:
+      type: object
+      properties:
+        kind: { type: string, enum: ["", daily, weekly, monthly, after], description: '"" = no repeat; "after" = N days after completion' }
+        every: { type: integer, minimum: 1, maximum: 365 }
+        days: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, description: Weekdays of weekly rules (0 = Sunday) }
+    TodoReminder:
+      type: object
+      properties:
+        at: { type: string, example: "08:00", description: 'HH:MM; "" = no reminder (needs a due date). Sent once as a "reminder" notification.' }
+        daysBefore: { type: integer, minimum: 0, maximum: 30 }
     Todo:
       type: object
       properties:
@@ -1712,6 +2064,8 @@ components:
         overdue: { type: boolean }
         position: { type: integer }
         completedAt: { type: string }
+        repeat: { $ref: "#/components/schemas/TodoRepeat" }
+        reminder: { $ref: "#/components/schemas/TodoReminder" }
     Feed:
       type: object
       properties:
@@ -1782,20 +2136,95 @@ components:
         unhealthy: { type: integer }
         updatedAt: { type: string, format: date-time }
         error: { type: string }
+    SmartHomeSettings:
+      type: object
+      properties: { configured: { type: boolean }, url: { type: string }, hasToken: { type: boolean } }
+    SmartHomeEntity:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        state: { type: string }
+        unit: { type: string }
+        lastChanged: { type: string, format: date-time }
+        action: { type: string, enum: ["", toggle, press], description: Empty when read-only or not allow-listed }
+    ProxmoxSettings:
+      type: object
+      properties:
+        configured: { type: boolean }
+        url: { type: string }
+        tokenId: { type: string, example: "monitor@pve!trisse-home" }
+        hasSecret: { type: boolean }
+        fingerprint: { type: string, description: Pinned SHA-256 certificate fingerprint (lower-case hex) or empty }
+    ProxmoxSettingsInput:
+      type: object
+      required: [url, tokenId]
+      properties:
+        url: { type: string, example: "https://192.168.1.10:8006" }
+        tokenId: { type: string }
+        secret: { type: string, description: Empty keeps the stored secret }
+        fingerprint: { type: string, description: "SHA-256 with or without colons; empty verifies against the system CAs" }
+    ProxmoxStatus:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              online: { type: boolean }
+              cpuPercent: { type: number }
+              cpus: { type: integer }
+              memUsed: { type: integer }
+              memTotal: { type: integer }
+              diskUsed: { type: integer }
+              diskTotal: { type: integer }
+              uptimeSeconds: { type: integer }
+        guests:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              node: { type: string }
+              kind: { type: string, enum: [qemu, lxc] }
+              status: { type: string }
+              uptimeSeconds: { type: integer }
+              cpuPercent: { type: number }
+              memUsed: { type: integer }
+              memTotal: { type: integer }
+              actions: { type: boolean, description: Start/shutdown allowed }
+        storages:
+          type: array
+          items:
+            type: object
+            properties: { name: { type: string }, node: { type: string }, used: { type: integer }, total: { type: integer }, active: { type: boolean } }
+        updatedAt: { type: string, format: date-time }
+        error: { type: string }
     AdGuardSettings:
       type: object
-      properties: { configured: { type: boolean }, url: { type: string }, username: { type: string }, hasPassword: { type: boolean } }
+      properties:
+        provider: { type: string, enum: [adguard, pihole] }
+        configured: { type: boolean }
+        url: { type: string }
+        username: { type: string, description: Empty for Pi-hole }
+        hasPassword: { type: boolean }
     AdGuardSettingsInput:
       type: object
-      required: [url, username, password]
-      properties: { url: { type: string }, username: { type: string }, password: { type: string, description: Empty keeps the stored password } }
+      required: [url]
+      properties:
+        url: { type: string }
+        username: { type: string, description: Required for AdGuard Home, ignored for Pi-hole }
+        password: { type: string, description: "Empty keeps the stored password; Pi-hole without a password needs none" }
     AdGuardStats:
       type: object
       properties:
         queries: { type: integer }
         blocked: { type: integer }
         blockedPercent: { type: number }
-        avgProcessingMs: { type: number }
+        avgProcessingMs: { type: [number, "null"], description: Null for Pi-hole, which does not report it }
         protectionEnabled: { type: boolean }
         topBlocked: { type: array, items: { type: object, properties: { domain: { type: string }, count: { type: integer } } } }
         updatedAt: { type: string, format: date-time }

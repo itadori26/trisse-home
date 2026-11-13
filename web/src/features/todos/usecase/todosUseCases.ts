@@ -1,10 +1,16 @@
-import type { Todo } from '../domain/todo';
+import { type Reminder, type Repeat, type Todo, validateSchedule } from '../domain/todo';
 
 /** Output port: to-do backend. */
 export interface TodosGateway {
   list(includeDone: boolean): Promise<Todo[]>;
   create(title: string, due: string): Promise<Todo>;
-  update(id: string, title: string, due: string, done: boolean): Promise<Todo>;
+  update(
+    id: string,
+    title: string,
+    due: string,
+    done: boolean,
+    schedule?: { repeat: Repeat; reminder: Reminder },
+  ): Promise<Todo>;
   delete(id: string): Promise<void>;
   clearCompleted(): Promise<number>;
 }
@@ -33,6 +39,26 @@ export class TodosUseCases {
 
   edit(todo: Todo, title: string, due: string): Promise<Todo> {
     return this.gateway.update(todo.id, title.trim(), due, todo.done);
+  }
+
+  /** Changes text, due date, recurrence and reminder (#68). */
+  async editFull(
+    todo: Todo,
+    change: { title: string; due: string; repeat: Repeat; reminder: Reminder },
+  ): Promise<Todo> {
+    const repeat: Repeat =
+      change.repeat.kind === ''
+        ? { kind: '', every: 0, days: [] }
+        : {
+            ...change.repeat,
+            days: change.repeat.kind === 'weekly' ? [...new Set(change.repeat.days)].sort() : [],
+          };
+    const problem = validateSchedule(change.due, change.repeat, change.reminder);
+    if (problem) throw new Error(problem);
+    return this.gateway.update(todo.id, change.title.trim(), change.due, todo.done, {
+      repeat,
+      reminder: change.reminder,
+    });
   }
 
   delete(id: string): Promise<void> {

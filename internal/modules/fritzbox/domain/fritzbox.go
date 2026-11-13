@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"net/url"
 	"strings"
 	"time"
 
@@ -35,8 +34,12 @@ func NewSettings(rawURL, username, password string) (Settings, error) {
 	if rawURL == "" {
 		rawURL = DefaultURL
 	}
-	u, err := url.Parse(rawURL)
-	if err != nil || u.Scheme != "http" || u.Hostname() == "" || (u.Path != "" && u.Path != "/") {
+	u, err := kernel.ParseTarget("url", rawURL)
+	if err != nil {
+		return Settings{}, err
+	}
+	// TR-064 on port 49000 only speaks http; https uses a different port.
+	if u.Scheme != "http" {
 		return Settings{}, kernel.NewValidationError("url", "The URL must look like http://192.168.178.1:49000.")
 	}
 	if u.Port() == "" {

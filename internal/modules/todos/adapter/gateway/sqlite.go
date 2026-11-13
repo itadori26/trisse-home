@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,13 +30,15 @@ type Repository struct{ db *sql.DB }
 // NewRepository returns a repository backed by db.
 func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
-const columns = `id, title, due, position, created_at, completed_at`
+const columns = `id, title, due, position, created_at, completed_at,
+	repeat_kind, repeat_every, repeat_days, remind_at, remind_days_before, reminded_for`
 
 func scan(s interface{ Scan(...any) error }) (domain.Todo, error) {
 	var id, title, created string
-	var due, completed *string
-	var pos int
-	if err := s.Scan(&id, &title, &due, &pos, &created, &completed); err != nil {
+	var due, completed, reminded *string
+	var pos, every, daysBefore int
+	var kind, days, remindAt string
+	if err := s.Scan(&id, &title, &due, &pos, &created, &completed, &kind, &every, &days, &remindAt, &daysBefore, &reminded); err != nil {
 		return domain.Todo{}, err
 	}
 	var times [3]time.Time
@@ -49,7 +52,33 @@ func scan(s interface{ Scan(...any) error }) (domain.Todo, error) {
 	if times[2], err = sqlutil.ParseNullableTime(completed); err != nil {
 		return domain.Todo{}, err
 	}
-	return domain.RestoreTodo(id, title, times[0], pos, times[1], times[2]), nil
+	remindedFor, err := sqlutil.ParseNullableTime(reminded)
+	if err != nil {
+		return domain.Todo{}, err
+	}
+	// Stored rules were validated on write; unreadable ones are dropped
+	// instead of hiding the to-do.
+	repeat, _ := domain.NewRecurrence(domain.RepeatKind(kind), every, parseDays(days))
+	reminder, _ := domain.NewReminder(remindAt, daysBefore)
+	return domain.RestoreTodo(id, title, times[0], pos, times[1], times[2]).WithState(repeat, reminder, remindedFor), nil
+}
+
+func parseDays(s string) []int {
+	var out []int
+	for _, p := range strings.Split(s, ",") {
+		if d, err := strconv.Atoi(p); err == nil {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+func formatDays(days []int) string {
+	parts := make([]string, 0, len(days))
+	for _, d := range days {
+		parts = append(parts, strconv.Itoa(d))
+	}
+	return strings.Join(parts, ",")
 }
 
 // List returns all to-dos.
@@ -84,11 +113,15 @@ func (r *Repository) Get(ctx context.Context, id string) (domain.Todo, error) {
 
 // Save inserts or updates a to-do.
 func (r *Repository) Save(ctx context.Context, t domain.Todo) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO todos (`+columns+`) VALUES (?, ?, ?, ?, ?, ?)
+	rep, rem := t.Repeat(), t.Reminder()
+	_, err := r.db.ExecContext(ctx, `INSERT INTO todos (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET title = excluded.title, due = excluded.due,
-			position = excluded.position, completed_at = excluded.completed_at`,
+			position = excluded.position, completed_at = excluded.completed_at,
+			repeat_kind = excluded.repeat_kind, repeat_every = excluded.repeat_every, repeat_days = excluded.repeat_days,
+			remind_at = excluded.remind_at, remind_days_before = excluded.remind_days_before, reminded_for = excluded.reminded_for`,
 		t.ID(), t.Title(), sqlutil.FormatNullableTime(t.Due()), t.Position(),
-		sqlutil.FormatTime(t.CreatedAt()), sqlutil.FormatNullableTime(t.CompletedAt()))
+		sqlutil.FormatTime(t.CreatedAt()), sqlutil.FormatNullableTime(t.CompletedAt()),
+		string(rep.Kind()), rep.Every(), formatDays(rep.Days()), rem.At(), rem.DaysBefore(), sqlutil.FormatNullableTime(t.RemindedFor()))
 	if err != nil {
 		return fmt.Errorf("upsert todo: %w", err)
 	}

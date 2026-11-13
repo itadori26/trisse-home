@@ -25,9 +25,12 @@ func (m *Module) SeedSampleData(ctx context.Context) error { return m.seed.Execu
 
 // New builds the notes module.
 func New(db *sql.DB, clock kernel.Clock, ids kernel.IDGenerator) *Module {
-	d := usecase.Deps{Repo: gateway.NewRepository(db), Clock: clock, IDs: ids}
+	repo := gateway.NewRepository(db)
+	d := usecase.Deps{Repo: repo, Clock: clock, IDs: ids, Search: repo, Revisions: repo}
 	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, seed: usecase.NewSeedSampleData(d), handlers: controller.NewHandlers(controller.UseCases{
 		List: usecase.NewListNotes(d), Get: usecase.NewGetNote(d), Save: usecase.NewSaveNote(d), Delete: usecase.NewDeleteNote(d),
+		Search: usecase.NewSearchNotes(d), Backlinks: usecase.NewListBacklinks(d), Revisions: usecase.NewListRevisions(d),
+		Revision: usecase.NewGetRevision(d), Restore: usecase.NewRestoreRevision(d),
 	})}
 }
 
@@ -44,6 +47,11 @@ func (m *Module) WidgetKinds() []string { return []string{"notes"} }
 func (m *Module) RegisterRoutes(r modules.Router) {
 	h := m.handlers
 	r.Protected("GET /api/notes", h.List)
+	r.Protected("GET /api/notes/search", h.Search)
+	r.Protected("GET /api/notes/{id}/backlinks", h.Backlinks)
+	r.Protected("GET /api/notes/{id}/revisions", h.Revisions)
+	r.Protected("GET /api/notes/{id}/revisions/{rev}", h.Revision)
+	r.Protected("POST /api/notes/{id}/revisions/{rev}/restore", h.Restore)
 	r.Protected("POST /api/notes", h.Create)
 	r.Protected("GET /api/notes/{id}", h.Get)
 	r.Protected("PUT /api/notes/{id}", h.Update)

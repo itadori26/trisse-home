@@ -14,6 +14,13 @@ export interface BookmarkInputDTO {
   tags: string[];
 }
 /**
+ * SettingsInputDTO is the body of PUT /api/bookmarks/settings.
+ */
+export interface SettingsInputDTO {
+  enrich: boolean;
+  checkLinks: boolean;
+}
+/**
  * FolderInputDTO is the body of POST /api/bookmarks/folders and PATCH /api/bookmarks/folders/{id}.
  */
 export interface FolderInputDTO {

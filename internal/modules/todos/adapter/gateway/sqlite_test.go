@@ -35,3 +35,37 @@ func TestRepository(t *testing.T) {
 		t.Fatalf("not deleted: %v", list)
 	}
 }
+
+func TestRepositoryKeepsScheduleAndReminder(t *testing.T) {
+	ctx := context.Background()
+	repo := NewRepository(dbtest.Open(t, "todos", Migrations()))
+	now := time.Date(2026, 11, 12, 8, 0, 0, 0, time.UTC)
+	td, _ := domain.NewTodo("a", "water plants", now, 0, now)
+	rep, _ := domain.NewRecurrence(domain.RepeatWeekly, 2, []int{1, 4})
+	rem, _ := domain.NewReminder("07:45", 1)
+	if err := td.Schedule(rep, rem); err != nil {
+		t.Fatal(err)
+	}
+	td.MarkReminded()
+	if err := repo.Save(ctx, td); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.Get(ctx, "a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := got.Repeat(); r.Kind() != domain.RepeatWeekly || r.Every() != 2 || len(r.Days()) != 2 || r.Days()[1] != 4 {
+		t.Fatalf("repeat %+v", r)
+	}
+	if got.Reminder().At() != "07:45" || got.Reminder().DaysBefore() != 1 || !got.RemindedFor().Equal(td.Due()) {
+		t.Fatalf("reminder %+v %v", got.Reminder(), got.RemindedFor())
+	}
+	// Clearing works through the upsert as well.
+	_ = got.Schedule(domain.Recurrence{}, domain.Reminder{})
+	if err := repo.Save(ctx, got); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := repo.Get(ctx, "a"); got.Repeat().Repeats() || got.Reminder().Set() {
+		t.Fatalf("not cleared: %+v", got)
+	}
+}
