@@ -8,6 +8,13 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels the superseded run (fewer runs and
+# failure e-mails). Pushes to main are never cancelled: every commit there
+# keeps its own result.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   backend:
     runs-on: ubuntu-latest
