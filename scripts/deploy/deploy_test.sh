@@ -194,6 +194,24 @@ deploy
 check "a second deploy is refused (exit 3)" exit_is 3
 wait
 
+echo "== sharing the deploy user with another key"
+T="$ROOT/keys"
+mkdir -p "$T"
+# shellcheck source=install.sh
+source "$(dirname "$SCRIPT")/install.sh"
+ak="$T/authorized_keys"
+other='command="sudo /usr/local/bin/senseo-deploy",no-pty,no-port-forwarding,no-agent-forwarding github-actions'
+echo "$other" >"$ak"
+set_authorized_key "$ak" /usr/local/bin/trisse-home-deploy "ssh-ed25519 AAAAfirst trisse"
+check "the other key is kept" bash -c "grep -qxF '$other' \"$ak\""
+check "our key is added with its forced command" bash -c "grep -q '^command=\"sudo /usr/local/bin/trisse-home-deploy\",no-pty.* ssh-ed25519 AAAAfirst' \"$ak\""
+set_authorized_key "$ak" /usr/local/bin/trisse-home-deploy "ssh-ed25519 AAAAsecond trisse"
+check "running it again replaces only our line (no duplicate)" bash -c "[[ \$(grep -c trisse-home-deploy \"$ak\") -eq 1 ]] && grep -q AAAAsecond \"$ak\" && ! grep -q AAAAfirst \"$ak\""
+check "the other key is still there" bash -c "grep -qxF '$other' \"$ak\""
+rm -f "$T/authorized_keys"
+set_authorized_key "$T/authorized_keys" /usr/local/bin/trisse-home-deploy "ssh-ed25519 AAAAnew trisse"
+check "works for a new file too" bash -c "[[ \$(wc -l < \"$T/authorized_keys\") -eq 1 ]]"
+
 if ((fails > 0)); then
 	echo "$fails check(s) failed"
 	exit 1

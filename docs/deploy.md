@@ -9,8 +9,9 @@ automates exactly that, with a backup before and a rollback after.
 1. The workflow `.github/workflows/deploy.yml` starts when the **CI** run of a
    push to `main` succeeded. It never runs for pull requests and does nothing
    until the repository variable `DEPLOY_ENABLED` is `true`.
-2. It connects to the server over SSH with a key that may run **one script and
-   nothing else** (SSH forced command) and sends `deploy <commit>`.
+2. It opens a **WireGuard tunnel** to the server (the server is not reachable
+   from the internet otherwise), connects over SSH with a key that may run **one
+   script and nothing else** (SSH forced command) and sends `deploy <commit>`.
 3. `scripts/deploy/trisse-home-deploy` runs as root on the server:
    - checks the request (exactly `deploy` plus 40 hex characters, and the commit
      must be part of `origin/main`), takes a lock so only one deploy runs, and
@@ -36,41 +37,55 @@ The downtime is the time from stop to healthy, usually well under a minute.
 - The script and its `sudo` rule are owned by root. Changing the script in the
   repository does not change what runs on the server until it is installed again
   (see below).
-- The private key lives only in the GitHub secret `DEPLOY_SSH_KEY`; the host key
-  is pinned in `DEPLOY_KNOWN_HOSTS` (no trust on first use).
+- The server's SSH port does not have to be open to the internet: the job reaches
+  it through the VPN. The private key lives only in the GitHub secret
+  `DEPLOY_SSH_KEY`; the host key is pinned in `DEPLOY_KNOWN_HOSTS` (no trust on
+  first use).
 
 ## One-time setup
 
-On the server (as an administrator):
+The server is reached the same way as for `trisse-senseo`: through a WireGuard
+peer reserved for GitHub (`peer_github`, address `10.13.13.6`, the server listens
+on `trisse.net:51820`). The deploy can share that peer and also the user
+`deploy`, or use its own.
+
+On the server (as an administrator), `DEPLOY_USER=deploy` shares the existing user
+(its other keys stay untouched; leave it out to create `trisse-deploy`):
 
 ```sh
 ssh-keygen -t ed25519 -N '' -C github-actions-trisse-home -f /tmp/trisse-deploy-key
-sudo bash scripts/deploy/install.sh /tmp/trisse-deploy-key.pub
+sudo DEPLOY_USER=deploy bash scripts/deploy/install.sh /tmp/trisse-deploy-key.pub
 ```
 
-The installer creates the user `trisse-deploy`, installs the script and the
-`sudo` rule and writes the key with its forced command. It prints the host key
-line for `DEPLOY_KNOWN_HOSTS`.
+The installer installs the script and the `sudo` rule and writes the key with its
+forced command. It prints the host key line for `DEPLOY_KNOWN_HOSTS`; replace
+`HOST` by the address used below.
 
-In GitHub (Settings → Secrets and variables → Actions), with the GitHub CLI:
+In GitHub (repository Settings → Secrets and variables → Actions), with the GitHub CLI:
 
 ```sh
-gh secret set DEPLOY_SSH_KEY < /tmp/trisse-deploy-key      # then delete the file
-gh secret set DEPLOY_KNOWN_HOSTS                            # the line printed by the installer, HOST replaced
-gh variable set DEPLOY_HOST --body your.server.example      # name or address GitHub can reach
-gh variable set DEPLOY_ENABLED --body true                  # last: switches the workflow on
-# only if different: DEPLOY_PORT (default 22), DEPLOY_USER (default trisse-deploy)
+gh secret set DEPLOY_SSH_KEY < /tmp/trisse-deploy-key        # then delete the file
+gh secret set DEPLOY_KNOWN_HOSTS                              # the line printed by the installer
+gh secret set DEPLOY_WG_CONFIG < /opt/stacks/wireguard/config/peer_github/peer_github.conf
+gh variable set DEPLOY_HOST --body 192.168.178.115           # the server's address inside the tunnel
+gh variable set DEPLOY_USER --body deploy                     # only if you shared the user
+gh variable set DEPLOY_ENABLED --body true                    # last: switches the workflow on
 rm /tmp/trisse-deploy-key /tmp/trisse-deploy-key.pub
 ```
 
-SSH must be reachable from the internet on that host and port. The `.env` of the
-stack stays on the server and is never touched; a new environment variable that
-a release needs must be added there by hand.
+`DEPLOY_WG_CONFIG` is the content of a WireGuard peer configuration. Reusing
+`peer_github` is the quickest way; for a peer of its own add a name to `PEERS` of
+the wireguard stack, recreate that container (the VPN is down for a moment) and
+use the new `peer_<name>.conf`. The workflow keeps only a route to the server in
+the tunnel and drops the `DNS` line, so the runner's other traffic is unaffected.
+
+The `.env` of the stack stays on the server and is never touched; a new
+environment variable that a release needs must be added there by hand.
 
 ## Operating
 
-- **Deploy by hand:** `ssh trisse-deploy@HOST "deploy <40 hex commit>"` with the
-  key, or re-run the workflow in GitHub.
+- **Deploy by hand:** re-run the workflow in GitHub (Actions → Deploy → Re-run),
+  or, from a machine inside the VPN, `ssh -i key USER@HOST "deploy <40 hex commit>"`.
 - **Updated script:** after changing `scripts/deploy/trisse-home-deploy`, run
   `sudo bash scripts/deploy/install.sh <key.pub>` on the server again.
 - **Restore a backup** (service stopped): copy the directory back into the volume,

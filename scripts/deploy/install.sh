@@ -4,12 +4,29 @@
 #
 #   sudo bash scripts/deploy/install.sh /path/to/key.pub
 #
-# It creates the user "trisse-deploy", installs the deploy script root-owned,
+# It creates the user "trisse-deploy" (or uses the user named in DEPLOY_USER, for
+# example an existing "deploy"; other keys of that user are kept), installs the
+# deploy script root-owned,
 # allows that user to run exactly that script with sudo and installs the public
 # key so that it can run nothing else (SSH forced command). Run it again after
 # changing scripts/deploy/trisse-home-deploy: what runs as root is the installed
 # copy, not whatever the repository contains.
 set -euo pipefail
+
+# set_authorized_key <file> <script> <public key>: writes this deploy's key line
+# and leaves every other line alone, so the user can be shared with another
+# deploy key (for example trisse-senseo, which uses the user "deploy").
+set_authorized_key() {
+	local file=$1 script=$2 key=$3 tmp
+	tmp=$(mktemp)
+	[[ -f $file ]] && grep -v -F "command=\"sudo $script\"" "$file" >"$tmp" || true
+	printf 'command="sudo %s",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-user-rc %s\n' "$script" "$key" >>"$tmp"
+	cat "$tmp" >"$file"
+	rm -f "$tmp"
+}
+
+# Only run the installation when executed, not when the test sources the file.
+[[ ${BASH_SOURCE[0]} == "$0" ]] || return 0
 
 [[ $(id -u) -eq 0 ]] || { echo "run as root (sudo)" >&2; exit 1; }
 pub=${1:?usage: install.sh <public key file>}
@@ -38,7 +55,7 @@ install -o root -g root -m 440 "$sudoers" /etc/sudoers.d/trisse-deploy
 rm -f "$sudoers"
 
 install -d -o "$user" -g "$user" -m 700 "$home/.ssh"
-printf 'command="sudo %s",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-user-rc %s\n' "$target" "$key" >"$home/.ssh/authorized_keys"
+set_authorized_key "$home/.ssh/authorized_keys" "$target" "$key"
 chown "$user:$user" "$home/.ssh/authorized_keys"
 chmod 600 "$home/.ssh/authorized_keys"
 
