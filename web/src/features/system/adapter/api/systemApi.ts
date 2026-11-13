@@ -9,7 +9,13 @@ import type {
   ForecastSettingsDTO as ForecastSettingsInputDTO,
   UpdateCheckDTO,
 } from '../../../../shared/api-client/generated/system-requests';
-import type { ForecastSettings, HistoryPoint, SystemSnapshot, VersionInfo } from '../../domain/system';
+import {
+  type ForecastSettings,
+  type HistoryPoint,
+  parseInstallMethod,
+  type SystemSnapshot,
+  type VersionInfo,
+} from '../../domain/system';
 import type { SystemGateway } from '../../usecase/systemUseCases';
 
 /** SystemGateway backed by the REST API. */
@@ -56,6 +62,7 @@ export class SystemApi implements SystemGateway {
 
 const toVersion = (d: VersionDTO): VersionInfo => ({
   current: d.current,
+  installMethod: parseInstallMethod(d.installMethod),
   checkEnabled: d.checkEnabled,
   latest: d.latest ? { ...d.latest, publishedAt: new Date(d.latest.publishedAt) } : null,
   updateAvailable: d.updateAvailable,

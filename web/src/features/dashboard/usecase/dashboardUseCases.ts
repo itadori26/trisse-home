@@ -12,6 +12,7 @@ import {
   type WidgetType,
 } from '../domain/dashboard';
 import { collides, findFreeSpot, type LayoutItem, sameLayout } from '../domain/layout';
+import type { MobileItem } from '../domain/mobile';
 import type { DashboardGateway } from './ports';
 
 /** Error for input rejected before it reaches the backend. */
@@ -113,6 +114,16 @@ export class DashboardUseCases {
     const problem = validateRules(clean);
     if (problem) throw new DashboardValidationError(problem);
     return this.gateway.setRules(tabId, clean);
+  }
+
+  /** Stores the phone layout of a tab (#92). */
+  saveMobileLayout(tabId: string, items: MobileItem[]): Promise<Tab> {
+    return this.gateway.saveMobileLayout(tabId, items);
+  }
+
+  /** Derives the phone layout from the desktop grid again (#92). */
+  resetMobileLayout(tabId: string): Promise<Tab> {
+    return this.gateway.resetMobileLayout(tabId);
   }
 
   listTemplates(): Promise<TabTemplate[]> {

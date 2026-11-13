@@ -125,7 +125,9 @@ var registrations = map[string]edit{
 `, d.Name), nil
 	},
 	"web/src/app/container.ts": func(s string, d Data) (string, error) {
-		s = insertAfterLastImport(s, fmt.Sprintf("import { %[1]sApi, %[1]sUseCases } from '../features/%[2]s';", d.Pascal, d.Name))
+		// Direct imports keep the feature's UI out of the main chunk (#116).
+		s = insertAfterLastImport(s, fmt.Sprintf("import { %[1]sApi } from '../features/%[2]s/adapter/api/%[2]sApi';\n"+
+			"import { %[1]sUseCases } from '../features/%[2]s/usecase/%[2]sUseCases';", d.Pascal, d.Name))
 		s, err := insertBefore(s, "// scaffold:container-fields", fmt.Sprintf("  %s: %sUseCases;\n", d.Name, d.Pascal))
 		if err != nil {
 			return "", err
@@ -133,10 +135,13 @@ var registrations = map[string]edit{
 		return insertBefore(s, "// scaffold:container-init", fmt.Sprintf("    %s: new %sUseCases(new %sApi(http)),\n", d.Name, d.Pascal, d.Pascal))
 	},
 	"web/src/app/widgets.ts": func(s string, d Data) (string, error) {
-		s = insertAfterLastImport(s, fmt.Sprintf("import { %sWidget } from '../features/%s';", d.Pascal, d.Name))
+		// Widgets are loaded lazily (#116) and need a picker category and
+		// icon (#104); adjust both after scaffolding.
 		return insertBefore(s, "// scaffold:widgets", fmt.Sprintf(`  {
     type: {
       kind: '%[1]s',
+      category: 'everyday',
+      keywords: [],
       get title() {
         return t('widget.%[1]s.title');
       },
@@ -145,7 +150,11 @@ var registrations = map[string]edit{
       },
       defaultSize: { w: 4, h: 3 },
     },
-    view: renderer(%[2]sWidget, (_config, c) => ({ %[1]s: c.%[1]s })),
+    icon: 'box',
+    view: lazy(
+      () => import('../features/%[1]s/ui/%[2]sWidget.svelte'),
+      (_config, c) => ({ %[1]s: c.%[1]s }),
+    ),
   },
 `, d.Name, d.Pascal))
 	},

@@ -10,6 +10,7 @@ import (
 // SettingsDTO is returned by GET/PUT /api/adguard/settings. The password is
 // never returned.
 type SettingsDTO struct {
+	Provider    string `json:"provider" tstype:"'adguard' | 'pihole'"`
 	Configured  bool   `json:"configured"`
 	URL         string `json:"url"`
 	Username    string `json:"username"`
@@ -24,10 +25,11 @@ type BlockedDomainDTO struct {
 
 // StatsDTO is returned by GET /api/adguard/stats.
 type StatsDTO struct {
-	Queries           int                `json:"queries"`
-	Blocked           int                `json:"blocked"`
-	BlockedPercent    float64            `json:"blockedPercent"`
-	AvgProcessingMs   float64            `json:"avgProcessingMs"`
+	Queries        int     `json:"queries"`
+	Blocked        int     `json:"blocked"`
+	BlockedPercent float64 `json:"blockedPercent"`
+	// AvgProcessingMs is null for providers that do not report it (Pi-hole).
+	AvgProcessingMs   *float64           `json:"avgProcessingMs"`
 	ProtectionEnabled bool               `json:"protectionEnabled"`
 	TopBlocked        []BlockedDomainDTO `json:"topBlocked"`
 	UpdatedAt         time.Time          `json:"updatedAt"`
@@ -41,8 +43,12 @@ func Settings(v usecase.SettingsView) SettingsDTO { return SettingsDTO(v) }
 func Stats(v usecase.StatsView) StatsDTO {
 	dto := StatsDTO{
 		Queries: v.Queries, Blocked: v.Blocked, BlockedPercent: math.Round(v.BlockedPercent*10) / 10,
-		AvgProcessingMs: math.Round(v.AvgProcessingMs*100) / 100, ProtectionEnabled: v.ProtectionEnabled,
-		UpdatedAt: v.UpdatedAt, Error: v.Error, TopBlocked: make([]BlockedDomainDTO, 0, len(v.TopBlocked)),
+		ProtectionEnabled: v.ProtectionEnabled,
+		UpdatedAt:         v.UpdatedAt, Error: v.Error, TopBlocked: make([]BlockedDomainDTO, 0, len(v.TopBlocked)),
+	}
+	if v.HasAvgProcessing {
+		avg := math.Round(v.AvgProcessingMs*100) / 100
+		dto.AvgProcessingMs = &avg
 	}
 	for _, d := range v.TopBlocked {
 		dto.TopBlocked = append(dto.TopBlocked, BlockedDomainDTO(d))

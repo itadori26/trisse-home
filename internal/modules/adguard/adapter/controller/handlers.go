@@ -8,15 +8,18 @@ import (
 	"trisse-home/internal/shared/httpapi"
 )
 
-// Handlers serves the AdGuard endpoints.
-type Handlers struct{ uc usecase.AdGuard }
+// Handlers serves the DNS filter endpoints. Every endpoint takes the
+// optional query parameter provider=adguard|pihole (default adguard).
+type Handlers struct{ uc usecase.DNSFilter }
 
-// NewHandlers returns AdGuard handlers.
-func NewHandlers(uc usecase.AdGuard) *Handlers { return &Handlers{uc: uc} }
+// NewHandlers returns DNS filter handlers.
+func NewHandlers(uc usecase.DNSFilter) *Handlers { return &Handlers{uc: uc} }
+
+func provider(r *http.Request) string { return r.URL.Query().Get("provider") }
 
 // Settings handles GET /api/adguard/settings.
 func (h *Handlers) Settings(w http.ResponseWriter, r *http.Request) {
-	res, err := h.uc.Settings(r.Context())
+	res, err := h.uc.Settings(r.Context(), provider(r))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
@@ -31,7 +34,7 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	res, err := h.uc.SaveSettings(r.Context(), usecase.SettingsInput{URL: dto.URL, Username: dto.Username, Password: dto.Password})
+	res, err := h.uc.SaveSettings(r.Context(), usecase.SettingsInput{Provider: provider(r), URL: dto.URL, Username: dto.Username, Password: dto.Password})
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
@@ -41,7 +44,7 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 
 // Stats handles GET /api/adguard/stats.
 func (h *Handlers) Stats(w http.ResponseWriter, r *http.Request) {
-	res, err := h.uc.Stats(r.Context())
+	res, err := h.uc.Stats(r.Context(), provider(r))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return

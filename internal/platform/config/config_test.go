@@ -114,6 +114,21 @@ func TestSmartHomeActionEntities(t *testing.T) {
 	}
 }
 
+func TestProxmoxActionGuests(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "PROXMOX_ACTIONS_GUESTS": "100, 105"}))
+	if err != nil || len(cfg.ProxmoxActionsGuests) != 2 || cfg.ProxmoxActionsGuests[1] != 105 {
+		t.Fatalf("unexpected %v %v", cfg.ProxmoxActionsGuests, err)
+	}
+	for _, bad := range []string{"vm100", "0", "-1"} {
+		if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "PROXMOX_ACTIONS_GUESTS": bad})); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+	if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "DEMO_MODE": "true", "PROXMOX_ACTIONS_GUESTS": "100"})); err == nil {
+		t.Fatal("a demo must not have Proxmox actions")
+	}
+}
+
 func TestDemoModeRefusesRealIntegrations(t *testing.T) {
 	vars := map[string]string{"SECRET_KEY": validKey, "DEMO_MODE": "true", "SAMPLE_DATA": "false"}
 	cfg, err := Load(env(vars))

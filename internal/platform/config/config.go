@@ -49,6 +49,9 @@ type Config struct {
 	// SmartHomeActionsEntities are the Home Assistant entities that may be
 	// switched or pressed from the dashboard (#49); empty disables actions.
 	SmartHomeActionsEntities []string
+	// ProxmoxActionsGuests are the Proxmox guest IDs that may be started and
+	// shut down from the dashboard (#84); empty disables actions.
+	ProxmoxActionsGuests []int
 	// WolRelay is host:port of the Wake-on-LAN relay; empty sends
 	// WolBroadcast directly (host network / no Docker).
 	// TransitAPIURL is the MOTIS API for departures (default Transitous).
@@ -70,6 +73,9 @@ type Config struct {
 	// DemoResetInterval, no outbound requests and no stored credentials.
 	DemoMode          bool
 	DemoResetInterval time.Duration
+	// InstallMethod is set by the Dockerfile, the native package and the
+	// Raspberry Pi image (docker, package, appliance); empty when unknown.
+	InstallMethod string
 	// Single sign-on for the owner (ADR 0013).
 	OIDCIssuer          string
 	OIDCClientID        string
@@ -129,6 +135,7 @@ func Load(getenv func(string) string) (Config, error) {
 		MetricsToken:             l.str("METRICS_TOKEN", ""),
 		DockerActionsContainers:  l.rawList("DOCKER_ACTIONS_CONTAINERS", ""),
 		DockerActionsProxyURL:    l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
+		ProxmoxActionsGuests:     l.ids("PROXMOX_ACTIONS_GUESTS"),
 		SmartHomeActionsEntities: l.list("SMARTHOME_ACTIONS_ENTITIES", ""),
 		WolRelay:                 l.str("WOL_RELAY", ""),
 		WireGuardDir:             l.str("WIREGUARD_DIR", ""),
@@ -146,6 +153,7 @@ func Load(getenv func(string) string) (Config, error) {
 		BackupRetention:          l.integer("BACKUP_RETENTION", 7),
 		DemoMode:                 l.boolean("DEMO_MODE", false),
 		DemoResetInterval:        l.duration("DEMO_RESET_INTERVAL", 3*time.Hour),
+		InstallMethod:            l.oneOf("INSTALL_METHOD", "", "", "docker", "package", "appliance"),
 		OIDCIssuer:               l.str("OIDC_ISSUER", ""),
 		OIDCClientID:             l.str("OIDC_CLIENT_ID", ""),
 		OIDCClientSecret:         l.str("OIDC_CLIENT_SECRET", ""),
@@ -185,7 +193,7 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.DemoMode {
 		cfg.SampleData = true
-		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "SMARTHOME_ACTIONS_ENTITIES": len(cfg.SmartHomeActionsEntities) > 0, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != "", "DISKHEALTH_DIR": cfg.DiskHealthDir != ""} {
+		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "SMARTHOME_ACTIONS_ENTITIES": len(cfg.SmartHomeActionsEntities) > 0, "PROXMOX_ACTIONS_GUESTS": len(cfg.ProxmoxActionsGuests) > 0, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != "", "DISKHEALTH_DIR": cfg.DiskHealthDir != ""} {
 			if set {
 				l.fail(key, "must not be set together with DEMO_MODE=true (a demo must not reach real systems)")
 			}
@@ -246,6 +254,20 @@ func (l *loader) rawList(key, def string) []string {
 		if p := strings.TrimSpace(part); p != "" {
 			out = append(out, p)
 		}
+	}
+	return out
+}
+
+// ids returns a comma-separated list of positive integers, e.g. guest IDs.
+func (l *loader) ids(key string) []int {
+	var out []int
+	for _, part := range l.rawList(key, "") {
+		id, err := strconv.Atoi(part)
+		if err != nil || id <= 0 {
+			l.fail(key, "must be a comma-separated list of numeric IDs, e.g. 100,101")
+			return nil
+		}
+		out = append(out, id)
 	}
 	return out
 }

@@ -9,6 +9,7 @@ import (
 	"trisse-home/internal/modules"
 	"trisse-home/internal/modules/timeline/adapter/controller"
 	"trisse-home/internal/modules/timeline/adapter/gateway"
+	"trisse-home/internal/modules/timeline/domain"
 	"trisse-home/internal/modules/timeline/usecase"
 	"trisse-home/internal/shared/kernel"
 )
@@ -55,4 +56,10 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 // Jobs implements modules.Module.
 func (m *Module) Jobs() []modules.Job {
 	return []modules.Job{{Name: "timeline.prune", Interval: pruneInterval, Run: m.uc.Prune}}
+}
+
+// Recent returns up to limit events, newest first (read access for the
+// briefing, ADR 0016).
+func (m *Module) Recent(ctx context.Context, limit int) ([]domain.Event, error) {
+	return m.uc.List(ctx, usecase.Filter{Limit: limit})
 }

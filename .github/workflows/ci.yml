@@ -161,6 +161,18 @@ jobs:
           ls -l dist
       - name: Install, upgrade, remove and purge in Debian Trixie
         run: docker run --rm -v "$PWD:/src:ro" -w /src debian:trixie sh packaging/test/package-test.sh dist/trisse-home_*_amd64.deb
+      - name: APT repository round trip (throwaway signing key)
+        run: |
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -m 700 "$GNUPGHOME"
+          gpg --batch --quiet --passphrase '' --quick-gen-key 'CI <ci@example.invalid>' ed25519 sign 1d
+          fpr=$(gpg --list-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')
+          APT_SIGNING_KEY_ID="$fpr" sh scripts/apt-repo.sh "$RUNNER_TEMP/apt" dist/*.deb
+          docker run --rm -v "$RUNNER_TEMP/apt:/repo:ro" debian:trixie sh -euc '
+            echo "deb [signed-by=/repo/trisse-home-archive-keyring.asc] file:///repo stable main" >/etc/apt/sources.list.d/trisse-home.list
+            apt-get update -qq
+            apt-get install -y -qq trisse-home >/dev/null
+            trisse-home version'
       - name: Start the service under systemd
         run: |
           sudo apt-get install -y ./dist/trisse-home_*_amd64.deb

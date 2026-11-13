@@ -69,6 +69,13 @@ import { WeatherUseCases } from '../features/weather/usecase/weatherUseCases';
 import type { InfoResponse } from '../shared/api-client/generated/modules';
 import { FetchHttpClient } from '../shared/api-client/http';
 import { SmarthomeApi, SmarthomeUseCases } from '../features/smarthome';
+import { ProxmoxApi, ProxmoxUseCases } from '../features/proxmox';
+import { BriefingApi } from '../features/briefing/adapter/api/briefingApi';
+import { BriefingUseCases } from '../features/briefing/usecase/briefingUseCases';
+import { CountdownApi } from '../features/countdown/adapter/api/countdownApi';
+import { CountdownUseCases } from '../features/countdown/usecase/countdownUseCases';
+import { browserNotifier, FocusApi } from '../features/focus/adapter/api/focusApi';
+import { FocusUseCases } from '../features/focus/usecase/focusUseCases';
 
 /** All use cases available to the UI. */
 export interface Container {
@@ -104,6 +111,10 @@ export interface Container {
   /** Quick capture and palette commands (#105, #67). */
   quickActions: QuickActionsUseCases;
   smarthome: SmarthomeUseCases;
+  proxmox: ProxmoxUseCases;
+  briefing: BriefingUseCases;
+  countdown: CountdownUseCases;
+  focus: FocusUseCases;
   // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
@@ -146,6 +157,10 @@ export function createContainer(onUnauthorized: () => void): Container {
     refresh: createRefreshScheduler(),
     shortcuts: new ShortcutRegistry(),
     smarthome: new SmarthomeUseCases(new SmarthomeApi(http)),
+    proxmox: new ProxmoxUseCases(new ProxmoxApi(http)),
+    briefing: new BriefingUseCases(new BriefingApi(http)),
+    countdown: new CountdownUseCases(new CountdownApi(http)),
+    focus: new FocusUseCases(new FocusApi(http), browserNotifier),
     // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),
