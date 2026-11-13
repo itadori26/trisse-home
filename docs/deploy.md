@@ -27,6 +27,14 @@ automates exactly that, with a backup before and a rollback after.
      commit** and exits with an error, which turns the GitHub job red. Restoring
      the data matters because migrations may already have run.
 
+**No downgrades:** a commit that is older than the running version is skipped (and
+logged), not deployed. Migrations only go forward, so older code must not run on a
+database that a newer version already migrated. This also covers two merges close
+together whose CI runs finish in the wrong order. A deliberate downgrade is only
+possible on the server by an administrator, never through the SSH key, and only
+after restoring a backup that matches the older version:
+`sudo env ALLOW_DOWNGRADE=1 SSH_ORIGINAL_COMMAND="deploy <40 hex commit>" /usr/local/bin/trisse-home-deploy`.
+
 The downtime is the time from stop to healthy, usually well under a minute.
 
 ## Security
