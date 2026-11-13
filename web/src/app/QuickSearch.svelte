@@ -26,13 +26,23 @@
     initialQuery?: string;
     /** Location of the first weather widget for weather answers (#156). */
     weatherLocation?: WeatherConfig | null;
+    /** First widget config of a kind, e.g. the transit stop (#161). */
+    widgetConfig?: (kind: string) => Record<string, unknown> | null;
   }
-  let { container, modules, onclose, initialQuery = '', weatherLocation = null }: Props = $props();
+  let {
+    container,
+    modules,
+    onclose,
+    initialQuery = '',
+    weatherLocation = null,
+    widgetConfig = () => null,
+  }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   const smart = createSmartSearch(container, modules, {
     canAct: !container.auth.guest,
     weatherLocation: () => weatherLocation,
+    widgetConfig: (kind) => widgetConfig(kind),
     score: (q, target, score) => searchUsage.score(q, target, score),
   });
 

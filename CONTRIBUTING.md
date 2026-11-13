@@ -73,6 +73,12 @@ A module that needs a settings section adds `web/src/app/settings/<name>.ts`
 (see `settings/proxmox.ts`). Describe the module in `docs/modules/<name>.md`
 rather than in the shared tables of the README.
 
+A module that should answer in the smart search (`/` or `Ctrl+K`, #155) adds
+`web/src/app/search/<name>.ts` with `defineSearch` (see `search/speedtest.ts`): its
+intents as data (terms, weights, optional slots) and a source that wraps the
+existing use cases and returns one of the five answer kinds. Add a few lines to
+the regression table in `web/src/app/search/search.test.ts`.
+
 **Keep it that way:** do not append to shared lists (`modules.go`, `widgets.ts`,
 `container.ts`, `en.ts`, `de.ts`, `tygo.yaml`). The few files every module may
 still touch are listed in [docs/modules/README.md](docs/modules/README.md).
