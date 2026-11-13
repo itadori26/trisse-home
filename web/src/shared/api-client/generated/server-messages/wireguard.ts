@@ -3,7 +3,6 @@
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
   srv_9d762d7de49b8d86: "No WireGuard export found. Run scripts/wireguard-export.sh on the host (see README).",
-  srv_a81a70289d9d44d1: "The name must be at most 40 characters long.",
   srv_e5774de61b49a80f: "This is not a WireGuard public key.",
 } as const;
 

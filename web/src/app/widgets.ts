@@ -8,6 +8,7 @@ import type { IconName } from '../shared/ui/icons/paths';
 import { prefixesFromConfig } from '../features/quickactions/domain/command';
 import { quickCapture } from './quickCapture';
 import { lazy, type Renderer, type WidgetDefinition } from './widgetKit';
+import { widgetAnswers } from './widgetAnswers';
 
 export type { Renderer, WidgetDefinition };
 
@@ -34,6 +35,7 @@ const legacyDefinitions: WidgetDefinition[] = [
         config,
         search: c.search,
         quick: quickCapture(c.quickActions, prefixesFromConfig(config['quickPrefixes'])),
+        answers: widgetAnswers(c),
       }),
     ),
     settings: lazy(

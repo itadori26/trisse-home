@@ -195,7 +195,8 @@ test('a guest sees only the shared tab and cannot edit', async ({ page }) => {
   await page.getByLabel('Password').fill('guest-password-1');
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Home', exact: true })).toBeVisible();
+  // A single shared tab needs no tab bar (#167).
+  await expect(page.getByRole('navigation', { name: 'Dashboard tabs' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Server', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -372,12 +373,17 @@ test('phones get their own layout that hides widgets independently (#92)', async
   await page.getByRole('button', { name: 'Log in' }).click();
   await page.getByRole('button', { name: 'Home', exact: true }).click();
   await expect(page.locator('time')).toBeVisible();
+  // On phones the actions sit behind the menu button of the top bar (#167).
+  const menu = async (name: string) => {
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await page.getByRole('button', { name, exact: true }).click();
+  };
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await menu('Edit');
   await expect(page.getByText('Phone layout follows the desktop grid.', { exact: false })).toBeVisible();
   await page.getByRole('group', { name: 'Phone layout of “Clock”' }).getByLabel('Hide on phones').check();
   await expect(page.getByRole('button', { name: 'Reset from desktop layout' })).toBeVisible();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await menu('Done');
   await expect(page.locator('time')).toHaveCount(0);
 
   await page.reload();
@@ -390,10 +396,10 @@ test('phones get their own layout that hides widgets independently (#92)', async
   await expect(page.locator('time')).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await menu('Edit');
   await page.getByRole('button', { name: 'Reset from desktop layout' }).click();
   await expect(page.getByText('Phone layout follows the desktop grid.', { exact: false })).toBeVisible();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await menu('Done');
   await expect(page.locator('time')).toBeVisible();
 });
 
@@ -515,6 +521,71 @@ test('the focus timer runs on timestamps and counts finished sessions (#58)', as
   await expect(timer).toHaveText('5:00');
   await expect(page.getByText('1 sessions in the last 7 days')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
+});
+
+test('one compact top bar with tabs, search field and greeting (#167)', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+
+  // Tabs live in the top bar; the first widget starts right below it.
+  const bar = page.locator('header.topbar');
+  await expect(bar.getByRole('navigation', { name: 'Dashboard tabs' })).toBeVisible();
+  const firstWidget = await page.locator('[data-widget-id]').first().boundingBox();
+  expect(firstWidget?.y ?? 999).toBeLessThan(90);
+
+  // Typing into the bar continues in the quick search.
+  await bar.getByRole('searchbox', { name: 'Quick search (Ctrl+K or /)' }).pressSequentially('Dock');
+  await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toHaveValue('Dock');
+  await expect(page.getByRole('option', { name: /Docker documentation/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // The greeting line is off by default and addresses the user by name.
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
+  await page.getByLabel(/Show a greeting line/).check();
+  await page.getByLabel('Your name in the greeting (optional)').fill('Tristan');
+  await page.getByRole('button', { name: 'Save appearance' }).click();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(page.locator('p.greeting')).toContainText(/(Good (morning|evening|night)|Hello), Tristan/);
+});
+
+test('the smart search answers questions about the server (#156)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.keyboard.press('Control+k');
+  const box = page.getByRole('combobox', { name: /Search bookmarks/ });
+  const answers = page.getByRole('region', { name: 'Answers' });
+
+  await box.fill('cpu');
+  await expect(answers.getByRole('article', { name: 'CPU' })).toContainText('%');
+
+  await box.fill('wie voll ist die platte');
+  await expect(answers.getByRole('article', { name: 'Disks' })).toContainText('free');
+
+  // Service names with a typo; the sample data has DuckDuckGo.
+  await box.fill('duckduckgoo');
+  await expect(answers.getByRole('article', { name: 'DuckDuckGo' })).toBeVisible();
+
+  // The weather module is disabled in this test: no weather answer.
+  await box.fill('wetter');
+  await expect(answers).toHaveCount(0);
+
+  // "Open widget" jumps to the system widget on the Server tab.
+  await box.fill('/ram');
+  await answers
+    .getByRole('article', { name: 'Memory' })
+    .getByRole('button', { name: /Open widget/ })
+    .click();
+  await expect(page.getByRole('button', { name: 'Server', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
 });
 
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {

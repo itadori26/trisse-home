@@ -105,30 +105,48 @@
 </nav>
 
 <style>
+  /* Light underline tabs in one row; overflow scrolls with faded edges (#167). */
   .tabs {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: var(--space-1);
     align-items: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+    padding: 0 12px;
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
   }
   .tab {
     display: flex;
     align-items: center;
-    border-radius: 999px;
+    flex: none;
+    border-bottom: 2px solid transparent;
   }
   .tab.active {
-    background: var(--color-surface);
-    box-shadow: var(--shadow);
+    border-bottom-color: var(--color-accent);
   }
   .name {
     border: none;
     background: none;
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) var(--space-2);
     cursor: pointer;
     color: var(--color-text-muted);
     font-weight: 500;
+    white-space: nowrap;
+  }
+  .name:hover {
+    color: var(--color-text);
   }
   .active .name {
     color: var(--color-text);
+    font-weight: 600;
+  }
+  .name:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+    border-radius: var(--radius-small);
   }
 </style>

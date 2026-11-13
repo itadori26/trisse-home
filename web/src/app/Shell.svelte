@@ -8,6 +8,10 @@
   import { provideRefresh } from '../shared/refresh';
   import DashboardPage from './DashboardPage.svelte';
   import { attachShortcuts } from '../shared/shortcuts';
+  import Icon from '../shared/ui/icons/Icon.svelte';
+  import Greeting from './Greeting.svelte';
+  import { firstWidgetConfig, type Tab } from '../features/dashboard';
+  import { parseWeatherConfig } from '../features/weather/domain/weather';
 
   /** Props of the authenticated application shell. */
   interface Props {
@@ -34,6 +38,23 @@
   let quickSearch = $state(false);
   let shortcutHelp = $state(false);
   let dashboard = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
+  let menuOpen = $state(false);
+  let searchStart = $state('');
+  let dashboardState = $state<{ tabs: Tab[]; activeId: string }>({ tabs: [], activeId: '' });
+
+  // The greeting line shows the weather of the first weather widget (#167).
+  const weatherLocation = $derived.by(() => {
+    const cfg = firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, 'weather');
+    return cfg ? parseWeatherConfig(cfg) : null;
+  });
+
+  /** Typing into the bar's search field continues in the quick search (#167). */
+  function openSearch(input: HTMLInputElement) {
+    // Collect what is typed while the quick search is still loading.
+    searchStart += input.value;
+    input.value = '';
+    quickSearch = true;
+  }
 
   // Undo/redo shortcuts only exist in edit mode (#93).
   $effect(() => {
@@ -174,16 +195,32 @@
 
 <svelte:window ononline={() => (offline = false)} onoffline={() => (offline = true)} />
 
+<!-- One compact top bar: brand, tabs, search and actions (#167). -->
 <header class="topbar">
   <strong class="brand">trisse-home</strong>
-  <nav>
-    <button
-      class="btn btn-icon"
-      type="button"
+  <div id="topbar-tabs" class="tabs-slot"></div>
+  <label class="search">
+    <Icon name="search" size={16} />
+    <input
+      type="search"
+      aria-label={t('app.quick_search_ctrl_k_or')}
       aria-keyshortcuts="Control+K /"
-      title={t('app.quick_search_ctrl_k_or')}
-      onclick={() => (quickSearch = true)}>{t('app.search')} <kbd>{t('app.ctrl_k')}</kbd></button
-    >
+      placeholder={t('app.search_placeholder')}
+      autocomplete="off"
+      oninput={(e) => openSearch(e.currentTarget)}
+      onkeydown={(e) => e.key === 'Enter' && openSearch(e.currentTarget)}
+    />
+    <kbd>{t('app.ctrl_k')}</kbd>
+  </label>
+  <button
+    class="btn btn-icon menu"
+    type="button"
+    aria-expanded={menuOpen}
+    aria-controls="topbar-actions"
+    aria-label={t('app.menu')}
+    onclick={() => (menuOpen = !menuOpen)}><Icon name="menu" size={20} /></button
+  >
+  <nav id="topbar-actions" class="actions" class:open={menuOpen} aria-label={t('app.menu')}>
     {#if !container.auth.guest}
       <button
         class="btn btn-icon"
@@ -191,17 +228,39 @@
         type="button"
         data-tour="edit"
         aria-pressed={editing}
-        onclick={() => (editing = !editing)}
+        aria-label={editing ? t('app.done') : t('app.edit')}
+        title={editing ? t('app.done') : t('app.edit')}
+        onclick={() => ((editing = !editing), (menuOpen = false))}
+        ><Icon name={editing ? 'done' : 'pencil'} size={20} /><span class="label"
+          >{editing ? t('app.done') : t('app.edit')}</span
+        ></button
       >
-        {editing ? t('app.done') : t('app.edit')}
-      </button>
     {/if}
-    <button class="btn btn-icon" type="button" data-tour="settings" onclick={() => (settingsOpen = true)}
-      >{t('app.settings')}</button
+    <button
+      class="btn btn-icon"
+      type="button"
+      data-tour="settings"
+      aria-label={t('app.settings')}
+      title={t('app.settings')}
+      onclick={() => ((settingsOpen = true), (menuOpen = false))}
+      ><Icon name="gear" size={20} /><span class="label">{t('app.settings')}</span></button
     >
-    <button class="btn btn-icon" type="button" onclick={logout}>{t('app.log_out')}</button>
+    <button
+      class="btn btn-icon"
+      type="button"
+      aria-label={t('app.log_out')}
+      title={t('app.log_out')}
+      onclick={logout}><Icon name="power" size={20} /><span class="label">{t('app.log_out')}</span></button
+    >
   </nav>
 </header>
+{#if appearance.greeting}
+  <Greeting
+    name={appearance.greetingName}
+    weather={modules?.has('weather') ? container.weather : null}
+    location={weatherLocation}
+  />
+{/if}
 
 <main class="content">
   {#if offline}<p class="offline" role="status">
@@ -212,7 +271,14 @@
     {#if modules.has('notifications') && !container.auth.guest}<MaintenanceBanner
         notifications={container.notifications}
       />{/if}
-    <DashboardPage bind:this={dashboard} {container} {editing} {widgetKinds} />
+    <DashboardPage
+      bind:this={dashboard}
+      {container}
+      {editing}
+      {widgetKinds}
+      tabBarTarget="topbar-tabs"
+      onstate={(tabs, activeId) => (dashboardState = { tabs, activeId })}
+    />
   {/if}
 </main>
 
@@ -232,7 +298,13 @@
 
 {#if quickSearch && modules}
   {#await import('./QuickSearch.svelte') then { default: QuickSearch }}
-    <QuickSearch {container} {modules} onclose={() => (quickSearch = false)} />
+    <QuickSearch
+      {container}
+      {modules}
+      initialQuery={searchStart}
+      {weatherLocation}
+      onclose={() => ((quickSearch = false), (searchStart = ''))}
+    />
   {/await}
 {/if}
 
@@ -255,32 +327,109 @@
     border-radius: var(--radius-small);
     background: color-mix(in srgb, var(--color-warning) 22%, transparent);
   }
+  /* One compact bar (#167): brand · tabs · search · actions. */
+  .topbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) minmax(12rem, 22rem) auto;
+    grid-template-areas: 'brand tabs search actions';
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  .brand {
+    grid-area: brand;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .tabs-slot {
+    grid-area: tabs;
+    min-width: 0;
+  }
+  .search {
+    grid-area: search;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
+    height: 2.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+  }
+  .search:focus-within {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+  .search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: none;
+    color: var(--color-text);
+    font: inherit;
+    outline: none;
+  }
   kbd {
     font-size: 0.7em;
     border: 1px solid var(--color-border);
     border-radius: 4px;
     padding: 0 4px;
-    margin-left: 4px;
   }
-  @media (max-width: 600px) {
-    kbd {
-      display: none;
-    }
-  }
-  .topbar {
+  .actions {
+    grid-area: actions;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-3) var(--space-4);
-    max-width: 1600px;
-    margin: 0 auto;
+    gap: var(--space-1);
   }
-  .brand {
-    letter-spacing: 0.02em;
+  .actions .label {
+    display: none;
+  }
+  .menu {
+    display: none;
   }
   .on {
     color: var(--color-accent);
-    font-weight: 600;
+  }
+  /* Phones: brand, search and a menu button; the tabs scroll in a row below. */
+  @media (max-width: 600px) {
+    .topbar {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-areas: 'brand search menu' 'tabs tabs tabs';
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      position: relative;
+    }
+    kbd {
+      display: none;
+    }
+    .menu {
+      display: inline-flex;
+      grid-area: menu;
+    }
+    .actions {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: var(--space-3);
+      z-index: 30;
+      flex-direction: column;
+      padding: var(--space-1);
+      background: var(--color-surface);
+      border-radius: var(--radius-small);
+      box-shadow: var(--shadow);
+    }
+    .actions.open {
+      display: flex;
+    }
+    .actions .btn {
+      justify-content: flex-start;
+      gap: var(--space-2);
+    }
+    .actions .label {
+      display: inline;
+    }
   }
   .content {
     padding: 0 var(--space-4) var(--space-6);

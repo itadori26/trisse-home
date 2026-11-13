@@ -42,3 +42,18 @@ func TestLanguage(t *testing.T) {
 		t.Fatal("unsupported language accepted")
 	}
 }
+
+func TestGreeting(t *testing.T) {
+	a := Default()
+	if a.Greeting() || a.GreetingName() != "" {
+		t.Fatal("greeting must be off by default")
+	}
+	if err := a.SetGreeting(true, "  Tristan "); err != nil || !a.Greeting() || a.GreetingName() != "Tristan" {
+		t.Fatalf("%v %q %v", a.Greeting(), a.GreetingName(), err)
+	}
+	for _, bad := range []string{strings.Repeat("x", 41), "Tris\ntan"} {
+		if err := a.SetGreeting(true, bad); err == nil {
+			t.Errorf("name %q accepted", bad)
+		}
+	}
+}

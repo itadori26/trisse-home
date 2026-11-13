@@ -8,16 +8,32 @@ export interface WeatherGateway {
   radarUrl(lat: number, lon: number, key: number): string;
 }
 
+/** How long a loaded forecast is shared between callers. */
+export const FORECAST_SHARE_MS = 60_000;
+
 /** Minimum length of a place search. */
 export const MIN_PLACE_QUERY = 2;
 
 /** Application logic of the weather feature. */
 export class WeatherUseCases {
-  constructor(private readonly gateway: WeatherGateway) {}
+  /** Recent forecasts per place, so the widget and the greeting line (#167) share one request. */
+  private readonly recent = new Map<string, { at: number; forecast: Promise<Forecast> }>();
+
+  constructor(
+    private readonly gateway: WeatherGateway,
+    private readonly now: () => number = Date.now,
+  ) {}
 
   /** Loads the forecast for a configured widget and trims it to the configured days. */
   async forecast(cfg: WeatherConfig): Promise<Forecast> {
-    const f = await this.gateway.forecast(cfg.lat, cfg.lon);
+    const key = `${cfg.lat},${cfg.lon}`;
+    let hit = this.recent.get(key);
+    if (!hit || this.now() - hit.at > FORECAST_SHARE_MS) {
+      hit = { at: this.now(), forecast: this.gateway.forecast(cfg.lat, cfg.lon) };
+      this.recent.set(key, hit);
+      hit.forecast.catch(() => this.recent.delete(key)); // a failure is not shared
+    }
+    const f = await hit.forecast;
     return { ...f, days: f.days.slice(0, cfg.days) };
   }
 

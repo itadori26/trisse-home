@@ -38,6 +38,8 @@ tags:
   - name: system
   - name: docker
   - name: adguard
+  - name: arr
+  - name: media
   - name: smarthome
   - name: proxmox
   - name: calendar
@@ -1524,6 +1526,104 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardStats" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
 
+  # ---------------------------------------------------------------- arr
+  /api/arr/instances:
+    get:
+      tags: [arr]
+      summary: Configured Sonarr, Radarr and Prowlarr instances (API keys are never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ArrInstance" } } } } }
+    post:
+      tags: [arr]
+      summary: Add an instance (URL, API key and app type are checked via system/status)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ArrInstanceInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ArrInstance" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/arr/instances/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [arr]
+      summary: Update an instance; an empty API key keeps the stored one
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ArrInstanceInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ArrInstance" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [arr]
+      summary: Delete an instance
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/arr/overview:
+    get:
+      tags: [arr]
+      summary: Upcoming releases (14 days), queue, health and missing counts of all instances (cached for a minute)
+      responses:
+        "200":
+          description: OK; unreachable instances are listed in errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upcoming: { type: array, items: { type: object, properties: { instance: { type: string }, title: { type: string }, detail: { type: string }, date: { type: string, format: date-time }, hasFile: { type: boolean } } } }
+                  queue: { type: array, items: { type: object, properties: { instance: { type: string }, title: { type: string }, status: { type: string }, progress: { type: number }, timeLeftSeconds: { type: integer }, error: { type: string } } } }
+                  health: { type: array, items: { type: object, properties: { instance: { type: string }, severity: { type: string, enum: [notice, warning, error] }, message: { type: string } } } }
+                  missing: { type: object, additionalProperties: { type: integer } }
+                  errors: { type: array, items: { type: string } }
+        "404": { description: No instance configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  # ---------------------------------------------------------------- media
+  /api/media/settings:
+    get:
+      tags: [media]
+      summary: Media server connection (the token is never returned)
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { configured: { type: boolean }, provider: { type: string, enum: [jellyfin, plex] }, url: { type: string }, hasToken: { type: boolean } } } } }
+    put:
+      tags: [media]
+      summary: Test and save the connection (empty token keeps the stored one for the same provider)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [provider, url], properties: { provider: { type: string, enum: [jellyfin, plex] }, url: { type: string }, token: { type: string } } } } }
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/media/overview:
+    get:
+      tags: [media]
+      summary: Now playing and recently added (cached for 15 seconds, fetched on demand)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serverName: { type: string }
+                  recent:
+                    type: array
+                    items: { type: object, properties: { id: { type: string }, title: { type: string }, series: { type: string }, kind: { type: string }, year: { type: integer }, addedAt: { type: string, format: date-time } } }
+                  sessions:
+                    type: array
+                    items: { type: object, properties: { user: { type: string }, device: { type: string }, title: { type: string }, series: { type: string }, kind: { type: string }, paused: { type: boolean }, progress: { type: number } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/media/posters/{id}:
+    get:
+      tags: [media]
+      summary: Poster of a recently added item, proxied from the media server (raster images only)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { description: Not one of the recently added items, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
   # ---------------------------------------------------------------- smarthome
   /api/smarthome/settings:
     get:
@@ -1852,6 +1952,9 @@ components:
         accentColor: { type: string, description: '#rrggbb or empty', pattern: '^(#[0-9a-fA-F]{6})?$' }
         backgroundImage: { type: string, description: http(s) URL or empty }
         customCss: { type: string, maxLength: 65536 }
+        language: { type: string, enum: ["", en, de], description: '"" follows the browser' }
+        greeting: { type: boolean, description: Greeting line below the top bar (#167), off by default }
+        greetingName: { type: string, maxLength: 40, description: Name used in the greeting; may be empty }
     SearchSettings:
       type: object
       required: [defaultProvider, providers, shortcuts]
@@ -2120,6 +2223,17 @@ components:
         unhealthy: { type: integer }
         updatedAt: { type: string, format: date-time }
         error: { type: string }
+    ArrInstance:
+      type: object
+      properties: { id: { type: string }, app: { type: string, enum: [sonarr, radarr, prowlarr] }, name: { type: string }, url: { type: string } }
+    ArrInstanceInput:
+      type: object
+      required: [app, url]
+      properties:
+        app: { type: string, enum: [sonarr, radarr, prowlarr] }
+        name: { type: string, maxLength: 40, description: Defaults to the app name }
+        url: { type: string }
+        apiKey: { type: string, description: Required when adding; empty keeps the stored key }
     SmartHomeSettings:
       type: object
       properties: { configured: { type: boolean }, url: { type: string }, hasToken: { type: boolean } }

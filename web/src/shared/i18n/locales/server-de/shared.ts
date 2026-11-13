@@ -51,6 +51,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_28004c9379be9be3: 'Das Hintergrundbild muss eine http(s)-URL sein.',
   // The guest does not exist.
   srv_23575e607ab8d86b: 'Der Gast existiert nicht.',
+  // The name must be at most 40 characters long.
+  srv_a81a70289d9d44d1: 'Der Name darf höchstens 40 Zeichen lang sein.',
   // The name must be between 1 and 60 characters long.
   srv_71604d59e2455245: 'Der Name muss zwischen 1 und 60 Zeichen lang sein.',
   // Username and app password are required.

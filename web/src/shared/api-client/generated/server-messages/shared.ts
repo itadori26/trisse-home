@@ -18,6 +18,7 @@ export const serverMessages = {
   srv_28004c9379be9be3: "The background image must be an http(s) URL.",
   srv_73afeaf5a99f225a: "The certificate of the server is not trusted.",
   srv_23575e607ab8d86b: "The guest does not exist.",
+  srv_a81a70289d9d44d1: "The name must be at most 40 characters long.",
   srv_71604d59e2455245: "The name must be between 1 and 60 characters long.",
   srv_0d59baf576015864: "The server answered, but the path was not found. Check the address.",
   srv_71b0db214ed1ca3d: "The server could not be reached. Check the address and port.",
