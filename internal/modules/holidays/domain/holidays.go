@@ -2,7 +2,6 @@ package domain
 
 import (
 	"cmp"
-	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -212,9 +211,11 @@ func NewSettings(raw string) (Settings, error) {
 	if strings.HasPrefix(strings.ToLower(raw), "webcal://") {
 		raw = "https://" + raw[len("webcal://"):]
 	}
-	u, err := url.Parse(raw)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return Settings{}, kernel.NewValidationError("schoolUrl", "The ICS link must start with https://, http:// or webcal://.")
+	// The central check of owner-configured addresses (#191): http(s), no
+	// credentials, never link-local or cloud metadata addresses.
+	u, err := kernel.ParseTarget("schoolUrl", raw, kernel.WithTargetQuery())
+	if err != nil {
+		return Settings{}, err
 	}
 	return Settings{SchoolURL: u.String()}, nil
 }

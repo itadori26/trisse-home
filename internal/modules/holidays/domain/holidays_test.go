@@ -106,7 +106,9 @@ func TestStatesAndSettings(t *testing.T) {
 	if s, err := NewSettings(""); err != nil || s.SchoolURL != "" {
 		t.Fatalf("empty: %+v %v", s, err)
 	}
-	if _, err := NewSettings("ftp://x/y.ics"); !errors.Is(err, kernel.ErrInvalid) {
-		t.Fatalf("ftp: %v", err)
+	for _, bad := range []string{"ftp://x/y.ics", "http://169.254.169.254/latest", "https://user:pw@x/y.ics"} {
+		if _, err := NewSettings(bad); !errors.Is(err, kernel.ErrInvalid) {
+			t.Errorf("%s: %v", bad, err)
+		}
 	}
 }

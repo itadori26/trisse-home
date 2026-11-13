@@ -8,6 +8,4 @@ import type { ServerMessageKey } from '../../../api-client/generated/server-mess
 export const serverDe: Record<ServerMessageKey, string> = {
   // Could not load the school holidays: {detail}
   srv_e204fc52da15fb72: 'Die Schulferien konnten nicht geladen werden: {detail}',
-  // The ICS link must start with https://, http:// or webcal://.
-  srv_d228fdc48b38a72a: 'Der ICS-Link muss mit https://, http:// oder webcal:// beginnen.',
 };

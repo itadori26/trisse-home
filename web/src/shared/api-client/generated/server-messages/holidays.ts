@@ -3,7 +3,6 @@
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
   srv_e204fc52da15fb72: "Could not load the school holidays: {detail}",
-  srv_d228fdc48b38a72a: "The ICS link must start with https://, http:// or webcal://.",
 } as const;
 
 /** Key of a backend message. */

@@ -10,6 +10,8 @@ import (
 // The holidays module registers itself; no shared file lists it (#193).
 func init() {
 	registerModule("holidays", func(d moduleDeps) modules.Module {
-		return holidays.New(d.db, d.out.client, d.clock, time.Local)
+		// The integration client re-checks the owner-configured ICS address on
+		// every connection (#191).
+		return holidays.New(d.db, d.out.integration, d.clock, time.Local)
 	})
 }
