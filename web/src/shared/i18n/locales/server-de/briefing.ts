@@ -11,6 +11,4 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Der Breitengrad muss zwischen -90 und 90 liegen, der Längengrad zwischen -180 und 180.',
   // Notifications are not enabled.
   srv_777fe9a31de38b1d: 'Benachrichtigungen sind nicht aktiviert.',
-  // Weekdays are 0 (Sunday) to 6.
-  srv_40623194d868a5f0: 'Wochentage sind 0 (Sonntag) bis 6.',
 };
