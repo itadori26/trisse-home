@@ -1348,6 +1348,11 @@ export const de: Record<BaseMessageKey, string> = {
   'smart.which_title': 'Welcher?',
   'smart.which_container': 'Welchen Container meinst du?',
   'smart.which_service': 'Welchen Dienst meinst du?',
+  'smart.calc': 'Rechner',
+  'smart.conversion': 'Umrechnung',
+  'smart.copy': 'Kopieren',
+  'smart.copied': 'Kopiert',
+  'smart.enter_copies': 'Enter kopiert das Ergebnis',
   'common.plain_http_warning':
     'Diese Adresse nutzt http://: Passwort oder Token gehen unverschlüsselt durch dein Netz. Nimm https://, wo das Gerät es unterstützt.',
 };

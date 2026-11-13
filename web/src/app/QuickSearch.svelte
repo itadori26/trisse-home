@@ -13,6 +13,7 @@
   import type { ActionItem, Answer } from '../features/search/domain/smart/answer';
   import type { WeatherConfig } from '../features/weather/domain/weather';
   import { requestWidgetFocus } from '../shared/ui/widgetFocus';
+  import { copyToClipboard } from '../shared/ui/clipboard';
 
   /** Props of the quick search (command palette). */
   interface Props {
@@ -193,6 +194,10 @@
     }
   }
 
+  async function copyResult(text: string) {
+    status = (await copyToClipboard(text)) ? `${t('smart.copied')}: ${text}` : '';
+  }
+
   function onkeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       // A search input would only clear itself on the first Escape.
@@ -204,7 +209,10 @@
       document.getElementById(optionId(active))?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      // A calculator result is copied (#160); computed now, not debounced.
+      const calc = command ? undefined : smart.direct(query).find((a) => a.copy !== undefined);
       if (command) void runCommand(command);
+      else if (calc?.copy !== undefined) void copyResult(calc.copy);
       else choose(flat[active]);
     }
   }

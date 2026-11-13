@@ -5,6 +5,7 @@
   import type { Answer } from '../domain/smart/answer';
   import AnswerCard from './answers/AnswerCard.svelte';
   import { requestWidgetFocus } from '../../../shared/ui/widgetFocus';
+  import { copyToClipboard } from '../../../shared/ui/clipboard';
   import type { SearchUseCases } from '../usecase/searchUseCases';
 
   /** Props of the search bar widget. */
@@ -20,6 +21,7 @@
 
   // Same engine as the quick search; debounced, the newest query wins.
   let found = $state<Answer[]>([]);
+  let foundFor = '';
   $effect(() => {
     const q = query;
     if (!answers || preview || q.trim().length < 2) {
@@ -29,7 +31,10 @@
     const ctrl = new AbortController();
     const timer = setTimeout(() => {
       answers(q, ctrl.signal)
-        .then((a) => (found = a))
+        .then((a) => {
+          found = a;
+          foundFor = q;
+        })
         .catch(() => {});
     }, 150);
     return () => {
@@ -70,8 +75,18 @@
 
   function submit(e: SubmitEvent) {
     e.preventDefault();
+    // Enter copies a calculator result (#160); Shift+Enter still searches.
+    const calc = foundFor === query ? found.find((a) => a.copy !== undefined) : undefined;
     if (preview) void capture();
+    else if (calc?.copy !== undefined) void copyResult(calc.copy);
     else searchWeb();
+  }
+
+  async function copyResult(text: string) {
+    if (!(await copyToClipboard(text))) return;
+    done = { message: `${t('smart.copied')}: ${text}` };
+    clearTimeout(doneTimer);
+    doneTimer = setTimeout(() => (done = null), 3000);
   }
 
   function onkeydown(e: KeyboardEvent) {

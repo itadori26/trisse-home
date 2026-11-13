@@ -1318,6 +1318,11 @@ export const en = {
   'smart.which_title': 'Which one?',
   'smart.which_container': 'Which container do you mean?',
   'smart.which_service': 'Which service do you mean?',
+  'smart.calc': 'Calculator',
+  'smart.conversion': 'Conversion',
+  'smart.copy': 'Copy',
+  'smart.copied': 'Copied',
+  'smart.enter_copies': 'Enter copies the result',
   'common.plain_http_warning':
     'This address uses http://: the password or token travels unencrypted through your network. Prefer https:// where the device supports it.',
 } as const;

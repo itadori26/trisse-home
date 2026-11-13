@@ -18,6 +18,8 @@ interface Base {
   widgetKind?: string;
   /** When the data was measured or fetched (#94). */
   at: Date | null;
+  /** Plain value for the clipboard; Enter copies it (calculator, #160). */
+  copy?: string;
 }
 
 export interface MetricAnswer extends Base {
