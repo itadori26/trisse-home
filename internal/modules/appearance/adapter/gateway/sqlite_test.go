@@ -23,4 +23,12 @@ func TestRepository(t *testing.T) {
 			t.Fatalf("round trip failed for %s", theme)
 		}
 	}
+	a := domain.Default()
+	_ = a.SetGreeting(true, "Tristan")
+	if err := repo.Save(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := repo.Load(ctx); !got.Greeting() || got.GreetingName() != "Tristan" {
+		t.Fatalf("greeting round trip: %v %q", got.Greeting(), got.GreetingName())
+	}
 }

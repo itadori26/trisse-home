@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"trisse-home/internal/shared/kernel"
 )
@@ -35,7 +37,29 @@ type Appearance struct {
 	backgroundImage string
 	customCSS       string
 	language        string
+	greeting        bool
+	greetingName    string
 }
+
+// MaxGreetingNameLength limits the name in the greeting line (#167).
+const MaxGreetingNameLength = 40
+
+// SetGreeting switches the greeting line below the top bar on or off and
+// sets the name it addresses (may be empty).
+func (a *Appearance) SetGreeting(on bool, name string) error {
+	name = strings.TrimSpace(name)
+	if utf8.RuneCountInString(name) > MaxGreetingNameLength || strings.ContainsFunc(name, unicode.IsControl) {
+		return kernel.NewValidationError("greetingName", "The name must be at most 40 characters long.")
+	}
+	a.greeting, a.greetingName = on, name
+	return nil
+}
+
+// Greeting reports whether the greeting line is shown.
+func (a Appearance) Greeting() bool { return a.greeting }
+
+// GreetingName is the name used in the greeting line.
+func (a Appearance) GreetingName() string { return a.greetingName }
 
 // Languages lists the supported UI languages; "" follows the browser.
 var Languages = []string{"", "en", "de"}

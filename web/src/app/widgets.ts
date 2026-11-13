@@ -10,6 +10,7 @@ import type { IconName } from '../shared/ui/icons/paths';
 import type { Container } from './container';
 import { prefixesFromConfig } from '../features/quickactions/domain/command';
 import { quickCapture } from './quickCapture';
+import { widgetAnswers } from './widgetAnswers';
 
 /** Configuration object stored per widget. */
 type Config = Record<string, unknown>;
@@ -76,6 +77,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
         config,
         search: c.search,
         quick: quickCapture(c.quickActions, prefixesFromConfig(config['quickPrefixes'])),
+        answers: widgetAnswers(c),
       }),
     ),
     settings: lazy(

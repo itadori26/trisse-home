@@ -32,6 +32,29 @@ describe('WeatherUseCases', () => {
   it('limits the number of days', async () => {
     expect((await uc.forecast({ lat: 1, lon: 2, label: '', days: 2, warnings: true })).days).toHaveLength(2);
   });
+  it('shares a forecast for a minute between callers of the same place', async () => {
+    let clock = 0;
+    const gw: WeatherGateway = { ...gateway, forecast: vi.fn().mockResolvedValue(forecast) };
+    const shared = new WeatherUseCases(gw, () => clock);
+    const cfg = { lat: 1, lon: 2, label: '', days: 2, warnings: false };
+    await Promise.all([shared.forecast(cfg), shared.forecast({ ...cfg, days: 5 })]);
+    expect(gw.forecast).toHaveBeenCalledTimes(1);
+    await shared.forecast({ ...cfg, lat: 3 });
+    expect(gw.forecast).toHaveBeenCalledTimes(2);
+    clock = 61_000;
+    await shared.forecast(cfg);
+    expect(gw.forecast).toHaveBeenCalledTimes(3);
+  });
+  it('does not share a failed request', async () => {
+    const gw: WeatherGateway = {
+      ...gateway,
+      forecast: vi.fn().mockRejectedValueOnce(new Error('down')).mockResolvedValue(forecast),
+    };
+    const shared = new WeatherUseCases(gw, () => 0);
+    const cfg = { lat: 1, lon: 2, label: '', days: 2, warnings: false };
+    await expect(shared.forecast(cfg)).rejects.toThrow('down');
+    await expect(shared.forecast(cfg)).resolves.toBeDefined();
+  });
   it('skips warnings when disabled', async () => {
     await uc.warnings({ lat: 1, lon: 2, label: '', days: 2, warnings: false });
     expect(gateway.warnings).not.toHaveBeenCalled();

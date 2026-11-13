@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DashboardView, type Widget, type WidgetConfig } from '../features/dashboard';
+  import { DashboardView, type Tab, type Widget, type WidgetConfig } from '../features/dashboard';
   import type { Container } from './container';
   import LazyComponent from './LazyComponent.svelte';
   import { definitionFor, iconFor, widgetDefinitions } from './widgets';
@@ -10,8 +10,12 @@
     editing: boolean;
     /** Widget kinds enabled in the backend. */
     widgetKinds: Set<string>;
+    /** Element id in the top bar that hosts the tab bar (#167). */
+    tabBarTarget?: string;
+    /** Reports tabs and the active tab to the shell. */
+    onstate?: (tabs: Tab[], activeId: string) => void;
   }
-  let { container, editing, widgetKinds }: Props = $props();
+  let { container, editing, widgetKinds, tabBarTarget, onstate }: Props = $props();
 
   let view = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
 
@@ -39,6 +43,8 @@
   widgetIcon={iconFor}
   hasSettings={(kind) => !!definitionFor(kind)?.settings}
   chromeless={(kind) => !!definitionFor(kind)?.chromeless}
+  {tabBarTarget}
+  {onstate}
 >
   {#snippet content(widget: Widget)}
     {@const def = definitionFor(widget.kind)}

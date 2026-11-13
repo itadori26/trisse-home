@@ -13,4 +13,9 @@ export interface AppearanceDTO {
   backgroundImage: string;
   customCss: string;
   language: '' | 'en' | 'de';
+  /**
+   * Greeting shows the greeting line below the top bar (#167).
+   */
+  greeting: boolean;
+  greetingName: string;
 }
