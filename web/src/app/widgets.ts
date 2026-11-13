@@ -10,6 +10,7 @@ import type { IconName } from '../shared/ui/icons/paths';
 import type { Container } from './container';
 import { prefixesFromConfig } from '../features/quickactions/domain/command';
 import { quickCapture } from './quickCapture';
+import { widgetAnswers } from './widgetAnswers';
 
 /** Configuration object stored per widget. */
 type Config = Record<string, unknown>;
@@ -76,6 +77,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
         config,
         search: c.search,
         quick: quickCapture(c.quickActions, prefixesFromConfig(config['quickPrefixes'])),
+        answers: widgetAnswers(c),
       }),
     ),
     settings: lazy(
@@ -607,6 +609,29 @@ export const widgetDefinitions: WidgetDefinition[] = [
     ),
     settings: lazy(
       () => import('../features/arr/ui/ArrWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
+  {
+    type: {
+      kind: 'media',
+      category: 'network',
+      keywords: ['jellyfin', 'plex', 'movies', 'series', 'filme', 'serien'],
+      get title() {
+        return t('widget.media.title');
+      },
+      get description() {
+        return t('widget.media.description');
+      },
+      defaultSize: { w: 4, h: 5 },
+    },
+    icon: 'activity',
+    view: lazy(
+      () => import('../features/media/ui/MediaWidget.svelte'),
+      (config, c) => ({ config, media: c.media }),
+    ),
+    settings: lazy(
+      () => import('../features/media/ui/MediaWidgetSettings.svelte'),
       (config) => ({ config }),
     ),
   },

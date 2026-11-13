@@ -7,6 +7,12 @@
   import { errorMessage } from '../shared/api-client/http';
   import type { Container } from './container';
   import { type QuickItem, search } from './quickSearch';
+  import { quickItemLoaders } from './quickItems';
+  import { createSmartSearch } from './searchSources';
+  import AnswerCard from '../features/search/ui/answers/AnswerCard.svelte';
+  import type { ActionItem, Answer } from '../features/search/domain/smart/answer';
+  import type { WeatherConfig } from '../features/weather/domain/weather';
+  import { requestWidgetFocus } from '../shared/ui/widgetFocus';
 
   /** Props of the quick search (command palette). */
   interface Props {
@@ -14,10 +20,25 @@
     /** Enabled modules; disabled ones are not searched. */
     modules: Set<string>;
     onclose: () => void;
+    /** Text typed into the top bar's search field before the dialog opened (#167). */
+    initialQuery?: string;
+    /** Location of the first weather widget for weather answers (#156). */
+    weatherLocation?: WeatherConfig | null;
   }
-  let { container, modules, onclose }: Props = $props();
+  let { container, modules, onclose, initialQuery = '', weatherLocation = null }: Props = $props();
 
-  let query = $state('');
+  // svelte-ignore state_referenced_locally
+  const smart = createSmartSearch(container, modules, {
+    canAct: !container.auth.guest,
+    weatherLocation: () => weatherLocation,
+  });
+
+  // svelte-ignore state_referenced_locally
+  let query = $state(initialQuery);
+  // Characters typed into the top bar until this dialog has focus (#167).
+  $effect(() => {
+    if (initialQuery) query = initialQuery;
+  });
   let items = $state<QuickItem[]>([]);
   let notes = new Map<string, { title: string; body: string }>();
   let todos = new Map<string, Parameters<Container['todos']['toggle']>[0]>();
@@ -91,67 +112,55 @@
   const optionId = (i: number) => `qs-option-${i}`;
 
   $effect(() => {
-    // Load everything once when the palette opens; failures of one source do not block the others.
-    const tasks: Promise<void>[] = [];
-    const add = (list: QuickItem[]) => {
-      items = [...items, ...list];
-    };
-    if (modules.has('bookmarks'))
-      tasks.push(
-        container.bookmarks.list().then((l) => {
-          const folders = new Map(l.folders.map((f) => [f.id, f.name]));
-          add(
-            l.bookmarks.map((b) => ({
-              kind: 'bookmark',
-              id: b.id,
-              title: b.title,
-              detail: [folders.get(b.folderId), b.url].filter(Boolean).join(' · '),
-              keywords: [...b.tags, b.description],
-              url: b.url,
-            })),
-          );
-        }),
-      );
-    if (modules.has('services'))
-      tasks.push(
-        container.services.list().then((l) =>
-          add(
-            l.map((s) => ({
-              kind: 'service',
-              id: s.id,
-              title: s.name,
-              detail: s.url,
-              keywords: [s.description],
-              url: s.url,
-            })),
-          ),
-        ),
-      );
-    if (modules.has('notes'))
-      tasks.push(
-        container.notes.list('all').then((l) => {
-          notes = new Map(l.map((n) => [n.id, { title: n.title, body: n.body }]));
-          add(
-            l.map((n) => ({
-              kind: 'note',
-              id: n.id,
-              title: n.title || t('app.untitled_note'),
-              detail: n.body.slice(0, 200),
-            })),
-          );
-        }),
-      );
-    if (modules.has('todos'))
-      tasks.push(
-        container.todos.list(false).then((l) => {
-          todos = new Map(l.map((t) => [t.id, t]));
-          add(
-            l.map((t) => ({ kind: 'todo', id: t.id, title: t.title, detail: t.due ? `due ${t.due}` : '' })),
-          );
-        }),
-      );
-    Promise.allSettled(tasks);
+    // Load everything once when the palette opens; failures of one source
+    // do not block the others. The module calls live in quickItems.ts (#156).
+    for (const load of quickItemLoaders(container, modules)) {
+      load
+        .then((r) => {
+          items = [...items, ...r.items];
+          if (r.notes) notes = r.notes;
+          if (r.todos) todos = r.todos;
+        })
+        .catch(() => {});
+    }
+    void smart.prepare();
   });
+
+  // Smart answers (#156): debounced, the newest query wins.
+  let answers = $state<Answer[]>([]);
+  $effect(() => {
+    const q = query;
+    if (command || q.trim().length < 2) {
+      answers = [];
+      return;
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      smart
+        .answer(q, ctrl.signal)
+        .then((a) => (answers = a))
+        .catch(() => {}); // aborted or failed: keep the old answers until the next one
+    }, 150);
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  });
+
+  async function execute(item: ActionItem) {
+    try {
+      await smart.execute(item);
+      status = t('smart.action_done', { name: item.target.name });
+      answers = await smart.answer(query, new AbortController().signal);
+    } catch (err) {
+      status = errorMessage(err);
+    }
+  }
+
+  function openWidget(kind: string) {
+    requestWidgetFocus([kind]);
+    onclose();
+  }
 
   $effect(() => {
     if (!query) return; // keep the confirmation after a command cleared the field
@@ -223,8 +232,22 @@
       autocomplete="off"
       autofocus
       bind:value={query}
+      onfocus={(e) => e.currentTarget.setSelectionRange(query.length, query.length)}
       {onkeydown}
     />
+    {#if answers.length > 0}
+      <!-- Instant answers above the classic results (#156). -->
+      <section class="answers" aria-label={t('smart.answers')} aria-live="polite">
+        {#each answers as a (a.intent + a.title)}
+          <AnswerCard
+            answer={a}
+            onopen={openWidget}
+            onexecute={execute}
+            onpick={(name) => (query = `${query.trim()} ${name}`)}
+          />
+        {/each}
+      </section>
+    {/if}
     <div id="qs-listbox" role="listbox" aria-label={t('app.results')} class="results">
       {#each groups as g (g.kind)}
         <div role="group" aria-labelledby="qs-group-{g.kind}">
@@ -269,6 +292,12 @@
 </Modal>
 
 <style>
+  .answers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
   .command {
     margin: var(--space-2) 0 0;
     padding: var(--space-2);

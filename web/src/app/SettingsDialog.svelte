@@ -5,6 +5,7 @@
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
   import { ArrSettings } from '../features/arr';
+  import { MediaSettings } from '../features/media';
   import { SmartHomeSettings } from '../features/smarthome';
   import { ProxmoxSettings } from '../features/proxmox';
   import { SpeedtestSettings } from '../features/speedtest';
@@ -59,6 +60,7 @@
     { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
     { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
     { id: 'arr', label: 'settings.section.arr', module: 'arr' },
+    { id: 'media', label: 'settings.section.media', module: 'media' },
     { id: 'smarthome', label: 'settings.section.smarthome', module: 'smarthome' },
     { id: 'proxmox', label: 'settings.section.proxmox', module: 'proxmox' },
     { id: 'speedtest', label: 'settings.section.speedtest', module: 'speedtest' },
@@ -163,6 +165,8 @@
     <AdGuardSettings adguard={container.adguard} />
   {:else if current === 'arr'}
     <ArrSettings arr={container.arr} />
+  {:else if current === 'media'}
+    <MediaSettings media={container.media} />
   {:else if current === 'smarthome'}
     <SmartHomeSettings smarthome={container.smarthome} />
   {:else if current === 'proxmox'}

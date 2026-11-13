@@ -40,6 +40,30 @@ func TestParseAndExpand(t *testing.T) {
 	}
 }
 
+func TestExpandWeeklyOnSeveralDays(t *testing.T) {
+	// Wednesday 4 Nov 2026, 08:00 UTC: a lecture on Mondays and Wednesdays.
+	start := time.Date(2026, 11, 4, 8, 0, 0, 0, time.UTC)
+	e := Event{Start: start, End: start.Add(90 * time.Minute), RRule: "FREQ=WEEKLY;BYDAY=MO,WE;COUNT=5",
+		ExDates: []time.Time{time.Date(2026, 11, 11, 8, 0, 0, 0, time.UTC)}}
+	var got []string
+	for _, occ := range Expand(e, start.AddDate(0, 0, -7), start.AddDate(0, 2, 0)) {
+		got = append(got, occ.Start.Format("Mon 01-02"))
+	}
+	// DTSTART counts as the first occurrence, the Monday before it does not;
+	// the excluded date still counts towards COUNT.
+	if s := strings.Join(got, ","); s != "Wed 11-04,Mon 11-09,Mon 11-16,Wed 11-18" {
+		t.Fatalf("expansion: %s", s)
+	}
+	biweekly := Event{Start: start, End: start.Add(time.Hour), RRule: "FREQ=WEEKLY;INTERVAL=2;BYDAY=WE,FR;UNTIL=20261121T000000Z"}
+	got = nil
+	for _, occ := range Expand(biweekly, start, start.AddDate(0, 1, 0)) {
+		got = append(got, occ.Start.Format("01-02"))
+	}
+	if s := strings.Join(got, ","); s != "11-04,11-06,11-18,11-20" {
+		t.Fatalf("interval and until: %s", s)
+	}
+}
+
 func TestWriteHelpers(t *testing.T) {
 	if EscapeText("a;b,c\\d\ne") != `a\;b\,c\\d\ne` {
 		t.Fatal(EscapeText("a;b,c\\d\ne"))

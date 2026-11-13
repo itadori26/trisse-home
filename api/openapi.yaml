@@ -39,6 +39,7 @@ tags:
   - name: docker
   - name: adguard
   - name: arr
+  - name: media
   - name: smarthome
   - name: proxmox
   - name: calendar
@@ -1576,6 +1577,53 @@ paths:
                   missing: { type: object, additionalProperties: { type: integer } }
                   errors: { type: array, items: { type: string } }
         "404": { description: No instance configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  # ---------------------------------------------------------------- media
+  /api/media/settings:
+    get:
+      tags: [media]
+      summary: Media server connection (the token is never returned)
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { configured: { type: boolean }, provider: { type: string, enum: [jellyfin, plex] }, url: { type: string }, hasToken: { type: boolean } } } } }
+    put:
+      tags: [media]
+      summary: Test and save the connection (empty token keeps the stored one for the same provider)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [provider, url], properties: { provider: { type: string, enum: [jellyfin, plex] }, url: { type: string }, token: { type: string } } } } }
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/media/overview:
+    get:
+      tags: [media]
+      summary: Now playing and recently added (cached for 15 seconds, fetched on demand)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serverName: { type: string }
+                  recent:
+                    type: array
+                    items: { type: object, properties: { id: { type: string }, title: { type: string }, series: { type: string }, kind: { type: string }, year: { type: integer }, addedAt: { type: string, format: date-time } } }
+                  sessions:
+                    type: array
+                    items: { type: object, properties: { user: { type: string }, device: { type: string }, title: { type: string }, series: { type: string }, kind: { type: string }, paused: { type: boolean }, progress: { type: number } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/media/posters/{id}:
+    get:
+      tags: [media]
+      summary: Poster of a recently added item, proxied from the media server (raster images only)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { description: Not one of the recently added items, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
   # ---------------------------------------------------------------- smarthome
   /api/smarthome/settings:
     get:
@@ -1703,6 +1751,38 @@ paths:
       responses:
         "201": { description: Created }
         "422": { description: Validation error or unknown calendar, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/calendar/subscriptions:
+    get:
+      tags: [calendar]
+      summary: ICS subscriptions (#98); the URL is never returned, only a hint without path and query
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CalendarSubscription" } } } } }
+    post:
+      tags: [calendar]
+      summary: Add an ICS subscription (the feed is loaded once to test it)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscriptionInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscription" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/calendar/subscriptions/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [calendar]
+      summary: Update a subscription; an empty URL keeps the stored one
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscriptionInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscription" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [calendar]
+      summary: Delete a subscription
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
         "503": { description: The calendar server rejected the event, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
 
 components:
@@ -1872,6 +1952,9 @@ components:
         accentColor: { type: string, description: '#rrggbb or empty', pattern: '^(#[0-9a-fA-F]{6})?$' }
         backgroundImage: { type: string, description: http(s) URL or empty }
         customCss: { type: string, maxLength: 65536 }
+        language: { type: string, enum: ["", en, de], description: '"" follows the browser' }
+        greeting: { type: boolean, description: Greeting line below the top bar (#167), off by default }
+        greetingName: { type: string, maxLength: 40, description: Name used in the greeting; may be empty }
     SearchSettings:
       type: object
       required: [defaultProvider, providers, shortcuts]
@@ -2244,6 +2327,22 @@ components:
         topBlocked: { type: array, items: { type: object, properties: { domain: { type: string }, count: { type: integer } } } }
         updatedAt: { type: string, format: date-time }
         error: { type: string }
+    CalendarSubscription:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        urlHint: { type: string, example: "https://calendar.example.com/…" }
+        color: { type: string, example: "#3b6ef5" }
+        refreshMinutes: { type: integer }
+    CalendarSubscriptionInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 60 }
+        url: { type: string, description: "https://, http:// or webcal://; required when adding" }
+        color: { type: string, description: "#rrggbb, default #3b6ef5" }
+        refreshMinutes: { type: integer, minimum: 15, maximum: 1440, default: 60 }
     CalendarSettings:
       type: object
       properties:
@@ -2269,7 +2368,8 @@ components:
               uid: { type: string }
               summary: { type: string }
               location: { type: string }
-              calendar: { type: string }
+              calendar: { type: string, description: CalDAV collection or subscription name }
+              color: { type: string, description: "Subscription colour (#rrggbb); empty for CalDAV calendars" }
               start: { type: string, description: RFC 3339, or YYYY-MM-DD for all-day events }
               end: { type: string, description: RFC 3339, or YYYY-MM-DD (exclusive) for all-day events }
               allDay: { type: boolean }

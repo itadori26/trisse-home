@@ -2,6 +2,9 @@
   import { errorMessage } from '../../../shared/api-client/http';
   import { t } from '../../../shared/i18n';
   import type { QuickCapture } from '../usecase/quickCapture';
+  import type { Answer } from '../domain/smart/answer';
+  import AnswerCard from './answers/AnswerCard.svelte';
+  import { requestWidgetFocus } from '../../../shared/ui/widgetFocus';
   import type { SearchUseCases } from '../usecase/searchUseCases';
 
   /** Props of the search bar widget. */
@@ -10,8 +13,30 @@
     config: Record<string, unknown>;
     /** Quick capture with prefixes like "t " (#105); optional. */
     quick?: QuickCapture;
+    /** Instant answers of the smart search (#156); optional. */
+    answers?: (query: string, signal: AbortSignal) => Promise<Answer[]>;
   }
-  let { search, config, quick }: Props = $props();
+  let { search, config, quick, answers }: Props = $props();
+
+  // Same engine as the quick search; debounced, the newest query wins.
+  let found = $state<Answer[]>([]);
+  $effect(() => {
+    const q = query;
+    if (!answers || preview || q.trim().length < 2) {
+      found = [];
+      return;
+    }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      answers(q, ctrl.signal)
+        .then((a) => (found = a))
+        .catch(() => {});
+    }, 150);
+    return () => {
+      clearTimeout(timer);
+      ctrl.abort();
+    };
+  });
 
   let query = $state('');
   const newTab = $derived(config['newTab'] === true);
@@ -96,9 +121,31 @@
   {:else if error}
     <p class="hint error" role="alert">{error}</p>
   {/if}
+  {#if found.length > 0}
+    <section class="answers" aria-label={t('smart.answers')} aria-live="polite">
+      {#each found as a (a.intent + a.title)}
+        <AnswerCard answer={a} onopen={(kind) => requestWidgetFocus([kind])} />
+      {/each}
+    </section>
+  {/if}
 </form>
 
 <style>
+  /* Instant answers drop down below the bar without moving the layout (#156). */
+  .answers {
+    position: absolute;
+    top: calc(100% - var(--space-2));
+    left: var(--space-4);
+    right: var(--space-4);
+    z-index: 15;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border-radius: var(--radius);
+    background: var(--color-bg, var(--color-surface));
+    box-shadow: var(--shadow);
+  }
   .search {
     height: 100%;
     display: flex;

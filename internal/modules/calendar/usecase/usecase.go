@@ -36,9 +36,9 @@ type SettingsInput struct {
 
 // EventView is an event at the use case boundary.
 type EventView struct {
-	UID, Summary, Location, Calendar string
-	Start, End                       time.Time
-	AllDay                           bool
+	UID, Summary, Location, Calendar, Color string
+	Start, End                              time.Time
+	AllDay                                  bool
 }
 
 // AgendaResponse lists upcoming events.
@@ -80,15 +80,50 @@ type SettingsRepository interface {
 	Save(ctx context.Context, s domain.Settings) error
 }
 
-// EventSource loads events of one calendar in a time range (output port).
+// EventSource loads events of one CalDAV calendar in a time range (output port).
 type EventSource interface {
 	Events(ctx context.Context, s domain.Settings, calendarURL string, from, to time.Time) ([]domain.Event, error)
+}
+
+// FeedSource loads the events of an ICS subscription in a time range,
+// recurrences expanded (output port, #98). The adapter decides when to
+// download the feed again (refresh interval, conditional requests).
+type FeedSource interface {
+	Events(ctx context.Context, s domain.Subscription, from, to time.Time) ([]domain.Event, error)
+}
+
+// SubscriptionRepository persists ICS subscriptions (output port).
+type SubscriptionRepository interface {
+	List(ctx context.Context) ([]domain.Subscription, error)
+	Get(ctx context.Context, id string) (domain.Subscription, error)
+	Save(ctx context.Context, s domain.Subscription) error
+	Delete(ctx context.Context, id string) error
+}
+
+// Deps bundles the output ports of the calendar module.
+type Deps struct {
+	Repo          SettingsRepository
+	Source        EventSource
+	Writer        EventWriter
+	Subscriptions SubscriptionRepository
+	Feeds         FeedSource
+	IDs           kernel.IDGenerator
+	Clock         kernel.Clock
+}
+
+// Service bundles both input ports; one value implements them so CalDAV
+// calendars and subscriptions share the agenda cache.
+type Service interface {
+	Calendar
+	Subscriptions
 }
 
 type calendar struct {
 	repo   SettingsRepository
 	source EventSource
 	writer EventWriter
+	subs   SubscriptionRepository
+	feeds  FeedSource
 	ids    kernel.IDGenerator
 	clock  kernel.Clock
 	mu     sync.RWMutex
@@ -98,8 +133,29 @@ type calendar struct {
 }
 
 // NewCalendar returns the calendar use cases.
-func NewCalendar(repo SettingsRepository, source EventSource, writer EventWriter, ids kernel.IDGenerator, clock kernel.Clock) Calendar {
-	return &calendar{repo: repo, source: source, writer: writer, ids: ids, clock: clock}
+func NewCalendar(d Deps) Service {
+	return &calendar{repo: d.Repo, source: d.Source, writer: d.Writer, subs: d.Subscriptions, feeds: d.Feeds, ids: d.IDs, clock: d.Clock}
+}
+
+// sources returns the CalDAV settings (nil when not configured) and the
+// subscriptions; domain.ErrNotConfigured when there is neither.
+func (uc *calendar) sources(ctx context.Context) (*domain.Settings, []domain.Subscription, error) {
+	var caldav *domain.Settings
+	s, err := uc.repo.Load(ctx)
+	switch {
+	case err == nil:
+		caldav = &s
+	case !errors.Is(err, domain.ErrNotConfigured):
+		return nil, nil, fmt.Errorf("load settings: %w", err)
+	}
+	subs, err := uc.subs.List(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list subscriptions: %w", err)
+	}
+	if caldav == nil && len(subs) == 0 {
+		return nil, nil, domain.ErrNotConfigured
+	}
+	return caldav, subs, nil
 }
 
 // Settings implements Calendar.
@@ -136,14 +192,14 @@ func (uc *calendar) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 	if err != nil {
 		return SettingsView{}, err
 	}
-	agenda, err := uc.fetch(ctx, s)
-	if err != nil {
+	now := uc.clock.Now()
+	if _, err := uc.fetchRange(ctx, &s, nil, now, now.Add(domain.Horizon)); err != nil {
 		return SettingsView{}, kernel.TargetFailure(kernel.ErrInvalid, err)
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
 	}
-	uc.store(agenda)
+	_ = uc.Refresh(ctx) // errors are reported through AgendaResponse.Error
 	return SettingsView{Configured: true, CalendarURLs: s.CalendarURLs, Username: s.Username, HasPassword: true}, nil
 }
 
@@ -157,7 +213,7 @@ func (uc *calendar) Upcoming(ctx context.Context, days int) (AgendaResponse, err
 	cached := uc.cached
 	uc.mu.RUnlock()
 	if cached == nil {
-		if _, err := uc.repo.Load(ctx); err != nil {
+		if _, _, err := uc.sources(ctx); err != nil {
 			return AgendaResponse{}, err
 		}
 		_ = uc.Refresh(ctx) // errors are reported through AgendaResponse.Error
@@ -185,7 +241,7 @@ func (uc *calendar) Range(ctx context.Context, from, to time.Time) (AgendaRespon
 	if err := domain.CheckRange(from, to); err != nil {
 		return AgendaResponse{}, err
 	}
-	s, err := uc.repo.Load(ctx)
+	caldav, subs, err := uc.sources(ctx)
 	if err != nil {
 		return AgendaResponse{}, err
 	}
@@ -194,7 +250,7 @@ func (uc *calendar) Range(ctx context.Context, from, to time.Time) (AgendaRespon
 	uc.mu.RUnlock()
 	src := cached
 	if cached == nil || from.Before(wFrom) || to.After(wTo) {
-		live, err := uc.fetchRange(ctx, s, from, to)
+		live, err := uc.fetchRange(ctx, caldav, subs, from, to)
 		if err != nil {
 			return AgendaResponse{}, err
 		}
@@ -236,14 +292,17 @@ func (uc *calendar) CreateEvent(ctx context.Context, in NewEventInput) (EventVie
 
 // Refresh implements Calendar; it is run by the background job.
 func (uc *calendar) Refresh(ctx context.Context) error {
-	s, err := uc.repo.Load(ctx)
+	caldav, subs, err := uc.sources(ctx)
 	if errors.Is(err, domain.ErrNotConfigured) {
+		uc.mu.Lock()
+		uc.cached = nil // the last source was removed
+		uc.mu.Unlock()
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("load settings: %w", err)
+		return err
 	}
-	agenda, err := uc.fetch(ctx, s)
+	agenda, err := uc.fetch(ctx, caldav, subs)
 	if err != nil {
 		uc.mu.Lock()
 		res := AgendaResponse{}
@@ -259,10 +318,10 @@ func (uc *calendar) Refresh(ctx context.Context) error {
 	return nil
 }
 
-func (uc *calendar) fetch(ctx context.Context, s domain.Settings) (AgendaResponse, error) {
+func (uc *calendar) fetch(ctx context.Context, caldav *domain.Settings, subs []domain.Subscription) (AgendaResponse, error) {
 	now := uc.clock.Now()
 	from := now.Add(-24 * time.Hour) // include today's all-day events in every time zone
-	res, err := uc.fetchRange(ctx, s, from, now.Add(domain.Horizon))
+	res, err := uc.fetchRange(ctx, caldav, subs, from, now.Add(domain.Horizon))
 	if err == nil {
 		uc.mu.Lock()
 		uc.windowFrom, uc.windowTo = from, now.Add(domain.Horizon)
@@ -271,19 +330,36 @@ func (uc *calendar) fetch(ctx context.Context, s domain.Settings) (AgendaRespons
 	return res, err
 }
 
-func (uc *calendar) fetchRange(ctx context.Context, s domain.Settings, from, to time.Time) (AgendaResponse, error) {
+// fetchRange merges the events of every CalDAV calendar and subscription;
+// it fails only when every source failed.
+func (uc *calendar) fetchRange(ctx context.Context, caldav *domain.Settings, subs []domain.Subscription, from, to time.Time) (AgendaResponse, error) {
 	now := uc.clock.Now()
 	var all []domain.Event
 	var failed []string
-	for _, u := range s.CalendarURLs {
-		events, err := uc.source.Events(ctx, s, u, from, to)
+	total := len(subs)
+	if caldav != nil {
+		total += len(caldav.CalendarURLs)
+		for _, u := range caldav.CalendarURLs {
+			events, err := uc.source.Events(ctx, *caldav, u, from, to)
+			if err != nil {
+				failed = append(failed, fmt.Sprintf("%s (%v)", domain.CalendarName(u), err))
+				continue
+			}
+			all = append(all, events...)
+		}
+	}
+	for _, sub := range subs {
+		events, err := uc.feeds.Events(ctx, sub, from, to)
 		if err != nil {
-			failed = append(failed, fmt.Sprintf("%s (%v)", domain.CalendarName(u), err))
+			failed = append(failed, fmt.Sprintf("%s (%v)", sub.Name, err))
 			continue
 		}
-		all = append(all, events...)
+		for _, e := range events {
+			e.Calendar, e.Color = sub.Name, sub.Color
+			all = append(all, e)
+		}
 	}
-	if len(failed) == len(s.CalendarURLs) {
+	if total > 0 && len(failed) == total {
 		return AgendaResponse{}, &fetchError{failures: failed}
 	}
 	domain.SortEvents(all)
@@ -292,7 +368,8 @@ func (uc *calendar) fetchRange(ctx context.Context, s domain.Settings, from, to 
 		res.Error = "Some calendars could not be loaded: " + strings.Join(failed, "; ")
 	}
 	for _, e := range all {
-		res.Events = append(res.Events, EventView{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: e.Calendar, Start: e.Start, End: e.End, AllDay: e.AllDay})
+		res.Events = append(res.Events, EventView{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: e.Calendar,
+			Color: e.Color, Start: e.Start, End: e.End, AllDay: e.AllDay})
 	}
 	return res, nil
 }

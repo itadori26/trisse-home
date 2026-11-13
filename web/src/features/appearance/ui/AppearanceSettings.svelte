@@ -33,6 +33,15 @@
 </script>
 
 <form onsubmit={submit}>
+  <label class="check"
+    ><input type="checkbox" bind:checked={form.greeting} /> {t('appearance.greeting')}</label
+  >
+  {#if form.greeting}
+    <label class="field">
+      <span>{t('appearance.greeting_name')}</span>
+      <input class="input" bind:value={form.greetingName} maxlength="40" autocomplete="given-name" />
+    </label>
+  {/if}
   <label class="field">
     <span>{t('appearance.language')}</span>
     <select class="input" bind:value={form.language}>

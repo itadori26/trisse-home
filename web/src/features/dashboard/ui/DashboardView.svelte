@@ -20,6 +20,8 @@
   import { deriveMobile, type MobileItem, PHONE_QUERY, resolveMobile } from '../domain/mobile';
   import NewTabDialog from './NewTabDialog.svelte';
   import TabBar from './TabBar.svelte';
+  import { portal } from '../../../shared/ui/portal';
+  import { showTabBar } from '../domain/header';
   import { tick } from 'svelte';
   import { onWidgetFocusRequest, pickWidget } from '../../../shared/ui/widgetFocus';
   import TabRulesDialog from './TabRulesDialog.svelte';
@@ -43,8 +45,23 @@
     hasSettings: (kind: string) => boolean;
     /** Whether a widget kind is rendered without card chrome outside edit mode. */
     chromeless: (kind: string) => boolean;
+    /** Id of an element in the shell's top bar that hosts the tab bar (#167). */
+    tabBarTarget?: string;
+    /** Reports the loaded tabs and the active one, e.g. for the greeting line. */
+    onstate?: (tabs: Tab[], activeId: string) => void;
   }
-  let { uc, editing, widgetTypes, widgetIcon, content, settings, hasSettings, chromeless }: Props = $props();
+  let {
+    uc,
+    editing,
+    widgetTypes,
+    widgetIcon,
+    content,
+    settings,
+    hasSettings,
+    chromeless,
+    tabBarTarget = '',
+    onstate,
+  }: Props = $props();
 
   const ACTIVE_TAB_KEY = 'trisse-home.activeTab';
   // A tab picked by hand wins over rules until the browser is closed (#71).
@@ -66,6 +83,8 @@
   >(null);
 
   const active = $derived(tabs.find((t) => t.id === activeId) ?? tabs[0]);
+
+  $effect(() => onstate?.(tabs, active?.id ?? ''));
 
   // Phones get their own single-column layout per tab (#92).
   const phoneQuery = typeof matchMedia === 'function' ? matchMedia(PHONE_QUERY) : null;
@@ -368,19 +387,24 @@
 </script>
 
 <section class="dashboard" data-testid="dashboard">
-  <TabBar
-    {tabs}
-    activeId={active?.id ?? ''}
-    {editing}
-    onselect={select}
-    onadd={() => (dialog = { kind: 'new-tab' })}
-    onrename={(tab) => (dialog = { kind: 'rename-tab', tab })}
-    ondelete={deleteTab}
-    onmove={moveTab}
-    onbackground={(tab) => (dialog = { kind: 'background', tab })}
-    onrules={(tab) => (dialog = { kind: 'rules', tab })}
-    ontemplate={(tab) => (dialog = { kind: 'template', tab })}
-  />
+  {#if showTabBar(tabs.length, editing)}
+    <!-- Rendered into the shell's top bar when it offers a place (#167). -->
+    <div class="tab-host" use:portal={tabBarTarget}>
+      <TabBar
+        {tabs}
+        activeId={active?.id ?? ''}
+        {editing}
+        onselect={select}
+        onadd={() => (dialog = { kind: 'new-tab' })}
+        onrename={(tab) => (dialog = { kind: 'rename-tab', tab })}
+        ondelete={deleteTab}
+        onmove={moveTab}
+        onbackground={(tab) => (dialog = { kind: 'background', tab })}
+        onrules={(tab) => (dialog = { kind: 'rules', tab })}
+        ontemplate={(tab) => (dialog = { kind: 'template', tab })}
+      />
+    </div>
+  {/if}
 
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 

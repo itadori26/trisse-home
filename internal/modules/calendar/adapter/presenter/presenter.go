@@ -21,9 +21,11 @@ type EventDTO struct {
 	Summary  string `json:"summary"`
 	Location string `json:"location"`
 	Calendar string `json:"calendar"`
-	Start    string `json:"start"`
-	End      string `json:"end"`
-	AllDay   bool   `json:"allDay"`
+	// Color is the subscription colour (#rrggbb), empty for CalDAV calendars.
+	Color  string `json:"color"`
+	Start  string `json:"start"`
+	End    string `json:"end"`
+	AllDay bool   `json:"allDay"`
 }
 
 // AgendaDTO is returned by GET /api/calendar/events.
@@ -53,11 +55,33 @@ func Agenda(r usecase.AgendaResponse) AgendaDTO {
 
 // Event maps one EventView; all-day events use dates, timed events RFC 3339.
 func Event(e usecase.EventView) EventDTO {
-	ev := EventDTO{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: e.Calendar, AllDay: e.AllDay}
+	ev := EventDTO{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: e.Calendar, Color: e.Color, AllDay: e.AllDay}
 	if e.AllDay {
 		ev.Start, ev.End = e.Start.Format(time.DateOnly), e.End.Format(time.DateOnly)
 	} else {
 		ev.Start, ev.End = e.Start.Format(time.RFC3339), e.End.Format(time.RFC3339)
 	}
 	return ev
+}
+
+// SubscriptionDTO is an ICS subscription; the full URL is never returned
+// because it may contain a private token.
+type SubscriptionDTO struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	URLHint        string `json:"urlHint"`
+	Color          string `json:"color"`
+	RefreshMinutes int    `json:"refreshMinutes"`
+}
+
+// Subscription maps a SubscriptionView.
+func Subscription(v usecase.SubscriptionView) SubscriptionDTO { return SubscriptionDTO(v) }
+
+// Subscriptions maps subscription views.
+func Subscriptions(list []usecase.SubscriptionView) []SubscriptionDTO {
+	out := make([]SubscriptionDTO, 0, len(list))
+	for _, v := range list {
+		out = append(out, Subscription(v))
+	}
+	return out
 }
