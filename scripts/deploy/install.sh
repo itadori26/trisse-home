@@ -42,7 +42,9 @@ id "$user" >/dev/null 2>&1 || useradd --system --create-home --shell /bin/bash -
 home=$(getent passwd "$user" | cut -d: -f6)
 
 install -o root -g root -m 755 "$here/trisse-home-deploy" "$target"
-install -d -o root -g root -m 700 /var/backups/trisse-home /var/lib/trisse-home-deploy
+install -d -o root -g root -m 700 /var/backups/trisse-home
+# 755: git runs as the owner of the stack checkout and has to reach its build directories in here
+install -d -o root -g root -m 755 /var/lib/trisse-home-deploy
 
 sudoers=$(mktemp)
 cat >"$sudoers" <<SUDOERS
