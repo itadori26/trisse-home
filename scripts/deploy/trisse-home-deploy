@@ -89,6 +89,7 @@ prune_backups() {
 cleanup() {
 	[[ -n $BUILD_DIR ]] || return 0
 	gitc worktree remove --force "$BUILD_DIR" 2>/dev/null || rm -rf -- "$BUILD_DIR"
+	gitc worktree prune 2>/dev/null || true
 }
 
 rollback() { # $1 = previous commit, $2 = backup directory
@@ -110,6 +111,11 @@ main() {
 	want=$(parse_request "${SSH_ORIGINAL_COMMAND:-}") || die "unsupported request (allowed: nothing, or 'deploy <40 hex characters>')" 2
 
 	mkdir -p "$STATE_DIR" "$BACKUP_DIR"
+	# Git runs as the owner of the checkout: it must reach the build directory, and
+	# the build directory must live in a directory it owns (git removes the
+	# worktree directory itself).
+	chmod 755 "$STATE_DIR"
+	install -d -o "$(owner)" -m 755 "$STATE_DIR/builds"
 	exec 9>"$LOCK_FILE"
 	flock -n 9 || die "another deploy is running" 3
 
@@ -131,8 +137,7 @@ main() {
 	log "deploying $short (running: ${prev:0:7})"
 
 	# Build while the old version keeps running; a failure here changes nothing.
-	BUILD_DIR=$(mktemp -d "$STATE_DIR/build.XXXXXX")
-	chown "$(owner)" "$BUILD_DIR" # git runs as the owner of the checkout
+	BUILD_DIR=$(runuser -u "$(owner)" -- mktemp -d "$STATE_DIR/builds/build.XXXXXX")
 	trap cleanup EXIT
 	gitc worktree add --quiet --detach "$BUILD_DIR" "$target"
 	docker build --quiet --build-arg "VERSION=$short" -t "$IMAGE:candidate" "$BUILD_DIR" >/dev/null ||

@@ -130,7 +130,10 @@ check "the new version is running" eq "$T/running" candidate
 check "the state file records the commit" eq "$T/state/current" "$MAIN"
 check "the backup holds the data from before the update" bash -c "cat \"$T\"/backups/*-bbbbbbb/db.sqlite | grep -qx old-data"
 check "only the newest backups are kept" bash -c "[[ \$(ls \"$T/backups\" | wc -l) -eq 2 ]]"
-check "the temporary build worktree is removed" bash -c "! ls \"$T/state\" | grep -q '^build'"
+check "the temporary build worktree is removed" bash -c "[[ -z \$(ls \"$T/state/builds\") ]]"
+check "the state directory is reachable for the checkout owner (git runs as that user)" bash -c "[[ \$(stat -c %a \"$T/state\") == 755 ]]"
+check "the build directory was created by the checkout owner, inside a directory it owns" grep -q "worktree add --quiet --detach $T/state/builds/build\." "$T/calls.log"
+check "stale worktree entries are pruned" called "git worktree prune"
 
 echo "== already deployed"
 setup already
