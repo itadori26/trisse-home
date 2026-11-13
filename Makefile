@@ -88,6 +88,10 @@ check-generated: generate ## Fail if generated files are out of date
 	@test -z "$$(git status --porcelain -- $(WEB)/src/shared/api-client/generated)" || \
 		{ git status --short -- $(WEB)/src/shared/api-client/generated; echo "generated files are out of date: run make generate"; exit 1; }
 
+.PHONY: test-deploy
+test-deploy: ## Test the server deploy script with stubbed git and docker (#211)
+	bash scripts/deploy/deploy_test.sh
+
 .PHONY: openapi
 openapi: ## Build the merged OpenAPI document dist/openapi.yaml from api/openapi.base.yaml and api/modules/*.yaml
 	go run ./scripts/openapi -o dist/openapi.yaml
@@ -97,7 +101,7 @@ check-openapi: ## Validate the OpenAPI fragments (no duplicates, declared tags, 
 	go run ./scripts/openapi -check
 
 .PHONY: ci
-ci: lint test check-generated check-openapi build ## Everything CI runs
+ci: lint test test-deploy check-generated check-openapi build ## Everything CI runs
 
 .PHONY: docker-build
 docker-build: ## Build the container image

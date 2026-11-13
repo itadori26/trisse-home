@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# Deploys trisse-home on the server (#211). It is the only thing the deploy key
+# may run: authorized_keys forces `sudo /usr/local/bin/trisse-home-deploy`, and
+# the request the client sends is read from SSH_ORIGINAL_COMMAND:
+#
+#   (empty)              deploy the head of origin/main
+#   deploy <40 hex>      deploy exactly that commit (must be reachable from origin/main)
+#
+# Flow: fetch, build the image from a detached worktree while the old version
+# keeps running, stop the service, back up the data volume, switch the stack
+# checkout, start the new image and wait until it is healthy. If anything after
+# the stop fails, the backup and the previous image come back (the database
+# may already have been migrated, so the data has to go back too).
+#
+# Installed root-owned by scripts/deploy/install.sh; editing the repository
+# does not change what runs here until someone re-installs it.
+set -euo pipefail
+umask 077
+
+STACK_DIR=${STACK_DIR:-/opt/stacks/trisse-home}
+STATE_DIR=${STATE_DIR:-/var/lib/trisse-home-deploy}
+BACKUP_DIR=${BACKUP_DIR:-/var/backups/trisse-home}
+LOCK_FILE=${LOCK_FILE:-/var/lock/trisse-home-deploy.lock}
+VOLUME=${VOLUME:-trisse-home-data}
+SERVICE=${SERVICE:-trisse-home}
+KEEP_BACKUPS=${KEEP_BACKUPS:-7}
+HEALTH_TIMEOUT=${HEALTH_TIMEOUT:-120}
+HEALTH_INTERVAL=${HEALTH_INTERVAL:-3}
+IMAGE=${IMAGE:-trisse-home}
+COMPOSE_FILES=(-f compose.yaml -f compose.build.yaml)
+BUILD_DIR=""
+
+log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+die() { log "ERROR: $*"; exit "${2:-1}"; }
+
+owner() { stat -c %U "$STACK_DIR"; }
+# Git runs as the owner of the checkout so the files it writes stay theirs.
+gitc() { runuser -u "$(owner)" -- git -C "$STACK_DIR" "$@"; }
+compose() { (cd "$STACK_DIR" && docker compose "${COMPOSE_FILES[@]}" "$@"); }
+
+# parse_request prints the commit to deploy, or nothing for "head of main".
+parse_request() {
+	local req=${1:-}
+	if [[ -z $req ]]; then return 0; fi
+	if [[ $req =~ ^deploy\ ([0-9a-f]{40})$ ]]; then
+		printf '%s\n' "${BASH_REMATCH[1]}"
+		return 0
+	fi
+	return 1
+}
+
+wait_healthy() {
+	local deadline=$((SECONDS + HEALTH_TIMEOUT)) state
+	while ((SECONDS < deadline)); do
+		state=$(docker inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$SERVICE" 2>/dev/null || true)
+		case $state in
+		"running healthy") return 0 ;;
+		"exited "* | "dead "*) return 1 ;;
+		esac
+		sleep "$HEALTH_INTERVAL"
+	done
+	return 1
+}
+
+volume_dir() { docker volume inspect "$VOLUME" --format '{{.Mountpoint}}'; }
+
+backup_data() { # $1 = backup directory
+	local src
+	src=$(volume_dir)
+	mkdir -p "$1"
+	cp -a "$src/." "$1/"
+}
+
+restore_data() { # $1 = backup directory
+	local dst
+	dst=$(volume_dir)
+	find "$dst" -mindepth 1 -delete
+	cp -a "$1/." "$dst/"
+}
+
+prune_backups() {
+	local old
+	mapfile -t old < <(find "$BACKUP_DIR" -mindepth 1 -maxdepth 1 -type d | sort -r | tail -n +"$((KEEP_BACKUPS + 1))")
+	for dir in "${old[@]}"; do
+		[[ -n $dir ]] && rm -rf -- "$dir"
+	done
+}
+
+cleanup() {
+	[[ -n $BUILD_DIR ]] || return 0
+	gitc worktree remove --force "$BUILD_DIR" 2>/dev/null || rm -rf -- "$BUILD_DIR"
+}
+
+rollback() { # $1 = previous commit, $2 = backup directory
+	log "rolling back to $1"
+	compose stop "$SERVICE" || log "WARN: stopping $SERVICE failed"
+	restore_data "$2" || die "restoring the backup $2 failed, the data is still in that directory" 9
+	docker tag "$IMAGE:previous" "$IMAGE:local" || log "WARN: no previous image to restore"
+	gitc checkout --quiet --detach "$1" || log "WARN: could not switch the checkout back to $1"
+	compose up -d --no-build "$SERVICE" || log "WARN: starting the previous version failed"
+	if wait_healthy; then
+		log "rollback finished, $1 is running again"
+	else
+		log "ERROR: the previous version did not become healthy either, look at 'docker logs $SERVICE'"
+	fi
+}
+
+main() {
+	local want target prev short backup stamp
+	want=$(parse_request "${SSH_ORIGINAL_COMMAND:-}") || die "unsupported request (allowed: nothing, or 'deploy <40 hex characters>')" 2
+
+	mkdir -p "$STATE_DIR" "$BACKUP_DIR"
+	exec 9>"$LOCK_FILE"
+	flock -n 9 || die "another deploy is running" 3
+
+	if [[ -n $(gitc status --porcelain --untracked-files=no) ]]; then
+		die "the stack checkout $STACK_DIR has local changes, refusing to deploy" 4
+	fi
+	gitc fetch --quiet --prune origin main
+	target=${want:-$(gitc rev-parse origin/main)}
+	gitc cat-file -e "$target^{commit}" 2>/dev/null || die "unknown commit $target" 5
+	gitc merge-base --is-ancestor "$target" origin/main || die "$target is not part of origin/main" 5
+	prev=$(gitc rev-parse HEAD)
+	if [[ $prev == "$target" ]]; then
+		log "$target is already deployed"
+		return 0
+	fi
+	short=${target:0:7}
+	stamp=$(date -u +%Y%m%dT%H%M%SZ)
+	backup="$BACKUP_DIR/$stamp-$short"
+	log "deploying $short (running: ${prev:0:7})"
+
+	# Build while the old version keeps running; a failure here changes nothing.
+	BUILD_DIR=$(mktemp -d "$STATE_DIR/build.XXXXXX")
+	chown "$(owner)" "$BUILD_DIR" # git runs as the owner of the checkout
+	trap cleanup EXIT
+	gitc worktree add --quiet --detach "$BUILD_DIR" "$target"
+	docker build --quiet --build-arg "VERSION=$short" -t "$IMAGE:candidate" "$BUILD_DIR" >/dev/null ||
+		die "the image build failed, nothing was changed" 6
+
+	log "stopping $SERVICE and backing up the data to $backup"
+	compose stop "$SERVICE"
+	if ! backup_data "$backup"; then
+		compose up -d --no-build "$SERVICE" || true
+		die "the backup failed, the old version was started again" 7
+	fi
+	docker tag "$IMAGE:local" "$IMAGE:previous" 2>/dev/null || log "no previous image to keep (first deploy?)"
+
+	if switch_to "$target" && wait_healthy; then
+		echo "$target" >"$STATE_DIR/current"
+		docker rmi "$IMAGE:candidate" >/dev/null 2>&1 || true
+		prune_backups
+		docker image prune --force >/dev/null 2>&1 || true
+		log "deployed $short, it is healthy"
+		return 0
+	fi
+	rollback "$prev" "$backup"
+	die "the new version ($short) did not start, rolled back to ${prev:0:7}" 8
+}
+
+switch_to() { # $1 = commit
+	gitc checkout --quiet --detach "$1" &&
+		docker tag "$IMAGE:candidate" "$IMAGE:local" &&
+		compose up -d --no-build "$SERVICE"
+}
+
+# Run main only when executed, not when the test sources the file.
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+	main "$@"
+fi

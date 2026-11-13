@@ -1,0 +1,70 @@
+name: Deploy
+
+# Updates the server after a push to main whose CI run succeeded (#211). The
+# server is only reachable through its WireGuard VPN, so the job opens a tunnel
+# first and then asks over SSH. The SSH key can run only
+# scripts/deploy/trisse-home-deploy (forced command), which builds exactly this
+# commit, backs up the data first and rolls back if the new version does not
+# become healthy. See docs/deploy.md.
+#
+# Inactive until the repository variable DEPLOY_ENABLED is "true". Never runs
+# for pull requests.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - name: Open the VPN tunnel to the server
+        env:
+          WG_CONFIG: ${{ secrets.DEPLOY_WG_CONFIG }}
+          HOST: ${{ vars.DEPLOY_HOST }}
+        run: |
+          set -euo pipefail
+          [[ -n $WG_CONFIG ]] || { echo "::error::DEPLOY_WG_CONFIG is not set (docs/deploy.md)"; exit 1; }
+          [[ $HOST =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || { echo "::error::DEPLOY_HOST must be the server's IPv4 address inside the tunnel"; exit 1; }
+          sudo apt-get install -y -qq wireguard-tools >/dev/null
+          # Route only the server through the tunnel: the runner has to keep talking to GitHub.
+          printf '%s\n' "$WG_CONFIG" | sed -E '/^DNS *=/d; s#^AllowedIPs *=.*#AllowedIPs = '"$HOST"'/32#' | sudo tee /etc/wireguard/deploy.conf >/dev/null
+          sudo chmod 600 /etc/wireguard/deploy.conf
+          sudo wg-quick up deploy
+      - name: Ask the server to deploy ${{ github.event.workflow_run.head_sha }}
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ vars.DEPLOY_HOST }}
+          PORT: ${{ vars.DEPLOY_PORT || '22' }}
+          SSH_USER: ${{ vars.DEPLOY_USER || 'trisse-deploy' }}
+        run: |
+          set -euo pipefail
+          [[ -n $HOST && -n $SSH_KEY && -n $KNOWN_HOSTS ]] || { echo "::error::DEPLOY_HOST, DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS must be set (docs/deploy.md)"; exit 1; }
+          [[ $SHA =~ ^[0-9a-f]{40}$ ]]
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" >~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" >~/.ssh/known_hosts
+          # The server ignores everything but this request (forced command).
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=20 -o ServerAliveInterval=15 -p "$PORT" "$SSH_USER@$HOST" "deploy $SHA"
+          rm -f ~/.ssh/deploy_key
+      - name: Close the tunnel
+        if: always()
+        run: sudo wg-quick down deploy || true
