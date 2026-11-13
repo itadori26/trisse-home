@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { type DnsProvider, dnsProviders, needsUsername, providerName } from '../domain/adguard';
@@ -60,6 +61,7 @@
       required
     /></label
   >
+  <PlainHttpWarning {url} />
   {#if needsUsername(provider)}
     <label class="field"
       ><span>{t('adguard.username')}</span><input

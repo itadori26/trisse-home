@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { errorMessage } from '../../../shared/api-client/http';
   import { intlLocale, t } from '../../../shared/i18n';
   import { formatBytes } from '../../../shared/ui/format';
@@ -95,6 +96,7 @@
       required
     />
   </label>
+  <PlainHttpWarning {url} />
   <label class="field">
     <span>{t('backup.username')}</span>
     <input class="input" bind:value={username} autocomplete="off" required />

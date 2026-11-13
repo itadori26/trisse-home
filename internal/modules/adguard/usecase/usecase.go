@@ -109,6 +109,10 @@ func (uc *dnsFilter) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 	password := in.Password
 	if password == "" {
 		if old, err := uc.repo.Load(ctx, p); err == nil {
+			// The stored password only goes to the same server and user (#191).
+			if kernel.TargetChanged([]string{old.URL, old.Username}, []string{in.URL, in.Username}) {
+				return SettingsView{}, kernel.SecretRequired("password")
+			}
 			password = old.Password
 		}
 	}
@@ -118,7 +122,7 @@ func (uc *dnsFilter) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 	}
 	stats, err := uc.providers[p].Stats(ctx, s)
 	if err != nil {
-		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not connect to the DNS filter: {detail}", "detail", err.Error())
+		return SettingsView{}, kernel.TargetFailure(kernel.ErrInvalid, err)
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)

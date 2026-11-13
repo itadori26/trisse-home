@@ -1274,6 +1274,8 @@ export const en = {
   'focus.notify': 'Browser notification at the end of a phase',
   'focus.notify_denied': 'The browser blocks notifications for this page. Allow them in the site settings.',
   'focus.notify_unsupported': 'This browser does not support notifications.',
+  'common.plain_http_warning':
+    'This address uses http://: the password or token travels unencrypted through your network. Prefer https:// where the device supports it.',
 } as const;
 
 /** Every message key. */

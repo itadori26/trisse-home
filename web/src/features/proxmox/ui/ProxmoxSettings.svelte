@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import CopySnippet from '../../../shared/ui/CopySnippet.svelte';
@@ -68,6 +69,7 @@ pveum user token add monitor@pve trisse-home --privsep 0`;
       required
     /></label
   >
+  <PlainHttpWarning {url} />
   <label class="field"
     ><span>{t('proxmox.token_id')}</span><input
       class="input"

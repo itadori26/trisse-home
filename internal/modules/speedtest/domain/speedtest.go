@@ -5,7 +5,6 @@ package domain
 
 import (
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -28,10 +27,9 @@ type Settings struct {
 
 // NewSettings validates and normalises the settings.
 func NewSettings(rawURL, token string, minDown, minUp float64) (Settings, error) {
-	rawURL = strings.TrimRight(strings.TrimSpace(rawURL), "/")
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return Settings{}, kernel.NewValidationError("url", "The URL must look like http://192.168.1.2:8765.")
+	u, err := kernel.ParseTarget("url", rawURL, kernel.WithTargetPath())
+	if err != nil {
+		return Settings{}, err
 	}
 	if strings.TrimSpace(token) == "" {
 		return Settings{}, kernel.NewValidationError("token", "An API token with the results:read scope is required.")
@@ -39,7 +37,7 @@ func NewSettings(rawURL, token string, minDown, minUp float64) (Settings, error)
 	if minDown < 0 || minUp < 0 || minDown > maxThresholdMbps || minUp > maxThresholdMbps {
 		return Settings{}, kernel.NewValidationError("minDownMbps", "Thresholds must be between 0 and 100000 Mbit/s.")
 	}
-	return Settings{URL: rawURL, Token: strings.TrimSpace(token), MinDownMbps: minDown, MinUpMbps: minUp}, nil
+	return Settings{URL: u.String(), Token: strings.TrimSpace(token), MinDownMbps: minDown, MinUpMbps: minUp}, nil
 }
 
 // HasThresholds reports whether notifications are wanted.

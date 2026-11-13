@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { errorMessage } from '../../../shared/api-client/http';
   import { t } from '../../../shared/i18n';
   import type { SpeedtestUseCases } from '../usecase/speedtestUseCases';
@@ -55,6 +56,7 @@
     <span>{t('speedtest.url')}</span>
     <input class="input" type="url" bind:value={url} placeholder="http://192.168.1.2:8765" required />
   </label>
+  <PlainHttpWarning {url} />
   <label class="field">
     <span>{t('speedtest.token', { value: hasToken ? t('common.keep_stored') : '' })}</span>
     <input
