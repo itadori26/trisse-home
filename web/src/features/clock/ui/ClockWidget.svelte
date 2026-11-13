@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { formatDate, formatTime, parseClockConfig } from '../domain/clock';
+  import { t } from '../../../shared/i18n';
+  import { formatDate, formatTime, isoWeek, parseClockConfig } from '../domain/clock';
 
   /** Props of the clock widget. */
   interface Props {
@@ -20,6 +21,7 @@
 <div class="clock">
   <time class="time" datetime={now.toISOString()}>{formatTime(now, cfg)}</time>
   {#if cfg.showDate}<div class="date">{formatDate(now, cfg)}</div>{/if}
+  {#if cfg.showWeek}<div class="date">{t('clock.week', { n: isoWeek(now, cfg) })}</div>{/if}
   {#if cfg.label}<div class="label muted">{cfg.label}</div>{/if}
 </div>
 
