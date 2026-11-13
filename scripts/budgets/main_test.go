@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"crypto/rand"
 	"encoding/hex"
 	"os"
@@ -33,6 +34,43 @@ func TestMeasureDist(t *testing.T) {
 	}
 	if m[InitialJS] <= 0 || m[InitialCSS] <= 0 || m[LazyChunk] <= 0 || m[LazyChunk] >= m[InitialJS] {
 		t.Fatalf("%v", m)
+	}
+}
+
+// The frontend build stores compressible files only as name.gz; the measurement
+// must be the same as for the plain files.
+func TestMeasureDistReadsGzipFiles(t *testing.T) {
+	files := map[string]string{
+		"index.html":         `<script type="module" src="/assets/index-a.js"></script><link rel="stylesheet" href="/assets/index-b.css">`,
+		"assets/index-a.js":  strings.Repeat("a1b2c3d4e5", 800),
+		"assets/index-b.css": strings.Repeat("x{y:z}", 300),
+		"assets/lazy-c.js":   strings.Repeat("q9w8e7", 500),
+	}
+	measure := func(packed bool) Measurements {
+		dir := t.TempDir()
+		_ = os.MkdirAll(filepath.Join(dir, "assets"), 0o750)
+		for name, content := range files {
+			data := []byte(content)
+			if packed {
+				var buf bytes.Buffer
+				w, _ := gzip.NewWriterLevel(&buf, gzip.BestSpeed) // other level than the measurement
+				_, _ = w.Write(data)
+				_ = w.Close()
+				data, name = buf.Bytes(), name+".gz"
+			}
+			if err := os.WriteFile(filepath.Join(dir, name), data, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		m := Measurements{}
+		if err := measureDist(dir, m); err != nil {
+			t.Fatal(err)
+		}
+		return m
+	}
+	plain, packed := measure(false), measure(true)
+	if plain[InitialJS] <= 0 || plain[InitialJS] != packed[InitialJS] || plain[InitialCSS] != packed[InitialCSS] || plain[LazyChunk] != packed[LazyChunk] {
+		t.Fatalf("plain %v, gzip %v", plain, packed)
 	}
 }
 
