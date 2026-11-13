@@ -8,11 +8,11 @@
     "--color-surface": "#073642",
     "--color-surface-2": "#0b3d4a",
     "--color-border": "#586e75",
-    "--color-text": "#93a1a1",
-    "--color-text-muted": "#839496",
-    "--color-accent": "#268bd2",
-    "--color-accent-contrast": "#fdf6e3",
-    "--color-danger": "#dc322f",
+    "--color-text": "#95a3a3",
+    "--color-text-muted": "#94a3a4",
+    "--color-accent": "#4da0da",
+    "--color-accent-contrast": "#000000",
+    "--color-danger": "#e87876",
     "--color-success": "#859900",
     "--color-warning": "#b58900"
   }

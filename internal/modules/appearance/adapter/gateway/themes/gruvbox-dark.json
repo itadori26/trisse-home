@@ -9,10 +9,10 @@
     "--color-surface-2": "#504945",
     "--color-border": "#665c54",
     "--color-text": "#ebdbb2",
-    "--color-text-muted": "#a89984",
+    "--color-text-muted": "#c2b8a9",
     "--color-accent": "#fabd2f",
     "--color-accent-contrast": "#282828",
-    "--color-danger": "#fb4934",
+    "--color-danger": "#fc7c6d",
     "--color-success": "#b8bb26",
     "--color-warning": "#fe8019"
   }

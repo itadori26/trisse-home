@@ -34,7 +34,7 @@ Free CSS, layout rules, fonts, `url(…)` and unknown fields are refused, for bu
 ## Contributing a theme
 
 1. Add `<id>.json` to the folder above.
-   - Check the contrast: text on `--color-bg` and `--color-surface`, and `--color-accent-contrast` on `--color-accent`, should reach WCAG AA (4.5:1).
+   - Contrast must reach WCAG AA (4.5:1). This covers text and muted text on `--color-bg`/`--color-surface`/`--color-surface-2`, accent and danger on `--color-surface`, and `--color-accent-contrast` on `--color-accent`. A test enforces it.
    - Credit the original palette and its license in `author`.
 2. Run `go test ./internal/modules/appearance/...`. The tests load every file and fail on an invalid one.
 3. Open a pull request with a screenshot of the dashboard in the new theme.

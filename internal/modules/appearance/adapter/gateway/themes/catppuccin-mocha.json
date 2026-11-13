@@ -9,7 +9,7 @@
     "--color-surface-2": "#45475a",
     "--color-border": "#585b70",
     "--color-text": "#cdd6f4",
-    "--color-text-muted": "#a6adc8",
+    "--color-text-muted": "#b1b7cf",
     "--color-accent": "#cba6f7",
     "--color-accent-contrast": "#1e1e2e",
     "--color-danger": "#f38ba8",
