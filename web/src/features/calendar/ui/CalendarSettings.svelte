@@ -3,6 +3,7 @@
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
+  import CalendarSubscriptions from './CalendarSubscriptions.svelte';
 
   /** Props of the CalDAV connection settings. */
   interface Props {
@@ -85,3 +86,5 @@
     >{busy ? t('common.testing') : t('common.test_save')}</button
   >
 </form>
+
+<CalendarSubscriptions {calendar} />

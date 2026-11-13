@@ -552,6 +552,50 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_668a30f80af88b85: 'das ist kein gültiger RSS-, Atom- oder JSON-Feed',
   // token, public id and csrf token are required
   srv_1b3daa6bc9a9f8db: 'Token, öffentliche ID und CSRF-Token sind erforderlich',
+  // Choose Jellyfin or Plex.
+  srv_52395ea57eb8771f: 'Wähle Jellyfin oder Plex.',
+  // Could not connect to the media server: {detail}
+  srv_65d6b40b9e5a9159: 'Verbindung zum Medienserver fehlgeschlagen: {detail}',
+  // The API key or token is required.
+  srv_2aa10686fa162dde: 'Der API-Schlüssel oder das Token ist erforderlich.',
+  // The URL must look like http://192.168.1.2:8096.
+  srv_ec3846ce5d9b8caf: 'Die URL muss wie http://192.168.1.2:8096 aussehen.',
+  // The media server is not configured yet.
+  srv_7b276d2193d07bc8: 'Der Medienserver ist noch nicht eingerichtet.',
+  // The media server is not reachable.
+  srv_4c92147e0244306f: 'Der Medienserver ist nicht erreichbar.',
+  // The poster does not exist.
+  srv_2b05bbdb56e575c6: 'Das Cover existiert nicht.',
+  // At most {max} calendar subscriptions are supported.
+  srv_f74740ac20c25101: 'Höchstens {max} Kalender-Abos werden unterstützt.',
+  // Could not load the ICS calendar: {detail}
+  srv_97f22fc39ea1794a: 'Der ICS-Kalender konnte nicht geladen werden: {detail}',
+  // The calendar subscription does not exist.
+  srv_210a34361dc2d298: 'Das Kalender-Abo existiert nicht.',
+  // The colour must look like #3b6ef5.
+  srv_5fd12f163f5132ff: 'Die Farbe muss wie #3b6ef5 aussehen.',
+  // The refresh interval must be between 15 minutes and 24 hours.
+  srv_99e5a87eee94b355: 'Das Aktualisierungsintervall muss zwischen 15 Minuten und 24 Stunden liegen.',
+  // A long-lived access token is required.
+  srv_084af9ca0c7d167d: 'Ein langlebiges Zugriffstoken ist erforderlich.',
+  // Actions are not enabled for this entity (SMARTHOME_ACTIONS_ENTITIES).
+  srv_0f4d7732f2cd4899: 'Aktionen sind für diese Entität nicht aktiviert (SMARTHOME_ACTIONS_ENTITIES).',
+  // At most {max} entities per widget.
+  srv_3a4c7bf887ab6487: 'Höchstens {max} Entitäten pro Widget.',
+  // Could not connect to Home Assistant: {detail}
+  srv_789dca50a23c7cb8: 'Verbindung zu Home Assistant fehlgeschlagen: {detail}',
+  // Home Assistant is not configured yet.
+  srv_bcbabc6a08a54107: 'Home Assistant ist noch nicht eingerichtet.',
+  // Home Assistant is not reachable.
+  srv_dc90aa2a1e0a5f62: 'Home Assistant ist nicht erreichbar.',
+  // Home Assistant rejected the action: {detail}
+  srv_af1423afec138ad6: 'Home Assistant hat die Aktion abgelehnt: {detail}',
+  // The URL must look like http://homeassistant.local:8123.
+  srv_d26f0cb52cfa0948: 'Die URL muss wie http://homeassistant.local:8123 aussehen.',
+  // The entity does not exist.
+  srv_2ef3700ca8a09eac: 'Die Entität existiert nicht.',
+  // This entity has no action; only switches and buttons can be used.
+  srv_a6715a41424b56f8: 'Diese Entität hat keine Aktion; nur Schalter und Taster lassen sich bedienen.',
   // A certificate fingerprint needs an https:// URL.
   srv_56aacb20f1f37331: 'Ein Zertifikats-Fingerabdruck braucht eine https://-URL.',
   // Actions are not enabled for this guest (PROXMOX_ACTIONS_GUESTS).

@@ -114,6 +114,15 @@ of loosening it, a **second** proxy allows nothing but stop/restart/kill and
 nothing else — not even reads — and trisse-home adds its own allow-list of
 container names on top. Logs are read through the read-only proxy.
 
+### Home Assistant
+
+A long-lived access token can do everything its user can, including unlocking
+doors. trisse-home therefore reads states only and calls exactly one service
+per entity type (toggle or press), and only for entities that
+`SMARTHOME_ACTIONS_ENTITIES` lists in the environment. A browser session cannot
+widen that list. Entity types without a safe action, such as locks, alarm
+panels and covers, are never switched. Use a dedicated Home Assistant user for
+the token so it can be revoked on its own.
 ### Proxmox VE
 
 The widget only needs to read, so the documented token has the role

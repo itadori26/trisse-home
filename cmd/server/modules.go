@@ -23,6 +23,7 @@ import (
 	"trisse-home/internal/modules/docker"
 	"trisse-home/internal/modules/focus"
 	"trisse-home/internal/modules/fritzbox"
+	"trisse-home/internal/modules/media"
 	"trisse-home/internal/modules/nextcloud"
 	"trisse-home/internal/modules/notes"
 	"trisse-home/internal/modules/notifications"
@@ -34,6 +35,7 @@ import (
 	"trisse-home/internal/modules/services"
 	servicesusecase "trisse-home/internal/modules/services/usecase"
 	"trisse-home/internal/modules/shopping"
+	"trisse-home/internal/modules/smarthome"
 	"trisse-home/internal/modules/speedtest"
 	"trisse-home/internal/modules/system"
 	"trisse-home/internal/modules/timeline"
@@ -166,8 +168,13 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			return proxmox.New(proxmox.Config{DB: db, Cipher: secrets, Client: out.integration, Pinned: out.pinned,
 				ActionGuests: cfg.ProxmoxActionsGuests, Clock: clk, Audit: authModule})
 		}},
+		{"smarthome", func() modules.Module {
+			return smarthome.New(smarthome.Config{DB: db, Cipher: secrets, Client: out.integration,
+				ActionEntities: cfg.SmartHomeActionsEntities, Clock: clk, Audit: authModule})
+		}},
 		{"countdown", func() modules.Module { return countdown.New(db, clk, ids) }},
 		{"focus", func() modules.Module { return focus.New(db, clk, ids) }},
+		{"media", func() modules.Module { return media.New(db, secrets, out.integration, clk) }},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {

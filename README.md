@@ -52,11 +52,13 @@ Not sure whether trisse-home is the right fit? See the
 | **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
 | **briefing**   | Daily briefing widget: weather warnings, failures since yesterday evening, offline services, due to-dos, appointments and waste collection at a glance (sections orderable, each optional); optional daily push at a set time ([ADR 0016](docs/adr/0016-cross-module-read-models.md)) |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
-| **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
+| **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported), and read-only ICS/webcal subscriptions (timetables, fixtures, holidays) with colour and refresh interval; quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view; opt-in image update hints (digest compared with the registry at most every 6 h, optional newer version tags, release notes link, notification) |
 | **adguard**    | DNS filter statistics of AdGuard Home or Pi-hole 6+ (queries, blocked share, top blocked domains, protection status); provider chosen per widget |
 | **proxmox**    | Proxmox VE node load (CPU, memory, root disk) and the status and uptime of VMs and LXC containers via a read-only API token; optional [start/shutdown](#proxmox-ve-optional) for allow-listed guests |
+| **smarthome**  | Home Assistant entities as tiles (state with unit, last change), picked per widget; optional [switches and buttons](#home-assistant-optional) for allow-listed entities |
+| **media**      | Jellyfin or Plex: what is playing right now (user, device, progress) and recently added movies, episodes and albums with posters (proxied by trisse-home, token stays on the server) |
 | **speedtest**  | Internet speed from an existing [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker): latest download/upload/ping, 24 h and 7 day sparklines, optional notification below a threshold (runs no tests itself) |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
 | **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
@@ -308,6 +310,22 @@ The read-only proxy stays unchanged. The additional `docker-actions-proxy` only 
 trisse-home only calls *restart* for containers on the allow-list. Logs are read through the read-only proxy and
 may contain secrets — only list containers whose logs you are fine seeing on the dashboard.
 
+## Home Assistant (optional)
+
+The smart home widget shows the entities you pick (switches, lights, sensors with unit, …) with their state and
+last change. Create a **long-lived access token** in Home Assistant (*profile → Security*), then enter the URL and
+the token under *Settings → Home Assistant*. The token is stored encrypted and never shown again. States are
+read on demand, at most every 10 seconds, and only while a widget is open. Nothing is polled in the background.
+
+**Switches and buttons (off by default).** A Home Assistant token can do everything its user can, so trisse-home
+adds its own allow-list. Only the entities listed in `.env` get a button, and each use needs a confirmation:
+
+```sh
+SMARTHOME_ACTIONS_ENTITIES=switch.coffee_machine,button.garage_door
+```
+
+Switches, lights, fans and `input_boolean` toggle; buttons, `input_button`, scripts and scenes are pressed. Every
+action is written to the security event log. MQTT is not supported yet; it can come later as a second provider.
 ## Proxmox VE (optional)
 
 The Proxmox widget shows each node's CPU, memory and root disk, plus every VM and LXC container with its status
@@ -434,6 +452,7 @@ service tiles are configured in the web interface.
 | `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
 | `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
 | `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
+| `SMARTHOME_ACTIONS_ENTITIES` | empty                     | Home Assistant entity IDs (e.g. `switch.coffee_machine`) that may be switched or pressed; empty = read-only. |
 | `PROXMOX_ACTIONS_GUESTS` | empty                         | Proxmox guest IDs (e.g. `100,105`) that may be started and shut down from the dashboard; empty = read-only. |
 | `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
@@ -479,7 +498,7 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars, AdGuard Home, Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
+RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 (only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
 ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can

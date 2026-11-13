@@ -4,6 +4,8 @@
   import { AboutSettings, ForecastSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
+  import { MediaSettings } from '../features/media';
+  import { SmartHomeSettings } from '../features/smarthome';
   import { ProxmoxSettings } from '../features/proxmox';
   import { SpeedtestSettings } from '../features/speedtest';
   import { ImageUpdateSettings } from '../features/docker';
@@ -56,6 +58,8 @@
     { id: 'folders', label: 'settings.section.bookmark_folders', module: 'bookmarks' },
     { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
     { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
+    { id: 'media', label: 'settings.section.media', module: 'media' },
+    { id: 'smarthome', label: 'settings.section.smarthome', module: 'smarthome' },
     { id: 'proxmox', label: 'settings.section.proxmox', module: 'proxmox' },
     { id: 'speedtest', label: 'settings.section.speedtest', module: 'speedtest' },
     { id: 'docker-updates', label: 'settings.section.docker_updates', module: 'docker' },
@@ -157,6 +161,10 @@
     <SpeedtestSettings speedtest={container.speedtest} />
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
+  {:else if current === 'media'}
+    <MediaSettings media={container.media} />
+  {:else if current === 'smarthome'}
+    <SmartHomeSettings smarthome={container.smarthome} />
   {:else if current === 'proxmox'}
     <ProxmoxSettings proxmox={container.proxmox} />
   {:else if current === 'notifications'}

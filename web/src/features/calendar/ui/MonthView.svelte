@@ -98,7 +98,7 @@
       >{selected.toLocaleDateString(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</strong
     >
     {#each list as e (e.uid + e.start.getTime())}
-      <div class="ev">
+      <div class="ev" class:colored={e.color !== ''} style:--event-color={e.color || null} title={e.calendar}>
         <span class="time">{e.allDay ? t('calendar.all_day_short') : time(e.start)}</span>
         {e.summary}
       </div>
@@ -109,6 +109,10 @@
 {/if}
 
 <style>
+  .ev.colored {
+    border-left: 3px solid var(--event-color);
+    padding-left: var(--space-1);
+  }
   .head {
     display: flex;
     align-items: center;

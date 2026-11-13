@@ -68,6 +68,8 @@ import { WeatherApi } from '../features/weather/adapter/api/weatherApi';
 import { WeatherUseCases } from '../features/weather/usecase/weatherUseCases';
 import type { InfoResponse } from '../shared/api-client/generated/modules';
 import { FetchHttpClient } from '../shared/api-client/http';
+import { MediaApi, MediaUseCases } from '../features/media';
+import { SmarthomeApi, SmarthomeUseCases } from '../features/smarthome';
 import { ProxmoxApi, ProxmoxUseCases } from '../features/proxmox';
 import { BriefingApi } from '../features/briefing/adapter/api/briefingApi';
 import { BriefingUseCases } from '../features/briefing/usecase/briefingUseCases';
@@ -109,6 +111,8 @@ export interface Container {
   shortcuts: ShortcutRegistry;
   /** Quick capture and palette commands (#105, #67). */
   quickActions: QuickActionsUseCases;
+  media: MediaUseCases;
+  smarthome: SmarthomeUseCases;
   proxmox: ProxmoxUseCases;
   briefing: BriefingUseCases;
   countdown: CountdownUseCases;
@@ -154,6 +158,8 @@ export function createContainer(onUnauthorized: () => void): Container {
     speedtest: new SpeedtestUseCases(new SpeedtestApi(http)),
     refresh: createRefreshScheduler(),
     shortcuts: new ShortcutRegistry(),
+    media: new MediaUseCases(new MediaApi(http)),
+    smarthome: new SmarthomeUseCases(new SmarthomeApi(http)),
     proxmox: new ProxmoxUseCases(new ProxmoxApi(http)),
     briefing: new BriefingUseCases(new BriefingApi(http)),
     countdown: new CountdownUseCases(new CountdownApi(http)),

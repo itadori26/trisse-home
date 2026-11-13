@@ -1,10 +1,22 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { AgendaDTO, EventDTO, SettingsDTO } from '../../../../shared/api-client/generated/calendar';
+import type {
+  AgendaDTO,
+  EventDTO,
+  SettingsDTO,
+  SubscriptionDTO,
+} from '../../../../shared/api-client/generated/calendar';
 import type {
   NewEventDTO,
   SettingsInputDTO,
+  SubscriptionInputDTO,
 } from '../../../../shared/api-client/generated/calendar-requests';
-import { type CalendarEvent, type CalendarSettings, parseLocalDate } from '../../domain/calendar';
+import {
+  type CalendarEvent,
+  type CalendarSettings,
+  type CalendarSubscription,
+  parseLocalDate,
+  type SubscriptionInput,
+} from '../../domain/calendar';
 import type { Agenda, CalendarGateway } from '../../usecase/calendarUseCases';
 
 const toEvent = (d: EventDTO): CalendarEvent => ({
@@ -12,6 +24,7 @@ const toEvent = (d: EventDTO): CalendarEvent => ({
   summary: d.summary,
   location: d.location,
   calendar: d.calendar,
+  color: d.color,
   allDay: d.allDay,
   // All-day dates are calendar dates, not instants: interpret them locally.
   start: d.allDay ? parseLocalDate(d.start) : new Date(d.start),
@@ -40,5 +53,25 @@ export class CalendarApi implements CalendarGateway {
   }
   async create(input: NewEventDTO): Promise<CalendarEvent> {
     return toEvent(await this.http.post<EventDTO>('/api/calendar/events', input));
+  }
+
+  async subscriptions(): Promise<CalendarSubscription[]> {
+    return (await this.http.get<SubscriptionDTO[]>('/api/calendar/subscriptions')).map((d) => ({ ...d }));
+  }
+  async addSubscription(input: SubscriptionInput): Promise<CalendarSubscription> {
+    const body: SubscriptionInputDTO = input;
+    return { ...(await this.http.post<SubscriptionDTO>('/api/calendar/subscriptions', body)) };
+  }
+  async updateSubscription(id: string, input: SubscriptionInput): Promise<CalendarSubscription> {
+    const body: SubscriptionInputDTO = input;
+    return {
+      ...(await this.http.put<SubscriptionDTO>(
+        `/api/calendar/subscriptions/${encodeURIComponent(id)}`,
+        body,
+      )),
+    };
+  }
+  deleteSubscription(id: string): Promise<void> {
+    return this.http.delete(`/api/calendar/subscriptions/${encodeURIComponent(id)}`);
   }
 }
