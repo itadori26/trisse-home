@@ -1,0 +1,16 @@
+// Raspberry Pi image (ADR 0015): install updates automatically. Extends the
+// Debian security origins of 50unattended-upgrades.
+Unattended-Upgrade::Origins-Pattern {
+	// Kernel, firmware and Raspberry Pi packages.
+	"origin=Raspberry Pi Foundation,codename=${distro_codename}";
+	// trisse-home releases from its APT repository (sources.list.d/trisse-home.sources).
+	"origin=trisse-home,codename=stable";
+};
+// Reboot only when an update needs it (e.g. a new kernel), at night.
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+// Keep locally changed configuration files without asking.
+Dpkg::Options {
+	"--force-confdef";
+	"--force-confold";
+};

@@ -161,17 +161,55 @@ jobs:
           ls -l dist
       - name: Install, upgrade, remove and purge in Debian Trixie
         run: docker run --rm -v "$PWD:/src:ro" -w /src debian:trixie sh packaging/test/package-test.sh dist/trisse-home_*_amd64.deb
+      - name: APT repository round trip (throwaway signing key)
+        run: |
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -m 700 "$GNUPGHOME"
+          gpg --batch --quiet --passphrase '' --quick-gen-key 'CI <ci@example.invalid>' ed25519 sign 1d
+          fpr=$(gpg --list-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')
+          APT_SIGNING_KEY_ID="$fpr" sh scripts/apt-repo.sh "$RUNNER_TEMP/apt" dist/*.deb
+          docker run --rm -v "$RUNNER_TEMP/apt:/repo:ro" debian:trixie sh -euc '
+            echo "deb [signed-by=/repo/trisse-home-archive-keyring.asc] file:///repo stable main" >/etc/apt/sources.list.d/trisse-home.list
+            apt-get update -qq
+            apt-get install -y -qq trisse-home >/dev/null
+            trisse-home version'
       - name: Start the service under systemd
         run: |
           sudo apt-get install -y ./dist/trisse-home_*_amd64.deb
           for i in $(seq 30); do curl -fsS http://127.0.0.1:8090/healthz >/dev/null && break; sleep 1; done
           curl -fsS http://127.0.0.1:8090/healthz
+          # Type=notify: "active" means the binary sent READY=1.
           systemctl is-active trisse-home
+          test "$(systemctl show -p Type --value trisse-home)" = notify
+          sleep 2
+          test "$(systemctl show -p WatchdogTimestampMonotonic --value trisse-home)" -gt 0
           sudo journalctl -u trisse-home --no-pager | grep -q setup_token
           test "$(sudo stat -c '%U:%G %a' /etc/trisse-home/secret.env)" = "root:trisse-home 640"
+      - name: Setup token on a headless device, then the setup itself
+        run: |
+          token=$(sudo sed -n 's/^SETUP_TOKEN=//p' /etc/trisse-home/secret.env)
+          sudo trisse-home-setup-token | tee /dev/stderr | grep -q "Token  $token"
+          sudo journalctl -u trisse-home --no-pager | grep -q "setup_token=$token"
+          # The timer's oneshot writes the console snippet inside its own sandbox.
+          sudo systemctl start trisse-home-setup-info.service
+          grep -q "$token" /etc/issue.d/trisse-home.issue
+          sudo mkdir -p /tmp/boot && sudo env TRISSE_HOME_BOOT_DIR=/tmp/boot /usr/lib/trisse-home/trisse-home-setup-info
+          grep -q "$token" /tmp/boot/trisse-home-setup.txt
+          test "$(trisse-home setup-status)" = pending
+          curl -fsS -X POST -H 'Content-Type: application/json' \
+            -d "{\"setupToken\":\"$token\",\"password\":\"correct horse battery staple\"}" \
+            http://127.0.0.1:8090/api/auth/setup >/dev/null
+          test "$(trisse-home setup-status)" = done
+          sudo systemctl start trisse-home-setup-info.service
+          sudo env TRISSE_HOME_BOOT_DIR=/tmp/boot /usr/lib/trisse-home/trisse-home-setup-info
+          test ! -e /etc/issue.d/trisse-home.issue
+          test ! -e /tmp/boot/trisse-home-setup.txt
+          ! systemctl is-enabled --quiet trisse-home-setup-info.timer
+          sudo trisse-home-setup-token | grep -q "already set up"
       - name: Check the unit and its sandbox (exposure must stay at or below 2.0)
         run: |
-          systemd-analyze verify /usr/lib/systemd/system/trisse-home.service
+          systemd-analyze verify /usr/lib/systemd/system/trisse-home.service \
+            /usr/lib/systemd/system/trisse-home-setup-info.service /usr/lib/systemd/system/trisse-home-setup-info.timer
           # --threshold is the exposure × 10 (default 100 = 10.0): 20 = 2.0.
           systemd-analyze security trisse-home --threshold=20 --no-pager
       - name: Service log

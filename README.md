@@ -43,7 +43,7 @@ Not sure whether trisse-home is the right fit? See the
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch; **smart answers** in the search bar and quick search (Ctrl+K): CPU, memory, disks, load, uptime, containers (status, update hint, confirmed restart), services and weather – typo-tolerant, German and English, prefixes like `/cpu`, `/docker <name>`, `/wetter <place>` |
 | **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
-| **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded) |
+| **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded); optional [Docker autodiscovery](#docker-autodiscovery-optional) from container labels |
 | **bookmarks**  | Links in folders with tags, filterable; opt-in: title and favicon fetched on add (icons stored locally) and a weekly link check with a "broken links" filter |
 | **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering); full-text search with highlighting (also in the quick search), `[[wiki links]]` with backlinks, version history with diff and restore |
 | **todos**      | To-do list with due dates and overdue highlighting, recurring to-dos (daily, weekly on weekdays, monthly, N days after completion) and reminders via the notification channels |
@@ -101,6 +101,22 @@ web/src/
   shared/                API client, generated DTO types, theme, UI
 api/openapi.yaml         API description
 ```
+
+## Quick start (Raspberry Pi)
+
+No server, no Docker? Flash the ready-made image: in
+[Raspberry Pi Imager](https://www.raspberrypi.com/software/) open
+*App Options → Content Repository → Use custom URL* and enter
+
+```
+https://github.com/itadori26/trisse-home/releases/latest/download/os_list.json
+```
+
+pick **trisse-home**, set user, Wi-Fi and SSH as usual and write the card.
+After the first boot open `http://trisse-home.local` and enter the setup
+token — it is on the screen attached to the Pi, in `trisse-home-setup.txt` on
+the SD card, or shown by `sudo trisse-home-setup-token`. Updates install
+themselves at night. Details: [docs/raspberry-pi.md](docs/raspberry-pi.md).
 
 ## Quick start (Docker Compose)
 
@@ -177,10 +193,10 @@ trisse-home as a hardened systemd service — no Docker needed:
 
 ```sh
 sudo apt install ./trisse-home_<version>_$(dpkg --print-architecture).deb
-sudo journalctl -u trisse-home | grep setup_token
+sudo trisse-home-setup-token   # address and one-time setup token
 ```
 
-`SECRET_KEY` is generated on the first start; configuration lives in
+`SECRET_KEY` and the setup token are generated on the first start; configuration lives in
 `/etc/trisse-home/trisse-home.env`, data in `/var/lib/trisse-home`. Details,
 updates and moving from Docker: [docs/native-install.md](docs/native-install.md).
 
@@ -292,6 +308,42 @@ The read-only proxy stays unchanged. The additional `docker-actions-proxy` only 
 trisse-home only calls *restart* for containers on the allow-list. Logs are read through the read-only proxy and
 may contain secrets — only list containers whose logs you are fine seeing on the dashboard.
 
+## Docker autodiscovery (optional)
+
+Containers can bring their own service tile: add labels to a service in your compose file, then enable
+*Settings → Services → Docker autodiscovery* (off by default) or press *Sync now*. Labels are read through
+the existing read-only socket proxy; no new Docker permission is needed.
+
+```yaml
+services:
+  jellyfin:
+    labels:
+      trisse-home.name: Jellyfin                      # defaults to the container name
+      trisse-home.url: https://jellyfin.example.com   # required
+      trisse-home.icon: 🎬                              # emoji or image URL
+      trisse-home.description: Films and series
+```
+
+| Label | Homepage fallback | Meaning |
+| --- | --- | --- |
+| `trisse-home.url` | `homepage.href` | Link and health check URL of the tile (required) |
+| `trisse-home.name` | `homepage.name` | Tile name; defaults to the container name |
+| `trisse-home.icon` | `homepage.icon` | Emoji or image URL |
+| `trisse-home.description` | `homepage.description` | Short description |
+| `trisse-home.enable` | – | `false` skips the container |
+
+Stacks prepared for [Homepage](https://gethomepage.dev/configs/docker/) work unchanged; `homepage.group` and
+`homepage.widget.*` are ignored because tiles have no groups. Tiles are matched by **container name**, so
+re-creating a container keeps its tile, position and history.
+
+- **Edits:** discovered tiles can be edited. With *Labels win on the next sync* (default) the label values
+  replace your changes on the next sync; with *Keep my changes* an edited tile is left alone.
+- **Removed containers:** the tile is hidden from the dashboard (not deleted) and marked in the settings; it
+  comes back with the container. Hidden tiles are not health-checked, so a removed container triggers no
+  offline notification. Delete the tile in the settings if you no longer need it.
+- **Interval:** 1 to 1440 minutes (default 5). Invalid labels (e.g. a URL without `http(s)://`) are skipped
+  and counted in the result of the last sync.
+
 ## Notifications and backup monitoring
 
 **Notifications** (Settings → Notifications) publish to an [ntfy](https://ntfy.sh) topic and, optionally, to
@@ -368,6 +420,7 @@ service tiles are configured in the web interface.
 | `PASSWORD_LOGIN` | `true` | `false` disables the owner's password login once SSO is configured. |
 | `SSO_REQUIRE_2FA` | `false` | Also ask for the local TOTP code after SSO. |
 | `PUBLIC_URL` | empty | Public `https://` origin (e.g. `https://home.example.org`); enables passkeys. WebAuthn does not work on plain `http://<ip>`. |
+| `INSTALL_METHOD` | set by the image, the package and the Pi image | `docker`, `package` or `appliance`; selects the update hint in the settings. |
 | `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
 | `SAMPLE_FEEDS`      | Go Blog, Hacker News              | Example feeds, comma separated.                                              |
 
