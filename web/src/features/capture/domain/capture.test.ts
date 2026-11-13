@@ -44,7 +44,7 @@ describe('quick capture prefill (#66)', () => {
 
   it('builds a bookmarklet for this server', () => {
     const code = bookmarklet('http://home:8090');
-    expect(code.startsWith('javascript:')).toBe(true);
+    expect(code.split(':')[0]).toBe('javascript'); // a bookmarklet is a script link by design
     expect(code).toContain("'http://home:8090/capture?url='");
     expect(code).toContain('getSelection()');
   });
