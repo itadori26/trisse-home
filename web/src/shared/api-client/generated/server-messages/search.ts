@@ -2,7 +2,9 @@
 
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
+  srv_74215ccd79a3ff66: "A prefix is 1 to 4 letters or digits.",
   srv_76a5625367cbe997: "A shortcut with this keyword already exists.",
+  srv_fd6c518295d812e7: "Each prefix can be used only once.",
   srv_1605df454fade766: "The URL must contain {query}.",
   srv_d6e09729bc0d1f3b: "The keyword must consist of 1 to 16 letters or digits.",
   srv_657058c57c5faf46: "The search query is too long.",

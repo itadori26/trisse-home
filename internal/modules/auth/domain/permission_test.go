@@ -34,6 +34,11 @@ func TestGuestMayAccess(t *testing.T) {
 		{"GET", "/api/fritzbox/calls", false},
 		{"GET", "/api/fritzbox/calls/x", false},
 		{"GET", "/api/fritzbox/callsign", true},
+		// The web search of the search field is part of every page (#221).
+		{"GET", "/api/search", true},
+		{"GET", "/api/search/settings", false},
+		{"PUT", "/api/search/bar", false},
+		{"POST", "/api/search/shortcuts", false},
 	}
 	for _, c := range cases {
 		if got := GuestMayAccess(c.method, c.path, reach); got != c.want {

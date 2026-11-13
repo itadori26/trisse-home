@@ -50,6 +50,7 @@ func (f *Feed) Events(ctx context.Context, s domain.Subscription, from, to time.
 	for _, e := range entry.events {
 		for _, occ := range ical.Expand(e, from, to) {
 			out = append(out, domain.Event{UID: occ.UID, Summary: occ.Summary, Location: occ.Location,
+				Description: occ.Description, URL: domain.SafeLink(occ.URL),
 				Start: occ.Start, End: occ.End, AllDay: occ.AllDay})
 		}
 	}

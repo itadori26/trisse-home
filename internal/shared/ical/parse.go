@@ -18,9 +18,13 @@ type Event struct {
 	UID      string
 	Summary  string
 	Location string
-	Start    time.Time
-	End      time.Time
-	AllDay   bool
+	// Description is the plain text of DESCRIPTION, at most maxDescription runes (#163).
+	Description string
+	// URL is the raw URL property; callers decide which schemes they show.
+	URL    string
+	Start  time.Time
+	End    time.Time
+	AllDay bool
 	// RRule is the raw recurrence rule (empty for single events).
 	RRule string
 	// ExDates are excluded occurrences.
@@ -143,7 +147,9 @@ func buildEvent(props map[string]icalProperty, exdates []icalProperty, loc *time
 	}
 	e := Event{
 		UID: props["UID"].value, Summary: summary, Location: strings.TrimSpace(textUnescaper.Replace(props["LOCATION"].value)),
-		Start: start, End: end, AllDay: allDay, RRule: strings.TrimSpace(props["RRULE"].value),
+		Description: truncateRunes(strings.TrimSpace(textUnescaper.Replace(props["DESCRIPTION"].value)), maxDescription),
+		URL:         strings.TrimSpace(props["URL"].value),
+		Start:       start, End: end, AllDay: allDay, RRule: strings.TrimSpace(props["RRULE"].value),
 	}
 	for _, ex := range exdates {
 		for _, v := range strings.Split(ex.value, ",") {
@@ -196,4 +202,16 @@ func parseDuration(v string) (time.Duration, error) {
 		d = -d
 	}
 	return d, nil
+}
+
+// maxDescription bounds the description kept per event; feeds sometimes carry
+// whole documents in it.
+const maxDescription = 2000
+
+func truncateRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "…"
 }

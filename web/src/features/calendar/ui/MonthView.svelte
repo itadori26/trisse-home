@@ -1,16 +1,28 @@
 <script lang="ts">
   import { intlLocale, t } from '../../../shared/i18n';
-  import { errorMessage } from '../../../shared/api-client/http';
-  import { type CalendarEvent, eventsOnDay, monthGrid } from '../domain/calendar';
+  import { ApiError, errorMessage } from '../../../shared/api-client/http';
+  import {
+    type CalendarEvent,
+    dateInputValue,
+    eventsByDay,
+    eventsOnDay,
+    monthGrid,
+    type WeekStart,
+  } from '../domain/calendar';
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
+  import DayEvents from './DayEvents.svelte';
+  import MonthGrid from './MonthGrid.svelte';
 
-  /** Props of the month view. */
+  /** The month view: the grid with short titles, the selected day below it. */
   interface Props {
     calendar: CalendarUseCases;
+    weekStart: WeekStart;
     /** Increment to reload, e.g. after an event was created. */
     reload: number;
+    /** No calendar is set up (404); the widget shows the hint instead. */
+    onunconfigured: () => void;
   }
-  let { calendar, reload }: Props = $props();
+  let { calendar, weekStart, reload, onunconfigured }: Props = $props();
 
   const today = new Date();
   let year = $state(today.getFullYear());
@@ -18,34 +30,40 @@
   let events = $state<CalendarEvent[]>([]);
   let error = $state('');
   let selected = $state<Date | null>(null);
+  let open = $state<CalendarEvent | null>(null);
 
-  const cells = $derived(monthGrid(year, month, today));
+  const cells = $derived(monthGrid(year, month, today, weekStart));
+  const byDay = $derived(eventsByDay(events, cells));
   const title = $derived(
     new Date(year, month, 1).toLocaleDateString(intlLocale(), { month: 'long', year: 'numeric' }),
   );
-  const weekdays = Array.from({ length: 7 }, (_, i) =>
-    new Date(2024, 0, 1 + i).toLocaleDateString(intlLocale(), { weekday: 'narrow' }),
-  );
 
+  // Navigation reads the per-month cache; a new reload value (an event was created) renews it.
+  let seenReload = 0;
   $effect(() => {
-    void reload;
-    const first = cells[0]?.date;
-    const last = cells[cells.length - 1]?.date;
-    if (!first || !last) return;
-    const to = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1);
+    const fresh = reload !== seenReload;
+    seenReload = reload;
     calendar
-      .range(first, to)
+      .month(year, month, weekStart, fresh)
       .then((a) => ((events = a.events), (error = a.error)))
-      .catch((err) => (error = errorMessage(err)));
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 404) onunconfigured();
+        error = errorMessage(err);
+      });
   });
 
+  function show(date: Date) {
+    year = date.getFullYear();
+    month = date.getMonth();
+  }
   function shift(delta: number) {
-    const d = new Date(year, month + delta, 1);
-    year = d.getFullYear();
-    month = d.getMonth();
+    show(new Date(year, month + delta, 1));
     selected = null;
   }
-  const time = (d: Date) => d.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
+  function select(date: Date) {
+    selected = date;
+    if (date.getMonth() !== month || date.getFullYear() !== year) show(date);
+  }
 </script>
 
 <div class="head">
@@ -59,60 +77,41 @@
     class="title"
     type="button"
     title={t('calendar.back_to_today')}
-    onclick={() => ((year = today.getFullYear()), (month = today.getMonth()))}>{title}</button
+    onclick={() => ((selected = null), show(today))}>{title}</button
   >
   <button class="btn btn-icon" type="button" aria-label={t('calendar.next_month')} onclick={() => shift(1)}
     >›</button
   >
 </div>
 {#if error}<p class="error small">{error}</p>{/if}
-<div class="grid" role="grid" aria-label={title}>
-  {#each weekdays as w, i (i)}<span class="wd" role="columnheader">{w}</span>{/each}
-  {#each cells as c (c.key)}
-    {@const dayEvents = eventsOnDay(events, c.date)}
-    <button
-      type="button"
-      class="day"
-      class:out={!c.inMonth}
-      class:today={c.isToday}
-      class:sel={selected?.getTime() === c.date.getTime()}
-      aria-label={t('calendar.events', {
-        value: c.date.toLocaleDateString(intlLocale()),
-        length: dayEvents.length,
-      })}
-      onclick={() => (selected = c.date)}
-    >
-      <span class="num">{c.date.getDate()}</span>
-      <span class="items">
-        {#each dayEvents.slice(0, 3) as e, i (i)}<span class="item" title={e.summary}
-            ><span class="text">{e.summary}</span></span
-          >{/each}
-      </span>
-    </button>
-  {/each}
-</div>
+<MonthGrid
+  {cells}
+  {byDay}
+  selected={selected ? dateInputValue(selected) : null}
+  {weekStart}
+  label={title}
+  titles
+  onselect={select}
+  onmove={select}
+/>
 {#if selected}
-  {@const list = eventsOnDay(events, selected)}
   <div class="detail">
-    <strong
-      >{selected.toLocaleDateString(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</strong
-    >
-    {#each list as e (e.uid + e.start.getTime())}
-      <div class="ev" class:colored={e.color !== ''} style:--event-color={e.color || null} title={e.calendar}>
-        <span class="time">{e.allDay ? t('calendar.all_day_short') : time(e.start)}</span>
-        {e.summary}
-      </div>
-    {:else}
-      <div class="muted">{t('calendar.no_events')}</div>
-    {/each}
+    <DayEvents
+      heading={selected.toLocaleDateString(intlLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}
+      events={eventsOnDay(events, selected)}
+      empty={t('calendar.no_events')}
+      onopen={(e) => (open = e)}
+    />
+    {#if open}
+      <!-- Loaded on first use: most views never open an event (#163 size budget). -->
+      {#await import('./EventDetails.svelte') then { default: EventDetails }}
+        <EventDetails event={open} onclose={() => (open = null)} />
+      {/await}
+    {/if}
   </div>
 {/if}
 
 <style>
-  .ev.colored {
-    border-left: 3px solid var(--event-color);
-    padding-left: var(--space-1);
-  }
   .head {
     display: flex;
     align-items: center;
@@ -127,88 +126,10 @@
     font-weight: 600;
     cursor: pointer;
   }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 2px;
-  }
-  .wd {
-    text-align: center;
-    font-size: 0.7em;
-    color: var(--color-text-muted);
-  }
-  .day {
-    min-height: clamp(1.8em, 7cqh, 6em);
-    padding: 2px;
-    border: 1px solid transparent;
-    border-radius: var(--radius-small);
-    background: var(--color-surface-2);
-    color: inherit;
-    font: inherit;
-    font-size: 0.8em;
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    cursor: pointer;
-  }
-  .out {
-    opacity: 0.45;
-  }
-  .today .num {
-    color: var(--color-accent);
-    font-weight: 700;
-  }
-  .sel {
-    border-color: var(--color-accent);
-  }
-  .items {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-    min-width: 0;
-  }
-  /* Small cells: dots; larger cells (container query) show short titles. */
-  .item {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--color-accent);
-  }
-  .text {
-    display: none;
-  }
-  @container widget (min-width: 420px) and (min-height: 320px) {
-    .items {
-      flex-direction: column;
-    }
-    .item {
-      width: auto;
-      height: auto;
-      border-radius: 3px;
-      background: color-mix(in srgb, var(--color-accent) 20%, transparent);
-      padding: 0 3px;
-      font-size: 0.85em;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .text {
-      display: inline;
-    }
-  }
   .detail {
+    position: relative;
     margin-top: var(--space-2);
-    font-size: 0.85em;
-  }
-  .ev {
-    display: flex;
-    gap: var(--space-2);
-  }
-  .time {
-    color: var(--color-accent);
-    width: 4.5em;
-    flex: none;
+    font-size: 0.9em;
   }
   .small {
     font-size: 0.75em;

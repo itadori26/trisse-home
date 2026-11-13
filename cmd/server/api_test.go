@@ -358,7 +358,7 @@ func TestAPIEndToEnd(t *testing.T) {
 		} `json:"tabs"`
 	}
 	c.json(http.MethodGet, "/api/dashboard", nil, http.StatusOK, &dash)
-	if len(dash.Tabs) != 1 || len(dash.Tabs[0].Widgets) != 2 {
+	if len(dash.Tabs) != 1 || len(dash.Tabs[0].Widgets) != 1 { // clock (the search is the page's search field, #221)
 		t.Fatalf("default dashboard wrong: %+v", dash)
 	}
 	home := dash.Tabs[0].ID
@@ -909,7 +909,7 @@ func TestSampleDataAfterSetup(t *testing.T) {
 			kinds[w.Kind] = w.Config
 		}
 	}
-	for _, k := range []string{"search", "clock", "weather", "todos", "notes", "bookmarks", "rss", "calendar", "services", "system", "docker", "adguard"} {
+	for _, k := range []string{"clock", "weather", "todos", "notes", "bookmarks", "rss", "calendar", "services", "system", "docker", "adguard"} {
 		if _, ok := kinds[k]; !ok {
 			t.Errorf("sample dashboard lacks widget %q", k)
 		}

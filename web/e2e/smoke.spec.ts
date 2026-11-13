@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 import { setupToken } from '../playwright.config';
 
 const password = 'smoke-test-password-123';
@@ -31,7 +31,7 @@ test('setup, logout and login lead to the dashboard', async ({ page }) => {
   await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // After the first setup the dashboard is filled with sample widgets and data.
-  await expect(page.getByRole('search')).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' })).toBeVisible();
   await expect(page.locator('time')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Welcome to trisse-home 👋' })).toBeVisible();
   await expect(page.getByText('Try edit mode: drag and resize a widget')).toBeVisible();
@@ -124,21 +124,33 @@ test('quick search finds bookmarks with the keyboard', async ({ page }) => {
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
+  // Ctrl+K focuses the hero field; the results open below it (#222).
   await page.keyboard.press('Control+k');
-  const box = page.getByRole('combobox', { name: /Search bookmarks/ });
+  const box = page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' });
+  const results = page.getByRole('listbox', { name: 'Results' });
   await expect(box).toBeFocused();
   await box.fill('docker docs');
   await expect(page.getByRole('option', { name: /Docker documentation/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
+  await expect(box).toHaveAttribute('aria-expanded', 'true');
+  // Without a match the web search is the only row.
   await box.fill('nothing-matches-this');
-  await expect(page.getByText(/No matches/)).toBeVisible();
+  await expect(page.getByRole('option', { name: /nothing-matches-this/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  // The first Esc closes the panel and keeps the text, the second clears the field.
   await page.keyboard.press('Escape');
-  await expect(box).toBeHidden();
+  await expect(results).toBeHidden();
+  await expect(box).toHaveValue('nothing-matches-this');
+  await page.keyboard.press('Escape');
+  await expect(box).toHaveValue('');
+  await expect(box).not.toBeFocused();
 
   await page.keyboard.press('/');
-  await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toBeFocused();
+  await expect(box).toBeFocused();
 });
 
 test('installable app shows the last data offline and never caches auth', async ({ page, context }) => {
@@ -309,7 +321,7 @@ test('keyboard shortcuts switch tabs, toggle edit mode and show an overview (#95
   await expect(page.getByRole('button', { name: '+ Add widget' })).toHaveCount(0);
 
   await page.keyboard.press('/');
-  await expect(page.getByRole('dialog', { name: /Quick search/ })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' })).toBeFocused();
   // Typing in the search field must not trigger shortcuts.
   await page.keyboard.type('e2');
   await expect(page.getByRole('button', { name: '+ Add widget' })).toHaveCount(0);
@@ -349,39 +361,63 @@ test('removed widgets come back with undo, and redo works (#93)', async ({ page 
   await expect(page.locator('time')).toBeVisible();
 });
 
-test('quick capture creates items from the search bar and the palette (#105, #67)', async ({ page }) => {
+test('the search field captures items and its options live in the settings (#105, #67, #221)', async ({
+  page,
+}) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await page.getByRole('button', { name: 'Home', exact: true }).click();
-  const search = page.getByRole('searchbox', { name: 'Search', exact: true });
+  // The search field next to the greeting is the search (#221, #222).
+  const field = page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' });
 
-  await search.fill('t Milch kaufen morgen');
-  await expect(page.getByText('Enter: create to-do “Milch kaufen” (Tomorrow)')).toBeVisible();
-  await search.press('Enter');
+  await field.fill('t Milch kaufen morgen');
+  await expect(
+    page.getByRole('option', { name: /create to-do “Milch kaufen” \(Tomorrow\)/ }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await field.press('Enter');
   await expect(page.getByText('To-do “Milch kaufen” created')).toBeVisible();
   const todos = await (await page.request.get('/api/todos')).json();
   expect(JSON.stringify(todos)).toContain('Milch kaufen');
 
-  await search.fill('n Idee Fahrradtour');
-  await search.press('Enter');
+  // Ctrl+Enter adds the same text as the other kind (mockup "E", #222).
+  await field.fill('t Einkaufszettel');
+  await expect(page.getByRole('option', { name: /create note “Einkaufszettel”/ })).toBeVisible();
+  await field.press('Control+Enter');
+  await expect(page.getByText('Note “Einkaufszettel” created')).toBeVisible();
+
+  await field.fill('n Idee Fahrradtour');
+  await field.press('Enter');
   await expect(page.getByText('Note “Idee Fahrradtour” created')).toBeVisible();
   await page.getByRole('status').filter({ hasText: 'created' }).getByRole('button', { name: 'Undo' }).click();
 
-  await search.fill('b example.org Beispiel');
-  await search.press('Enter');
+  await field.fill('b example.org Beispiel');
+  await field.press('Enter');
   await expect(page.getByText('Bookmark “Beispiel” saved')).toBeVisible();
   await expect(page.getByRole('status').getByRole('link', { name: 'Open' })).toHaveAttribute(
     'href',
     'https://example.org/',
   );
 
-  await page.keyboard.press('Control+k');
-  const palette = page.getByRole('combobox');
-  await palette.fill('todo: Steuer heute');
-  await expect(page.getByText('create to-do “Steuer” (Today)')).toBeVisible();
-  await palette.press('Enter');
+  // The palette's own prefixes still work.
+  await field.fill('todo: Steuer heute');
+  await expect(page.getByRole('option', { name: /create to-do “Steuer” \(Today\)/ })).toBeVisible();
+  await field.press('Enter');
   await expect(page.getByText('To-do “Steuer” created')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // The prefixes are a search setting now, not a widget option.
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  const todoPrefix = page.getByLabel('Prefix for to-dos');
+  await expect(todoPrefix).toHaveValue('t');
+  await todoPrefix.fill('a');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await field.fill('a Kuchen backen');
+  await expect(page.getByRole('option', { name: /create to-do “Kuchen backen”/ })).toBeVisible();
+  await page.keyboard.press('Escape');
 });
 
 test('phones get their own layout that hides widgets independently (#92)', async ({ page }) => {
@@ -558,10 +594,16 @@ test('header with greeting, search pill, launcher and account menu (#189)', asyn
   const firstWidget = await page.locator('[data-widget-id]').first().boundingBox();
   expect(firstWidget?.y ?? 999).toBeLessThan(260);
 
-  // Typing into the search pill continues in the quick search.
+  // The text stays in the hero field while the results open below it (#222).
   step = 'search';
-  await page.getByRole('searchbox', { name: 'Quick search (Ctrl+K or /)' }).pressSequentially('Dock');
-  await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toHaveValue('Dock');
+  const field = page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' });
+  await field.click();
+  await field.pressSequentially('Dock');
+  await expect(field).toHaveValue('Dock');
+  await expect(field).toBeFocused();
+  await expect(page.getByRole('listbox', { name: 'Results' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
   // Launcher: filter across services and bookmarks; Esc returns the focus.
@@ -610,7 +652,7 @@ test('the smart search answers questions about the server (#156)', async ({ page
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
   await page.keyboard.press('Control+k');
-  const box = page.getByRole('combobox', { name: /Search bookmarks/ });
+  const box = page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' });
   const answers = page.getByRole('region', { name: 'Answers' });
 
   await box.fill('cpu');
@@ -694,6 +736,171 @@ test('the FRITZ!Box has separate internet and calls widgets (#168)', async ({ pa
   await expect(page.getByText('Connect your FRITZ!Box under Settings → FRITZ!Box.')).toBeVisible();
 });
 
+test('widgets poll at their interval, not in a loop (#219)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  // Every widget loads once and then every 30 s or more; a polling loop shows
+  // up as the same endpoint dozens of times per second.
+  const counts = new Map<string, number>();
+  page.on('request', (r) => {
+    const path = new URL(r.url()).pathname;
+    if (path.startsWith('/api/')) counts.set(path, (counts.get(path) ?? 0) + 1);
+  });
+  await page.getByRole('button', { name: 'Server', exact: true }).click();
+  await page.waitForTimeout(6000);
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await page.waitForTimeout(4000);
+  const busiest = [...counts].sort((a, b) => b[1] - a[1]);
+  expect(busiest.length, 'the dashboard made no API requests at all').toBeGreaterThan(0);
+  expect(busiest[0]?.[1] ?? 0, JSON.stringify(busiest.slice(0, 5))).toBeLessThanOrEqual(4);
+});
+
+test.describe('calendar split view', () => {
+  // The service worker would answer the API itself; page.route only sees requests without it.
+  test.use({ serviceWorkers: 'block' });
+
+  test('the calendar split view selects days and changes months, wide and narrow (#163)', async ({
+    page,
+  }) => {
+    const day = (offsetMonths: number, date: number, hour?: number) => {
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth() + offsetMonths, date, hour ?? 0);
+    };
+    const ymd = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const today = new Date();
+    const standupStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 0);
+    const events = [
+      {
+        uid: 'standup',
+        summary: 'Standup',
+        location: 'Room 1',
+        description: 'Line one\nLine two',
+        url: 'https://example.org/meet',
+        calendar: 'work',
+        color: '#e5484d',
+        start: standupStart.toISOString(),
+        end: new Date(standupStart.getTime() + 59 * 60_000).toISOString(),
+        allDay: false,
+      },
+      {
+        uid: 'party',
+        summary: 'Party next month',
+        location: '',
+        description: '',
+        url: '',
+        calendar: 'home',
+        color: '',
+        start: ymd(day(1, 15)),
+        end: ymd(day(1, 16)),
+        allDay: true,
+      },
+    ];
+    const ranges: string[] = [];
+    await page.route(
+      (url) => url.pathname === '/api/calendar/events' && url.searchParams.has('from'),
+      async (route) => {
+        const url = new URL(route.request().url());
+        ranges.push(url.searchParams.get('from') ?? '');
+        const from = new Date(url.searchParams.get('from') ?? '');
+        const to = new Date(url.searchParams.get('to') ?? '');
+        const inRange = events.filter((e) => new Date(e.start) < to && new Date(e.end) > from);
+        await route.fulfill({ json: { events: inRange, updatedAt: new Date().toISOString(), error: '' } });
+      },
+    );
+
+    await page.goto('/');
+    await page.getByLabel('Password').fill(password);
+    await page.getByRole('button', { name: 'Log in' }).click();
+    await expect(page.getByTestId('dashboard')).toBeVisible();
+    await account(page, 'Edit');
+    await page.getByRole('button', { name: '+ Tab' }).click();
+    await page.getByRole('textbox', { name: 'Name' }).fill('Agenda');
+    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByRole('button', { name: '+ Add widget' }).click();
+    await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('termine');
+    await expect(page.getByRole('status')).toHaveText('1 widgets');
+    await page.getByRole('button', { name: /^Calendar/ }).click();
+    // New calendars start in the split view.
+    await expect(page.getByRole('combobox', { name: 'View' })).toHaveValue('split');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await account(page, 'Done');
+
+    const monthName = (d: Date) => d.toLocaleDateString('en', { month: 'long', year: 'numeric' });
+    const grid = page.getByRole('grid', { name: monthName(today) });
+    await expect(grid).toBeVisible();
+    const upcomingList = page.getByRole('region', { name: 'Upcoming' });
+    await expect(upcomingList.getByRole('button', { name: /Standup/ })).toBeVisible();
+    // Wide: grid and events side by side.
+    await expectBeside(grid, upcomingList);
+
+    // Clicking a day shows its events; the details show the description as text and the link.
+    await grid.locator('[aria-current="date"]').click();
+    const dayList = page.getByRole('region', {
+      name: today.toLocaleDateString('en', { weekday: 'long', day: 'numeric', month: 'long' }),
+    });
+    await dayList.getByRole('button', { name: /Standup/ }).click();
+    const details = page.getByRole('dialog', { name: 'Event details' });
+    await expect(details).toContainText('Line one');
+    await expect(details.getByRole('link', { name: 'Open link' })).toHaveAttribute(
+      'href',
+      'https://example.org/meet',
+    );
+    await page.keyboard.press('Escape');
+    await expect(details).toHaveCount(0);
+
+    // Keyboard: PageDown moves to the next month, the arrows to the 15th with the party.
+    await grid.locator('[aria-current="date"]').focus();
+    const target = day(1, 15);
+    const sameDayNextMonth = new Date(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      Math.min(today.getDate(), new Date(today.getFullYear(), today.getMonth() + 2, 0).getDate()),
+    );
+    await page.keyboard.press('PageDown');
+    const next = page.getByRole('grid', { name: monthName(target) });
+    await expect(next).toBeVisible();
+    const steps = target.getDate() - sameDayNextMonth.getDate();
+    for (let i = 0; i < Math.abs(steps); i++)
+      await page.keyboard.press(steps > 0 ? 'ArrowRight' : 'ArrowLeft');
+    await expect(next.locator(`[data-key="${ymd(target)}"]`)).toBeFocused();
+    await expect(next.locator(`[data-key="${ymd(target)}"]`)).toHaveAttribute('aria-label', /1 event$/);
+    await expect(
+      page.getByRole('region', { name: /15/ }).getByRole('button', { name: /Party next month/ }),
+    ).toBeVisible();
+
+    // Back and forth reads the per-month cache: no new request for a month already shown.
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
+    await expect(page.getByRole('grid', { name: monthName(today) })).toBeVisible();
+    const loaded = ranges.length;
+    await page.getByRole('button', { name: 'Next month' }).click();
+    await expect(next).toBeVisible();
+    await page.getByRole('button', { name: 'Previous month' }).click();
+    await expect(page.getByRole('grid', { name: monthName(today) })).toBeVisible();
+    expect(ranges.length).toBe(loaded + 1); // only the prefetch of the month before
+
+    // Narrow (phone): the list sits under the grid, without horizontal scrolling.
+    await page.setViewportSize({ width: 390, height: 900 });
+    await expect(page.getByRole('grid', { name: monthName(today) })).toBeVisible();
+    await page
+      .getByRole('grid', { name: monthName(today) })
+      .locator('[aria-current="date"]')
+      .click();
+    await expect(dayList.getByRole('button', { name: /Standup/ })).toBeVisible();
+    await expectBelow(page.getByRole('grid', { name: monthName(today) }), dayList);
+    // No horizontal scrolling inside the widget (the page header has its own issue, #226).
+    const widget = page
+      .getByRole('grid', { name: monthName(today) })
+      .locator('xpath=ancestor::*[contains(@class,"content")][1]');
+    const overflow = await widget.evaluate((e) => e.scrollWidth - e.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+    const right = (await boxOf(dayList)).x + (await boxOf(dayList)).width;
+    expect(right).toBeLessThanOrEqual(390);
+  });
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
@@ -722,3 +929,17 @@ test('two-factor authentication can be enabled and is required at login', async 
   await page.getByRole('button', { name: 'Verify' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 });
+
+async function boxOf(locator: Locator) {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error('not visible');
+  return box;
+}
+async function expectBeside(left: Locator, right: Locator) {
+  const [a, b] = [await boxOf(left), await boxOf(right)];
+  expect(b.x).toBeGreaterThanOrEqual(a.x + a.width - 1);
+}
+async function expectBelow(top: Locator, bottom: Locator) {
+  const [a, b] = [await boxOf(top), await boxOf(bottom)];
+  expect(b.y).toBeGreaterThanOrEqual(a.y + a.height - 1);
+}

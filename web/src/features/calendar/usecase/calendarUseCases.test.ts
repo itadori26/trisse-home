@@ -64,4 +64,28 @@ describe('CalendarUseCases', () => {
     await uc.saveSubscription({ ...input, url: '' }, 'id1');
     expect(g.updateSubscription).toHaveBeenCalledWith('id1', { ...input, name: 'Uni', url: '' });
   });
+
+  it('loads a month grid once and renews it on request (#163)', async () => {
+    const g = gateway();
+    g.range.mockResolvedValue({ events: [], error: '' });
+    const uc = new CalendarUseCases(g);
+    await uc.month(2026, 10, 1);
+    await uc.month(2026, 10, 1);
+    expect(g.range).toHaveBeenCalledTimes(1);
+    const [from, to] = g.range.mock.calls[0] as [Date, Date];
+    expect(from).toEqual(new Date(2026, 9, 26)); // Monday before 1 November
+    expect((to.getTime() - from.getTime()) / 86_400_000).toBe(42);
+    await uc.month(2026, 10, 0); // another week start is another grid
+    await uc.month(2026, 10, 1, true); // the periodic refresh
+    expect(g.range).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not cache a failed month (#163)', async () => {
+    const g = gateway();
+    g.range.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ events: [], error: '' });
+    const uc = new CalendarUseCases(g);
+    await expect(uc.month(2026, 10, 1)).rejects.toThrow('offline');
+    await uc.month(2026, 10, 1);
+    expect(g.range).toHaveBeenCalledTimes(2);
+  });
 });

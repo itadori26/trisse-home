@@ -117,6 +117,8 @@ const event = (summary: string, start: Date, end: Date, allDay = false) => ({
   uid: summary,
   summary,
   location: '',
+  description: '',
+  url: '',
   calendar: '',
   color: '',
   allDay,

@@ -4,6 +4,10 @@ export interface CalendarEvent {
   uid: string;
   summary: string;
   location: string;
+  /** Plain text; never rendered as HTML (#163). */
+  description: string;
+  /** http(s) link of the event or empty (#163). */
+  url: string;
   calendar: string;
   /** Colour of an ICS subscription (#rrggbb); empty for CalDAV calendars. */
   color: string;
@@ -28,19 +32,27 @@ export interface CalendarSettings {
   hasPassword: boolean;
 }
 
-/** Layout of the calendar widget. */
-export type CalendarView = 'agenda' | 'month';
+/** Layout of the calendar widget; split = month grid and events side by side (#163). */
+export type CalendarView = 'agenda' | 'month' | 'split';
+export const CALENDAR_VIEWS: readonly CalendarView[] = ['agenda', 'month', 'split'];
+
+/** First day of the week: 1 = Monday (ISO, default), 0 = Sunday. */
+export type WeekStart = 0 | 1;
 
 /** Configuration of the calendar widget. */
 export interface CalendarConfig {
   days: number;
   view: CalendarView;
+  weekStart: WeekStart;
 }
 
 /** Reads a stored widget configuration. */
 export function parseCalendarConfig(raw: Record<string, unknown>): CalendarConfig {
   const days = typeof raw['days'] === 'number' ? Math.round(raw['days']) : 7;
-  return { days: Math.min(Math.max(days, 1), 31), view: raw['view'] === 'month' ? 'month' : 'agenda' };
+  const view = CALENDAR_VIEWS.includes(raw['view'] as CalendarView)
+    ? (raw['view'] as CalendarView)
+    : 'agenda';
+  return { days: Math.min(Math.max(days, 1), 31), view, weekStart: raw['weekStart'] === 0 ? 0 : 1 };
 }
 
 /** One cell of the month grid. */
@@ -52,12 +64,12 @@ export interface MonthCell {
 }
 
 /**
- * Returns the 6×7 grid (weeks start on Monday) that shows the given month
- * (month is 0-based, as in Date).
+ * Returns the 6×7 grid that shows the given month (month is 0-based, as in
+ * Date); weeks start on Monday unless weekStart is 0 (Sunday).
  */
-export function monthGrid(year: number, month: number, today: Date): MonthCell[] {
+export function monthGrid(year: number, month: number, today: Date, weekStart: WeekStart = 1): MonthCell[] {
   const first = new Date(year, month, 1);
-  const offset = (first.getDay() + 6) % 7; // Monday = 0
+  const offset = (first.getDay() - weekStart + 7) % 7;
   const todayKey = dayKey(today);
   const cells: MonthCell[] = [];
   for (let i = 0; i < 42; i++) {
@@ -178,4 +190,70 @@ export function validateSubscription(input: SubscriptionInput, isNew: boolean): 
   if ((isNew || url !== '') && !/^(https?|webcal):\/\/\S+$/i.test(url))
     return t('calendar.subscription_url_invalid');
   return null;
+}
+
+/** Events per day key of the cells; multi-day events on every day they cover (#163). */
+export function eventsByDay(events: CalendarEvent[], cells: MonthCell[]): Map<string, CalendarEvent[]> {
+  const out = new Map<string, CalendarEvent[]>();
+  for (const c of cells) {
+    const list = eventsOnDay(events, c.date);
+    if (list.length) out.set(c.key, list);
+  }
+  return out;
+}
+
+/** Up to max dots for a day (colour of the calendar, '' = accent) and how many more there are. */
+export function dotsForDay(events: CalendarEvent[], max = 3): { colors: string[]; more: number } {
+  return { colors: events.slice(0, max).map((e) => e.color), more: Math.max(0, events.length - max) };
+}
+
+/** The next events from now on, ongoing ones included, in start order. */
+export function upcoming(events: CalendarEvent[], now: Date, limit: number): CalendarEvent[] {
+  return events
+    .filter((e) => e.end.getTime() > now.getTime())
+    .sort((a, b) => a.start.getTime() - b.start.getTime())
+    .slice(0, limit);
+}
+
+/** Weekday names in the order of the grid. */
+export function weekdayOrder(weekStart: WeekStart): number[] {
+  return Array.from({ length: 7 }, (_, i) => (i + weekStart) % 7);
+}
+
+/**
+ * Keyboard movement in the month grid (#163): arrows move by a day or a week,
+ * PageUp/PageDown by a month (the day is kept where the month has it),
+ * Home/End to the first/last day of the week. Null for other keys.
+ */
+export function moveDay(date: Date, key: string, weekStart: WeekStart = 1): Date | null {
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const d = date.getDate();
+  switch (key) {
+    case 'ArrowLeft':
+      return new Date(y, m, d - 1);
+    case 'ArrowRight':
+      return new Date(y, m, d + 1);
+    case 'ArrowUp':
+      return new Date(y, m, d - 7);
+    case 'ArrowDown':
+      return new Date(y, m, d + 7);
+    case 'PageUp':
+    case 'PageDown': {
+      const target = m + (key === 'PageUp' ? -1 : 1);
+      const last = new Date(y, target + 1, 0).getDate();
+      return new Date(y, target, Math.min(d, last));
+    }
+    case 'Home':
+      return new Date(y, m, d - ((date.getDay() - weekStart + 7) % 7));
+    case 'End':
+      return new Date(y, m, d + 6 - ((date.getDay() - weekStart + 7) % 7));
+    default:
+      return null;
+  }
+}
+
+/** YYYY-MM-DD of a local date (input value of the quick-add form). */
+export function dateInputValue(d: Date): string {
+  return dayKey(d);
 }

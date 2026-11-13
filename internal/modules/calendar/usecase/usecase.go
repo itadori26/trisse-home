@@ -37,8 +37,10 @@ type SettingsInput struct {
 // EventView is an event at the use case boundary.
 type EventView struct {
 	UID, Summary, Location, Calendar, Color string
-	Start, End                              time.Time
-	AllDay                                  bool
+	// Description (plain text) and URL (http(s) only) for the detail view (#163).
+	Description, URL string
+	Start, End       time.Time
+	AllDay           bool
 }
 
 // AgendaResponse lists upcoming events.
@@ -368,7 +370,7 @@ func (uc *calendar) fetchRange(ctx context.Context, caldav *domain.Settings, sub
 		res.Error = "Some calendars could not be loaded: " + strings.Join(failed, "; ")
 	}
 	for _, e := range all {
-		res.Events = append(res.Events, EventView{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: e.Calendar,
+		res.Events = append(res.Events, EventView{UID: e.UID, Summary: e.Summary, Location: e.Location, Description: e.Description, URL: e.URL, Calendar: e.Calendar,
 			Color: e.Color, Start: e.Start, End: e.End, AllDay: e.AllDay})
 	}
 	return res, nil
