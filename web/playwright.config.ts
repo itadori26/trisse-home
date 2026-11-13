@@ -32,7 +32,8 @@ export default defineConfig({
       SETUP_TOKEN: setupToken,
       ALLOWED_CIDRS: '127.0.0.0/8',
       LOG_LEVEL: 'warn',
-      MODULES_DISABLED: 'docker,adguard,calendar,rss,weather',
+      // calendar stays on: unconfigured it makes no outbound requests, and #163 tests its split view.
+      MODULES_DISABLED: 'docker,adguard,rss,weather',
     },
   },
 });
