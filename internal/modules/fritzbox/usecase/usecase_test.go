@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -73,9 +74,14 @@ func TestFritzBox(t *testing.T) {
 	if box.callRequests != before+1 {
 		t.Fatal("calls not refreshed after two minutes")
 	}
-	// Keeping the password when only the URL changes.
-	if _, err := uc.SaveSettings(ctx, SettingsInput{URL: "http://fritz.box", Username: "home"}); err != nil || repo.s.Password != "pw" {
-		t.Fatalf("password not kept: %v", err)
+	// The stored password is kept for the same box (default port added) …
+	stored := repo.s.URL
+	if _, err := uc.SaveSettings(ctx, SettingsInput{URL: strings.TrimSuffix(stored, ":49000"), Username: "home"}); err != nil || repo.s.Password != "pw" {
+		t.Fatalf("password not kept for %s: %v", stored, err)
+	}
+	// … but never sent to another address (#191).
+	if _, err := uc.SaveSettings(ctx, SettingsInput{URL: "http://192.168.1.1", Username: "home"}); !errors.Is(err, kernel.ErrInvalid) {
+		t.Fatalf("password reused for a new address: %v", err)
 	}
 	box.wanErr = errors.New("down")
 	_ = uc.Refresh(ctx)

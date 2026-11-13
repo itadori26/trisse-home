@@ -93,6 +93,9 @@ func (uc *offsite) settingsFrom(ctx context.Context, in RemoteSettingsInput) (do
 	password := in.Password
 	if password == "" {
 		if old, err := uc.repo.Load(ctx); err == nil {
+			if kernel.TargetChanged([]string{old.URL, old.Username}, []string{in.URL, in.Username}) {
+				return domain.RemoteSettings{}, kernel.SecretRequired("password")
+			}
 			password = old.Password
 		}
 	}
@@ -106,7 +109,7 @@ func (uc *offsite) Test(ctx context.Context, in RemoteSettingsInput) error {
 		return err
 	}
 	if err := uc.remote.Test(ctx, s); err != nil {
-		return kernel.NewPublicErrorf(kernel.ErrInvalid, "The WebDAV target is not usable: {detail}", "detail", err.Error())
+		return kernel.TargetFailure(kernel.ErrInvalid, err)
 	}
 	return nil
 }
@@ -118,7 +121,7 @@ func (uc *offsite) SaveSettings(ctx context.Context, in RemoteSettingsInput) (Re
 		return RemoteSettingsView{}, err
 	}
 	if err := uc.remote.Test(ctx, s); err != nil {
-		return RemoteSettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "The WebDAV target is not usable: {detail}", "detail", err.Error())
+		return RemoteSettingsView{}, kernel.TargetFailure(kernel.ErrInvalid, err)
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return RemoteSettingsView{}, fmt.Errorf("save off-site settings: %w", err)
@@ -137,7 +140,7 @@ func (uc *offsite) List(ctx context.Context) ([]FileView, error) {
 	}
 	files, err := uc.remote.List(ctx, s)
 	if err != nil {
-		return nil, kernel.NewPublicErrorf(kernel.ErrUnavailable, "The off-site backups could not be listed: {detail}", "detail", err.Error())
+		return nil, kernel.TargetFailure(kernel.ErrUnavailable, err)
 	}
 	slices.SortFunc(files, func(a, b domain.File) int { return b.CreatedAt.Compare(a.CreatedAt) })
 	out := make([]FileView, 0, len(files))

@@ -18,6 +18,17 @@ type Tab struct {
 	position   int
 	background string
 	rules      []TabRule
+	mobile     []MobileEntry
+}
+
+// Mobile returns the stored phone layout (nil = derived from the desktop grid, #92).
+func (t Tab) Mobile() []MobileEntry { return t.mobile }
+
+// WithMobile returns the tab with a phone layout (validated by
+// NewMobileLayout or restored); nil resets it to the derived layout.
+func (t Tab) WithMobile(m []MobileEntry) Tab {
+	t.mobile = m
+	return t
 }
 
 // Rules returns the default-tab rules (#71).

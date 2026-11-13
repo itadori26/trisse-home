@@ -1,7 +1,7 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
 import type { TodoDTO } from '../../../../shared/api-client/generated/todos';
 import type { ClearedDTO, TodoInputDTO } from '../../../../shared/api-client/generated/todos-requests';
-import type { Todo } from '../../domain/todo';
+import type { Reminder, Repeat, RepeatKind, Todo } from '../../domain/todo';
 import type { TodosGateway } from '../../usecase/todosUseCases';
 
 const toTodo = (d: TodoDTO): Todo => ({
@@ -10,6 +10,12 @@ const toTodo = (d: TodoDTO): Todo => ({
   due: d.due,
   done: d.done,
   overdue: d.overdue,
+  repeat: {
+    kind: (d.repeat?.kind ?? '') as RepeatKind,
+    every: d.repeat?.every || 1,
+    days: d.repeat?.days ?? [],
+  },
+  reminder: { at: d.reminder?.at ?? '', daysBefore: d.reminder?.daysBefore ?? 0 },
 });
 
 /** TodosGateway backed by the REST API. */
@@ -23,8 +29,15 @@ export class TodosApi implements TodosGateway {
     const body: TodoInputDTO = { title, due, done: false };
     return toTodo(await this.http.post<TodoDTO>('/api/todos', body));
   }
-  async update(id: string, title: string, due: string, done: boolean): Promise<Todo> {
-    const body: TodoInputDTO = { title, due, done };
+  async update(
+    id: string,
+    title: string,
+    due: string,
+    done: boolean,
+    schedule?: { repeat: Repeat; reminder: Reminder },
+  ): Promise<Todo> {
+    // Without a schedule the server keeps the stored recurrence and reminder.
+    const body: TodoInputDTO = { title, due, done, ...schedule };
     return toTodo(await this.http.put<TodoDTO>(`/api/todos/${encodeURIComponent(id)}`, body));
   }
   delete(id: string): Promise<void> {

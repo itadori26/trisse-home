@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { t } from '../../../shared/i18n';
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
-  import { type Bookmark, faviconUrl, parseBookmarksConfig } from '../domain/bookmark';
+  import { type Bookmark, iconSrc, linkProblem, parseBookmarksConfig } from '../domain/bookmark';
   import type { BookmarkList, BookmarksUseCases } from '../usecase/bookmarksUseCases';
   import BookmarkForm from './BookmarkForm.svelte';
 
@@ -18,10 +18,13 @@
   let query = $state('');
   let error = $state('');
   let editing = $state<Bookmark | 'new' | null>(null);
+  // "Broken links only" (#72); offered once a check found a broken link.
+  let brokenOnly = $state(false);
+  const anyBroken = $derived(data?.bookmarks.some((b) => b.link.state === 'broken') ?? false);
 
   async function load() {
     try {
-      data = await bookmarks.list({ folderId: cfg.folderId, tag: cfg.tag, query });
+      data = await bookmarks.list({ folderId: cfg.folderId, tag: cfg.tag, query, broken: brokenOnly });
       error = '';
     } catch (err) {
       error = errorMessage(err);
@@ -31,6 +34,7 @@
   $effect(() => {
     void cfg;
     void query;
+    void brokenOnly;
     load();
   });
 
@@ -50,6 +54,16 @@
     bind:value={query}
     aria-label={t('bookmarks.filter_bookmarks')}
   />
+  {#if anyBroken || brokenOnly}
+    <button
+      class="btn btn-icon"
+      type="button"
+      aria-pressed={brokenOnly}
+      title={t('bookmarks.broken_only')}
+      aria-label={t('bookmarks.broken_only')}
+      onclick={() => (brokenOnly = !brokenOnly)}>⚠</button
+    >
+  {/if}
   <button
     class="btn btn-icon"
     type="button"
@@ -61,7 +75,8 @@
 {#if data}
   <ul class="list">
     {#each data.bookmarks as b (b.id)}
-      {@const icon = faviconUrl(b.url)}
+      {@const icon = iconSrc(b)}
+      {@const problem = linkProblem(b.link, intlLocale())}
       <li>
         <a href={b.url} target="_blank" rel="noopener noreferrer" title={b.description || b.url}>
           {#if icon}<img
@@ -75,6 +90,13 @@
             />{/if}
           <span class="title">{b.title}</span>
         </a>
+        {#if problem}<span
+            class="link-state"
+            class:broken={b.link.state === 'broken'}
+            title={problem}
+            aria-label={problem}
+            role="img">{b.link.state === 'broken' ? '⚠' : '↪'}</span
+          >{/if}
         {#each b.tags as t (t)}<span class="tag">#{t}</span>{/each}
         <button
           class="btn btn-icon edit"
@@ -84,7 +106,9 @@
         >
       </li>
     {:else}
-      <li class="muted">{query ? t('bookmarks.none_match') : t('bookmarks.none_yet')}</li>
+      <li class="muted">
+        {brokenOnly ? t('bookmarks.no_broken') : query ? t('bookmarks.none_match') : t('bookmarks.none_yet')}
+      </li>
     {/each}
   </ul>
 {/if}
@@ -147,6 +171,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .link-state {
+    font-size: 0.8em;
+    color: var(--color-text-muted);
+  }
+  .link-state.broken {
+    color: var(--color-danger);
   }
   .tag {
     font-size: 0.75em;

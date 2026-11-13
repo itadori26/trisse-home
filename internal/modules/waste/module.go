@@ -1,6 +1,7 @@
 package waste
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 	"net/http"
@@ -50,3 +51,7 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 func (m *Module) Jobs() []modules.Job {
 	return []modules.Job{{Name: "waste.refresh", Interval: refreshInterval, Run: m.uc.Refresh}}
 }
+
+// Upcoming returns the next collections per type (read access for the
+// briefing, ADR 0016).
+func (m *Module) Upcoming(ctx context.Context) (usecase.Overview, error) { return m.uc.Upcoming(ctx) }

@@ -5,7 +5,8 @@ import "context"
 // Alert is a one-off message for the user, e.g. a sign-in from a new device.
 // Unlike an Observation it has no state: every alert is delivered once.
 type Alert struct {
-	// Kind selects the notification rule: "security".
+	// Kind selects the notification rule and severity: "security",
+	// "reminder" (to-do reminders) or "briefing" (daily briefing).
 	Kind  string
 	Title string
 	Body  string

@@ -35,3 +35,33 @@ func TestCreateParsesDueDate(t *testing.T) {
 		t.Fatalf("invalid date accepted: %d", rec.Code)
 	}
 }
+
+type fakeUpdate struct {
+	got  usecase.TodoInput
+	done bool
+}
+
+func (f *fakeUpdate) Execute(_ context.Context, _ string, in usecase.TodoInput, done bool) (usecase.TodoView, error) {
+	f.got, f.done = in, done
+	return usecase.TodoView{ID: "1", Title: in.Title, Repeat: usecase.RepeatView{Kind: "daily", Every: 2}}, nil
+}
+
+func TestUpdatePassesScheduleOnlyWhenSent(t *testing.T) {
+	fu := &fakeUpdate{}
+	mux := http.NewServeMux()
+	mux.HandleFunc("PUT /api/todos/{id}", NewHandlers(UseCases{Update: fu}).Update)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/api/todos/1", strings.NewReader(
+		`{"title":"x","due":"2026-12-24","done":true,"repeat":{"kind":"daily","every":2,"days":[]},"reminder":{"at":"08:00","daysBefore":1}}`)))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"repeat":{"kind":"daily","every":2,"days":[]}`) {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	if fu.got.Repeat == nil || fu.got.Repeat.Every != 2 || fu.got.Reminder == nil || fu.got.Reminder.DaysBefore != 1 || !fu.done {
+		t.Fatalf("input %+v", fu.got)
+	}
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/api/todos/1", strings.NewReader(`{"title":"x","due":""}`)))
+	if rec.Code != http.StatusOK || fu.got.Repeat != nil || fu.got.Reminder != nil {
+		t.Fatalf("omitted schedule must stay nil: %d %+v", rec.Code, fu.got)
+	}
+}

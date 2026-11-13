@@ -60,6 +60,18 @@ type TabRulesDTO struct {
 	Rules []TabRuleDTO `json:"rules"`
 }
 
+// MobileItemInputDTO places a widget in the phone layout (#92).
+type MobileItemInputDTO struct {
+	ID     string `json:"id"`
+	Hidden bool   `json:"hidden"`
+	Rows   int    `json:"rows"`
+}
+
+// MobileLayoutDTO is the body of PUT /api/dashboard/tabs/{id}/mobile-layout.
+type MobileLayoutDTO struct {
+	Items []MobileItemInputDTO `json:"items"`
+}
+
 // SaveTemplateDTO is the body of POST /api/dashboard/templates.
 type SaveTemplateDTO struct {
 	TabID string `json:"tabId"`

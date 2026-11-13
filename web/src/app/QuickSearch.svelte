@@ -27,7 +27,34 @@
 
   // Commands like "todo: Müll morgen" or "restart nextcloud" (#67).
   const command = $derived(container.quickActions.parse(query, palettePrefixes));
-  const groups = $derived(command ? [] : search(items, query));
+  // Body matches from the notes full-text search (#73): matched notes show
+  // the excerpt around the match and count as hits for the query.
+  let noteHits = $state(new Map<string, string>());
+  const searchable = $derived(
+    items.map((i) => {
+      const snippet = i.kind === 'note' ? noteHits.get(i.id) : undefined;
+      return snippet === undefined ? i : { ...i, detail: snippet, keywords: [...(i.keywords ?? []), query] };
+    }),
+  );
+  const groups = $derived(command ? [] : search(searchable, query));
+  let noteTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    const q = query;
+    clearTimeout(noteTimer);
+    if (!modules.has('notes') || q.trim().length < 2) {
+      noteHits = new Map();
+      return;
+    }
+    noteTimer = setTimeout(() => {
+      container.notes
+        .search(q)
+        .then((hits) => {
+          if (q === query) noteHits = new Map(hits.map((h) => [h.id, h.snippet.map((x) => x.text).join('')]));
+        })
+        .catch(() => (noteHits = new Map()));
+    }, 200);
+    return () => clearTimeout(noteTimer);
+  });
   let undoLast = $state<(() => Promise<void>) | null>(null);
 
   async function runCommand(c: QuickCommand) {
