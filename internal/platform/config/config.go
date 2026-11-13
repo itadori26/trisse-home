@@ -8,6 +8,7 @@ import (
 	"net/netip"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -45,6 +46,9 @@ type Config struct {
 	MetricsToken            string
 	DockerActionsContainers []string
 	DockerActionsProxyURL   string
+	// SmartHomeActionsEntities are the Home Assistant entities that may be
+	// switched or pressed from the dashboard (#49); empty disables actions.
+	SmartHomeActionsEntities []string
 	// ProxmoxActionsGuests are the Proxmox guest IDs that may be started and
 	// shut down from the dashboard (#84); empty disables actions.
 	ProxmoxActionsGuests []int
@@ -113,52 +117,53 @@ func (c Config) ModuleEnabled(name string) bool {
 func Load(getenv func(string) string) (Config, error) {
 	l := loader{getenv: getenv}
 	cfg := Config{
-		ListenAddr:              l.str("LISTEN_ADDR", ":8090"),
-		DatabasePath:            l.str("DATABASE_PATH", "data/trisse-home.db"),
-		LogLevel:                l.level("LOG_LEVEL", slog.LevelInfo),
-		LogFormat:               l.oneOf("LOG_FORMAT", "json", "json", "text"),
-		AllowedCIDRs:            l.prefixes("ALLOWED_CIDRS", DefaultAllowedCIDRs),
-		TrustedProxies:          l.prefixes("TRUSTED_PROXIES", ""),
-		CookieSecure:            l.boolean("COOKIE_SECURE", false),
-		SessionTTL:              l.duration("SESSION_TTL", 30*24*time.Hour),
-		SecretKey:               l.secretKey("SECRET_KEY"),
-		SetupToken:              l.str("SETUP_TOKEN", ""),
-		DisabledModules:         l.list("MODULES_DISABLED", ""),
-		ShutdownTimeout:         l.duration("SHUTDOWN_TIMEOUT", 15*time.Second),
-		DockerProxyURL:          l.str("DOCKER_PROXY_URL", "http://docker-socket-proxy:2375"),
-		DockerActions:           l.boolean("DOCKER_ACTIONS", false),
-		MetricsEnabled:          l.boolean("METRICS_ENABLED", false),
-		MetricsToken:            l.str("METRICS_TOKEN", ""),
-		DockerActionsContainers: l.rawList("DOCKER_ACTIONS_CONTAINERS", ""),
-		DockerActionsProxyURL:   l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
-		ProxmoxActionsGuests:    l.ids("PROXMOX_ACTIONS_GUESTS"),
-		WolRelay:                l.str("WOL_RELAY", ""),
-		WireGuardDir:            l.str("WIREGUARD_DIR", ""),
-		DiskHealthDir:           l.str("DISKHEALTH_DIR", ""),
-		DiskHealthStaleAfter:    l.duration("DISKHEALTH_STALE_AFTER", 2*time.Hour),
-		TransitAPIURL:           l.str("TRANSIT_API_URL", "https://api.transitous.org"),
-		WolBroadcast:            l.str("WOL_BROADCAST", "255.255.255.255:9"),
-		HostProcPath:            l.str("HOST_PROC", "/proc"),
-		HostSysPath:             l.str("HOST_SYS", "/sys"),
-		DiskPaths:               l.rawList("SYSTEM_DISK_PATHS", "/"),
-		SampleData:              l.boolean("SAMPLE_DATA", true),
-		SampleWeather:           l.location("SAMPLE_WEATHER_LOCATION", "Berlin,52.52,13.41"),
-		SampleFeeds:             l.rawList("SAMPLE_FEEDS", "https://go.dev/blog/feed.atom,https://hnrss.org/frontpage"),
-		BackupInterval:          l.duration("BACKUP_INTERVAL", 24*time.Hour),
-		BackupRetention:         l.integer("BACKUP_RETENTION", 7),
-		DemoMode:                l.boolean("DEMO_MODE", false),
-		DemoResetInterval:       l.duration("DEMO_RESET_INTERVAL", 3*time.Hour),
-		InstallMethod:           l.oneOf("INSTALL_METHOD", "", "", "docker", "package", "appliance"),
-		OIDCIssuer:              l.str("OIDC_ISSUER", ""),
-		OIDCClientID:            l.str("OIDC_CLIENT_ID", ""),
-		OIDCClientSecret:        l.str("OIDC_CLIENT_SECRET", ""),
-		OIDCRedirectURL:         l.str("OIDC_REDIRECT_URL", ""),
-		OIDCAllowedSubjects:     l.rawList("OIDC_ALLOWED_SUBJECTS", ""),
-		OIDCAllowedEmails:       l.rawList("OIDC_ALLOWED_EMAILS", ""),
-		AuthProxyHeader:         l.str("AUTH_PROXY_HEADER", ""),
-		AuthProxyUsers:          l.rawList("AUTH_PROXY_USERS", ""),
-		PasswordLogin:           l.boolean("PASSWORD_LOGIN", true),
-		SSORequire2FA:           l.boolean("SSO_REQUIRE_2FA", false),
+		ListenAddr:               l.str("LISTEN_ADDR", ":8090"),
+		DatabasePath:             l.str("DATABASE_PATH", "data/trisse-home.db"),
+		LogLevel:                 l.level("LOG_LEVEL", slog.LevelInfo),
+		LogFormat:                l.oneOf("LOG_FORMAT", "json", "json", "text"),
+		AllowedCIDRs:             l.prefixes("ALLOWED_CIDRS", DefaultAllowedCIDRs),
+		TrustedProxies:           l.prefixes("TRUSTED_PROXIES", ""),
+		CookieSecure:             l.boolean("COOKIE_SECURE", false),
+		SessionTTL:               l.duration("SESSION_TTL", 30*24*time.Hour),
+		SecretKey:                l.secretKey("SECRET_KEY"),
+		SetupToken:               l.str("SETUP_TOKEN", ""),
+		DisabledModules:          l.list("MODULES_DISABLED", ""),
+		ShutdownTimeout:          l.duration("SHUTDOWN_TIMEOUT", 15*time.Second),
+		DockerProxyURL:           l.str("DOCKER_PROXY_URL", "http://docker-socket-proxy:2375"),
+		DockerActions:            l.boolean("DOCKER_ACTIONS", false),
+		MetricsEnabled:           l.boolean("METRICS_ENABLED", false),
+		MetricsToken:             l.str("METRICS_TOKEN", ""),
+		DockerActionsContainers:  l.rawList("DOCKER_ACTIONS_CONTAINERS", ""),
+		DockerActionsProxyURL:    l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
+		ProxmoxActionsGuests:     l.ids("PROXMOX_ACTIONS_GUESTS"),
+		SmartHomeActionsEntities: l.list("SMARTHOME_ACTIONS_ENTITIES", ""),
+		WolRelay:                 l.str("WOL_RELAY", ""),
+		WireGuardDir:             l.str("WIREGUARD_DIR", ""),
+		DiskHealthDir:            l.str("DISKHEALTH_DIR", ""),
+		DiskHealthStaleAfter:     l.duration("DISKHEALTH_STALE_AFTER", 2*time.Hour),
+		TransitAPIURL:            l.str("TRANSIT_API_URL", "https://api.transitous.org"),
+		WolBroadcast:             l.str("WOL_BROADCAST", "255.255.255.255:9"),
+		HostProcPath:             l.str("HOST_PROC", "/proc"),
+		HostSysPath:              l.str("HOST_SYS", "/sys"),
+		DiskPaths:                l.rawList("SYSTEM_DISK_PATHS", "/"),
+		SampleData:               l.boolean("SAMPLE_DATA", true),
+		SampleWeather:            l.location("SAMPLE_WEATHER_LOCATION", "Berlin,52.52,13.41"),
+		SampleFeeds:              l.rawList("SAMPLE_FEEDS", "https://go.dev/blog/feed.atom,https://hnrss.org/frontpage"),
+		BackupInterval:           l.duration("BACKUP_INTERVAL", 24*time.Hour),
+		BackupRetention:          l.integer("BACKUP_RETENTION", 7),
+		DemoMode:                 l.boolean("DEMO_MODE", false),
+		DemoResetInterval:        l.duration("DEMO_RESET_INTERVAL", 3*time.Hour),
+		InstallMethod:            l.oneOf("INSTALL_METHOD", "", "", "docker", "package", "appliance"),
+		OIDCIssuer:               l.str("OIDC_ISSUER", ""),
+		OIDCClientID:             l.str("OIDC_CLIENT_ID", ""),
+		OIDCClientSecret:         l.str("OIDC_CLIENT_SECRET", ""),
+		OIDCRedirectURL:          l.str("OIDC_REDIRECT_URL", ""),
+		OIDCAllowedSubjects:      l.rawList("OIDC_ALLOWED_SUBJECTS", ""),
+		OIDCAllowedEmails:        l.rawList("OIDC_ALLOWED_EMAILS", ""),
+		AuthProxyHeader:          l.str("AUTH_PROXY_HEADER", ""),
+		AuthProxyUsers:           l.rawList("AUTH_PROXY_USERS", ""),
+		PasswordLogin:            l.boolean("PASSWORD_LOGIN", true),
+		SSORequire2FA:            l.boolean("SSO_REQUIRE_2FA", false),
 	}
 	if raw := l.getenv("PUBLIC_URL"); raw != "" {
 		u, err := url.Parse(strings.TrimRight(raw, "/"))
@@ -177,12 +182,18 @@ func Load(getenv func(string) string) (Config, error) {
 	if cfg.MetricsEnabled && len(cfg.MetricsToken) < minMetricsToken {
 		l.fail("METRICS_TOKEN", "must be at least 32 characters when METRICS_ENABLED=true (e.g. openssl rand -hex 32)")
 	}
+	for _, id := range cfg.SmartHomeActionsEntities {
+		if !entityID.MatchString(id) {
+			l.fail("SMARTHOME_ACTIONS_ENTITIES", "must list Home Assistant entity IDs such as switch.coffee_machine")
+			break
+		}
+	}
 	if cfg.DockerActions && len(cfg.DockerActionsContainers) == 0 {
 		l.fail("DOCKER_ACTIONS_CONTAINERS", "must list the containers that may be restarted when DOCKER_ACTIONS=true")
 	}
 	if cfg.DemoMode {
 		cfg.SampleData = true
-		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "PROXMOX_ACTIONS_GUESTS": len(cfg.ProxmoxActionsGuests) > 0, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != "", "DISKHEALTH_DIR": cfg.DiskHealthDir != ""} {
+		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "SMARTHOME_ACTIONS_ENTITIES": len(cfg.SmartHomeActionsEntities) > 0, "PROXMOX_ACTIONS_GUESTS": len(cfg.ProxmoxActionsGuests) > 0, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != "", "DISKHEALTH_DIR": cfg.DiskHealthDir != ""} {
 			if set {
 				l.fail(key, "must not be set together with DEMO_MODE=true (a demo must not reach real systems)")
 			}
@@ -223,6 +234,9 @@ func (l *loader) str(key, def string) string {
 	}
 	return def
 }
+
+// entityID matches Home Assistant entity IDs such as switch.coffee.
+var entityID = regexp.MustCompile(`^[a-z0-9_]+\.[a-z0-9_]+$`)
 
 // list returns a lower-cased, comma-separated list (for identifiers).
 func (l *loader) list(key, def string) []string {

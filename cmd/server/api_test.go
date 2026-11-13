@@ -129,6 +129,13 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /control/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
+	mux.HandleFunc("GET /ha/api/states", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer ha-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `[{"entity_id":"switch.coffee","state":"off","attributes":{"friendly_name":"Coffee"},"last_changed":"2026-11-12T10:00:00Z"}]`)
+	})
 	mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "PVEAPIToken=monitor@pve!th=uuid" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -637,6 +644,19 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("proxmox: %v", pve)
 	}
 	c.do(http.MethodPost, "/api/proxmox/guests/100/shutdown", nil, http.StatusForbidden)
+
+	// --- smart home (#49): read-only without SMARTHOME_ACTIONS_ENTITIES ---
+	c.do(http.MethodGet, "/api/smarthome/states?ids=switch.coffee", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/smarthome/settings", obj{"url": up.URL + "/ha", "token": "ha-token"}, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/smarthome/settings", nil, http.StatusOK)); strings.Contains(body, "ha-token") {
+		t.Fatal("home assistant token leaked")
+	}
+	var entities []obj
+	c.json(http.MethodGet, "/api/smarthome/states?ids=switch.coffee", nil, http.StatusOK, &entities)
+	if len(entities) != 1 || entities[0]["name"] != "Coffee" || entities[0]["action"] != "" {
+		t.Fatalf("smarthome: %v", entities)
+	}
+	c.do(http.MethodPost, "/api/smarthome/entities/switch.coffee/action", nil, http.StatusForbidden)
 
 	// --- calendar ---
 	c.do(http.MethodGet, "/api/calendar/events", nil, http.StatusNotFound)
