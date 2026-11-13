@@ -141,6 +141,25 @@ packages:
   - path: "trisse-home/internal/modules/timeline/adapter/controller"
     output_path: "web/src/shared/api-client/generated/timeline-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/arr/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/arr.ts"
+  - path: "trisse-home/internal/modules/arr/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/arr-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/media/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/media.ts"
+  - path: "trisse-home/internal/modules/media/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/media-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/smarthome/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/smarthome.ts"
+  - path: "trisse-home/internal/modules/smarthome/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/smarthome-requests.ts"
+    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/proxmox/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/proxmox.ts"
+  - path: "trisse-home/internal/modules/proxmox/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/proxmox-requests.ts"
   - path: "trisse-home/internal/modules/briefing/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/briefing.ts"
   - path: "trisse-home/internal/modules/briefing/adapter/controller"

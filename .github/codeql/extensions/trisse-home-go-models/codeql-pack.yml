@@ -1,0 +1,9 @@
+# CodeQL model pack of trisse-home (#191). Code scanning (default setup)
+# picks up model packs in .github/codeql/extensions automatically.
+name: trisse-home/go-models
+version: 0.0.1
+library: true
+extensionTargets:
+  codeql/go-all: "*"
+dataExtensions:
+  - models/**/*.yml

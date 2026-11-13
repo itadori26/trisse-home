@@ -46,6 +46,8 @@ export const alertTypes = [
   'forecast',
   'speedtest',
   'image',
+  'reminder',
+  'briefing',
 ] as const;
 
 /** Severities per alert type and quiet hours. */

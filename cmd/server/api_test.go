@@ -129,6 +129,61 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /control/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
+	// Sonarr (#86).
+	mux.HandleFunc("GET /sonarr/api/v3/system/status", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"appName":"Sonarr"}`)
+	})
+	mux.HandleFunc("GET /sonarr/api/v3/calendar", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `[{"title":"Pilot","seasonNumber":1,"episodeNumber":1,"airDateUtc":"`+time.Now().Add(24*time.Hour).UTC().Format(time.RFC3339)+`","series":{"title":"Show"}}]`)
+	})
+	mux.HandleFunc("GET /sonarr/api/v3/queue", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `{"records":[]}`) })
+	mux.HandleFunc("GET /sonarr/api/v3/health", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `[]`) })
+	mux.HandleFunc("GET /sonarr/api/v3/wanted/missing", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"totalRecords":2}`)
+	})
+	// Jellyfin (#61).
+	mux.HandleFunc("GET /jf/System/Info", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"ServerName":"Home"}`)
+	})
+	mux.HandleFunc("GET /jf/Items", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"Items":[{"Id":"abc","Name":"Film","Type":"Movie"}]}`)
+	})
+	mux.HandleFunc("GET /jf/Sessions", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `[]`) })
+	mux.HandleFunc("GET /jf/Items/abc/Images/Primary", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = io.WriteString(w, "png")
+	})
+	// ICS subscription (#98): an event tomorrow, served with an ETag.
+	mux.HandleFunc("GET /holidays.ics", func(w http.ResponseWriter, _ *http.Request) {
+		day := time.Now().Add(24 * time.Hour).UTC().Format("20060102")
+		w.Header().Set("ETag", `"h1"`)
+		_, _ = io.WriteString(w, "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:h\r\nSUMMARY:Holiday\r\nDTSTART;VALUE=DATE:"+day+"\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")
+	})
+	mux.HandleFunc("GET /ha/api/states", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer ha-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `[{"entity_id":"switch.coffee","state":"off","attributes":{"friendly_name":"Coffee"},"last_changed":"2026-11-12T10:00:00Z"}]`)
+	})
+	mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "PVEAPIToken=monitor@pve!th=uuid" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `{"data":[{"type":"node","node":"pve","status":"online","cpu":0.5,"maxcpu":4},`+
+			`{"type":"qemu","vmid":100,"name":"ha","node":"pve","status":"running"}]}`)
+	})
+	// Pi-hole v6 (#83) without a password: no session needed.
+	mux.HandleFunc("GET /pihole/api/stats/summary", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"queries":{"total":200,"blocked":20}}`)
+	})
+	mux.HandleFunc("GET /pihole/api/dns/blocking", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"blocking":"enabled"}`)
+	})
+	mux.HandleFunc("GET /pihole/api/stats/top_domains", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"domains":[{"domain":"ads.example","count":9}]}`)
+	})
 	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut && r.Header.Get("If-None-Match") == "*" && strings.HasSuffix(r.URL.Path, ".ics") {
 			body, _ := io.ReadAll(r.Body)
@@ -598,6 +653,68 @@ func TestAPIEndToEnd(t *testing.T) {
 	if stats["blockedPercent"] != float64(25) {
 		t.Fatalf("adguard: %v", stats)
 	}
+	c.do(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusNotFound)
+	c.do(http.MethodGet, "/api/adguard/stats?provider=bind", nil, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/adguard/settings?provider=pihole", obj{"url": up.URL + "/pihole"}, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusOK, &stats)
+	if stats["blockedPercent"] != float64(10) || stats["avgProcessingMs"] != nil {
+		t.Fatalf("pi-hole: %v", stats)
+	}
+
+	// --- proxmox (#84): read-only, actions off without PROXMOX_ACTIONS_GUESTS ---
+	c.do(http.MethodGet, "/api/proxmox/status", nil, http.StatusNotFound)
+	c.do(http.MethodPut, "/api/proxmox/settings", obj{"url": up.URL, "tokenId": "monitor@pve!th", "secret": "bad"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/proxmox/settings", obj{"url": up.URL, "tokenId": "monitor@pve!th", "secret": "uuid"}, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/proxmox/settings", nil, http.StatusOK)); strings.Contains(body, "uuid") {
+		t.Fatal("token secret leaked")
+	}
+	var pve obj
+	c.json(http.MethodGet, "/api/proxmox/status", nil, http.StatusOK, &pve)
+	if guests := pve["guests"].([]any); len(guests) != 1 || guests[0].(obj)["actions"] != false || pve["nodes"].([]any)[0].(obj)["cpuPercent"] != float64(50) {
+		t.Fatalf("proxmox: %v", pve)
+	}
+	c.do(http.MethodPost, "/api/proxmox/guests/100/shutdown", nil, http.StatusForbidden)
+
+	// --- smart home (#49): read-only without SMARTHOME_ACTIONS_ENTITIES ---
+	c.do(http.MethodGet, "/api/smarthome/states?ids=switch.coffee", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/smarthome/settings", obj{"url": up.URL + "/ha", "token": "ha-token"}, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/smarthome/settings", nil, http.StatusOK)); strings.Contains(body, "ha-token") {
+		t.Fatal("home assistant token leaked")
+	}
+	var entities []obj
+	c.json(http.MethodGet, "/api/smarthome/states?ids=switch.coffee", nil, http.StatusOK, &entities)
+	if len(entities) != 1 || entities[0]["name"] != "Coffee" || entities[0]["action"] != "" {
+		t.Fatalf("smarthome: %v", entities)
+	}
+	c.do(http.MethodPost, "/api/smarthome/entities/switch.coffee/action", nil, http.StatusForbidden)
+
+	// --- *arr (#86): API keys stay on the server ---
+	c.do(http.MethodGet, "/api/arr/overview", nil, http.StatusNotFound)
+	c.do(http.MethodPost, "/api/arr/instances", obj{"app": "radarr", "url": up.URL + "/sonarr", "apiKey": "k"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPost, "/api/arr/instances", obj{"app": "sonarr", "url": up.URL + "/sonarr", "apiKey": "sonarr-key"}, http.StatusCreated, nil)
+	if body := string(c.do(http.MethodGet, "/api/arr/instances", nil, http.StatusOK)); strings.Contains(body, "sonarr-key") {
+		t.Fatal("arr API key leaked")
+	}
+	var arrOverview obj
+	c.json(http.MethodGet, "/api/arr/overview", nil, http.StatusOK, &arrOverview)
+	if up := arrOverview["upcoming"].([]any); len(up) != 1 || arrOverview["missing"].(obj)["Sonarr"] != float64(2) {
+		t.Fatalf("arr: %v", arrOverview)
+	}
+	// --- media server (#61): posters are proxied, the token never leaves ---
+	c.do(http.MethodGet, "/api/media/overview", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/media/settings", obj{"provider": "jellyfin", "url": up.URL + "/jf", "token": "jf-key"}, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/media/settings", nil, http.StatusOK)); strings.Contains(body, "jf-key") {
+		t.Fatal("media token leaked")
+	}
+	var media obj
+	c.json(http.MethodGet, "/api/media/overview", nil, http.StatusOK, &media)
+	if media["serverName"] != "Home" || len(media["recent"].([]any)) != 1 {
+		t.Fatalf("media: %v", media)
+	}
+	if body := string(c.do(http.MethodGet, "/api/media/posters/abc", nil, http.StatusOK)); body != "png" {
+		t.Fatalf("poster: %q", body)
+	}
+	c.do(http.MethodGet, "/api/media/posters/other", nil, http.StatusNotFound)
 
 	// --- calendar ---
 	c.do(http.MethodGet, "/api/calendar/events", nil, http.StatusNotFound)
@@ -622,6 +739,25 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodPost, "/api/calendar/events", newEvent, http.StatusCreated, nil)
 	newEvent["calendarUrl"] = "https://elsewhere.example/cal/"
 	c.do(http.MethodPost, "/api/calendar/events", newEvent, http.StatusUnprocessableEntity)
+
+	// --- ICS subscriptions (#98): merged into the agenda, URL never returned ---
+	c.do(http.MethodPost, "/api/calendar/subscriptions", obj{"name": "Broken", "url": up.URL + "/missing.ics"}, http.StatusUnprocessableEntity)
+	var sub obj
+	c.json(http.MethodPost, "/api/calendar/subscriptions", obj{"name": "Holidays", "url": up.URL + "/holidays.ics?token=secret", "color": "#00aa00"}, http.StatusCreated, &sub)
+	if body := string(c.do(http.MethodGet, "/api/calendar/subscriptions", nil, http.StatusOK)); strings.Contains(body, "secret") {
+		t.Fatalf("subscription URL leaked: %s", body)
+	}
+	c.json(http.MethodGet, "/api/calendar/events?days=7", nil, http.StatusOK, &agenda)
+	var holiday obj
+	for _, e := range agenda.Events {
+		if e["calendar"] == "Holidays" {
+			holiday = e
+		}
+	}
+	if holiday == nil || holiday["color"] != "#00aa00" || holiday["allDay"] != true {
+		t.Fatalf("subscription events in the agenda: %+v", agenda)
+	}
+	c.do(http.MethodDelete, "/api/calendar/subscriptions/"+sub["id"].(string), nil, http.StatusNoContent)
 
 	// --- browser bookmark import (Netscape HTML) ---
 	html := `<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p><DT><H3>Imported</H3><DL><p>` +
