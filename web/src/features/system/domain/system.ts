@@ -51,10 +51,35 @@ export interface HistoryPoint {
   disk: number;
 }
 
+/** How the instance was installed; decides how updates reach it. */
+export type InstallMethod = 'docker' | 'package' | 'appliance' | 'unknown';
+
 /** Running version and the result of the optional update check. */
 export interface VersionInfo {
   current: string;
+  installMethod: InstallMethod;
   checkEnabled: boolean;
   latest: { version: string; url: string; publishedAt: Date } | null;
   updateAvailable: boolean;
+}
+
+/** Narrows the install method reported by the server; unknown values stay unknown. */
+export function parseInstallMethod(value: string): InstallMethod {
+  return value === 'docker' || value === 'package' || value === 'appliance' ? value : 'unknown';
+}
+
+/** Message key telling the user how to update, or null when there is nothing to say. */
+export function updateHintKey(
+  method: InstallMethod,
+): 'system.update_how_docker' | 'system.update_how_package' | 'system.update_how_appliance' | null {
+  switch (method) {
+    case 'docker':
+      return 'system.update_how_docker';
+    case 'package':
+      return 'system.update_how_package';
+    case 'appliance':
+      return 'system.update_how_appliance';
+    default:
+      return null;
+  }
 }

@@ -31,6 +31,12 @@ type Service struct {
 	Position      int
 	// MAC is the hardware address for Wake-on-LAN (optional).
 	MAC kernel.MAC
+	// Container is set for tiles created from container labels (#78).
+	Container string
+	// Hidden tiles belong to a container that no longer exists.
+	Hidden bool
+	// Edited records a manual change of a discovered tile.
+	Edited bool
 }
 
 // ErrNoMAC is returned when waking a service without MAC address.

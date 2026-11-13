@@ -1,11 +1,17 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
 import type {
+  DiscoveryDTO,
   IncidentDTO,
   LatencyPointDTO,
   ServiceDTO,
   UptimeDTO,
 } from '../../../../shared/api-client/generated/services';
-import type { OrderDTO, ServiceInputDTO } from '../../../../shared/api-client/generated/services-requests';
+import type {
+  DiscoveryInputDTO,
+  OrderDTO,
+  ServiceInputDTO,
+} from '../../../../shared/api-client/generated/services-requests';
+import type { Discovery, DiscoverySettings } from '../../domain/discovery';
 import type { LatencyPoint, Service, ServiceInput } from '../../domain/service';
 import type { Incident, ServiceUptime } from '../../domain/uptime';
 import type { ServicesGateway } from '../../usecase/servicesUseCases';
@@ -29,6 +35,16 @@ const toService = (d: ServiceDTO): Service => ({
   error: d.error,
   certExpiresAt: d.certExpiresAt ? new Date(d.certExpiresAt) : null,
   certExpiresSoon: d.certExpiresSoon,
+  container: d.container,
+  hidden: d.hidden,
+});
+
+const toDiscovery = (d: DiscoveryDTO): Discovery => ({
+  available: d.available,
+  enabled: d.enabled,
+  intervalMinutes: d.intervalMinutes,
+  rule: d.rule,
+  lastSync: d.lastSync ? { ...d.lastSync, at: new Date(d.lastSync.at) } : null,
 });
 
 const toDTO = (i: ServiceInput): ServiceInputDTO => ({ ...i, mac: i.mac.trim() });
@@ -93,5 +109,18 @@ export class ServicesApi implements ServicesGateway {
       start: new Date(d.start),
       end: d.end ? new Date(d.end) : null,
     }));
+  }
+
+  async discovery(): Promise<Discovery> {
+    return toDiscovery(await this.http.get<DiscoveryDTO>('/api/services/discovery'));
+  }
+
+  async saveDiscovery(settings: DiscoverySettings): Promise<Discovery> {
+    const body: DiscoveryInputDTO = settings;
+    return toDiscovery(await this.http.put<DiscoveryDTO>('/api/services/discovery', body));
+  }
+
+  async syncDiscovery(): Promise<Discovery> {
+    return toDiscovery(await this.http.post<DiscoveryDTO>('/api/services/discovery/sync'));
   }
 }

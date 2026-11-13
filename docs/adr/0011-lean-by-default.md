@@ -44,6 +44,7 @@ of dependencies. Nothing guarded their *weight*.
    | Go binary | 16.2 MB | 18.9 MB (raised from 17.9 MB for new modules, #174) |
    | Container image | 7.7 MB | 8.5 MB |
    | Idle memory (demo instance, RSS after 60 s) | 76.2 MB | 84 MB |
+   | Raspberry Pi image, `.img.xz` (added 2026-11-12, [ADR 0015](0015-raspberry-pi-image.md)) | 557.5 MB | 613 MB |
 
    Budgets start at baseline + 10 %. **Changing a budget** is a normal pull
    request that edits `budgets.json` and explains why the increase is worth

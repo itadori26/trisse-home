@@ -5,7 +5,12 @@ Wants=network-online.target
 After=network-online.target
 
 [Service]
-Type=simple
+# The binary sends READY=1 once the HTTP server listens and WATCHDOG=1 pings
+# while the database answers (internal/platform/sdnotify); a hung process is
+# restarted after WatchdogSec.
+Type=notify
+NotifyAccess=main
+WatchdogSec=60s
 User=trisse-home
 Group=trisse-home
 
@@ -17,6 +22,8 @@ ExecStartPre=+/usr/lib/trisse-home/trisse-home-init
 # moving from Docker) overrides the generated one.
 EnvironmentFile=-/etc/trisse-home/secret.env
 EnvironmentFile=/etc/trisse-home/trisse-home.env
+# Selects the update hint in the settings (the image overrides it).
+Environment=INSTALL_METHOD=package
 ExecStart=/usr/bin/trisse-home serve
 
 Restart=on-failure

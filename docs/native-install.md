@@ -24,12 +24,30 @@ sha256sum --check --ignore-missing "trisse-home_${VERSION}_packages.sha256"
 sudo apt install "./trisse-home_${VERSION}_$ARCH.deb"
 ```
 
-The service starts right away on port 8090. Open `http://<host>:8090` and
-enter the setup token from the log:
+The service starts right away on port 8090. Show the address and the
+one-time setup token, open the address and enter the token:
 
 ```sh
-sudo journalctl -u trisse-home | grep setup_token
+sudo trisse-home-setup-token
 ```
+
+## Setup token
+
+Like `SECRET_KEY`, the setup token is generated on the device on the first
+start (20 characters without look-alikes, e.g. `K7MP-Q2XA-9HTD-WE4R-ZN6C`) and
+is only valid until the account exists. Ways to get it — all of them need
+access to the device itself:
+
+- `sudo trisse-home-setup-token` over SSH or on the console
+- on a monitor attached to the device, above the login prompt
+- on a Raspberry Pi: `trisse-home-setup.txt` on the boot partition of the SD
+  card (readable on any computer)
+- in the log: `sudo journalctl -u trisse-home | grep setup_token`
+
+Console text and boot partition file are deleted automatically once the
+account exists (`trisse-home-setup-info.timer`). To choose the token yourself
+(automated setups), set `SETUP_TOKEN=` (at least 16 characters) in
+`trisse-home.env`.
 
 ## What the package installs
 
@@ -37,7 +55,7 @@ sudo journalctl -u trisse-home | grep setup_token
 | --- | --- |
 | `/usr/bin/trisse-home` | The binary (same as in the container image) |
 | `/etc/trisse-home/trisse-home.env` | Configuration (environment variables, see [.env.example](../.env.example)) |
-| `/etc/trisse-home/secret.env` | `SECRET_KEY`, generated on the first start |
+| `/etc/trisse-home/secret.env` | `SECRET_KEY` and `SETUP_TOKEN`, generated on the first start |
 | `/var/lib/trisse-home/` | Database and automatic backups |
 | `trisse-home.service` | systemd unit, runs as the system user `trisse-home` |
 
@@ -73,20 +91,66 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 ReadWritePaths=/mnt/usb/trisse-home
 ```
 
+## Robustness
+
+- **Watchdog:** the service reports readiness to systemd and pings its
+  watchdog every 30 seconds while the database answers. If it hangs, systemd
+  restarts it after 60 seconds (`WatchdogSec=`).
+- **Power loss:** SQLite runs in WAL mode with `synchronous=NORMAL`. After a
+  sudden power cut the database is always consistent; at worst the last
+  change before the cut is lost. Daily backups cover the rest.
+
 ## Update and rollback
 
-Install the newer package the same way; configuration, key and data are kept
-and the service restarts. To roll back, install the older package with
-`sudo apt install --allow-downgrades ./trisse-home_<old>_<arch>.deb` —
-database migrations only add columns and tables, and a backup is created
-daily. (Automatic updates through an APT repository are planned in #137.)
+**With the APT repository** (recommended; the Raspberry Pi image is set up
+this way and updates itself every night):
+
+```sh
+sudo curl -fsSLo /usr/share/keyrings/trisse-home-archive-keyring.asc \
+  https://itadori26.github.io/trisse-home/apt/trisse-home-archive-keyring.asc
+sudo tee /etc/apt/sources.list.d/trisse-home.sources >/dev/null <<'EOF'
+Types: deb
+URIs: https://itadori26.github.io/trisse-home/apt
+Suites: stable
+Components: main
+Signed-By: /usr/share/keyrings/trisse-home-archive-keyring.asc
+EOF
+sudo apt update && sudo apt install trisse-home
+```
+
+Afterwards `sudo apt upgrade` updates trisse-home like every other package,
+and `unattended-upgrades` can do it automatically (add
+`"origin=trisse-home,codename=stable";` to `Unattended-Upgrade::Origins-Pattern`).
+Check the key's fingerprint against the one in the release notes before
+trusting it.
+
+**Without the repository**, install the newer `.deb` the same way as the
+first one.
+
+Either way configuration, key and data are kept, the service restarts, and
+**before every upgrade the database is copied** to
+`/var/lib/trisse-home/backups/pre-upgrade/` (the three newest copies stay).
+
+**Rollback:** the repository keeps the last five versions.
+
+```sh
+sudo apt install --allow-downgrades trisse-home=1.2.3
+```
+
+Database migrations only add columns and tables, so an older version runs on
+newer data. To return to the exact data of before the upgrade:
+`sudo systemctl stop trisse-home`, delete `trisse-home.db-wal` and
+`trisse-home.db-shm` in `/var/lib/trisse-home`, copy the matching
+`backups/pre-upgrade/trisse-home-<version>-<time>.db` to `trisse-home.db`
+(and its `-wal` file, if there is one, to `trisse-home.db-wal`), then start
+the service again.
 
 ## Forgot the password?
 
 ```sh
 sudo -u trisse-home sh -c 'set -a; . /etc/trisse-home/secret.env; . /etc/trisse-home/trisse-home.env; exec trisse-home reset-account'
 sudo systemctl restart trisse-home
-sudo journalctl -u trisse-home | grep setup_token
+sudo trisse-home-setup-token
 ```
 
 ## Moving from Docker

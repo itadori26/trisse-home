@@ -33,8 +33,11 @@ type ListDTO struct {
 func List(r usecase.ListResponse) ListDTO {
 	dto := ListDTO{Total: r.Total, Running: r.Running, Stopped: r.Stopped, Unhealthy: r.Unhealthy, UpdatedAt: r.UpdatedAt, Error: r.Error,
 		Containers: make([]ContainerDTO, 0, len(r.Containers))}
+	// Labels are not part of the response: they can carry credentials
+	// (e.g. basic auth hashes of a reverse proxy).
 	for _, c := range r.Containers {
-		dto.Containers = append(dto.Containers, ContainerDTO(c))
+		dto.Containers = append(dto.Containers, ContainerDTO{ID: c.ID, Name: c.Name, Image: c.Image, State: c.State,
+			Status: c.Status, Health: c.Health, Project: c.Project, Created: c.Created})
 	}
 	return dto
 }
