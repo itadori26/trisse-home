@@ -532,8 +532,9 @@ export const en = {
   'widget.adguard.description': 'DNS queries and blocking statistics of AdGuard Home or Pi-hole.',
   'widget.nextcloud.title': 'Nextcloud',
   'widget.nextcloud.description': 'Version, your quota and server status of your Nextcloud.',
-  'widget.fritzbox.title': 'FRITZ!Box',
-  'widget.fritzbox.description': 'Internet connection, current throughput and recent calls.',
+  'widget.fritzbox.title': 'FRITZ!Box internet',
+  'widget.fritzbox.description':
+    'Internet connection, current throughput and uptime; the calls have their own widget.',
   'widget.wireguard.title': 'WireGuard',
   'widget.wireguard.description': 'VPN peers with last handshake and traffic.',
   'widget.waste.title': 'Waste collection',
