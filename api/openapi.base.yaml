@@ -105,11 +105,12 @@ components:
         h: { type: integer, minimum: 1, maximum: 24 }
     SearchSettings:
       type: object
-      required: [defaultProvider, providers, shortcuts]
+      required: [defaultProvider, providers, shortcuts, bar]
       properties:
         defaultProvider: { type: string, examples: [duckduckgo] }
         providers: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string } } } }
         shortcuts: { type: array, items: { $ref: "#/components/schemas/Shortcut" } }
+        bar: { $ref: "#/components/schemas/SearchBar" }
     Shortcut:
       type: object
       required: [keyword, name, urlTemplate]

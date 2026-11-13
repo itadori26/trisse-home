@@ -19,16 +19,32 @@ type ShortcutDTO struct {
 	URLTemplate string `json:"urlTemplate"`
 }
 
+// CapturePrefixesDTO are the quick capture prefixes of the search field (#221).
+type CapturePrefixesDTO struct {
+	Todo     string `json:"todo"`
+	Note     string `json:"note"`
+	Bookmark string `json:"bookmark"`
+}
+
+// BarDTO describes the options of the search field (#221).
+type BarDTO struct {
+	OpenInNewTab    bool               `json:"openInNewTab"`
+	CapturePrefixes CapturePrefixesDTO `json:"capturePrefixes"`
+}
+
 // SettingsDTO is returned by the search settings endpoints.
 type SettingsDTO struct {
 	DefaultProvider string        `json:"defaultProvider"`
 	Providers       []ProviderDTO `json:"providers"`
 	Shortcuts       []ShortcutDTO `json:"shortcuts"`
+	Bar             BarDTO        `json:"bar"`
 }
 
 // Settings maps a SettingsResponse.
 func Settings(r usecase.SettingsResponse) SettingsDTO {
-	dto := SettingsDTO{DefaultProvider: r.DefaultProvider, Providers: []ProviderDTO{}, Shortcuts: []ShortcutDTO{}}
+	dto := SettingsDTO{DefaultProvider: r.DefaultProvider, Providers: []ProviderDTO{}, Shortcuts: []ShortcutDTO{},
+		Bar: BarDTO{OpenInNewTab: r.Bar.OpenInNewTab, CapturePrefixes: CapturePrefixesDTO{
+			Todo: r.Bar.TodoPrefix, Note: r.Bar.NotePrefix, Bookmark: r.Bar.BookmarkPrefix}}}
 	for _, p := range r.Providers {
 		dto.Providers = append(dto.Providers, ProviderDTO{ID: p.ID, Name: p.Name})
 	}

@@ -75,3 +75,20 @@ func TestWriteHelpers(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDescriptionAndURL(t *testing.T) {
+	long := strings.Repeat("x", 2100)
+	data := "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\nSUMMARY:Meeting\r\nDTSTART:20261113T100000Z\r\n" +
+		"DESCRIPTION:Agenda:\\n1. Budget\\, 2. Plan\r\nURL:https://example.org/meet\r\nEND:VEVENT\r\n" +
+		"BEGIN:VEVENT\r\nUID:b\r\nSUMMARY:Long\r\nDTSTART:20261114T100000Z\r\nDESCRIPTION:" + long + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+	events, err := Parse(data, time.UTC)
+	if err != nil || len(events) != 2 {
+		t.Fatalf("%v %v", events, err)
+	}
+	if events[0].Description != "Agenda:\n1. Budget, 2. Plan" || events[0].URL != "https://example.org/meet" {
+		t.Fatalf("%q %q", events[0].Description, events[0].URL)
+	}
+	if n := len([]rune(events[1].Description)); n != maxDescription+1 { // + the ellipsis
+		t.Fatalf("description not cut: %d runes", n)
+	}
+}

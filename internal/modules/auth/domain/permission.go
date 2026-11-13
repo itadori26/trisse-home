@@ -7,7 +7,10 @@ import "strings"
 var guestSelfService = []string{"/api/auth/logout", "/api/auth/password", "/api/auth/totp", "/api/auth/sessions", "/api/auth/passkeys"}
 
 // guestReadable are read endpoints every guest needs to render the page.
-var guestReadable = []string{"/api/dashboard", "/api/modules", "/api/appearance", "/api/auth/status"}
+// /api/search is the web search of the search field, which is part of every
+// page since the search widget was removed (#221); it only redirects to the
+// search engine, the search settings stay closed.
+var guestReadable = []string{"/api/dashboard", "/api/modules", "/api/appearance", "/api/auth/status", "/api/search"}
 
 // GuestMayAccess decides whether a guest may call method on path. modules
 // are the modules whose widgets are on the guest's tabs: their read

@@ -44,6 +44,19 @@ func (h *Handlers) SetDefaultProvider(w http.ResponseWriter, r *http.Request) {
 	h.respond(w, r, res, err)
 }
 
+// SetBarOptions handles PUT /api/search/bar (#221).
+func (h *Handlers) SetBarOptions(w http.ResponseWriter, r *http.Request) {
+	var dto BarOptionsDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	p := dto.CapturePrefixes
+	res, err := h.uc.SetBarOptions(r.Context(), usecase.SetBarRequest{OpenInNewTab: dto.OpenInNewTab,
+		TodoPrefix: p.Todo, NotePrefix: p.Note, BookmarkPrefix: p.Bookmark})
+	h.respond(w, r, res, err)
+}
+
 // AddShortcut handles POST /api/search/shortcuts.
 func (h *Handlers) AddShortcut(w http.ResponseWriter, r *http.Request) {
 	var dto presenter.ShortcutDTO
