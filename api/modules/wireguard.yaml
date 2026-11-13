@@ -1,0 +1,15 @@
+tags:
+  - name: wireguard
+
+paths:
+  /api/wireguard/peers:
+    get:
+      tags: [wireguard]
+      summary: Peers from the export of scripts/wireguard-export.sh (online = handshake within 3 minutes; stale = export older than 5 minutes)
+      responses: { "200": { description: OK }, "404": { description: No export found } }
+  /api/wireguard/names:
+    put:
+      tags: [wireguard]
+      summary: Set a custom name for a public key (empty name removes it)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { publicKey: { type: string }, name: { type: string, maxLength: 40 } } } } } }
+      responses: { "204": { description: Saved }, "422": { description: Validation error } }

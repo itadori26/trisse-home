@@ -1,0 +1,65 @@
+tags:
+  - name: weather
+
+paths:
+  /api/weather:
+    get:
+      tags: [weather]
+      summary: Current weather and forecast (cached, refreshed every 15 minutes)
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number, minimum: -90, maximum: 90 } }
+        - { name: lon, in: query, required: true, schema: { type: number, minimum: -180, maximum: 180 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Forecast" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+        "502": { $ref: "#/components/responses/Unavailable" }
+  /api/weather/warnings:
+    get:
+      tags: [weather]
+      summary: Official DWD warnings for the location (empty outside Germany), most severe first; cached 5 minutes
+      parameters: [{ name: lat, in: query, required: true, schema: { type: number } }, { name: lon, in: query, required: true, schema: { type: number } }]
+      responses: { "200": { description: OK }, "422": { description: Invalid coordinates }, "503": { description: DWD not reachable } }
+  /api/weather/radar:
+    get:
+      tags: [weather]
+      summary: PNG of the DWD precipitation radar (≈220 km around the location, Germany only); cached 5 minutes
+      parameters: [{ name: lat, in: query, required: true, schema: { type: number } }, { name: lon, in: query, required: true, schema: { type: number } }]
+      responses:
+        "200": { description: OK, content: { image/png: { schema: { type: string, format: binary } } } }
+        "422": { description: Outside Germany or invalid coordinates }
+  /api/weather/places:
+    get:
+      tags: [weather]
+      summary: Search places by name (geocoding)
+      parameters: [{ name: q, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 100 } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Place" } } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  Forecast:
+    type: object
+    properties:
+      lat: { type: number }
+      lon: { type: number }
+      timezone: { type: string }
+      temperature: { type: number }
+      apparentTemperature: { type: number }
+      humidity: { type: number }
+      windSpeed: { type: number }
+      weatherCode: { type: integer, description: WMO weather code }
+      isDay: { type: boolean }
+      updatedAt: { type: string, format: date-time }
+      days:
+        type: array
+        items:
+          type: object
+          properties:
+            date: { type: string, format: date }
+            temperatureMin: { type: number }
+            temperatureMax: { type: number }
+            weatherCode: { type: integer }
+            precipitationProbability: { type: number }
+  Place:
+    type: object
+    properties: { name: { type: string }, region: { type: string }, country: { type: string }, lat: { type: number }, lon: { type: number } }

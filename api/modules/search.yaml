@@ -1,0 +1,56 @@
+tags:
+  - name: search
+
+paths:
+  /api/search:
+    get:
+      tags: [search]
+      summary: Redirect to the search result page (custom shortcuts, URLs, default provider)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, maxLength: 1000 } }
+      responses:
+        "302": { description: Redirect to the provider, headers: { Location: { schema: { type: string, format: uri } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/search/opensearch.xml:
+    get:
+      tags: [search]
+      summary: OpenSearch description for browsers (public)
+      security: []
+      responses:
+        "200": { description: OK, content: { application/opensearchdescription+xml: { schema: { type: string } } } }
+  /api/search/settings:
+    get:
+      tags: [search]
+      summary: Default provider, available providers and custom shortcuts
+      responses:
+        "200": { $ref: "#/components/responses/SearchSettings" }
+    put:
+      tags: [search]
+      summary: Choose the default provider
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/DefaultProvider" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/SearchSettings" }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/search/shortcuts:
+    post:
+      tags: [search]
+      summary: Add a custom shortcut such as !gh
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Shortcut" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/SearchSettings" }
+        "409": { description: Keyword already used, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/search/shortcuts/{keyword}:
+    delete:
+      tags: [search]
+      summary: Delete a custom shortcut
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ name: keyword, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { $ref: "#/components/responses/SearchSettings" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+schemas:
+  DefaultProvider: { type: object, required: [defaultProvider], properties: { defaultProvider: { type: string } } }

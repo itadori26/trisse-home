@@ -1,0 +1,21 @@
+tags:
+  - name: nextcloud
+
+paths:
+  /api/nextcloud/settings:
+    get:
+      tags: [nextcloud]
+      summary: Connection settings (the app password is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [nextcloud]
+      summary: Test and save the connection; an empty app password keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, username: { type: string }, appPassword: { type: string } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error or connection failed } }
+  /api/nextcloud/status:
+    get:
+      tags: [nextcloud]
+      summary: Version, maintenance mode, the account's quota and (for admins with the serverinfo app) server details; refreshed every 5 minutes
+      responses:
+        "200": { description: "OK; server is null and serverHint explains why when serverinfo is unavailable" }
+        "404": { description: Not configured }

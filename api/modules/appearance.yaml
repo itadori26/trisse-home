@@ -1,0 +1,31 @@
+tags:
+  - name: appearance
+
+paths:
+  /api/appearance:
+    get:
+      tags: [appearance]
+      summary: Visual preferences
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Appearance" } } } }
+    put:
+      tags: [appearance]
+      summary: Save visual preferences
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Appearance" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Appearance" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  Appearance:
+    type: object
+    required: [theme, accentColor, backgroundImage, customCss]
+    properties:
+      theme: { type: string, enum: [system, light, dark] }
+      accentColor: { type: string, description: '#rrggbb or empty', pattern: '^(#[0-9a-fA-F]{6})?$' }
+      backgroundImage: { type: string, description: http(s) URL or empty }
+      customCss: { type: string, maxLength: 65536 }
+      language: { type: string, enum: ["", en, de], description: '"" follows the browser' }
+      greeting: { type: boolean, description: Greeting line below the top bar (#167), off by default }
+      greetingName: { type: string, maxLength: 40, description: Name used in the greeting; may be empty }

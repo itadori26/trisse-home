@@ -12,4 +12,4 @@ None; the module only uses the database.
 
 ## API
 
-`/api/habits` (list, create, update, delete) and check-offs for today and yesterday – see `api/openapi.yaml`.
+`/api/habits` (list, create, update, delete) and check-offs for today and yesterday – see `api/modules/habits.yaml`.

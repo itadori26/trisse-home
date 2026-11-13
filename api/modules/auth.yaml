@@ -1,0 +1,81 @@
+paths:
+  /api/auth/status:
+    get:
+      tags: [auth]
+      summary: Setup and login state of the caller (public)
+      security: []
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AuthStatus" } } } }
+  /api/auth/setup:
+    post:
+      tags: [auth]
+      summary: Create the account with the setup token from the server log (public)
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SetupRequest" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { description: Invalid setup token, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "409": { description: Already set up, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/demo:
+    post:
+      tags: [auth]
+      summary: Password-less login, only routed when DEMO_MODE=true (see docs/demo.md); /api/auth/status reports demo=true
+      security: []
+      responses: { "200": { description: Session started }, "404": { description: Not a demo instance } }
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Log in (public, rate limited per client IP)
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LoginRequest" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { description: Setup required, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: End the current session
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Logged out }
+  /api/auth/password:
+    put:
+      tags: [auth]
+      summary: Change the password and sign out all other sessions
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ChangePasswordRequest" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  AuthStatus:
+    type: object
+    required: [setupRequired, authenticated]
+    properties:
+      setupRequired: { type: boolean }
+      authenticated: { type: boolean }
+      csrfToken: { type: string }
+  SetupRequest:
+    type: object
+    required: [setupToken, password]
+    properties:
+      setupToken: { type: string }
+      password: { type: string, minLength: 12, maxLength: 256 }
+  LoginRequest:
+    type: object
+    required: [password]
+    properties:
+      password: { type: string }
+      code: { type: string, description: TOTP or recovery code; required when 2FA is enabled (otherwise 422 with field "totpCode") }
+  ChangePasswordRequest:
+    type: object
+    required: [currentPassword, newPassword]
+    properties:
+      currentPassword: { type: string }
+      newPassword: { type: string, minLength: 12, maxLength: 256 }

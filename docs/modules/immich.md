@@ -12,4 +12,4 @@ Only the configured Immich server, while an Immich widget is open, at most every
 
 ## API
 
-`GET/PUT /api/immich/settings`, `GET /api/immich/overview`, `GET /api/immich/thumbnails/{id}` – see `api/openapi.yaml`.
+`GET/PUT /api/immich/settings`, `GET /api/immich/overview`, `GET /api/immich/thumbnails/{id}` – see `api/modules/immich.yaml`.

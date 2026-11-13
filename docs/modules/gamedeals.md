@@ -12,4 +12,4 @@ The Steam and Epic Games stores, every 12 hours once enabled.
 
 ## API
 
-`/api/gamedeals/...` – see `api/openapi.yaml`.
+`/api/gamedeals/...` – see `api/modules/gamedeals.yaml`.

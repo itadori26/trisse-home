@@ -163,7 +163,7 @@ func (h *Handlers) Today(w http.ResponseWriter, r *http.Request) {
 
 Controllers only translate HTTP ↔ use case; the presenter maps the entity to
 a DTO so internal fields never leak. Document the endpoint in
-`api/openapi.yaml`. If you add or change a DTO, run `make generate`: the
+`api/modules/quotes.yaml` (`make openapi` merges and validates the fragments). If you add or change a DTO, run `make generate`: the
 TypeScript types in `web/src/shared/api-client/generated/` are generated
 from the Go structs, so frontend and backend cannot drift apart.
 

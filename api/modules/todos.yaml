@@ -1,0 +1,67 @@
+tags:
+  - name: todos
+
+paths:
+  /api/todos:
+    get:
+      tags: [todos]
+      summary: Open to-dos (and completed ones with done=true)
+      parameters: [{ name: done, in: query, schema: { type: boolean } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Todo" } } } } }
+    post:
+      tags: [todos]
+      summary: Create a to-do
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TodoInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Todo" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/todos/clear-completed:
+    post:
+      tags: [todos]
+      summary: Delete all completed to-dos
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { removed: { type: integer } }, required: [removed] } } } }
+  /api/todos/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [todos]
+      summary: Update text, due date and completion
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TodoInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Todo" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [todos]
+      summary: Delete a to-do
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+schemas:
+  TodoInput:
+    type: object
+    required: [title]
+    properties:
+      title: { type: string, maxLength: 300 }
+      due: { type: string, description: YYYY-MM-DD or empty }
+      done: { type: boolean, description: "Completing a recurring to-do creates its next occurrence" }
+      repeat: { $ref: "#/components/schemas/TodoRepeat", description: Omit to keep the stored rule }
+      reminder: { $ref: "#/components/schemas/TodoReminder", description: Omit to keep the stored reminder }
+  Todo:
+    type: object
+    properties:
+      id: { type: string }
+      title: { type: string }
+      due: { type: string }
+      done: { type: boolean }
+      overdue: { type: boolean }
+      position: { type: integer }
+      completedAt: { type: string }
+      repeat: { $ref: "#/components/schemas/TodoRepeat" }
+      reminder: { $ref: "#/components/schemas/TodoReminder" }
