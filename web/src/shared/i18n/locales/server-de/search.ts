@@ -20,4 +20,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_2b29e30433c7ad15: 'Das Kürzel existiert nicht.',
   // Unknown search provider.
   srv_dea670a71d2295ca: 'Unbekannte Suchmaschine.',
+  // A prefix is 1 to 4 letters or digits.
+  srv_74215ccd79a3ff66: 'Ein Präfix besteht aus 1 bis 4 Buchstaben oder Ziffern.',
+  // Each prefix can be used only once.
+  srv_fd6c518295d812e7: 'Jedes Präfix darf nur einmal vorkommen.',
 };

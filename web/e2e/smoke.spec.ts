@@ -31,7 +31,7 @@ test('setup, logout and login lead to the dashboard', async ({ page }) => {
   await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // After the first setup the dashboard is filled with sample widgets and data.
-  await expect(page.getByRole('search')).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' })).toBeVisible();
   await expect(page.locator('time')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Welcome to trisse-home 👋' })).toBeVisible();
   await expect(page.getByText('Try edit mode: drag and resize a widget')).toBeVisible();
@@ -124,21 +124,33 @@ test('quick search finds bookmarks with the keyboard', async ({ page }) => {
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
+  // Ctrl+K focuses the hero field; the results open below it (#222).
   await page.keyboard.press('Control+k');
-  const box = page.getByRole('combobox', { name: /Search bookmarks/ });
+  const box = page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' });
+  const results = page.getByRole('listbox', { name: 'Results' });
   await expect(box).toBeFocused();
   await box.fill('docker docs');
   await expect(page.getByRole('option', { name: /Docker documentation/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
+  await expect(box).toHaveAttribute('aria-expanded', 'true');
+  // Without a match the web search is the only row.
   await box.fill('nothing-matches-this');
-  await expect(page.getByText(/No matches/)).toBeVisible();
+  await expect(page.getByRole('option', { name: /nothing-matches-this/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  // The first Esc closes the panel and keeps the text, the second clears the field.
   await page.keyboard.press('Escape');
-  await expect(box).toBeHidden();
+  await expect(results).toBeHidden();
+  await expect(box).toHaveValue('nothing-matches-this');
+  await page.keyboard.press('Escape');
+  await expect(box).toHaveValue('');
+  await expect(box).not.toBeFocused();
 
   await page.keyboard.press('/');
-  await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toBeFocused();
+  await expect(box).toBeFocused();
 });
 
 test('installable app shows the last data offline and never caches auth', async ({ page, context }) => {
@@ -309,7 +321,7 @@ test('keyboard shortcuts switch tabs, toggle edit mode and show an overview (#95
   await expect(page.getByRole('button', { name: '+ Add widget' })).toHaveCount(0);
 
   await page.keyboard.press('/');
-  await expect(page.getByRole('dialog', { name: /Quick search/ })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' })).toBeFocused();
   // Typing in the search field must not trigger shortcuts.
   await page.keyboard.type('e2');
   await expect(page.getByRole('button', { name: '+ Add widget' })).toHaveCount(0);
@@ -349,39 +361,63 @@ test('removed widgets come back with undo, and redo works (#93)', async ({ page 
   await expect(page.locator('time')).toBeVisible();
 });
 
-test('quick capture creates items from the search bar and the palette (#105, #67)', async ({ page }) => {
+test('the search field captures items and its options live in the settings (#105, #67, #221)', async ({
+  page,
+}) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await page.getByRole('button', { name: 'Home', exact: true }).click();
-  const search = page.getByRole('searchbox', { name: 'Search', exact: true });
+  // The search field next to the greeting is the search (#221, #222).
+  const field = page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' });
 
-  await search.fill('t Milch kaufen morgen');
-  await expect(page.getByText('Enter: create to-do “Milch kaufen” (Tomorrow)')).toBeVisible();
-  await search.press('Enter');
+  await field.fill('t Milch kaufen morgen');
+  await expect(
+    page.getByRole('option', { name: /create to-do “Milch kaufen” \(Tomorrow\)/ }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await field.press('Enter');
   await expect(page.getByText('To-do “Milch kaufen” created')).toBeVisible();
   const todos = await (await page.request.get('/api/todos')).json();
   expect(JSON.stringify(todos)).toContain('Milch kaufen');
 
-  await search.fill('n Idee Fahrradtour');
-  await search.press('Enter');
+  // Ctrl+Enter adds the same text as the other kind (mockup "E", #222).
+  await field.fill('t Einkaufszettel');
+  await expect(page.getByRole('option', { name: /create note “Einkaufszettel”/ })).toBeVisible();
+  await field.press('Control+Enter');
+  await expect(page.getByText('Note “Einkaufszettel” created')).toBeVisible();
+
+  await field.fill('n Idee Fahrradtour');
+  await field.press('Enter');
   await expect(page.getByText('Note “Idee Fahrradtour” created')).toBeVisible();
   await page.getByRole('status').filter({ hasText: 'created' }).getByRole('button', { name: 'Undo' }).click();
 
-  await search.fill('b example.org Beispiel');
-  await search.press('Enter');
+  await field.fill('b example.org Beispiel');
+  await field.press('Enter');
   await expect(page.getByText('Bookmark “Beispiel” saved')).toBeVisible();
   await expect(page.getByRole('status').getByRole('link', { name: 'Open' })).toHaveAttribute(
     'href',
     'https://example.org/',
   );
 
-  await page.keyboard.press('Control+k');
-  const palette = page.getByRole('combobox');
-  await palette.fill('todo: Steuer heute');
-  await expect(page.getByText('create to-do “Steuer” (Today)')).toBeVisible();
-  await palette.press('Enter');
+  // The palette's own prefixes still work.
+  await field.fill('todo: Steuer heute');
+  await expect(page.getByRole('option', { name: /create to-do “Steuer” \(Today\)/ })).toBeVisible();
+  await field.press('Enter');
   await expect(page.getByText('To-do “Steuer” created')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // The prefixes are a search setting now, not a widget option.
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  const todoPrefix = page.getByLabel('Prefix for to-dos');
+  await expect(todoPrefix).toHaveValue('t');
+  await todoPrefix.fill('a');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await field.fill('a Kuchen backen');
+  await expect(page.getByRole('option', { name: /create to-do “Kuchen backen”/ })).toBeVisible();
+  await page.keyboard.press('Escape');
 });
 
 test('phones get their own layout that hides widgets independently (#92)', async ({ page }) => {
@@ -558,10 +594,16 @@ test('header with greeting, search pill, launcher and account menu (#189)', asyn
   const firstWidget = await page.locator('[data-widget-id]').first().boundingBox();
   expect(firstWidget?.y ?? 999).toBeLessThan(260);
 
-  // Typing into the search pill continues in the quick search.
+  // The text stays in the hero field while the results open below it (#222).
   step = 'search';
-  await page.getByRole('searchbox', { name: 'Quick search (Ctrl+K or /)' }).pressSequentially('Dock');
-  await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toHaveValue('Dock');
+  const field = page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' });
+  await field.click();
+  await field.pressSequentially('Dock');
+  await expect(field).toHaveValue('Dock');
+  await expect(field).toBeFocused();
+  await expect(page.getByRole('listbox', { name: 'Results' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
   // Launcher: filter across services and bookmarks; Esc returns the focus.
@@ -610,7 +652,7 @@ test('the smart search answers questions about the server (#156)', async ({ page
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
   await page.keyboard.press('Control+k');
-  const box = page.getByRole('combobox', { name: /Search bookmarks/ });
+  const box = page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' });
   const answers = page.getByRole('region', { name: 'Answers' });
 
   await box.fill('cpu');

@@ -33,7 +33,27 @@
       keyword = name = urlTemplate = '';
   }
 
-  run(() => search.settings());
+  // Options of the search field (#221), formerly options of the search widget.
+  let newTab = $state(false);
+  let todo = $state('t');
+  let note = $state('n');
+  let bookmark = $state('b');
+  let barSaved = $state(false);
+  function fill(s: SearchSettings) {
+    newTab = s.bar.openInNewTab;
+    ({ todo, note, bookmark } = s.bar.capturePrefixes);
+  }
+  async function saveBar(e: SubmitEvent) {
+    e.preventDefault();
+    barSaved = false;
+    const options = { openInNewTab: newTab, capturePrefixes: { todo, note, bookmark } };
+    if (await run(() => search.setBar(options))) {
+      if (settings) fill(settings);
+      barSaved = true;
+    }
+  }
+
+  void run(() => search.settings()).then((ok) => ok && settings && fill(settings));
 </script>
 
 {#if settings}
@@ -85,6 +105,40 @@
     />
     <button class="btn" type="submit">{t('search.add')}</button>
   </form>
+  <form class="bar" onsubmit={saveBar}>
+    <h4>{t('search.search_field')}</h4>
+    <label><input type="checkbox" bind:checked={newTab} /> {t('search.open_results_in_a_new_tab')}</label>
+    <fieldset>
+      <legend>{t('quick.prefixes')}</legend>
+      <p class="muted">{t('quick.prefixes_hint')}</p>
+      <label class="field"
+        ><span>{t('quick.prefix_todo')}</span><input
+          class="input"
+          bind:value={todo}
+          maxlength="4"
+          required
+        /></label
+      >
+      <label class="field"
+        ><span>{t('quick.prefix_note')}</span><input
+          class="input"
+          bind:value={note}
+          maxlength="4"
+          required
+        /></label
+      >
+      <label class="field"
+        ><span>{t('quick.prefix_bookmark')}</span><input
+          class="input"
+          bind:value={bookmark}
+          maxlength="4"
+          required
+        /></label
+      >
+    </fieldset>
+    <button class="btn btn-primary" type="submit">{t('search.save')}</button>
+    {#if barSaved}<span class="muted" role="status">{t('search.saved')}</span>{/if}
+  </form>
 {/if}
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 
@@ -92,6 +146,14 @@
   .shortcuts {
     list-style: none;
     padding: 0;
+  }
+  .bar {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+  .bar h4 {
+    margin: 0;
   }
   .add {
     display: grid;

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"io/fs"
 	"testing"
 
 	"trisse-home/internal/modules/dashboard/domain"
@@ -61,5 +62,42 @@ func TestMobileLayoutRoundTrip(t *testing.T) {
 	}
 	if got, _ := repo.GetTab(ctx, "t1"); got.Mobile() != nil {
 		t.Fatalf("reset must store NULL, got %+v", got.Mobile())
+	}
+}
+
+func TestMigrationRemovesSearchWidgets(t *testing.T) {
+	// The dashboard migrations run first; then a placed search widget is put
+	// back and the removal migration is applied again (it is idempotent).
+	db := dbtest.Open(t, "dashboard", Migrations())
+	ctx := context.Background()
+	mustExec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := db.ExecContext(ctx, q, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustExec(`INSERT INTO dashboard_tabs (id, name, position) VALUES ('t1', 'Home', 0)`)
+	mustExec(`INSERT INTO dashboard_widgets (id, tab_id, kind, x, y, w, h) VALUES ('w1', 't1', 'search', 0, 0, 12, 2), ('w2', 't1', 'clock', 0, 2, 3, 3)`)
+	sql, err := fs.ReadFile(Migrations(), "0005_remove_search_widget.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(string(sql))
+	var kinds []string
+	rows, err := db.QueryContext(ctx, `SELECT kind FROM dashboard_widgets ORDER BY id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var k string
+		_ = rows.Scan(&k)
+		kinds = append(kinds, k)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(kinds) != 1 || kinds[0] != "clock" {
+		t.Fatalf("only the search widget is removed, got %v", kinds)
 	}
 }
