@@ -883,6 +883,46 @@ test.describe('calendar split view', () => {
   });
 });
 
+test('read later keeps links, refuses internal addresses and checks off articles (#99)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await account(page, 'Edit');
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Lesen');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('pocket');
+  await page.getByRole('button', { name: /^Read later/ }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await account(page, 'Done');
+
+  // The server itself is on loopback: the guarded client refuses to fetch it,
+  // the link is kept without a reader copy.
+  const url = new URL('/healthz', page.url()).toString();
+  const input = page.getByRole('textbox', { name: 'Address of the page to read later' });
+  await input.fill(url);
+  await input.press('Enter');
+  const host = new URL(url).host;
+  const item = page.locator('li', { hasText: host });
+  await expect(item).toBeVisible();
+  await item.getByRole('button').click();
+  const reader = page.getByRole('dialog');
+  await expect(reader).toContainText('could not be loaded');
+  await expect(reader.getByRole('link', { name: 'Original' })).toHaveAttribute('href', url);
+  await reader.getByRole('button', { name: 'Archive' }).click();
+  await expect(page.getByText('Nothing to read.')).toBeVisible();
+
+  // Settings: the archived article can be deleted.
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Read later', exact: true }).click();
+  await page.locator('.tabs label', { hasText: 'Archived' }).click();
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: new RegExp(`^Delete “${host}”`) }).click();
+  await expect(page.getByRole('dialog').getByText('Nothing to read.')).toBeVisible();
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

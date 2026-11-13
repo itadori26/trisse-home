@@ -14,8 +14,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_5065a34cb1180bb7: 'Der Feed existiert nicht.',
   // The item does not exist.
   srv_fd944f7eadfdb070: 'Der Eintrag existiert nicht.',
-  // The server answered {status}.
-  srv_63f60053f8b51722: 'Der Server antwortete mit {status}.',
   // You are already subscribed to this feed.
   srv_d6a88cffb18a9963: 'Du hast diesen Feed bereits abonniert.',
   // this is not a valid RSS, Atom or JSON feed

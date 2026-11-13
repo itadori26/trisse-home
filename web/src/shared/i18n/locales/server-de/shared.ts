@@ -63,4 +63,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_40623194d868a5f0: 'Wochentage sind 0 (Sonntag) bis 6.',
   // Use a single emoji.
   srv_61031ab185b65e33: 'Bitte nur ein einzelnes Emoji verwenden.',
+  // The server answered {status}.
+  srv_63f60053f8b51722: 'Der Server antwortete mit {status}.',
 };
