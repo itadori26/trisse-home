@@ -113,7 +113,7 @@ logs: ## Follow the application logs
 
 .PHONY: clean
 clean: ## Remove build output
-	rm -rf bin dist coverage.out internal/platform/webui/dist/assets internal/platform/webui/dist/index.html
+	rm -rf bin dist coverage.out internal/platform/webui/dist/assets internal/platform/webui/dist/*.gz
 
 new-module: ## Scaffold a new module: make new-module NAME=recipes [TITLE="Recipes"]
 	go run ./scripts/newmodule -name "$(NAME)" -title "$(TITLE)"
