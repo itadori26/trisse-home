@@ -153,6 +153,17 @@ export const en = {
   'appearance.custom_css_override_variables_such_as':
     'Custom CSS (override variables such as --radius or --color-bg)',
   'appearance.save_appearance': 'Save appearance',
+  'appearance.gallery': 'Theme gallery',
+  'appearance.gallery_hint':
+    'Ready-made themes. Applying one replaces your light/dark choice, custom CSS and accent color; they are kept and can be restored.',
+  'appearance.apply': 'Apply',
+  'appearance.applied': 'Applied',
+  'appearance.apply_theme': 'Apply theme {name}',
+  'appearance.export_theme': 'Download theme {name}',
+  'appearance.delete_theme': 'Delete theme {name}',
+  'appearance.restore_own': 'Restore my own style',
+  'appearance.import_theme': 'Import theme…',
+  'appearance.theme_file_too_large': 'The theme file must be at most 16 KB.',
   'appearance.default': 'default',
   'nextcloud.create_an_app_password_in_nextcloud':
     'Create an app password in Nextcloud under Personal settings → Security → Devices & sessions. Server details (free space, users, app updates) need an admin account and the serverinfo app; without them the widget shows the version and your quota.',

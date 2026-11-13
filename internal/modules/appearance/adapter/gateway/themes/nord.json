@@ -1,0 +1,19 @@
+{
+  "id": "nord",
+  "name": "Nord",
+  "author": "Arctic Ice Studio (MIT)",
+  "scheme": "dark",
+  "tokens": {
+    "--color-bg": "#2e3440",
+    "--color-surface": "#3b4252",
+    "--color-surface-2": "#434c5e",
+    "--color-border": "#4c566a",
+    "--color-text": "#eceff4",
+    "--color-text-muted": "#d8dee9",
+    "--color-accent": "#88c0d0",
+    "--color-accent-contrast": "#2e3440",
+    "--color-danger": "#bf616a",
+    "--color-success": "#a3be8c",
+    "--color-warning": "#ebcb8b"
+  }
+}
