@@ -1,5 +1,5 @@
 import { formatDue } from '../features/todos/domain/todo';
-import type { Prefixes, QuickActionsUseCases, QuickCommand } from '../features/quickactions';
+import type { QuickActionsUseCases, QuickCommand } from '../features/quickactions';
 import { intlLocale, t } from '../shared/i18n';
 
 /** What a quick command does, in words, e.g. for previews and toasts (#105, #67). */
@@ -18,22 +18,4 @@ export function describeCommand(c: QuickCommand, uc: QuickActionsUseCases, done 
     case 'wake':
       return t(done ? 'quick.done_wake' : 'quick.wake', { name: c.target });
   }
-}
-
-/** The search bar's quick capture port, implemented with the quick actions use case. */
-export function quickCapture(uc: QuickActionsUseCases, prefixes: Prefixes) {
-  return {
-    preview(input: string): string | null {
-      const c = uc.parse(input, prefixes);
-      return c ? describeCommand(c, uc) : null;
-    },
-    async run(
-      input: string,
-    ): Promise<{ message: string; undo?: () => Promise<void>; openUrl?: string } | null> {
-      const c = uc.parse(input, prefixes);
-      if (!c) return null;
-      const res = await uc.execute(c);
-      return { message: describeCommand(res.command, uc, true), undo: res.undo, openUrl: res.openUrl };
-    },
-  };
 }

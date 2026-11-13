@@ -40,10 +40,9 @@
   let modules = $state<Set<string> | null>(null);
   let widgetKinds = $state<Set<string>>(new Set());
   let touring = $state(false);
-  let quickSearch = $state(false);
   let shortcutHelp = $state(false);
   let dashboard = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
-  let searchStart = $state('');
+  let hero = $state<{ focus: () => void }>();
   let launcherOpen = $state<Segment | null>(null);
   let launcherTrigger = $state<HTMLButtonElement>();
   let serviceStatus = $state<ReturnType<typeof statusSummary>>({ kind: 'none', offline: 0 });
@@ -77,13 +76,6 @@
     return cfg ? parseWeatherConfig(cfg) : null;
   });
 
-  /** Typing into the search pill continues in the quick search (#167, #189). */
-  function openSearch(text: string) {
-    // Collect what is typed while the quick search is still loading.
-    searchStart += text;
-    quickSearch = true;
-  }
-
   // Undo/redo shortcuts only exist in edit mode (#93).
   $effect(() => {
     if (!editing) return;
@@ -116,7 +108,7 @@
         display: [t('app.ctrl_k'), '/'],
         label: 'shortcuts.search',
         typingCombos: ['Mod+K'],
-        run: () => (quickSearch = true),
+        run: () => hero?.focus(), // the hero field is the search (#222)
       }),
       r.register({
         id: 'tabs.select',
@@ -284,7 +276,15 @@
     {/await}
   {/if}
 </header>
-<Hero name={appearance.greetingName} onsearch={openSearch} tabsId="header-tabs" />
+<Hero
+  bind:this={hero}
+  name={appearance.greetingName}
+  tabsId="header-tabs"
+  {container}
+  {modules}
+  {weatherLocation}
+  widgetConfig={(kind) => firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, kind)}
+/>
 
 <main class="content">
   {#if offline}<p class="offline" role="status">
@@ -316,19 +316,6 @@
       onappearance={(a) => (appearance = a)}
       onrestarttour={modules.has('onboarding') ? restartTour : undefined}
       onclose={() => (settingsOpen = false)}
-    />
-  {/await}
-{/if}
-
-{#if quickSearch && modules}
-  {#await import('./QuickSearch.svelte') then { default: QuickSearch }}
-    <QuickSearch
-      {container}
-      {modules}
-      initialQuery={searchStart}
-      {weatherLocation}
-      widgetConfig={(kind) => firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, kind)}
-      onclose={() => ((quickSearch = false), (searchStart = ''))}
     />
   {/await}
 {/if}
