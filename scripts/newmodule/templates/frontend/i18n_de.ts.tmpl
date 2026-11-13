@@ -1,0 +1,10 @@
+import type { en } from './en';
+
+/** German UI texts of the {{.Title}} feature; the type makes every key mandatory. */
+export const de: Record<keyof typeof en, string> = {
+  'widget.{{.Name}}.title': '{{.Title}}',
+  'widget.{{.Name}}.description': 'Beispiel-Widget des Moduls {{.Title}}.',
+  '{{.Name}}.add_placeholder': 'Neuer Eintrag …',
+  '{{.Name}}.remove': '{title} entfernen',
+  '{{.Name}}.empty': 'Noch keine Einträge.',
+};

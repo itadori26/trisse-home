@@ -9,6 +9,7 @@ data/
 
 # Build output
 /bin/
+/.tygo.generated.yaml
 /dist/
 /deploy/raspberrypi/.work/
 internal/platform/webui/dist/*

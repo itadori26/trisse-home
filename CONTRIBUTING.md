@@ -60,12 +60,22 @@ make new-module NAME=recipes TITLE="Recipes"
 
 This creates `internal/modules/recipes` (domain, use case, gateway with a
 migration, presenter, controller, module wiring, all with tests) and
-`web/src/features/recipes` (domain, use case, API adapter, widget, tests),
-registers the module in `cmd/server/modules.go`, the frontend container and
-widget list, `tygo.yaml` and both message catalogues, and regenerates the
-TypeScript types. The result passes `make ci` unchanged; then replace the
-example `Item` entity with your own model. The insertion points are marked
-with `scaffold:` comments — keep them when editing those files.
+`web/src/features/recipes` (domain, use case, API adapter, widget, tests,
+`i18n/en.ts` and `de.ts`). The glue is made of **files of the module itself**,
+so the generator edits no existing file and parallel module branches do not
+conflict (#193): `cmd/server/module_recipes.go`, `web/src/app/widgets/recipes.ts`,
+`web/src/app/services/recipes.ts`, `web/src/shared/i18n/locales/server-de/recipes.ts`
+and `docs/modules/recipes.md`. tygo and the backend message catalogue find the
+module by convention (`make generate`). The result passes `make ci` unchanged;
+then replace the example `Item` entity with your own model.
+
+A module that needs a settings section adds `web/src/app/settings/<name>.ts`
+(see `settings/proxmox.ts`). Describe the module in `docs/modules/<name>.md`
+rather than in the shared tables of the README.
+
+**Keep it that way:** do not append to shared lists (`modules.go`, `widgets.ts`,
+`container.ts`, `en.ts`, `de.ts`, `tygo.yaml`). The few files every module may
+still touch are listed in [docs/modules/README.md](docs/modules/README.md).
 
 ## Adding an integration
 
@@ -94,20 +104,25 @@ its own module: use the generic JSON widget
 
 ## UI texts and translations
 
-Every text shown in the UI comes from the message catalogues in
-`web/src/shared/i18n/locales/` (see ADR 0010). When you add or change a text,
-add the key to `en.ts` and the German text to `de.ts` and use it with
+Every text shown in the UI comes from a message catalogue (see ADR 0010).
+Texts of a feature live next to it in `web/src/features/<name>/i18n/en.ts` and
+`de.ts` (#193); only truly shared texts stay in `web/src/shared/i18n/locales/`.
+Add the key to `en.ts` and the German text to `de.ts` and use it with
 `t('feature.key', { name })`. `npm run check` fails if a German text is
-missing, and a unit test verifies that placeholders match.
+missing or a key does not exist, and a unit test verifies that placeholders
+match. A feature's `en.ts` declares its keys to the type system with the
+`FeatureMessages` augmentation (copy it from an existing feature).
 
 **Backend error messages** are translated too (#102): create them with
 `kernel.NewPublicError(kind, "English text.")` or, with values,
 `kernel.NewPublicErrorf(kind, "At most {max} items.", "max", n)` — always with
 a string literal, never by concatenating strings. `make generate` extracts
-them into `web/src/shared/api-client/generated/server-messages.ts`; add the
-German text to `web/src/shared/i18n/locales/server-de.ts` (the compiler lists
-missing keys, the English original is in a comment above each entry). The
-frontend translates known messages and falls back to the English text.
+them into `web/src/shared/api-client/generated/server-messages/<module>.ts`
+(one file per module; a message used by several modules goes to `shared.ts`);
+add the German text to `web/src/shared/i18n/locales/server-de/<module>.ts` (the
+compiler lists missing keys, the English original is in a comment above each
+entry). The frontend translates known messages and falls back to the English
+text.
 
 **Adding a language** (e.g. French):
 

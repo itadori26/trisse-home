@@ -3,6 +3,7 @@ export {
   intlLocale,
   loadLanguage,
   locale,
+  registerFeatureMessages,
   serverMessage,
   setLanguage,
   t,

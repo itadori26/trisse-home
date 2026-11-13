@@ -172,6 +172,15 @@ test('the UI follows a German browser language', async ({ browser }) => {
   await context.close();
 });
 
+test('settings sections of self-registering features load on demand (#193)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Proxmox', exact: true }).click();
+  await expect(page.getByLabel('Proxmox VE URL')).toBeVisible();
+});
+
 test('a guest sees only the shared tab and cannot edit', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

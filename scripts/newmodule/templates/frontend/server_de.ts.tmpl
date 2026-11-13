@@ -1,0 +1,13 @@
+import type { ServerMessageKey } from '../../../api-client/generated/server-messages/{{.Name}}';
+
+/**
+ * German translations of the backend error messages of `{{.Name}}` (#102, #193).
+ * The keys come from the generated catalogue (run `make generate` first); the
+ * type makes a missing translation a compile error.
+ */
+export const serverDe: Record<ServerMessageKey, string> = {
+  // The {{.Title}} item does not exist.
+  {{.KeyNotFound}}: 'Der Eintrag von {{.Title}} existiert nicht.',
+  // The title of a {{.Title}} item must be between 1 and 200 characters long.
+  {{.KeyTitle}}: 'Der Titel eines Eintrags von {{.Title}} muss zwischen 1 und 200 Zeichen lang sein.',
+};

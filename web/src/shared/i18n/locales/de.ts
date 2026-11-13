@@ -1,7 +1,7 @@
-import type { MessageKey } from './en';
+import type { BaseMessageKey } from './en';
 
 /** German UI texts. The type makes every key mandatory. */
-export const de: Record<MessageKey, string> = {
+export const de: Record<BaseMessageKey, string> = {
   'app.could_not_reach_the_server': 'Der Server ist nicht erreichbar: {loadError}',
   'app.back': '‹ Zurück',
   'app.no_matches_press_enter_to_search': 'Keine Treffer – Enter sucht im Web.',
@@ -1194,45 +1194,6 @@ export const de: Record<MessageKey, string> = {
   'quick.prefix_todo': 'Präfix für To-dos',
   'quick.prefix_note': 'Präfix für Notizen',
   'quick.prefix_bookmark': 'Präfix für Lesezeichen',
-  'widget.arr.title': 'Sonarr / Radarr',
-  'widget.arr.description':
-    'Kommende Folgen und Filme, Download-Warteschlange und Warnungen von Sonarr, Radarr und Prowlarr.',
-  'settings.section.arr': 'Sonarr / Radarr',
-  'arr.connect_under_settings':
-    'Füge Sonarr, Radarr oder Prowlarr unter Einstellungen → Sonarr / Radarr hinzu.',
-  'arr.queue': 'Downloads',
-  'arr.queue_empty': 'Keine Downloads.',
-  'arr.upcoming': 'Demnächst',
-  'arr.nothing_upcoming': 'Nichts in den nächsten zwei Wochen.',
-  'arr.health': 'Warnungen',
-  'arr.missing': '{name}: {count} fehlen',
-  'arr.time_left': 'noch {value}',
-  'arr.unreachable': 'Nicht erreichbar: {detail}',
-  'arr.app': 'App',
-  'arr.name': 'Name',
-  'arr.api_key': 'API-Schlüssel {value}',
-  'arr.key_hint':
-    'Den API-Schlüssel findest du in jeder App unter Settings → General. Er wird verschlüsselt gespeichert und nie wieder angezeigt.',
-  'arr.add': 'Instanz hinzufügen',
-  'arr.edit': '{name} bearbeiten',
-  'arr.delete': '{name} löschen',
-  'arr.invalid_url': 'Die URL muss mit http:// oder https:// beginnen.',
-  'arr.key_required': 'Bitte gib den API-Schlüssel ein.',
-  'widget.media.title': 'Medienserver',
-  'widget.media.description': 'Was gerade läuft und was neu ist auf Jellyfin oder Plex.',
-  'settings.section.media': 'Medienserver',
-  'media.connect_under_settings': 'Verbinde Jellyfin oder Plex unter Einstellungen → Medienserver.',
-  'media.now_playing': 'Läuft gerade',
-  'media.nothing_playing': 'Gerade läuft nichts.',
-  'media.recently_added': 'Neu hinzugefügt',
-  'media.server': 'Medienserver',
-  'media.url': '{name}-URL',
-  'media.jellyfin_key': 'API-Schlüssel {value}',
-  'media.plex_token': 'Plex-Token {value}',
-  'media.jellyfin_hint':
-    'Lege einen API-Schlüssel in Jellyfin unter Dashboard → API-Schlüssel an. Er wird verschlüsselt gespeichert; Cover lädt trisse-home selbst.',
-  'media.plex_hint':
-    'Nutze das X-Plex-Token deines Kontos (Plex-Hilfeartikel „Finding an authentication token“). Es wird verschlüsselt gespeichert; Cover lädt trisse-home selbst.',
   'calendar.subscriptions': 'ICS-Abos',
   'calendar.subscriptions_hint':
     'Schreibgeschützte Kalender aus einem .ics- oder webcal://-Link, z. B. Stundenplan, Spielplan oder Feiertage. Der Link wird verschlüsselt gespeichert, weil er oft ein privates Token enthält.',
@@ -1250,58 +1211,6 @@ export const de: Record<MessageKey, string> = {
   'calendar.subscription_url_invalid': 'Die ICS-URL muss mit https://, http:// oder webcal:// beginnen.',
   'calendar.quick_add_needs_caldav':
     'Neue Termine werden in einem CalDAV-Kalender gespeichert; ICS-Abos sind schreibgeschützt. Verbinde einen unter Einstellungen → Kalender.',
-  'widget.smarthome.title': 'Smart Home',
-  'widget.smarthome.description':
-    'Zustände von Home-Assistant-Geräten und -Sensoren; optional Schalter und Taster.',
-  'settings.section.smarthome': 'Home Assistant',
-  'smarthome.connect_under_settings': 'Verbinde Home Assistant unter Einstellungen → Home Assistant.',
-  'smarthome.choose_entities': 'Wähle Entitäten in den Widget-Einstellungen.',
-  'smarthome.unavailable': 'nicht verfügbar',
-  'smarthome.on': 'an',
-  'smarthome.off': 'aus',
-  'smarthome.turn_on': 'Einschalten',
-  'smarthome.turn_off': 'Ausschalten',
-  'smarthome.press': 'Drücken',
-  'smarthome.confirm_toggle': '{name} umschalten?',
-  'smarthome.confirm_press': '{name} drücken?',
-  'smarthome.search_entities': 'Entitäten suchen',
-  'smarthome.selected': '{count} von höchstens {max} ausgewählt',
-  'smarthome.url': 'Home-Assistant-URL',
-  'smarthome.token': 'Langlebiges Zugriffstoken {value}',
-  'smarthome.token_hint':
-    'Lege das Token in Home Assistant unter Profil → Sicherheit → Langlebige Zugriffstoken an. Es wird verschlüsselt gespeichert und nie wieder angezeigt.',
-  'smarthome.actions_hint':
-    'Schalter und Taster bleiben schreibgeschützt, solange SMARTHOME_ACTIONS_ENTITIES ihre Entitäts-IDs nicht auflistet.',
-  'widget.proxmox.title': 'Proxmox VE',
-  'widget.proxmox.description': 'Auslastung der Knoten und Status von VMs und LXC-Containern.',
-  'settings.section.proxmox': 'Proxmox',
-  'proxmox.connect_under_settings': 'Verbinde Proxmox VE unter Einstellungen → Proxmox.',
-  'proxmox.uptime': 'läuft seit {value}',
-  'proxmox.offline': 'offline',
-  'proxmox.cpu': 'CPU ({cpus} Kerne)',
-  'proxmox.memory': 'Arbeitsspeicher',
-  'proxmox.disk': 'Root-Laufwerk',
-  'proxmox.no_guests': 'Keine VMs oder Container.',
-  'proxmox.status.stopped': 'gestoppt',
-  'proxmox.status.paused': 'pausiert',
-  'proxmox.status.suspended': 'angehalten',
-  'proxmox.status.prelaunch': 'startet',
-  'proxmox.status.unknown': 'unbekannt',
-  'proxmox.start': '{name} starten',
-  'proxmox.shutdown': '{name} herunterfahren',
-  'proxmox.confirm_start': '{name} starten?',
-  'proxmox.confirm_shutdown': '{name} herunterfahren? Dienste darin werden beendet.',
-  'proxmox.running_only': 'Nur laufende Gäste anzeigen',
-  'proxmox.url': 'Proxmox-VE-URL',
-  'proxmox.token_id': 'API-Token-ID',
-  'proxmox.secret': 'Token-Secret {value}',
-  'proxmox.fingerprint': 'Zertifikats-Fingerabdruck (SHA-256, optional)',
-  'proxmox.fingerprint_hint':
-    'Proxmox nutzt ein selbstsigniertes Zertifikat. Füge seinen SHA-256-Fingerabdruck ein (Knoten → System → Zertifikate), um genau diesem Zertifikat zu vertrauen, oder lass das Feld leer, wenn eine bekannte CA es signiert hat.',
-  'proxmox.token_hint':
-    'Lege auf einem Proxmox-Knoten ein schreibgeschütztes API-Token an (Rolle PVEAuditor) und trage Token-ID und Secret unten ein.',
-  'proxmox.actions_hint':
-    'Starten und Herunterfahren bleiben aus, solange PROXMOX_ACTIONS_GUESTS die Gast-IDs nicht auflistet und das Token sie nicht schalten darf (VM.PowerMgmt).',
   'widget.briefing.title': 'Tages-Briefing',
   'widget.briefing.description':
     'Der Tag auf einen Blick: Warnungen, nächtliche Störungen, ausgefallene Dienste, fällige To-dos, Termine und Müllabfuhr.',
