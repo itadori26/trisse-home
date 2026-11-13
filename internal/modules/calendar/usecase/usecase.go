@@ -176,6 +176,15 @@ func (uc *calendar) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 	password := in.Password
 	if password == "" {
 		if old, err := uc.repo.Load(ctx); err == nil {
+			wanted := []string{in.Username}
+			for _, u := range in.CalendarURLs {
+				if strings.TrimSpace(u) != "" {
+					wanted = append(wanted, u)
+				}
+			}
+			if kernel.TargetChanged(append([]string{old.Username}, old.CalendarURLs...), wanted) {
+				return SettingsView{}, kernel.SecretRequired("password")
+			}
 			password = old.Password
 		}
 	}
@@ -185,7 +194,7 @@ func (uc *calendar) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 	}
 	now := uc.clock.Now()
 	if _, err := uc.fetchRange(ctx, &s, nil, now, now.Add(domain.Horizon)); err != nil {
-		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not load the calendar: {detail}", "detail", err.Error())
+		return SettingsView{}, kernel.TargetFailure(kernel.ErrInvalid, err)
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
@@ -274,7 +283,7 @@ func (uc *calendar) CreateEvent(ctx context.Context, in NewEventInput) (EventVie
 		return EventView{}, err
 	}
 	if err := uc.writer.Create(ctx, s, in.CalendarURL, e); err != nil {
-		return EventView{}, kernel.NewPublicErrorf(kernel.ErrUnavailable, "The calendar server rejected the event: {detail}", "detail", err.Error())
+		return EventView{}, kernel.TargetFailure(kernel.ErrUnavailable, err)
 	}
 	_ = uc.Refresh(ctx) // the new event shows up in the agenda right away
 	return EventView{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: domain.CalendarName(in.CalendarURL),

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
@@ -53,6 +54,7 @@
       required
       placeholder="https://cloud.example.com/remote.php/dav/calendars/USER/personal/"></textarea>
   </label>
+  <PlainHttpWarning url={urls} />
   <p class="muted">
     {t('calendar.nextcloud_open_the_calendar_app_click')}
   </p>

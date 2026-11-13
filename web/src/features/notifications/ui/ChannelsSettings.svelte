@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { errorMessage } from '../../../shared/api-client/http';
   import { t } from '../../../shared/i18n';
   import { type Channel, type ChannelInput, alertTypes, newChannel } from '../domain/notifications';
@@ -108,6 +109,7 @@
             : t('notifications.webhook_url')}</span
         ><input class="input" type="url" bind:value={editing.form.url} required /></label
       >
+      <PlainHttpWarning url={editing.form.url} />
     {:else}
       <div class="row">
         <label class="field"

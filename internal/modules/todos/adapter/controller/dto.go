@@ -6,6 +6,26 @@ type TodoInputDTO struct {
 	Title string `json:"title"`
 	Due   string `json:"due"`
 	Done  bool   `json:"done"`
+	// Repeat and Reminder are optional; when omitted the stored values are
+	// kept (#68).
+	Repeat   *RepeatDTO   `json:"repeat,omitempty"`
+	Reminder *ReminderDTO `json:"reminder,omitempty"`
+}
+
+// RepeatDTO is a recurrence: kind "" (none), "daily", "weekly", "monthly"
+// or "after" (days after completion); days are weekdays (0 = Sunday) of
+// weekly rules.
+type RepeatDTO struct {
+	Kind  string `json:"kind"`
+	Every int    `json:"every"`
+	Days  []int  `json:"days"`
+}
+
+// ReminderDTO is a reminder at a time ("HH:MM", "" = none) on the due date
+// or some days before.
+type ReminderDTO struct {
+	At         string `json:"at"`
+	DaysBefore int    `json:"daysBefore"`
 }
 
 // ClearedDTO is returned by POST /api/todos/clear-completed.

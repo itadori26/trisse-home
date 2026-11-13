@@ -215,7 +215,7 @@ func (uc *notifier) Alert(ctx context.Context, a kernel.Alert) {
 	if a.Kind == "security" && !s.Rules.Security {
 		return
 	}
-	msg := domain.Message{Title: a.Title, Body: a.Body, Type: a.Kind, Severity: s.Policy.SeverityOf(a.Kind), Tags: []string{"lock"}}
+	msg := domain.Message{Title: a.Title, Body: a.Body, Type: a.Kind, Severity: s.Policy.SeverityOf(a.Kind), Tags: []string{domain.AlertTag(a.Kind)}}
 	if a.Urgent {
 		msg.Severity, msg.Tags = domain.SeverityCritical, []string{"rotating_light"}
 	}
@@ -267,7 +267,7 @@ func (uc *notifier) record(err error) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	if err != nil {
-		uc.lastError = err.Error()
+		uc.lastError = kernel.TargetFailure(kernel.ErrUnavailable, err).Message
 		return
 	}
 	uc.lastError, uc.lastDelivered = "", uc.d.Clock.Now()
@@ -338,7 +338,14 @@ func (uc *notifier) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 		return SettingsView{}, err
 	}
 	token := in.Token
-	if token == "" {
+	if token == "" && old.Token != "" {
+		server := in.ServerURL
+		if strings.TrimSpace(server) == "" {
+			server = domain.DefaultServerURL
+		}
+		if kernel.TargetChanged([]string{old.ServerURL}, []string{server}) {
+			return SettingsView{}, kernel.SecretRequired("token")
+		}
 		token = old.Token
 	}
 	s, err := domain.NewSettings(in.Enabled, in.ServerURL, in.Topic, token, in.Rules)
@@ -387,7 +394,7 @@ func (uc *notifier) SendTest(ctx context.Context) error {
 		if errors.As(err, &pe) {
 			return err
 		}
-		return kernel.NewPublicErrorf(kernel.ErrUnavailable, "The ntfy server could not be reached: {detail}", "detail", err.Error())
+		return kernel.TargetFailure(kernel.ErrUnavailable, err)
 	}
 	return nil
 }
@@ -445,6 +452,11 @@ func (uc *notifier) SaveChannel(ctx context.Context, in ChannelInput) (ChannelVi
 			return ChannelView{}, err
 		}
 		if c.Secret == "" {
+			// URL (Gotify, webhook) or SMTP server and user identify the target.
+			if old.Secret != "" && kernel.TargetChanged([]string{old.URL, old.SMTPHost, old.Username},
+				[]string{c.URL, c.SMTPHost, c.Username}) {
+				return ChannelView{}, kernel.SecretRequired("secret")
+			}
 			c.Secret = old.Secret
 		}
 		c.Kind = old.Kind
@@ -481,7 +493,7 @@ func (uc *notifier) TestChannel(ctx context.Context, id string) error {
 		if errors.As(err, &pe) {
 			return err
 		}
-		return kernel.NewPublicErrorf(kernel.ErrUnavailable, "The channel could not be reached: {detail}", "detail", err.Error())
+		return kernel.TargetFailure(kernel.ErrUnavailable, err)
 	}
 	return nil
 }

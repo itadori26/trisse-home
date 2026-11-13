@@ -1,0 +1,7 @@
+-- Recurring to-dos and reminders (#68).
+ALTER TABLE todos ADD COLUMN repeat_kind TEXT NOT NULL DEFAULT '';
+ALTER TABLE todos ADD COLUMN repeat_every INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE todos ADD COLUMN repeat_days TEXT NOT NULL DEFAULT '';
+ALTER TABLE todos ADD COLUMN remind_at TEXT NOT NULL DEFAULT '';
+ALTER TABLE todos ADD COLUMN remind_days_before INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE todos ADD COLUMN reminded_for TEXT;

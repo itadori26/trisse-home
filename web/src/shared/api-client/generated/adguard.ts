@@ -8,6 +8,7 @@
  * never returned.
  */
 export interface SettingsDTO {
+  provider: 'adguard' | 'pihole';
   configured: boolean;
   url: string;
   username: string;
@@ -27,7 +28,10 @@ export interface StatsDTO {
   queries: number /* int */;
   blocked: number /* int */;
   blockedPercent: number /* float64 */;
-  avgProcessingMs: number /* float64 */;
+  /**
+   * AvgProcessingMs is null for providers that do not report it (Pi-hole).
+   */
+  avgProcessingMs?: number /* float64 */;
   protectionEnabled: boolean;
   topBlocked: BlockedDomainDTO[];
   updatedAt: string /* RFC 3339 */;

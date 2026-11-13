@@ -92,13 +92,11 @@ func NewSettings(urls []string, username, password string) (Settings, error) {
 		if raw == "" {
 			continue
 		}
-		u, err := url.Parse(raw)
-		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return Settings{}, kernel.NewValidationError("calendarUrls", "Every calendar URL must start with http:// or https://.")
+		u, err := kernel.ParseTarget("calendarUrls", raw, kernel.WithTargetPath())
+		if err != nil {
+			return Settings{}, err
 		}
-		if !strings.HasSuffix(raw, "/") {
-			raw += "/"
-		}
+		raw = u.String() + "/" // a CalDAV collection
 		if !slices.Contains(clean, raw) {
 			clean = append(clean, raw)
 		}

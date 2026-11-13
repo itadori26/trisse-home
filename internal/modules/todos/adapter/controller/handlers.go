@@ -34,6 +34,12 @@ func (d TodoInputDTO) toInput() (usecase.TodoInput, error) {
 		}
 		in.Due = due
 	}
+	if d.Repeat != nil {
+		in.Repeat = &usecase.RepeatInput{Kind: d.Repeat.Kind, Every: d.Repeat.Every, Days: d.Repeat.Days}
+	}
+	if d.Reminder != nil {
+		in.Reminder = &usecase.ReminderInput{At: d.Reminder.At, DaysBefore: d.Reminder.DaysBefore}
+	}
 	return in, nil
 }
 

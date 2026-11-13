@@ -19,6 +19,11 @@ type UseCases struct {
 	RenameFolder usecase.RenameFolder
 	DeleteFolder usecase.DeleteFolder
 	Import       usecase.ImportBookmarks
+	GetSettings  usecase.GetSettings
+	SaveSettings usecase.SaveSettings
+	Enrich       usecase.EnrichBookmark
+	CheckLink    usecase.CheckLink
+	Icon         usecase.GetIcon
 }
 
 // Handlers serves the bookmarks endpoints.
@@ -34,12 +39,73 @@ func (d BookmarkInputDTO) toInput() usecase.Input {
 // List handles GET /api/bookmarks?folder=…&tag=…&q=….
 func (h *Handlers) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	res, err := h.uc.List.Execute(r.Context(), usecase.Filter{FolderID: q.Get("folder"), Tag: q.Get("tag"), Query: q.Get("q")})
+	res, err := h.uc.List.Execute(r.Context(), usecase.Filter{FolderID: q.Get("folder"), Tag: q.Get("tag"), Query: q.Get("q"),
+		Broken: q.Get("status") == "broken"})
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
 	httpapi.WriteJSON(w, http.StatusOK, presenter.List(res))
+}
+
+// GetSettings handles GET /api/bookmarks/settings.
+func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.GetSettings.Execute(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
+}
+
+// SaveSettings handles PUT /api/bookmarks/settings.
+func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
+	var dto SettingsInputDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.uc.SaveSettings.Execute(r.Context(), usecase.SettingsView(dto))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
+}
+
+// Enrich handles POST /api/bookmarks/{id}/enrich.
+func (h *Handlers) Enrich(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Enrich.Execute(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Bookmark(res))
+}
+
+// CheckLink handles POST /api/bookmarks/{id}/check.
+func (h *Handlers) CheckLink(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.CheckLink.Execute(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Bookmark(res))
+}
+
+// Icon handles GET /api/bookmarks/{id}/icon. Icons are raster images
+// only; the headers keep a browser from interpreting them as anything else.
+func (h *Handlers) Icon(w http.ResponseWriter, r *http.Request) {
+	icon, err := h.uc.Icon.Execute(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.Header().Set("Content-Type", icon.ContentType)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	w.Header().Set("Cache-Control", "private, max-age=86400")
+	_, _ = w.Write(icon.Data)
 }
 
 // Create handles POST /api/bookmarks.

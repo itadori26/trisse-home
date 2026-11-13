@@ -29,6 +29,10 @@ type ManageTabs interface {
 	SetBackground(ctx context.Context, tabID, background string) (TabResponse, error)
 	// SetRules sets the rules that open the tab by default (#71).
 	SetRules(ctx context.Context, tabID string, rules []domain.RuleInput) (TabResponse, error)
+	// SaveMobileLayout stores the phone layout of a tab (#92).
+	SaveMobileLayout(ctx context.Context, tabID string, entries []domain.MobileEntry) (TabResponse, error)
+	// ResetMobileLayout derives the phone layout from the desktop grid again.
+	ResetMobileLayout(ctx context.Context, tabID string) (TabResponse, error)
 }
 
 // ManageWidgets adds, configures, places and removes widgets.

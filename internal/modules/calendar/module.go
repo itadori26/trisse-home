@@ -1,6 +1,7 @@
 package calendar
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 	"net/http"
@@ -58,4 +59,10 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 // Jobs implements modules.Module.
 func (m *Module) Jobs() []modules.Job {
 	return []modules.Job{{Name: "calendar.refresh", Interval: refreshInterval, Run: m.uc.Refresh}}
+}
+
+// Upcoming returns the events of the next days (read access for the
+// briefing, ADR 0016).
+func (m *Module) Upcoming(ctx context.Context, days int) (usecase.AgendaResponse, error) {
+	return m.uc.Upcoming(ctx, days)
 }
