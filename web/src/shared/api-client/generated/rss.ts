@@ -14,6 +14,26 @@ export interface FeedDTO {
   lastError: string;
   lastFetchedAt?: string /* RFC 3339 */;
   unread: number /* int */;
+  /**
+   * Category groups feeds ("" = none; OPML folders, #97).
+   */
+  category: string;
+}
+/**
+ * InvalidEntryDTO is an OPML entry that was not imported.
+ */
+export interface InvalidEntryDTO {
+  title: string;
+  url: string;
+  reason: string;
+}
+/**
+ * ImportReportDTO is returned by POST /api/rss/opml.
+ */
+export interface ImportReportDTO {
+  added: number /* int */;
+  duplicates: number /* int */;
+  invalid: InvalidEntryDTO[];
 }
 /**
  * ItemDTO is a feed entry.

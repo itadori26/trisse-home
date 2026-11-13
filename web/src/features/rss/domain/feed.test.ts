@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { age, itemMeta, parseRssConfig } from './feed';
+import { age, groupByCategory, itemMeta, parseRssConfig } from './feed';
 
 describe('rss domain', () => {
   const now = new Date('2026-11-10T12:00:00Z');
@@ -28,5 +28,24 @@ describe('rss domain', () => {
     expect(itemMeta(item, false, now)).toBe('Go Blog · 3 h');
     expect(itemMeta(item, true, now)).toBe('3 h');
     expect(itemMeta({ ...item, feedTitle: '' }, false, now)).toBe('3 h');
+  });
+});
+
+describe('groupByCategory (#97)', () => {
+  it('puts uncategorised feeds first and sorts the folders', () => {
+    const f = (title: string, category: string) => ({
+      id: title,
+      url: '',
+      title,
+      siteUrl: '',
+      lastError: '',
+      lastFetchedAt: null,
+      unread: 0,
+      category,
+    });
+    const groups = groupByCategory([f('a', 'Tech'), f('b', ''), f('c', 'News'), f('d', 'Tech')]);
+    expect(groups.map((g) => `${g.category}:${g.feeds.map((x) => x.title).join(',')}`)).toEqual(
+      ['_:b', 'News:c', 'Tech:a,d'].map((s) => s.replace('_', '')),
+    );
   });
 });

@@ -35,6 +35,8 @@ type Feed struct {
 	LastFetchedAt time.Time
 	LastError     string
 	CreatedAt     time.Time
+	// Category groups feeds (OPML folders, #97); "" = none.
+	Category string
 }
 
 // NewFeed validates the feed URL and creates a subscription.

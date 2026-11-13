@@ -1,5 +1,5 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { FeedDTO, ItemDTO } from '../../../../shared/api-client/generated/rss';
+import type { FeedDTO, ImportReportDTO, ItemDTO } from '../../../../shared/api-client/generated/rss';
 import type {
   MarkAllReadDTO,
   ReadDTO,
@@ -7,6 +7,7 @@ import type {
 } from '../../../../shared/api-client/generated/rss-requests';
 import type { Feed, FeedItem } from '../../domain/feed';
 import type { RssGateway } from '../../usecase/rssUseCases';
+import type { ImportReport } from '../../domain/feed';
 
 const toFeed = (d: FeedDTO): Feed => ({
   id: d.id,
@@ -16,6 +17,7 @@ const toFeed = (d: FeedDTO): Feed => ({
   lastError: d.lastError,
   lastFetchedAt: d.lastFetchedAt ? new Date(d.lastFetchedAt) : null,
   unread: d.unread,
+  category: d.category ?? '',
 });
 
 const toItem = (d: ItemDTO): FeedItem => ({
@@ -58,5 +60,11 @@ export class RssApi implements RssGateway {
   }
   async refresh(): Promise<Feed[]> {
     return (await this.http.post<FeedDTO[]>('/api/rss/refresh')).map(toFeed);
+  }
+  async importOpml(text: string): Promise<ImportReport> {
+    return { ...(await this.http.postText<ImportReportDTO>('/api/rss/opml', text, 'text/x-opml')) };
+  }
+  opmlUrl(): string {
+    return '/api/rss/opml';
   }
 }

@@ -167,3 +167,49 @@ func TestReader(t *testing.T) {
 		t.Fatalf("unsubscribe: %v", err)
 	}
 }
+
+type fakeOPML struct {
+	entries []domain.ImportEntry
+	err     error
+	encoded []domain.Feed
+}
+
+func (f *fakeOPML) Decode([]byte) ([]domain.ImportEntry, error) { return f.entries, f.err }
+func (f *fakeOPML) Encode(feeds []domain.Feed, _ time.Time) ([]byte, error) {
+	f.encoded = feeds
+	return []byte("<opml/>"), nil
+}
+
+func TestOPMLImportExport(t *testing.T) {
+	ctx := context.Background()
+	repo := newMem()
+	fetcher := &fakeFetcher{}
+	codec := &fakeOPML{entries: []domain.ImportEntry{
+		{Title: "Go", URL: "https://go.dev/blog/feed.atom", Category: "Tech"},
+		{Title: "Go twice", URL: "https://go.dev/blog/feed.atom/"},
+		{Title: "Bad", URL: "file:///etc/passwd"},
+	}}
+	uc := NewReader(Deps{Repo: repo, Fetcher: fetcher, OPML: codec, Clock: clk{}, IDs: &ids{}})
+	report, err := uc.ImportOPML(ctx, []byte("<opml/>"))
+	if err != nil || report.Added != 1 || report.Duplicates != 1 || len(report.Invalid) != 1 {
+		t.Fatalf("%+v %v", report, err)
+	}
+	feeds, _ := uc.Feeds(ctx)
+	if len(feeds) != 1 || feeds[0].Title != "Go" || feeds[0].Category != "Tech" {
+		t.Fatalf("%+v", feeds)
+	}
+	// Importing nothing new adds nothing; the feeds are not fetched during the import.
+	if r, _ := uc.ImportOPML(ctx, []byte("<opml/>")); r.Added != 0 || r.Duplicates != 2 {
+		t.Fatalf("again: %+v", r)
+	}
+	if data, err := uc.ExportOPML(ctx); err != nil || string(data) != "<opml/>" || len(codec.encoded) != 1 {
+		t.Fatalf("export: %s %v", data, err)
+	}
+	codec.err = errors.New("syntax")
+	if _, err := uc.ImportOPML(ctx, []byte("x")); !errors.Is(err, ErrNotOPML) {
+		t.Fatalf("not opml: %v", err)
+	}
+	if _, err := uc.ImportOPML(ctx, make([]byte, domain.MaxImportBytes+1)); err == nil {
+		t.Fatal("size limit")
+	}
+}

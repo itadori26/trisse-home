@@ -1,4 +1,5 @@
-import type { Feed, FeedItem, RssConfig } from '../domain/feed';
+import { t } from '../../../shared/i18n';
+import { type Feed, type FeedItem, type ImportReport, MAX_OPML_BYTES, type RssConfig } from '../domain/feed';
 
 /** Output port: feed reader backend. */
 export interface RssGateway {
@@ -9,6 +10,10 @@ export interface RssGateway {
   setRead(itemId: string, read: boolean): Promise<void>;
   markAllRead(feedId: string): Promise<void>;
   refresh(): Promise<Feed[]>;
+  /** Imports an OPML file (#97). */
+  importOpml(text: string): Promise<ImportReport>;
+  /** Address of the OPML export download. */
+  opmlUrl(): string;
 }
 
 /** Application logic of the feed reader. */
@@ -43,6 +48,24 @@ export class RssUseCases {
 
   markAllRead(feedId: string): Promise<void> {
     return this.gateway.markAllRead(feedId);
+  }
+
+  /**
+   * Imports an OPML file and then loads the new feeds (the import itself
+   * only subscribes). Files over 2 MB are refused before uploading.
+   */
+  async importOpml(file: {
+    size: number;
+    text(): Promise<string>;
+  }): Promise<{ report: ImportReport; feeds: Feed[] }> {
+    if (file.size > MAX_OPML_BYTES) throw new Error(t('rss.opml_too_large'));
+    const report = await this.gateway.importOpml(await file.text());
+    const feeds = report.added > 0 ? await this.gateway.refresh() : await this.gateway.feeds();
+    return { report, feeds };
+  }
+
+  opmlUrl(): string {
+    return this.gateway.opmlUrl();
   }
 
   refresh(): Promise<Feed[]> {
