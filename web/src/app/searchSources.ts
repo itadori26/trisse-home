@@ -7,7 +7,7 @@ import type { IntentSpec } from '../features/search/domain/smart/intent';
 import { type SearchSource, SmartSearch } from '../features/search/usecase/smartSearch';
 import type { ServiceState } from '../features/services/domain/service';
 import { daysUntilFull } from '../features/system/domain/system';
-import { describe, type WeatherConfig } from '../features/weather/domain/weather';
+import { describe, noHealth, type WeatherConfig } from '../features/weather/domain/weather';
 import { intlLocale, t } from '../shared/i18n';
 import { formatBytes, formatUptime } from '../shared/ui/format';
 import type { Container } from './container';
@@ -231,7 +231,7 @@ function weatherSource(c: Container, home: () => WeatherConfig | null): SearchSo
             title: t('smart.weather'),
             text: t('smart.place_unknown', { place: named }),
           };
-        place = { lat: found.lat, lon: found.lon, label: found.name, days: 5, warnings: false };
+        place = { lat: found.lat, lon: found.lon, label: found.name, days: 5, warnings: false, ...noHealth };
       }
       if (!place)
         return { ...base, at: null, kind: 'text', title: t('smart.weather'), text: t('smart.no_location') };

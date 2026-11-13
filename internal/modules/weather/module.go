@@ -22,6 +22,7 @@ type Module struct {
 	uc       usecase.Weather
 	handlers *controller.Handlers
 	alerts   *controller.AlertHandlers
+	health   *controller.HealthHandlers
 	warnings usecase.Alerts
 }
 
@@ -31,7 +32,9 @@ func New(client *http.Client, clock kernel.Clock) *Module {
 	uc := usecase.NewWeather(provider, gateway.NewMemoryCache(), clock)
 	dwd := gateway.NewDWD(client, gateway.DefaultDWDWFS, gateway.DefaultDWDWMS)
 	alerts := usecase.NewAlerts(dwd, dwd, clock)
-	return &Module{uc: uc, handlers: controller.NewHandlers(uc), alerts: controller.NewAlertHandlers(alerts), warnings: alerts}
+	health := usecase.NewHealth(gateway.NewHealth(dwd, gateway.DefaultPollenURL, gateway.DefaultUVURL), clock)
+	return &Module{uc: uc, handlers: controller.NewHandlers(uc), alerts: controller.NewAlertHandlers(alerts),
+		health: controller.NewHealthHandlers(health), warnings: alerts}
 }
 
 // Name implements modules.Module.
@@ -46,6 +49,8 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/weather/places", m.handlers.Places)
 	r.Protected("GET /api/weather/warnings", m.alerts.Warnings)
 	r.Protected("GET /api/weather/radar", m.alerts.Radar)
+	r.Protected("GET /api/weather/health/options", m.health.Options)
+	r.Protected("GET /api/weather/health", m.health.Report)
 }
 
 // Jobs implements modules.Module.

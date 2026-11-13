@@ -18,6 +18,62 @@ export interface WarningDTO {
 }
 
 //////////
+// source: health.go
+
+/**
+ * PollenRegionDTO is a selectable DWD pollen region.
+ */
+export interface PollenRegionDTO {
+  id: number /* int */;
+  name: string;
+}
+/**
+ * HealthOptionsDTO is returned by GET /api/weather/health/options.
+ */
+export interface HealthOptionsDTO {
+  regions: PollenRegionDTO[];
+  cities: string[];
+}
+/**
+ * PollenDayDTO is the forecast of one allergen; levels use the DWD notation
+ * ("0", "0-1", … "3", "" = no data), burden is none, low, moderate, high or unknown.
+ */
+export interface PollenDayDTO {
+  type: string;
+  today: string;
+  tomorrow: string;
+  todayBurden: string;
+  tomorrowBurden: string;
+}
+/**
+ * PollenDTO is the pollen forecast of a region.
+ */
+export interface PollenDTO {
+  region: PollenRegionDTO;
+  days: PollenDayDTO[];
+  updatedAt?: string /* RFC 3339 */;
+}
+/**
+ * UVDTO is the UV index forecast of a city (-1 = no data); levels are
+ * low, moderate, high, very_high, extreme or unknown.
+ */
+export interface UVDTO {
+  city: string;
+  today: number /* int */;
+  tomorrow: number /* int */;
+  todayLevel: string;
+  tomorrowLevel: string;
+  updatedAt?: string /* RFC 3339 */;
+}
+/**
+ * HealthDTO is returned by GET /api/weather/health.
+ */
+export interface HealthDTO {
+  pollen?: PollenDTO;
+  uv?: UVDTO;
+}
+
+//////////
 // source: presenter.go
 
 /**
