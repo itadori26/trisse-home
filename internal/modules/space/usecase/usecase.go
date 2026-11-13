@@ -126,7 +126,7 @@ func (uc *space) Launches(ctx context.Context, n int) ([]domain.Launch, error) {
 		}
 	}
 	// Launches that took off more than an hour ago drop out of a cached list.
-	out := make([]domain.Launch, 0, n)
+	out := make([]domain.Launch, 0, domain.MaxLaunches)
 	for _, l := range list {
 		if l.Net.After(now.Add(-time.Hour)) && len(out) < n {
 			out = append(out, l)
