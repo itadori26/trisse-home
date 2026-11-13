@@ -37,6 +37,8 @@ export function indicator(c: Container): Indicator {
 export interface DockerConfig {
   /** Show only containers that need attention. */
   problemsOnly: boolean;
+  /** Show only containers that are not running (#119). */
+  stoppedOnly: boolean;
   /** Only containers of this compose project ('' = all). */
   project: string;
 }
@@ -45,14 +47,26 @@ export interface DockerConfig {
 export function parseDockerConfig(raw: Record<string, unknown>): DockerConfig {
   return {
     problemsOnly: raw['problemsOnly'] === true,
+    stoppedOnly: raw['stoppedOnly'] === true,
     project: typeof raw['project'] === 'string' ? raw['project'] : '',
   };
 }
 
-/** Applies the widget configuration to a list. */
+/** A container counts as stopped unless it is running, like the counters of the server. */
+export function isStopped(c: Pick<Container, 'state'>): boolean {
+  return c.state !== 'running';
+}
+
+/**
+ * Applies the widget configuration to a list. The options combine: with both
+ * "needs attention" and "stopped" a container must satisfy both.
+ */
 export function filterContainers(list: Container[], cfg: DockerConfig): Container[] {
   return list.filter(
-    (c) => (!cfg.project || c.project === cfg.project) && (!cfg.problemsOnly || indicator(c) !== 'ok'),
+    (c) =>
+      (!cfg.project || c.project === cfg.project) &&
+      (!cfg.problemsOnly || indicator(c) !== 'ok') &&
+      (!cfg.stoppedOnly || isStopped(c)),
   );
 }
 

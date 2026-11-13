@@ -7,6 +7,8 @@ export interface Usage {
 
 /** Host metrics snapshot. */
 export interface SystemSnapshot {
+  /** Name of the host; empty when unknown (#123). */
+  hostname: string;
   cpuPercent: number;
   cpuCount: number;
   load: [number, number, number];

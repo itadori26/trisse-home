@@ -33,6 +33,8 @@ type DiskDTO struct {
 
 // SnapshotDTO is returned by GET /api/system.
 type SnapshotDTO struct {
+	// Hostname of the host; empty when unknown.
+	Hostname      string     `json:"hostname"`
 	CPUPercent    float64    `json:"cpuPercent"`
 	CPUCount      int        `json:"cpuCount"`
 	Load          [3]float64 `json:"load"`
@@ -53,6 +55,7 @@ func usage(u usecase.UsageView) UsageDTO {
 // Snapshot maps a SnapshotView with the disk forecasts by label (may be nil).
 func Snapshot(s usecase.SnapshotView, forecasts map[string]usecase.ForecastView) SnapshotDTO {
 	dto := SnapshotDTO{
+		Hostname:   s.Hostname,
 		CPUPercent: round1(s.CPUPercent), CPUCount: s.CPUCount,
 		Load:   [3]float64{s.Load1, s.Load5, s.Load15},
 		Memory: usage(s.Memory), Swap: usage(s.Swap), Disks: make([]DiskDTO, 0, len(s.Disks)),
