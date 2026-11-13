@@ -129,6 +129,16 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /control/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
+	// Pi-hole v6 (#83) without a password: no session needed.
+	mux.HandleFunc("GET /pihole/api/stats/summary", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"queries":{"total":200,"blocked":20}}`)
+	})
+	mux.HandleFunc("GET /pihole/api/dns/blocking", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"blocking":"enabled"}`)
+	})
+	mux.HandleFunc("GET /pihole/api/stats/top_domains", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"domains":[{"domain":"ads.example","count":9}]}`)
+	})
 	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut && r.Header.Get("If-None-Match") == "*" && strings.HasSuffix(r.URL.Path, ".ics") {
 			body, _ := io.ReadAll(r.Body)
@@ -597,6 +607,13 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodGet, "/api/adguard/stats", nil, http.StatusOK, &stats)
 	if stats["blockedPercent"] != float64(25) {
 		t.Fatalf("adguard: %v", stats)
+	}
+	c.do(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusNotFound)
+	c.do(http.MethodGet, "/api/adguard/stats?provider=bind", nil, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/adguard/settings?provider=pihole", obj{"url": up.URL + "/pihole"}, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusOK, &stats)
+	if stats["blockedPercent"] != float64(10) || stats["avgProcessingMs"] != nil {
+		t.Fatalf("pi-hole: %v", stats)
 	}
 
 	// --- calendar ---

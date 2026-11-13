@@ -25,10 +25,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   // Actions are not enabled for this container (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).
   srv_fc1c5d36ee0973d3:
     'Aktionen sind für diesen Container nicht freigeschaltet (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).',
-  // AdGuard Home is not configured yet.
-  srv_9bc99814ae6ec519: 'AdGuard Home ist noch nicht eingerichtet.',
-  // AdGuard Home is not reachable.
-  srv_66e0c4283a72cd94: 'AdGuard Home ist nicht erreichbar.',
   // An API token with the results:read scope is required.
   srv_d05b6c7e6905729f: 'Ein API-Token mit dem Bereich results:read ist erforderlich.',
   // At most 10 calendars are supported.
@@ -57,8 +53,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_4e9dc8e29fa35fbf: 'Bitte wählen, wofür die Wartung gilt.',
   // Colors must look like #1a2b3c.
   srv_100561a937e88349: 'Farben müssen wie #1a2b3c aussehen.',
-  // Could not connect to AdGuard Home: {detail}
-  srv_a3e65fea5b434e1e: 'Keine Verbindung zu AdGuard Home: {detail}',
   // Could not connect to Nextcloud: {detail}
   srv_6d1befe42898ea11: 'Keine Verbindung zu Nextcloud: {detail}',
   // Could not connect to Speedtest Tracker: {detail}
@@ -569,6 +563,14 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_668a30f80af88b85: 'das ist kein gültiger RSS-, Atom- oder JSON-Feed',
   // token, public id and csrf token are required
   srv_1b3daa6bc9a9f8db: 'Token, öffentliche ID und CSRF-Token sind erforderlich',
+  // Could not connect to the DNS filter: {detail}
+  srv_42b6ac05e9d896f1: 'Verbindung zum DNS-Filter fehlgeschlagen: {detail}',
+  // The DNS filter is not reachable.
+  srv_4a327952321d8a3f: 'Der DNS-Filter ist nicht erreichbar.',
+  // This DNS filter is not configured yet.
+  srv_fcbb5bbe636e4559: 'Dieser DNS-Filter ist noch nicht eingerichtet.',
+  // Unknown DNS filter, use adguard or pihole.
+  srv_1a87cc7977ed4993: 'Unbekannter DNS-Filter, verwende adguard oder pihole.',
   // Docker discovery needs the docker module to be enabled.
   srv_1f3976061912504c: 'Die Docker-Autodiscovery braucht das aktivierte Docker-Modul.',
   // The interval must be between 1 and {max} minutes.

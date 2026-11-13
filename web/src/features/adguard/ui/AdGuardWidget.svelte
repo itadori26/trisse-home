@@ -4,14 +4,16 @@
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { formatCount } from '../../../shared/ui/format';
   import Meter from '../../../shared/ui/Meter.svelte';
-  import type { AdGuardStats } from '../domain/adguard';
+  import { type AdGuardStats, parseWidgetConfig, providerName } from '../domain/adguard';
   import type { AdGuardUseCases } from '../usecase/adguardUseCases';
 
   /** Props of the AdGuard widget. */
   interface Props {
     adguard: AdGuardUseCases;
+    config: Record<string, unknown>;
   }
-  let { adguard }: Props = $props();
+  let { adguard, config }: Props = $props();
+  const provider = $derived(parseWidgetConfig(config).provider);
   const poll = usePolling();
 
   const POLL_MS = 60_000;
@@ -22,7 +24,7 @@
   $effect(() => {
     const load = () =>
       adguard
-        .stats()
+        .stats(provider)
         .then((s) => ((stats = s), (error = ''), (unconfigured = false)))
         .catch((err) => {
           unconfigured = err instanceof ApiError && err.status === 404;
@@ -34,18 +36,20 @@
 </script>
 
 {#if unconfigured}
-  <p class="muted">{t('adguard.connect_adguard_home_under_settings_adgu')}</p>
+  <p class="muted">{t('adguard.connect_under_settings', { name: providerName(provider) })}</p>
 {:else if error && !stats}
   <p class="error">{error}</p>
 {:else if stats}
-  <div class="numbers">
+  <div class="numbers" class:two={stats.avgProcessingMs === null}>
     <div><strong>{formatCount(stats.queries)}</strong><span class="muted">{t('adguard.queries')}</span></div>
     <div><strong>{formatCount(stats.blocked)}</strong><span class="muted">{t('adguard.blocked')}</span></div>
-    <div>
-      <strong>{t('adguard.ms', { value: stats.avgProcessingMs.toFixed(1) })}</strong><span class="muted"
-        >{t('adguard.avg')}</span
-      >
-    </div>
+    {#if stats.avgProcessingMs !== null}
+      <div>
+        <strong>{t('adguard.ms', { value: stats.avgProcessingMs.toFixed(1) })}</strong><span class="muted"
+          >{t('adguard.avg')}</span
+        >
+      </div>
+    {/if}
   </div>
   <Meter
     label={stats.protectionEnabled ? t('adguard.blocked_label') : t('adguard.protection_disabled')}
@@ -70,6 +74,9 @@
     grid-template-columns: repeat(3, 1fr);
     text-align: center;
     margin-bottom: var(--space-3);
+  }
+  .numbers.two {
+    grid-template-columns: repeat(2, 1fr);
   }
   .numbers div {
     display: flex;
