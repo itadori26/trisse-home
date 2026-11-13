@@ -34,9 +34,6 @@ func (m *Module) Name() string { return "search" }
 // Migrations implements modules.Module.
 func (m *Module) Migrations() fs.FS { return gateway.Migrations() }
 
-// WidgetKinds implements modules.Module.
-func (m *Module) WidgetKinds() []string { return []string{"search"} }
-
 // RegisterRoutes implements modules.Module.
 func (m *Module) RegisterRoutes(r modules.Router) {
 	h := m.handlers
@@ -44,6 +41,7 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Public("GET /api/search/opensearch.xml", h.OpenSearch)
 	r.Protected("GET /api/search/settings", h.Settings)
 	r.Protected("PUT /api/search/settings", h.SetDefaultProvider)
+	r.Protected("PUT /api/search/bar", h.SetBarOptions)
 	r.Protected("POST /api/search/shortcuts", h.AddShortcut)
 	r.Protected("DELETE /api/search/shortcuts/{keyword}", h.DeleteShortcut)
 }

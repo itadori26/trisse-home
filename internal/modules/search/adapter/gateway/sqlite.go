@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -47,6 +48,51 @@ func (r *Repository) SetDefaultProvider(ctx context.Context, id string) error {
 		ON CONFLICT (id) DO UPDATE SET default_provider = excluded.default_provider`, id)
 	if err != nil {
 		return fmt.Errorf("upsert default provider: %w", err)
+	}
+	return nil
+}
+
+// BarOptions implements usecase.Repository.
+func (r *Repository) BarOptions(ctx context.Context) (domain.BarOptions, error) {
+	var newTab bool
+	var raw string
+	err := r.db.QueryRowContext(ctx, `SELECT open_in_new_tab, capture_prefixes FROM search_settings WHERE id = 1`).Scan(&newTab, &raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.DefaultBarOptions(), nil
+	}
+	if err != nil {
+		return domain.BarOptions{}, fmt.Errorf("select search field options: %w", err)
+	}
+	p := domain.DefaultCapturePrefixes
+	if raw != "" {
+		var stored struct{ Todo, Note, Bookmark string }
+		if json.Unmarshal([]byte(raw), &stored) == nil {
+			p = domain.CapturePrefixes{Todo: stored.Todo, Note: stored.Note, Bookmark: stored.Bookmark}
+		}
+	}
+	o, err := domain.NewBarOptions(newTab, p)
+	if err != nil {
+		// A row that violates current rules falls back to the default prefixes
+		// instead of breaking the search field.
+		o, _ = domain.NewBarOptions(newTab, domain.DefaultCapturePrefixes)
+	}
+	return o, nil
+}
+
+// SetBarOptions implements usecase.Repository.
+func (r *Repository) SetBarOptions(ctx context.Context, o domain.BarOptions) error {
+	p := o.Prefixes()
+	raw, err := json.Marshal(struct{ Todo, Note, Bookmark string }{p.Todo, p.Note, p.Bookmark})
+	if err != nil {
+		return fmt.Errorf("encode capture prefixes: %w", err)
+	}
+	// No row yet: default_provider '' means "the default provider".
+	_, err = r.db.ExecContext(ctx, `INSERT INTO search_settings (id, default_provider, open_in_new_tab, capture_prefixes)
+		VALUES (1, '', ?, ?)
+		ON CONFLICT (id) DO UPDATE SET open_in_new_tab = excluded.open_in_new_tab, capture_prefixes = excluded.capture_prefixes`,
+		o.OpenInNewTab(), string(raw))
+	if err != nil {
+		return fmt.Errorf("upsert search field options: %w", err)
 	}
 	return nil
 }

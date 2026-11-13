@@ -43,3 +43,35 @@ func TestOpenSearch(t *testing.T) {
 		t.Fatalf("unexpected body %s", rec.Body)
 	}
 }
+
+type barSearcher struct {
+	usecase.Searcher
+	got usecase.SetBarRequest
+}
+
+func (b *barSearcher) SetBarOptions(_ context.Context, req usecase.SetBarRequest) (usecase.SettingsResponse, error) {
+	b.got = req
+	if req.TodoPrefix == req.NotePrefix {
+		return usecase.SettingsResponse{}, kernel.NewValidationError("capturePrefixes", "Each prefix can be used only once.")
+	}
+	return usecase.SettingsResponse{Bar: usecase.BarView(req)}, nil
+}
+
+func TestSetBarOptions(t *testing.T) {
+	s := &barSearcher{}
+	h := NewHandlers(s)
+	rec := httptest.NewRecorder()
+	body := `{"openInNewTab":true,"capturePrefixes":{"todo":"a","note":"n","bookmark":"b"}}`
+	h.SetBarOptions(rec, httptest.NewRequest(http.MethodPut, "/api/search/bar", strings.NewReader(body)))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"bar":{"openInNewTab":true,"capturePrefixes":{"todo":"a","note":"n","bookmark":"b"}}`) {
+		t.Fatalf("%d %s", rec.Code, rec.Body.String())
+	}
+	if s.got != (usecase.SetBarRequest{OpenInNewTab: true, TodoPrefix: "a", NotePrefix: "n", BookmarkPrefix: "b"}) {
+		t.Fatalf("request not mapped: %+v", s.got)
+	}
+	rec = httptest.NewRecorder()
+	h.SetBarOptions(rec, httptest.NewRequest(http.MethodPut, "/api/search/bar", strings.NewReader(`{"capturePrefixes":{"todo":"x","note":"x","bookmark":"b"}}`)))
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("validation error: %d", rec.Code)
+	}
+}

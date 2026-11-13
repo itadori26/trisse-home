@@ -28,11 +28,25 @@ type ShortcutView struct {
 	URLTemplate string
 }
 
+// BarView describes the options of the search field (#221).
+type BarView struct {
+	OpenInNewTab           bool
+	TodoPrefix, NotePrefix string
+	BookmarkPrefix         string
+}
+
 // SettingsResponse describes the search configuration.
 type SettingsResponse struct {
 	DefaultProvider string
 	Providers       []ProviderView
 	Shortcuts       []ShortcutView
+	Bar             BarView
+}
+
+// SetBarRequest is the input of SetBarOptions.
+type SetBarRequest struct {
+	OpenInNewTab                           bool
+	TodoPrefix, NotePrefix, BookmarkPrefix string
 }
 
 // AddShortcutRequest is the input of AddShortcut.
@@ -47,6 +61,7 @@ type Searcher interface {
 	Resolve(ctx context.Context, query string) (string, error)
 	Settings(ctx context.Context) (SettingsResponse, error)
 	SetDefaultProvider(ctx context.Context, providerID string) (SettingsResponse, error)
+	SetBarOptions(ctx context.Context, req SetBarRequest) (SettingsResponse, error)
 	AddShortcut(ctx context.Context, req AddShortcutRequest) (SettingsResponse, error)
 	DeleteShortcut(ctx context.Context, keyword string) (SettingsResponse, error)
 }
@@ -56,6 +71,9 @@ type Repository interface {
 	// DefaultProvider returns "" if none has been chosen yet.
 	DefaultProvider(ctx context.Context) (string, error)
 	SetDefaultProvider(ctx context.Context, id string) error
+	// BarOptions returns the defaults if none have been saved yet.
+	BarOptions(ctx context.Context) (domain.BarOptions, error)
+	SetBarOptions(ctx context.Context, o domain.BarOptions) error
 	Shortcuts(ctx context.Context) ([]domain.Shortcut, error)
 	// AddShortcut returns ErrShortcutExists for duplicate keywords.
 	AddShortcut(ctx context.Context, s domain.Shortcut) error
@@ -107,7 +125,13 @@ func (uc *searcher) Settings(ctx context.Context) (SettingsResponse, error) {
 	if err != nil {
 		return SettingsResponse{}, fmt.Errorf("load shortcuts: %w", err)
 	}
-	res := SettingsResponse{DefaultProvider: p.ID(), Providers: []ProviderView{}, Shortcuts: []ShortcutView{}}
+	bar, err := uc.repo.BarOptions(ctx)
+	if err != nil {
+		return SettingsResponse{}, fmt.Errorf("load search field options: %w", err)
+	}
+	pre := bar.Prefixes()
+	res := SettingsResponse{DefaultProvider: p.ID(), Providers: []ProviderView{}, Shortcuts: []ShortcutView{},
+		Bar: BarView{OpenInNewTab: bar.OpenInNewTab(), TodoPrefix: pre.Todo, NotePrefix: pre.Note, BookmarkPrefix: pre.Bookmark}}
 	for _, bp := range domain.Providers() {
 		res.Providers = append(res.Providers, ProviderView{ID: bp.ID(), Name: bp.Name()})
 	}
@@ -124,6 +148,18 @@ func (uc *searcher) SetDefaultProvider(ctx context.Context, providerID string) (
 	}
 	if err := uc.repo.SetDefaultProvider(ctx, providerID); err != nil {
 		return SettingsResponse{}, fmt.Errorf("save default provider: %w", err)
+	}
+	return uc.Settings(ctx)
+}
+
+// SetBarOptions implements Searcher.
+func (uc *searcher) SetBarOptions(ctx context.Context, req SetBarRequest) (SettingsResponse, error) {
+	o, err := domain.NewBarOptions(req.OpenInNewTab, domain.CapturePrefixes{Todo: req.TodoPrefix, Note: req.NotePrefix, Bookmark: req.BookmarkPrefix})
+	if err != nil {
+		return SettingsResponse{}, err
+	}
+	if err := uc.repo.SetBarOptions(ctx, o); err != nil {
+		return SettingsResponse{}, fmt.Errorf("save search field options: %w", err)
 	}
 	return uc.Settings(ctx)
 }

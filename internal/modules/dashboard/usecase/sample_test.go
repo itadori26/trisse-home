@@ -25,13 +25,13 @@ func TestSampleLayoutIsValid(t *testing.T) {
 }
 
 func TestSeedSampleData(t *testing.T) {
-	deps, repo := newDeps("search", "clock", "weather")
+	deps, repo := newDeps("clock", "weather")
 	uc := NewSeedSampleData(deps, SampleLayout(`{"lat":1,"lon":2}`))
 	if err := uc.Execute(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if len(repo.tabs) != 2 || len(repo.widgets) != 3 {
-		t.Fatalf("expected 2 tabs and only the 3 available widgets, got %d/%d", len(repo.tabs), len(repo.widgets))
+	if len(repo.tabs) != 2 || len(repo.widgets) != 2 {
+		t.Fatalf("expected 2 tabs and only the 2 available widgets, got %d/%d", len(repo.tabs), len(repo.widgets))
 	}
 	if err := uc.Execute(ctx); err != nil || len(repo.tabs) != 2 {
 		t.Fatal("seeding must not run twice")

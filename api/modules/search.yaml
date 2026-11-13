@@ -32,6 +32,15 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/SearchSettings" }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/search/bar:
+    put:
+      tags: [search]
+      summary: Options of the search field (#221) - open web results in a new tab, quick capture prefixes
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/SearchBar" } } } }
+      responses:
+        "200": { $ref: "#/components/responses/SearchSettings" }
+        "422": { $ref: "#/components/responses/Invalid" }
   /api/search/shortcuts:
     post:
       tags: [search]
@@ -54,3 +63,16 @@ paths:
 
 schemas:
   DefaultProvider: { type: object, required: [defaultProvider], properties: { defaultProvider: { type: string } } }
+  SearchBar:
+    type: object
+    required: [openInNewTab, capturePrefixes]
+    properties:
+      openInNewTab: { type: boolean, description: Web results open in a new tab }
+      capturePrefixes:
+        type: object
+        description: 'Quick capture prefixes, each 1 to 4 letters or digits and all different; "t Milch kaufen" creates a to-do'
+        required: [todo, note, bookmark]
+        properties:
+          todo: { type: string, examples: [t] }
+          note: { type: string, examples: [n] }
+          bookmark: { type: string, examples: [b] }

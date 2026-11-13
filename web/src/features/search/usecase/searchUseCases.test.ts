@@ -6,6 +6,7 @@ function setup() {
   const gateway = {
     settings: vi.fn(),
     setDefaultProvider: vi.fn(),
+    setBar: vi.fn(),
     addShortcut: vi.fn(),
     deleteShortcut: vi.fn(),
     searchUrl: (q: string) => `/api/search?q=${encodeURIComponent(q)}`,
@@ -28,5 +29,13 @@ describe('SearchUseCases', () => {
       urlTemplate: 'https://github.com/search?q={query}',
     });
     expect(gateway.addShortcut).toHaveBeenCalledWith(expect.objectContaining({ keyword: 'gh' }));
+  });
+  it('normalises the capture prefixes of the search field (#221)', async () => {
+    const { uc, gateway } = setup();
+    await uc.setBar({ openInNewTab: true, capturePrefixes: { todo: ' A ', note: 'n', bookmark: 'Lz' } });
+    expect(gateway.setBar).toHaveBeenCalledWith({
+      openInNewTab: true,
+      capturePrefixes: { todo: 'a', note: 'n', bookmark: 'lz' },
+    });
   });
 });

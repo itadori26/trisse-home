@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { normaliseUrl, palettePrefixes, parseQuick, prefixesFromConfig, searchPrefixes } from './command';
+import {
+  captureRest,
+  mergePrefixes,
+  normaliseUrl,
+  palettePrefixes,
+  parseQuick,
+  prefixesFromConfig,
+  searchPrefixes,
+} from './command';
 import { extractDue } from './dates';
 
 // Thursday, 12 November 2026
@@ -98,5 +106,41 @@ describe('quick commands', () => {
     expect(normaliseUrl('http://nas.local:5000/x')).toBe('http://nas.local:5000/x');
     expect(normaliseUrl('javascript:alert(1)')).toBeNull();
     expect(normaliseUrl('localhost')).toBeNull();
+  });
+});
+
+describe('mergePrefixes (#221)', () => {
+  const today = new Date(2026, 10, 13, 12);
+  const both = mergePrefixes(palettePrefixes, prefixesFromConfig({ todo: 'a' }));
+  it('keeps the palette prefixes and adds the search field ones', () => {
+    expect(both.todo).toEqual(['todo:', 't:', 'a']);
+    expect(both.note).toEqual(['note:', 'n:', 'n']);
+    expect(both.restart).toEqual(['restart']);
+  });
+  it('lets both forms create items', () => {
+    expect(parseQuick('todo: Steuer heute', both, today)?.kind).toBe('todo');
+    expect(parseQuick('a Milch kaufen', both, today)?.kind).toBe('todo');
+    expect(parseQuick('b example.org Beispiel', both, today)?.kind).toBe('bookmark');
+  });
+  it('still treats words as searches', () => {
+    expect(parseQuick('apfelkuchen rezept', both, today)).toBeNull();
+    expect(parseQuick('!w Oldenburg', both, today)).toBeNull();
+  });
+  it('does not repeat a prefix that is in both sets', () => {
+    expect(mergePrefixes(searchPrefixes, searchPrefixes).todo).toEqual(['t']);
+  });
+});
+
+describe('captureRest (#222)', () => {
+  const both = mergePrefixes(palettePrefixes, searchPrefixes);
+  it('returns the text after a capture prefix', () => {
+    expect(captureRest('t Milch kaufen morgen', both)).toBe('Milch kaufen morgen');
+    expect(captureRest('todo:Steuer', both)).toBe('Steuer');
+    expect(captureRest('  n  Idee ', both)).toBe('Idee');
+  });
+  it('is null for searches and empty captures', () => {
+    expect(captureRest('tomorrow', both)).toBeNull();
+    expect(captureRest('t ', both)).toBeNull();
+    expect(captureRest('restart nextcloud', both)).toBeNull();
   });
 });

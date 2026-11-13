@@ -1,4 +1,4 @@
-import type { SearchGateway, SearchSettings, Shortcut } from './ports';
+import type { SearchBarOptions, SearchGateway, SearchSettings, Shortcut } from './ports';
 
 /** Application logic of the search feature. */
 export class SearchUseCases {
@@ -16,6 +16,16 @@ export class SearchUseCases {
 
   setDefaultProvider(id: string): Promise<SearchSettings> {
     return this.gateway.setDefaultProvider(id);
+  }
+
+  /** Saves the options of the search field; prefixes are trimmed and lower-cased (#221). */
+  setBar(options: SearchBarOptions): Promise<SearchSettings> {
+    const p = options.capturePrefixes;
+    const norm = (s: string) => s.trim().toLowerCase();
+    return this.gateway.setBar({
+      openInNewTab: options.openInNewTab,
+      capturePrefixes: { todo: norm(p.todo), note: norm(p.note), bookmark: norm(p.bookmark) },
+    });
   }
 
   /** Adds a shortcut; a leading "!" in the keyword is optional. */

@@ -32,14 +32,13 @@ type SampleTab struct {
 func SampleLayout(weatherConfig string) []SampleTab {
 	return []SampleTab{
 		{Name: "Home", Widgets: []SampleWidget{
-			{Kind: "search", X: 2, Y: 0, W: 8, H: 2},
-			{Kind: "clock", X: 0, Y: 2, W: 3, H: 3},
-			{Kind: "weather", X: 3, Y: 2, W: 4, H: 4, Config: weatherConfig},
-			{Kind: "todos", X: 7, Y: 2, W: 5, H: 4},
-			{Kind: "notes", X: 0, Y: 5, W: 3, H: 6, Config: `{"scope":"pinned"}`},
-			{Kind: "bookmarks", X: 3, Y: 6, W: 4, H: 5},
-			{Kind: "rss", X: 7, Y: 6, W: 5, H: 6, Config: `{"unreadOnly":true,"limit":15}`},
-			{Kind: "calendar", X: 0, Y: 11, W: 3, H: 3, Config: `{"days":7}`},
+			{Kind: "clock", X: 0, Y: 0, W: 3, H: 3},
+			{Kind: "weather", X: 3, Y: 0, W: 4, H: 4, Config: weatherConfig},
+			{Kind: "todos", X: 7, Y: 0, W: 5, H: 4},
+			{Kind: "notes", X: 0, Y: 3, W: 3, H: 6, Config: `{"scope":"pinned"}`},
+			{Kind: "bookmarks", X: 3, Y: 4, W: 4, H: 5},
+			{Kind: "rss", X: 7, Y: 4, W: 5, H: 6, Config: `{"unreadOnly":true,"limit":15}`},
+			{Kind: "calendar", X: 0, Y: 9, W: 3, H: 3, Config: `{"days":7}`},
 		}},
 		{Name: "Server", Widgets: []SampleWidget{
 			{Kind: "services", X: 0, Y: 0, W: 12, H: 2},
