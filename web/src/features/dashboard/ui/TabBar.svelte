@@ -105,16 +105,18 @@
 </nav>
 
 <style>
-  /* Light underline tabs in one row; overflow scrolls with faded edges (#167). */
+  /* Centred tab pills below the search (#189); overflow scrolls with faded edges. */
   .tabs {
     display: flex;
     flex-wrap: nowrap;
+    justify-content: safe center;
     gap: var(--space-1);
     align-items: center;
     overflow-x: auto;
     scrollbar-width: none;
+    max-width: 100%;
+    padding: 2px 12px;
     mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
-    padding: 0 12px;
   }
   .tabs::-webkit-scrollbar {
     display: none;
@@ -123,17 +125,16 @@
     display: flex;
     align-items: center;
     flex: none;
-    border-bottom: 2px solid transparent;
-  }
-  .tab.active {
-    border-bottom-color: var(--color-accent);
+    border-radius: 999px;
   }
   .name {
     border: none;
     background: none;
-    padding: var(--space-2) var(--space-2);
+    padding: var(--space-1) var(--space-4);
+    border-radius: 999px;
     cursor: pointer;
     color: var(--color-text-muted);
+    font: inherit;
     font-weight: 500;
     white-space: nowrap;
   }
@@ -141,12 +142,12 @@
     color: var(--color-text);
   }
   .active .name {
-    color: var(--color-text);
+    background: var(--color-accent);
+    color: #fff;
     font-weight: 600;
   }
   .name:focus-visible {
     outline: 2px solid var(--color-accent);
-    outline-offset: -2px;
-    border-radius: var(--radius-small);
+    outline-offset: 2px;
   }
 </style>

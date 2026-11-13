@@ -206,6 +206,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_ea4ce39d77587136: 'Das Speichern von Zugangsdaten ist in der Demo deaktiviert.',
   // The countdown does not exist.
   srv_1532da22068d27c4: 'Den Countdown gibt es nicht.',
+  // The launcher shows both, services or bookmarks.
+  srv_64b6233c48b2792b: 'Der Launcher zeigt beides, nur Dienste oder nur Lesezeichen.',
   // The session must have ended within the last day.
   srv_addb603b2e8d10d3: 'Die Einheit muss innerhalb des letzten Tages geendet haben.',
   // The title must be between 1 and 120 characters long.

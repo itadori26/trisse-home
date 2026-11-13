@@ -171,6 +171,7 @@ export const serverMessages = {
   srv_d55a4312396d903f: "The language must be en, de or empty (browser).",
   srv_fd5437e3a5a60614: "The last tab cannot be deleted.",
   srv_3f60e80ed2350494: "The latitude must be between -90 and 90.",
+  srv_64b6233c48b2792b: "The launcher shows both, services or bookmarks.",
   srv_fb8b7dd6765aca44: "The list URL must start with http:// or https://.",
   srv_eeec5bbc9fb36341: "The location must be at most 200 characters long.",
   srv_39566e8cbb1ec35d: "The longitude must be between -180 and 180.",

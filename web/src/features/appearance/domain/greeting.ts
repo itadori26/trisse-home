@@ -1,12 +1,12 @@
 /** Part of the day that decides the greeting (#167). */
-export type DayPart = 'morning' | 'day' | 'evening' | 'night';
+export type DayPart = 'morning' | 'afternoon' | 'evening' | 'night';
 
-/** 5–11 morning, 11–18 day, 18–23 evening, otherwise night (local time). */
+/** Morning 5–11, afternoon 12–17, evening 18–22, otherwise night (local hours, #189). */
 export function dayPart(now: Date): DayPart {
   const h = now.getHours();
-  if (h >= 5 && h < 11) return 'morning';
-  if (h >= 11 && h < 18) return 'day';
-  if (h >= 18 && h < 23) return 'evening';
+  if (h >= 5 && h <= 11) return 'morning';
+  if (h >= 12 && h <= 17) return 'afternoon';
+  if (h >= 18 && h <= 22) return 'evening';
   return 'night';
 }
 
