@@ -12,9 +12,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -56,6 +58,25 @@ func unit(name string) string {
 // Measurements maps metric names to values (KB or MB, see the name).
 type Measurements map[string]float64
 
+// readDist reads a file of the build output; the build stores compressible
+// files only as name.gz (web/vite.config.ts), which is decompressed here so the
+// sizes stay comparable with earlier measurements.
+func readDist(dir, name string) ([]byte, error) {
+	data, err := os.ReadFile(filepath.Join(dir, name+".gz")) //nolint:gosec // path from the command line
+	if errors.Is(err, fs.ErrNotExist) {
+		return os.ReadFile(filepath.Join(dir, name)) //nolint:gosec // path from the command line
+	}
+	if err != nil {
+		return nil, err
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = zr.Close() }()
+	return io.ReadAll(zr)
+}
+
 func gzipSize(data []byte) int {
 	var buf bytes.Buffer
 	w, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression) // valid level: cannot fail
@@ -69,7 +90,7 @@ var assetRef = regexp.MustCompile(`(?:src|href)="/?(assets/[^"]+)"`)
 // measureDist reads index.html: every JS/CSS asset it references is loaded
 // for the first paint; every other JS file is a lazily loaded chunk.
 func measureDist(dir string, m Measurements) error {
-	index, err := os.ReadFile(filepath.Join(dir, "index.html")) //nolint:gosec // path from the command line
+	index, err := readDist(dir, "index.html")
 	if err != nil {
 		return err
 	}
@@ -83,7 +104,8 @@ func measureDist(dir string, m Measurements) error {
 	}
 	var js, css, lazy int
 	for _, f := range files {
-		data, err := os.ReadFile(f) //nolint:gosec // files of the build output
+		f = strings.TrimSuffix(f, ".gz")
+		data, err := readDist(dir, "assets/"+filepath.Base(f))
 		if err != nil {
 			return err
 		}
