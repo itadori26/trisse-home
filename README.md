@@ -126,6 +126,8 @@ token — it is on the screen attached to the Pi, in `trisse-home-setup.txt` on
 the SD card, or shown by `sudo trisse-home-setup-token`. Updates install
 themselves at night. Details: [docs/raspberry-pi.md](docs/raspberry-pi.md).
 
+**Deploying a server from source** after every merge, with backup and rollback: [docs/deploy.md](docs/deploy.md).
+
 ## Quick start (Docker Compose)
 
 Requirements: Docker with the Compose plugin.
