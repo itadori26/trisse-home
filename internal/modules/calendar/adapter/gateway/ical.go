@@ -17,7 +17,8 @@ func ParseICalendar(data string, loc *time.Location) ([]domain.Event, error) {
 	}
 	out := make([]domain.Event, 0, len(parsed))
 	for _, e := range parsed {
-		out = append(out, domain.Event{UID: e.UID, Summary: e.Summary, Location: e.Location, Start: e.Start, End: e.End, AllDay: e.AllDay})
+		out = append(out, domain.Event{UID: e.UID, Summary: e.Summary, Location: e.Location, Description: e.Description,
+			URL: domain.SafeLink(e.URL), Start: e.Start, End: e.End, AllDay: e.AllDay})
 	}
 	return out, nil
 }

@@ -20,6 +20,11 @@ export interface EventDTO {
   uid: string;
   summary: string;
   location: string;
+  /**
+   * Description is plain text; URL an http(s) link or empty (#163).
+   */
+  description: string;
+  url: string;
   calendar: string;
   /**
    * Color is the subscription colour (#rrggbb), empty for CalDAV calendars.

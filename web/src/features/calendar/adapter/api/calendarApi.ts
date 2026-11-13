@@ -23,6 +23,8 @@ const toEvent = (d: EventDTO): CalendarEvent => ({
   uid: d.uid,
   summary: d.summary,
   location: d.location,
+  description: d.description,
+  url: d.url,
   calendar: d.calendar,
   color: d.color,
   allDay: d.allDay,
