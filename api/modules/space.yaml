@@ -1,0 +1,84 @@
+tags:
+  - name: space
+
+paths:
+  /api/space/launches:
+    get:
+      tags: [space]
+      summary: Next launches from Launch Library 2 (cached one hour)
+      parameters: [{ name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 10, default: 5 } }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    mission: { type: string }
+                    missionType: { type: string }
+                    description: { type: string }
+                    rocket: { type: string }
+                    provider: { type: string }
+                    pad: { type: string }
+                    location: { type: string }
+                    net: { type: string, format: date-time, description: No earlier than }
+                    status: { type: string, enum: [go, tbd, tbc, hold, in_flight, success, failure, partial_failure, unknown] }
+                    webcastLive: { type: boolean }
+        "404": { description: Launches are switched off }
+        "503": { description: Not reachable and nothing cached }
+  /api/space/apod:
+    get:
+      tags: [space]
+      summary: NASA Astronomy Picture of the Day (cached three hours); image is the proxied URL, empty on video days
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  date: { type: string }
+                  title: { type: string }
+                  explanation: { type: string }
+                  copyright: { type: string }
+                  mediaType: { type: string }
+                  image: { type: string }
+                  link: { type: string }
+        "404": { description: The picture is switched off }
+        "503": { description: Not reachable and nothing cached }
+  /api/space/apod/image:
+    get:
+      tags: [space]
+      summary: Today's picture, loaded by the server from NASA (stable URL, usable as background)
+      responses:
+        "200": { description: The image, content: { image/jpeg: { schema: { type: string, format: binary } } } }
+        "404": { description: Switched off, or today's picture is a video }
+  /api/space/settings:
+    get:
+      tags: [space]
+      summary: Which sources are on and whether an own NASA key is stored (the key is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { launches: { type: boolean }, picture: { type: boolean }, hasKey: { type: boolean } } } } } }
+    put:
+      tags: [space]
+      summary: Switch sources on or off and set the NASA API key (empty with keepKey keeps it)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                launches: { type: boolean }
+                picture: { type: boolean }
+                nasaKey: { type: string }
+                keepKey: { type: boolean }
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }

@@ -69,6 +69,7 @@ Not sure whether trisse-home is the right fit? See the
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
 | **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
 | **transit**    | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org)) |
+| **space**      | Next rocket launches (Launch Library 2) with countdown and status, and NASA's Astronomy Picture of the Day (proxied, also usable as background); both off until switched on ([docs](docs/modules/space.md)) |
 | **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
 | **diskhealth** | S.M.A.R.T. disk health: overall verdict, temperature, reallocated/pending sectors, NVMe wear and power-on hours; notifies on degradation (from a host export, no device access) |
@@ -452,6 +453,8 @@ service tiles are configured in the web interface.
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
 | `TRANSIT_API_URL`   | `https://api.transitous.org`      | MOTIS API for departures; point it to your own MOTIS instance if you like.    |
 | `FUEL_API_URL`      | `https://creativecommons.tankerkoenig.de/json` | Tankerkönig API for fuel prices (change only for a mirror or tests). |
+| `SPACE_LAUNCH_API_URL` | `https://ll.thespacedevs.com/2.2.0/launch/upcoming/` | Launch Library 2 for the space widget (change only for a mirror or tests). |
+| `SPACE_APOD_API_URL` | `https://api.nasa.gov/planetary/apod` | NASA Astronomy Picture of the Day API (change only for a mirror or tests). |
 | `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
 | `METRICS_ENABLED`   | `false`                           | Expose `GET /metrics` for Prometheus ([docs/metrics.md](docs/metrics.md)).    |
 | `METRICS_TOKEN`     | –                                 | Bearer token for `/metrics`, at least 32 characters.                          |
@@ -508,7 +511,7 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, MusicBrainz (artist search when you use it; releases of followed artists every 6 hours, at most one request per second) and the Cover Art Archive, the Steam and Epic Games stores (game deals, every 12 hours once enabled), Sonarr/Radarr/Prowlarr (while an *arr widget is open, at most once a minute), Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Immich (while an Immich widget is open, at most every 5 minutes), Tankerkönig fuel prices (while a fuel widget is open, at most every 5 minutes), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
+Launch Library 2 and NASA APOD (once switched on, only while a space widget shows them, at most hourly / every three hours), RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, MusicBrainz (artist search when you use it; releases of followed artists every 6 hours, at most one request per second) and the Cover Art Archive, the Steam and Epic Games stores (game deals, every 12 hours once enabled), Sonarr/Radarr/Prowlarr (while an *arr widget is open, at most once a minute), Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Immich (while an Immich widget is open, at most every 5 minutes), Tankerkönig fuel prices (while a fuel widget is open, at most every 5 minutes), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 (only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
 ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can

@@ -1,0 +1,220 @@
+{
+ "count": 476,
+ "next": "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=5&mode=normal&offset=5",
+ "previous": null,
+ "results": [
+  {
+   "id": "0f867f0c-5422-4d44-93b8-d7faaae7019b",
+   "url": "https://ll.thespacedevs.com/2.2.0/launch/0f867f0c-5422-4d44-93b8-d7faaae7019b/",
+   "name": "Starship | Starlink Group 31-2 (Starship Flight 15)",
+   "status": {
+    "id": 1,
+    "name": "Go for Launch",
+    "abbrev": "Go",
+    "description": "Current T-0 confirmed by official or reliable sources."
+   },
+   "net": "2026-11-13T22:45:00Z",
+   "window_end": "2026-11-14T00:00:00Z",
+   "window_start": "2026-11-13T22:45:00Z",
+   "launch_service_provider": {
+    "id": 121,
+    "url": "https://ll.thespacedevs.com/2.2.0/agencies/121/",
+    "name": "SpaceX",
+    "type": "Commercial"
+   },
+   "rocket": {
+    "id": 9138,
+    "configuration": {
+     "id": 522,
+     "url": "https://ll.thespacedevs.com/2.2.0/config/launcher/522/",
+     "name": "Starship",
+     "family": "Starship",
+     "full_name": "Starship V3",
+     "variant": "V3"
+    }
+   },
+   "mission": {
+    "id": 7737,
+    "name": "Starlink Group 31-2 (Starship Flight 15)",
+    "description": "15th test flight of the two-stage Starship launch vehicle and 4th flight of Starship V3. Second Starship flight to deploy satellites (a group of Starlink satellites known as Starlink Group 31-2) into stable Low Earth Orbit and first ever to attempt returning the Starship 2nd stage back to the launch site.\r\n\r\nThe ship is expected to fly at an altitude approximately 275 km above Earth and complete approximately 14 orbits around the planet for more than 22 hours, with the ship expected to attempt returning back to Starbase, Texas on its launch pad by pad arms catching.\r\n\r\nThe booster’s primary test objective on Flight 15 will be executing a successful launch, ascent, stage separation, boostback burn, and landing by pad arms catching. This will also be the 1st Starship V3 booster to attempt returning to its launch site.\r\n\r\nStarship will deliver 26 Starlink V3 satellites to orbit for the second time, which aim to greatly expand the network's capacity and user speeds. Each Starlink V3 satellite will add 1 Tbps of capacity to the constellation. 3 of the satellites have been modified with a suite of cameras to scan Starship’s heatshield and transmit imagery down to operators.",
+    "type": "Communications",
+    "orbit": {
+     "id": 8,
+     "name": "Low Earth Orbit",
+     "abbrev": "LEO"
+    }
+   },
+   "pad": {
+    "id": 235,
+    "url": "https://ll.thespacedevs.com/2.2.0/pad/235/",
+    "agency_id": 121,
+    "name": "Orbital Launch Pad 2",
+    "description": "The second launch and landing pad of the full version of the combined SpaceX Starship and Superheavy booster. To be first used for launch in 2025 with version 3 of Starship and the Superheavy booster.\r\n\r\nThe launch mount itself is named Orbital Launch Mount B.",
+    "info_url": null,
+    "wiki_url": "https://en.wikipedia.org/wiki/SpaceX_Starbase#Launch_site_(Orbital_Launch_Mount_(Pad_1_and_2))",
+    "map_url": "https://www.google.com/maps?q=25.996770,-97.157990",
+    "latitude": "25.99677",
+    "longitude": "-97.15799",
+    "location": {
+     "id": 143,
+     "url": "https://ll.thespacedevs.com/2.2.0/location/143/",
+     "name": "SpaceX Starbase, TX, USA",
+     "country_code": "USA",
+     "description": "Starbase is an industrial complex for Starship rockets and the headquarters of the American aerospace manufacturer company SpaceX. Located near Brownsville, Texas, United States, it has been under construction since the late 2010s by SpaceX. Starbase is composed of a spaceport near the Gulf of Mexico, a production facility at the Boca Chica village, and a small structure test site along the Texas State Highway 4.",
+     "map_image": "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/map_images/location_143_20200803142438.jpg",
+     "timezone_name": "America/Chicago",
+     "total_launch_count": 23,
+     "total_landing_count": 13
+    },
+    "country_code": "USA",
+    "map_image": "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/map_images/pad_orbital_launch_mount_b_20241126031254.jpg",
+    "total_launch_count": 3,
+    "orbital_launch_attempt_count": 1
+   },
+   "webcast_live": true,
+   "image": "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/images/starship_on_the_image_20260724044615.jpg"
+  },
+  {
+   "id": "bff2fc91-eddd-4dfc-af26-ac0674cfab4d",
+   "url": "https://ll.thespacedevs.com/2.2.0/launch/bff2fc91-eddd-4dfc-af26-ac0674cfab4d/",
+   "name": "Soyuz 2.1b/Fregat-M | MKA Kinosputnik, KOEN and others",
+   "status": {
+    "id": 1,
+    "name": "Go for Launch",
+    "abbrev": "Go",
+    "description": "Current T-0 confirmed by official or reliable sources."
+   },
+   "net": "2026-11-14T01:16:00Z",
+   "window_end": "2026-11-14T01:50:00Z",
+   "window_start": "2026-11-14T00:50:00Z",
+   "launch_service_provider": {
+    "id": 63,
+    "url": "https://ll.thespacedevs.com/2.2.0/agencies/63/",
+    "name": "Russian Federal Space Agency (ROSCOSMOS)",
+    "type": "Government"
+   },
+   "rocket": {
+    "id": 9096,
+    "configuration": {
+     "id": 134,
+     "url": "https://ll.thespacedevs.com/2.2.0/config/launcher/134/",
+     "name": "Soyuz 2.1b/Fregat-M",
+     "family": "Soyuz",
+     "full_name": "Soyuz 2.1b Fregat-M",
+     "variant": "Fregat-M"
+    }
+   },
+   "mission": {
+    "id": 7691,
+    "name": "MKA Kinosputnik, KOEN and others",
+    "description": "Share-ride of multiple satellites, including dual-use optical Earth observation satellites and drone-guiding satellites:\r\n\r\n* MKA Kinosputnik\r\n* KOEN, KA MT-LAB\r\n* NPO Kaisant 6U cubesat with a Germes modem\r\n* NPO Kaisant 16U cubesat with Gonets modems",
+    "type": "Technology",
+    "orbit": {
+     "id": 17,
+     "name": "Sun-Synchronous Orbit",
+     "abbrev": "SSO"
+    }
+   },
+   "pad": {
+    "id": 83,
+    "url": "https://ll.thespacedevs.com/2.2.0/pad/83/",
+    "agency_id": 63,
+    "name": "Cosmodrome Site 1S",
+    "description": "",
+    "info_url": null,
+    "wiki_url": "https://en.wikipedia.org/wiki/Vostochny_Cosmodrome",
+    "map_url": "https://www.google.com/maps?q=51.884395,128.333932",
+    "latitude": "51.884395",
+    "longitude": "128.333932",
+    "location": {
+     "id": 18,
+     "url": "https://ll.thespacedevs.com/2.2.0/location/18/",
+     "name": "Vostochny Cosmodrome, Siberia, Russian Federation",
+     "country_code": "RUS",
+     "description": "The Vostochny Cosmodrome is a Russian spaceport above the 51st parallel north in the Amur Oblast, in the Russian Far East. It is intended to reduce Russia's dependency on the Baikonur Cosmodrome in Kazakhstan. The first launch took place on 28 April 2016 at 02:01 UTC.",
+     "map_image": "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/map_images/location_18_20200803142401.jpg",
+     "timezone_name": "Asia/Yakutsk",
+     "total_launch_count": 21,
+     "total_landing_count": 0
+    },
+    "country_code": "RUS",
+    "map_image": "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/map_images/pad_83_20200803143544.jpg",
+    "total_launch_count": 20,
+    "orbital_launch_attempt_count": 20
+   },
+   "webcast_live": false,
+   "image": "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/images/soyuz_2.1b_image_20230802085331.jpg"
+  },
+  {
+   "id": "db3500ac-965b-4ad8-b417-cb8d8d005586",
+   "url": "https://ll.thespacedevs.com/2.2.0/launch/db3500ac-965b-4ad8-b417-cb8d8d005586/",
+   "name": "Electron | The Mountain God Rises (iQPS Launch 10)",
+   "status": {
+    "id": 1,
+    "name": "Go for Launch",
+    "abbrev": "Go",
+    "description": "Current T-0 confirmed by official or reliable sources."
+   },
+   "net": "2026-11-14T05:30:00Z",
+   "window_end": "2026-11-14T05:30:00Z",
+   "window_start": "2026-11-14T05:30:00Z",
+   "launch_service_provider": {
+    "id": 147,
+    "url": "https://ll.thespacedevs.com/2.2.0/agencies/147/",
+    "name": "Rocket Lab",
+    "type": "Commercial"
+   },
+   "rocket": {
+    "id": 8762,
+    "configuration": {
+     "id": 26,
+     "url": "https://ll.thespacedevs.com/2.2.0/config/launcher/26/",
+     "name": "Electron",
+     "family": "",
+     "full_name": "Electron",
+     "variant": ""
+    }
+   },
+   "mission": {
+    "id": 7353,
+    "name": "The Mountain God Rises (iQPS Launch 10)",
+    "description": "Synthetic aperture radar Earth observation satellite for Japanese Earth imaging company iQPS.",
+    "type": "Earth Science",
+    "orbit": {
+     "id": 8,
+     "name": "Low Earth Orbit",
+     "abbrev": "LEO"
+    }
+   },
+   "pad": {
+    "id": 65,
+    "url": "https://ll.thespacedevs.com/2.2.0/pad/65/",
+    "agency_id": 147,
+    "name": "Rocket Lab Launch Complex 1A",
+    "description": "",
+    "info_url": null,
+    "wiki_url": "https://en.wikipedia.org/wiki/Rocket_Lab_Launch_Complex_1",
+    "map_url": "https://www.google.com/maps?q=-39.262833,177.864469",
+    "latitude": "-39.262833",
+    "longitude": "177.864469",
+    "location": {
+     "id": 10,
+     "url": "https://ll.thespacedevs.com/2.2.0/location/10/",
+     "name": "Rocket Lab Launch Complex 1, Mahia Peninsula, New Zealand",
+     "country_code": "NZL",
+     "description": "Rocket Lab Launch Complex 1 is a commercial spaceport located close to Ahuriri Point at the southern tip of Māhia Peninsula, on the east coast of New Zealand's North Island. It is owned and operated by private spaceflight company Rocket Lab and supports launches of the company's Electron rocket for small satellites. With the launch of Electron on 25 May 2017, it became the first private spaceport to host an orbital launch attempt, and the first site in New Zealand to host an orbital launch attempt. With the Electron launch of 21 January 2018, it became the first private spaceport to host a successful orbital launch.",
+     "map_image": "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/map_images/location_10_20200803142509.jpg",
+     "timezone_name": "Pacific/Auckland",
+     "total_launch_count": 86,
+     "total_landing_count": 17
+    },
+    "country_code": "NZL",
+    "map_image": "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/map_images/pad_65_20200803143549.jpg",
+    "total_launch_count": 45,
+    "orbital_launch_attempt_count": 45
+   },
+   "webcast_live": false,
+   "image": "https://thespacedevs-prod.nyc3.digitaloceanspaces.com/media/images/electron_image_20190705175640.jpeg"
+  }
+ ]
+}
