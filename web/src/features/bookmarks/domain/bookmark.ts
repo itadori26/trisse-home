@@ -11,6 +11,8 @@ export interface Bookmark {
   link: LinkStatus;
   /** A favicon is stored on the server. */
   hasIcon: boolean;
+  /** ISO time the bookmark was added. */
+  createdAt: string;
 }
 
 /** Result of a link check; state '' = not checked yet. */
@@ -72,14 +74,40 @@ export const UNFILED = 'none';
 export interface BookmarksConfig {
   folderId: string;
   tag: string;
+  sort: BookmarkSort;
 }
+
+/** Sort order of the widget: as delivered by the server, A-Z, or newest first (#120). */
+export type BookmarkSort = 'manual' | 'az' | 'newest';
+
+const SORTS: readonly BookmarkSort[] = ['manual', 'az', 'newest'];
 
 /** Reads a stored widget configuration. */
 export function parseBookmarksConfig(raw: Record<string, unknown>): BookmarksConfig {
   return {
     folderId: typeof raw['folderId'] === 'string' ? raw['folderId'] : '',
     tag: typeof raw['tag'] === 'string' ? raw['tag'] : '',
+    sort: SORTS.find((s) => s === raw['sort']) ?? 'manual',
   };
+}
+
+/**
+ * Orders bookmarks for display without changing the input. A-Z compares
+ * titles with the locale's rules (case-insensitive, numbers by value, so
+ * "Server 2" comes before "Server 10"); newest first uses the date added and
+ * falls back to A-Z for equal dates.
+ */
+export function sortBookmarks<T extends Pick<Bookmark, 'title' | 'createdAt'>>(
+  list: readonly T[],
+  sort: BookmarkSort,
+  locale?: string,
+): T[] {
+  if (sort === 'manual') return [...list];
+  const collator = new Intl.Collator(locale, { sensitivity: 'base', numeric: true });
+  const byTitle = (a: T, b: T) => collator.compare(a.title, b.title);
+  if (sort === 'az') return [...list].sort(byTitle);
+  const time = (b: T) => Date.parse(b.createdAt) || 0;
+  return [...list].sort((a, b) => time(b) - time(a) || byTitle(a, b));
 }
 
 /** Splits user input like "go, web #server" into tags. */
