@@ -14,6 +14,7 @@ export class WeatherApi implements WeatherGateway {
       apparentTemperature: dto.apparentTemperature,
       humidity: dto.humidity,
       windSpeed: dto.windSpeed,
+      windDirection: typeof dto.windDirection === 'number' ? dto.windDirection : null,
       code: dto.weatherCode,
       isDay: dto.isDay,
       updatedAt: new Date(dto.updatedAt),

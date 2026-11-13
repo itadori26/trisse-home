@@ -44,10 +44,13 @@ type ForecastResponse struct {
 	ApparentTemperature float64
 	Humidity            float64
 	WindSpeed           float64
-	WeatherCode         int
-	IsDay               bool
-	Days                []DayView
-	UpdatedAt           time.Time
+	// WindDirection in degrees the wind comes from; HasWindDirection tells whether it is known.
+	WindDirection    float64
+	HasWindDirection bool
+	WeatherCode      int
+	IsDay            bool
+	Days             []DayView
+	UpdatedAt        time.Time
 }
 
 // PlaceView is a geocoding result.
@@ -158,6 +161,7 @@ func toResponse(f domain.Forecast) ForecastResponse {
 		Lat: f.Location.Lat(), Lon: f.Location.Lon(), Timezone: f.Timezone,
 		Temperature: f.Current.Temperature, ApparentTemperature: f.Current.ApparentTemperature,
 		Humidity: f.Current.Humidity, WindSpeed: f.Current.WindSpeed, WeatherCode: f.Current.WeatherCode,
+		WindDirection: f.Current.WindDirection, HasWindDirection: f.Current.HasWindDirection,
 		IsDay: f.Current.IsDay, UpdatedAt: f.FetchedAt, Days: make([]DayView, 0, len(f.Days)),
 	}
 	for _, d := range f.Days {

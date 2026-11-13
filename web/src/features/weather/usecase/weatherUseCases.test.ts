@@ -14,6 +14,7 @@ const forecast: Forecast = {
   apparentTemperature: 0,
   humidity: 50,
   windSpeed: 3,
+  windDirection: 315,
   code: 0,
   isDay: true,
   days: [day(1), day(2), day(3), day(4), day(5)],
