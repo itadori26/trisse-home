@@ -39,15 +39,18 @@ Not sure whether trisse-home is the right fit? See the
 
 | Module         | What it does                                                                                          |
 | -------------- | ----------------------------------------------------------------------------------------------------- |
-| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates, per-tab backgrounds and rules that open a tab by default (weekdays, time of day, client network) |
+| **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates, per-tab backgrounds, a separate phone layout per tab (order, height, hide on phones) and rules that open a tab by default (weekdays, time of day, client network) |
 | **search**     | Search bar with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch |
 | **weather**    | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany) |
 | **clock**      | Time and date, optionally in another time zone                                                        |
 | **services**   | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded); optional [Docker autodiscovery](#docker-autodiscovery-optional) from container labels |
-| **bookmarks**  | Links in folders with tags, filterable                                                                |
-| **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering)                                       |
-| **todos**      | To-do list with due dates and overdue highlighting                                                    |
+| **bookmarks**  | Links in folders with tags, filterable; opt-in: title and favicon fetched on add (icons stored locally) and a weekly link check with a "broken links" filter |
+| **notes**      | Markdown notes, pinnable to the dashboard (sanitised rendering); full-text search with highlighting (also in the quick search), `[[wiki links]]` with backlinks, version history with diff and restore |
+| **todos**      | To-do list with due dates and overdue highlighting, recurring to-dos (daily, weekly on weekdays, monthly, N days after completion) and reminders via the notification channels |
+| **countdown**  | Countdowns to exams, holidays and deadlines: days left (hours and minutes on the last day), highlighted when fewer than N days remain, past ones hidden after a grace period |
+| **focus**      | Pomodoro focus timer (focus, short and long break; durations per widget) that keeps running in background tabs, optional browser notification at the end of a phase, finished sessions per day for the last week |
 | **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
+| **briefing**   | Daily briefing widget: weather warnings, failures since yesterday evening, offline services, due to-dos, appointments and waste collection at a glance (sections orderable, each optional); optional daily push at a set time ([ADR 0016](docs/adr/0016-cross-module-read-models.md)) |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
 | **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |
@@ -454,6 +457,13 @@ radar image is proxied, so the browser never contacts DWD) and departures
 from the community-run [Transitous](https://transitous.org) API (cached one
 minute per stop; please respect its fair-use policy or run your own MOTIS)
 and, with your API key, the DHL tracking API (hourly, undelivered parcels only).
+If you enable it in the bookmark settings (off by default), the server also
+requests your bookmarked pages themselves: once when a bookmark is added (title
+and favicon, at most 512 KB per page and 64 KB per icon) and once a week for the
+link check. These requests time out after 8 seconds, follow at most five
+redirects and never connect to loopback, link-local (including cloud metadata
+addresses), unspecified or multicast addresses; LAN addresses stay allowed
+because home-server bookmarks point there on purpose.
 If you enable the update check (Settings → About), the GitHub releases API is
 asked for the latest version at most once a day.
 Nothing else leaves the server.

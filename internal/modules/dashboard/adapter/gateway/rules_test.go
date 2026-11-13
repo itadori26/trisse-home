@@ -37,3 +37,29 @@ func TestTabRulesRoundTrip(t *testing.T) {
 		t.Fatal("broken rules must be ignored")
 	}
 }
+
+func TestMobileLayoutRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	repo := NewRepository(dbtest.Open(t, "dashboard", Migrations()))
+	tab, _ := domain.NewTab("t1", "Home", 0)
+	if err := repo.CreateTab(ctx, tab); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := repo.GetTab(ctx, "t1"); got.Mobile() != nil {
+		t.Fatal("new tabs follow the desktop layout")
+	}
+	m := []domain.MobileEntry{{WidgetID: "w2", Hidden: true, Rows: 3}, {WidgetID: "w1", Rows: 5}}
+	if err := repo.UpdateTab(ctx, tab.WithMobile(m)); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := repo.ListTabs(ctx)
+	if got := list[0].Mobile(); len(got) != 2 || got[0] != m[0] || got[1] != m[1] {
+		t.Fatalf("got %+v", got)
+	}
+	if err := repo.UpdateTab(ctx, tab.WithMobile(nil)); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := repo.GetTab(ctx, "t1"); got.Mobile() != nil {
+		t.Fatalf("reset must store NULL, got %+v", got.Mobile())
+	}
+}

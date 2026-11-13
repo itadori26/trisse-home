@@ -2,7 +2,11 @@ package httpclient
 
 import (
 	"crypto/tls"
+	"errors"
+	"net"
 	"net/http"
+	"net/netip"
+	"syscall"
 	"time"
 )
 
@@ -15,7 +19,41 @@ type Option func(*options)
 type options struct {
 	timeout            time.Duration
 	insecureSkipVerify bool
+	guard              bool
 }
+
+// WithInternalAddressGuard refuses connections to loopback, link-local
+// (incl. cloud metadata at 169.254.169.254), unspecified and multicast
+// addresses and limits redirects to five. The check runs on the resolved
+// address of every connection, so DNS rebinding and redirects cannot get
+// around it. LAN addresses stay allowed: bookmarks of a home server point
+// to LAN devices on purpose.
+func WithInternalAddressGuard() Option { return func(o *options) { o.guard = true } }
+
+// ErrBlockedAddress is returned when the guard refuses a connection.
+var ErrBlockedAddress = errors.New("connections to this address are not allowed")
+
+// Blocked reports whether the guard refuses ip.
+func Blocked(ip netip.Addr) bool {
+	ip = ip.Unmap()
+	return !ip.IsValid() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() ||
+		(ip.Is4() && ip.As4()[0] == 0) // 0.0.0.0/8 "this network"
+}
+
+func guardControl(_, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil || Blocked(ip) {
+		return ErrBlockedAddress
+	}
+	return nil
+}
+
+const maxRedirects = 5
 
 // WithTimeout sets the overall request timeout.
 func WithTimeout(d time.Duration) Option { return func(o *options) { o.timeout = d } }
@@ -36,7 +74,19 @@ func New(opts ...Option) *http.Client {
 	if o.insecureSkipVerify {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // explicit opt-in for LAN health checks
 	}
-	return &http.Client{Timeout: o.timeout, Transport: userAgentTransport{next: transport}}
+	client := &http.Client{Timeout: o.timeout, Transport: userAgentTransport{next: transport}}
+	if o.guard {
+		dialer := &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second, Control: guardControl}
+		transport.DialContext = dialer.DialContext
+		transport.Proxy = nil // a proxy would connect on our behalf and bypass the check
+		client.CheckRedirect = func(_ *http.Request, via []*http.Request) error {
+			if len(via) >= maxRedirects {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		}
+	}
+	return client
 }
 
 type userAgentTransport struct{ next http.RoundTripper }

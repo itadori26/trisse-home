@@ -15,10 +15,13 @@ import (
 	"trisse-home/internal/modules/backup"
 	"trisse-home/internal/modules/backupmonitor"
 	"trisse-home/internal/modules/bookmarks"
+	"trisse-home/internal/modules/briefing"
 	"trisse-home/internal/modules/calendar"
+	"trisse-home/internal/modules/countdown"
 	"trisse-home/internal/modules/dashboard"
 	"trisse-home/internal/modules/diskhealth"
 	"trisse-home/internal/modules/docker"
+	"trisse-home/internal/modules/focus"
 	"trisse-home/internal/modules/fritzbox"
 	"trisse-home/internal/modules/nextcloud"
 	"trisse-home/internal/modules/notes"
@@ -90,8 +93,10 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	// The timeline records the same observations and alerts (#74).
 	sinks := observationFanOut{}
 	var maintenance maintenanceReader
+	var notifier kernel.AlertSink
 	if cfg.ModuleEnabled("notifications") {
 		n := notifications.New(db, secrets, client, clk, ids)
+		notifier = n
 		registry.Register(n)
 		sinks = append(sinks, n)
 		alerts.targets = append(alerts.targets, n)
@@ -131,9 +136,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 				Containers: containers,
 			})
 		}},
-		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids) }},
+		{"bookmarks", func() modules.Module { return bookmarks.New(db, clk, ids, out.guarded) }},
 		{"notes", func() modules.Module { return notes.New(db, clk, ids) }},
-		{"todos", func() modules.Module { return todos.New(db, clk, ids) }},
+		{"todos", func() modules.Module { return todos.New(db, clk, ids, alerts) }},
 		{"rss", func() modules.Module { return rss.New(db, client, clk, ids, cfg.SampleFeeds) }},
 		{"system", func() modules.Module {
 			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths, Version: version, Client: client, InstallMethod: cfg.InstallMethod}, db, sink, clk)
@@ -156,6 +161,8 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
+		{"countdown", func() modules.Module { return countdown.New(db, clk, ids) }},
+		{"focus", func() modules.Module { return focus.New(db, clk, ids) }},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {
@@ -171,6 +178,15 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			return nil, nil, err
 		}
 		registry.Register(b)
+	}
+
+	// The briefing reads other modules, so it is built after them (#52).
+	if cfg.ModuleEnabled("briefing") {
+		bc := briefing.Config{Sources: briefingSources(registry), DefaultLat: cfg.SampleWeather.Lat, DefaultLon: cfg.SampleWeather.Lon}
+		if notifier != nil {
+			bc.Publisher = briefingPublisher{notifier}
+		}
+		registry.Register(briefing.New(db, clk, bc))
 	}
 
 	kinds := append(append([]string{}, frontendOnlyWidgetKinds...), registry.WidgetKinds()...)
@@ -224,11 +240,17 @@ type secretStore interface {
 // are replaced by fixtures, so no module ever contacts a real system.
 type outbound struct {
 	client, health, insecureHealth *http.Client
-	waker                          interface {
+	// guarded fetches user-supplied URLs (bookmark titles, favicons, link
+	// checks, #72); nil in demo mode, which never contacts other sites.
+	guarded *http.Client
+	waker   interface {
 		Wake(context.Context, kernel.MAC) error
 	}
 	secrets secretStore
 }
+
+// bookmarkFetchTimeout bounds title, favicon and link check requests.
+const bookmarkFetchTimeout = 8 * time.Second
 
 func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbound {
 	if cfg.DemoMode {
@@ -244,6 +266,7 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 		client:         httpclient.New(),
 		health:         httpclient.New(httpclient.WithTimeout(healthCheckTimeout)),
 		insecureHealth: httpclient.New(httpclient.WithTimeout(healthCheckTimeout), httpclient.WithInsecureTLS()),
+		guarded:        httpclient.New(httpclient.WithTimeout(bookmarkFetchTimeout), httpclient.WithInternalAddressGuard()),
 		waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
 		secrets:        cipher,
 	}

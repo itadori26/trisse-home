@@ -33,6 +33,22 @@ export interface TabDTO {
   background: string;
   rules: RuleDTO[];
   widgets: WidgetDTO[];
+  /**
+   * Mobile is the phone layout in display order (#92).
+   */
+  mobile: MobileItemDTO[];
+  /**
+   * MobileCustom is false while the phone layout follows the desktop grid.
+   */
+  mobileCustom: boolean;
+}
+/**
+ * MobileItemDTO places a widget in the phone layout.
+ */
+export interface MobileItemDTO {
+  id: string;
+  hidden: boolean;
+  rows: number /* int */;
 }
 /**
  * WidgetDTO describes a widget. Config is the widget's JSON configuration.

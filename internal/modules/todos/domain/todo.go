@@ -22,6 +22,60 @@ type Todo struct {
 	position    int
 	createdAt   time.Time
 	completedAt time.Time
+	repeat      Recurrence
+	reminder    Reminder
+	remindedFor time.Time // due date the reminder was sent for
+}
+
+// errReminderNeedsDue rejects reminders on to-dos without a due date.
+var errReminderNeedsDue = kernel.NewValidationError("reminder", "A reminder needs a due date.")
+
+// Schedule sets recurrence and reminder (#68).
+func (t *Todo) Schedule(repeat Recurrence, reminder Reminder) error {
+	if reminder.Set() && t.due.IsZero() {
+		return errReminderNeedsDue
+	}
+	t.repeat, t.reminder = repeat, reminder
+	return nil
+}
+
+// WithState restores schedule fields from persisted state.
+func (t Todo) WithState(repeat Recurrence, reminder Reminder, remindedFor time.Time) Todo {
+	t.repeat, t.reminder, t.remindedFor = repeat, reminder, remindedFor
+	return t
+}
+
+// Repeat returns the recurrence rule.
+func (t Todo) Repeat() Recurrence { return t.repeat }
+
+// Reminder returns the reminder.
+func (t Todo) Reminder() Reminder { return t.reminder }
+
+// RemindedFor returns the due date the reminder was last sent for.
+func (t Todo) RemindedFor() time.Time { return t.remindedFor }
+
+// ReminderDue reports whether the reminder of an open to-do should be sent
+// now; it is sent once per due date.
+func (t Todo) ReminderDue(now time.Time, loc *time.Location) bool {
+	if t.Done() || !t.reminder.Set() || t.due.IsZero() || t.remindedFor.Equal(t.due) {
+		return false
+	}
+	return !now.Before(t.reminder.FireAt(t.due, loc))
+}
+
+// MarkReminded records that the reminder for the current due date was sent.
+func (t *Todo) MarkReminded() { t.remindedFor = t.due }
+
+// NextOccurrence returns the follow-up of a completed recurring to-do with
+// the same text, rule and reminder; ok is false for one-off to-dos.
+// doneOn is the completion day in the user's time zone.
+func (t Todo) NextOccurrence(id string, position int, doneOn, now time.Time) (Todo, bool) {
+	if !t.repeat.Repeats() {
+		return Todo{}, false
+	}
+	next := Todo{id: id, title: t.title, position: position, createdAt: now, repeat: t.repeat, reminder: t.reminder}
+	next.due = t.repeat.Next(t.due, doneOn)
+	return next, true
 }
 
 // NewTodo validates and creates an open to-do.
