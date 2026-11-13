@@ -44,7 +44,7 @@
 
 <section class="hero">
   <h1>{hello}</h1>
-  <label class="pill">
+  <label class="pill" data-tour="search">
     <Icon name="search" size={20} />
     <input
       type="search"

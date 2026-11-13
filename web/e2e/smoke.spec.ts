@@ -31,7 +31,7 @@ test('setup, logout and login lead to the dashboard', async ({ page }) => {
   await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   // After the first setup the dashboard is filled with sample widgets and data.
-  await expect(page.getByRole('search')).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'Quick search (Ctrl+K or /)' })).toBeVisible();
   await expect(page.locator('time')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Welcome to trisse-home 👋' })).toBeVisible();
   await expect(page.getByText('Try edit mode: drag and resize a widget')).toBeVisible();
@@ -349,39 +349,56 @@ test('removed widgets come back with undo, and redo works (#93)', async ({ page 
   await expect(page.locator('time')).toBeVisible();
 });
 
-test('quick capture creates items from the search bar and the palette (#105, #67)', async ({ page }) => {
+test('the search field captures items and its options live in the settings (#105, #67, #221)', async ({
+  page,
+}) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await page.getByRole('button', { name: 'Home', exact: true }).click();
-  const search = page.getByRole('searchbox', { name: 'Search', exact: true });
+  // The search field next to the greeting opens the palette with what was typed.
+  const field = page.getByRole('searchbox', { name: 'Quick search (Ctrl+K or /)' });
+  const palette = page.getByRole('combobox');
 
-  await search.fill('t Milch kaufen morgen');
-  await expect(page.getByText('Enter: create to-do “Milch kaufen” (Tomorrow)')).toBeVisible();
-  await search.press('Enter');
+  await field.fill('t Milch kaufen morgen');
+  await expect(page.getByText('create to-do “Milch kaufen” (Tomorrow)')).toBeVisible();
+  await palette.press('Enter');
   await expect(page.getByText('To-do “Milch kaufen” created')).toBeVisible();
   const todos = await (await page.request.get('/api/todos')).json();
   expect(JSON.stringify(todos)).toContain('Milch kaufen');
 
-  await search.fill('n Idee Fahrradtour');
-  await search.press('Enter');
+  await palette.fill('n Idee Fahrradtour');
+  await palette.press('Enter');
   await expect(page.getByText('Note “Idee Fahrradtour” created')).toBeVisible();
   await page.getByRole('status').filter({ hasText: 'created' }).getByRole('button', { name: 'Undo' }).click();
 
-  await search.fill('b example.org Beispiel');
-  await search.press('Enter');
+  await palette.fill('b example.org Beispiel');
+  await palette.press('Enter');
   await expect(page.getByText('Bookmark “Beispiel” saved')).toBeVisible();
   await expect(page.getByRole('status').getByRole('link', { name: 'Open' })).toHaveAttribute(
     'href',
     'https://example.org/',
   );
 
-  await page.keyboard.press('Control+k');
-  const palette = page.getByRole('combobox');
+  // The palette's own prefixes still work.
   await palette.fill('todo: Steuer heute');
   await expect(page.getByText('create to-do “Steuer” (Today)')).toBeVisible();
   await palette.press('Enter');
   await expect(page.getByText('To-do “Steuer” created')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // The prefixes are a search setting now, not a widget option.
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  const todoPrefix = page.getByLabel('Prefix for to-dos');
+  await expect(todoPrefix).toHaveValue('t');
+  await todoPrefix.fill('a');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await field.fill('a Kuchen backen');
+  await expect(page.getByText('create to-do “Kuchen backen”')).toBeVisible();
+  await page.keyboard.press('Escape');
 });
 
 test('phones get their own layout that hides widgets independently (#92)', async ({ page }) => {

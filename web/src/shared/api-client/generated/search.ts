@@ -19,10 +19,26 @@ export interface ShortcutDTO {
   urlTemplate: string;
 }
 /**
+ * CapturePrefixesDTO are the quick capture prefixes of the search field (#221).
+ */
+export interface CapturePrefixesDTO {
+  todo: string;
+  note: string;
+  bookmark: string;
+}
+/**
+ * BarDTO describes the options of the search field (#221).
+ */
+export interface BarDTO {
+  openInNewTab: boolean;
+  capturePrefixes: CapturePrefixesDTO;
+}
+/**
  * SettingsDTO is returned by the search settings endpoints.
  */
 export interface SettingsDTO {
   defaultProvider: string;
   providers: ProviderDTO[];
   shortcuts: ShortcutDTO[];
+  bar: BarDTO;
 }

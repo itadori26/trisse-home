@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { palettePrefixes, QuickActionError, type QuickCommand } from '../features/quickactions';
+  import {
+    mergePrefixes,
+    palettePrefixes,
+    prefixesFromConfig,
+    QuickActionError,
+    type QuickCommand,
+  } from '../features/quickactions';
+  import type { SearchBarOptions } from '../features/search/usecase/ports';
   import { describeCommand } from './quickCapture';
   import { t } from '../shared/i18n';
   import Markdown from '../shared/ui/Markdown.svelte';
@@ -59,8 +66,30 @@
   let status = $state('');
   let note = $state<{ title: string; body: string } | null>(null);
 
+  // Options of the search field (#221): the hero field opens this dialog, so
+  // its short capture prefixes ("t Milch") work here next to "todo: Milch",
+  // and web results honour "open in a new tab".
+  let bar = $state<SearchBarOptions | null>(null);
+  // svelte-ignore state_referenced_locally
+  if (modules.has('search'))
+    container.search
+      .settings()
+      .then((s) => (bar = s.bar))
+      .catch(() => {});
+  const prefixes = $derived(mergePrefixes(palettePrefixes, prefixesFromConfig(bar?.capturePrefixes)));
+  let openLast = $state<string | null>(null);
+
+  function searchWeb() {
+    const target = modules.has('search') ? container.search.targetFor(query) : null;
+    if (!target) return;
+    if (bar?.openInNewTab) {
+      window.open(target, '_blank', 'noopener');
+      onclose();
+    } else window.location.assign(target);
+  }
+
   // Commands like "todo: Müll morgen" or "restart nextcloud" (#67).
-  const command = $derived(container.quickActions.parse(query, palettePrefixes));
+  const command = $derived(container.quickActions.parse(query, prefixes));
   // Body matches from the notes full-text search (#73): matched notes show
   // the excerpt around the match and count as hits for the query.
   let noteHits = $state(new Map<string, string>());
@@ -105,6 +134,7 @@
       query = '';
       status = describeCommand(res.command, container.quickActions, true);
       undoLast = res.undo ?? null;
+      openLast = res.openUrl ?? null;
     } catch (err) {
       status =
         err instanceof QuickActionError
@@ -116,6 +146,7 @@
   async function undo() {
     const u = undoLast;
     undoLast = null;
+    openLast = null; // the bookmark is gone
     if (!u) return;
     try {
       await u();
@@ -185,12 +216,12 @@
     active = 0;
     status = '';
     undoLast = null;
+    openLast = null;
   });
 
   async function choose(item: QuickItem | undefined) {
     if (!item) {
-      const target = modules.has('search') ? container.search.targetFor(query) : null;
-      if (target) window.location.assign(target);
+      searchWeb();
       return;
     }
     // Only a chosen result is remembered, never the query alone (#159).
@@ -226,6 +257,10 @@
       e.preventDefault();
       if (flat.length) active = (active + (e.key === 'ArrowDown' ? 1 : flat.length - 1)) % flat.length;
       document.getElementById(optionId(active))?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && e.shiftKey) {
+      // Shift+Enter always searches the web, even with a capture prefix (#221).
+      e.preventDefault();
+      searchWeb();
     } else if (e.key === 'Enter') {
       e.preventDefault();
       // A calculator result is copied (#160); computed now, not debounced.
@@ -303,7 +338,7 @@
       <p class="command" id="qs-command">
         <kbd>Enter</kbd>
         {describeCommand(command, container.quickActions)}
-        <span class="muted">· <kbd>Esc</kbd> {t('quick.cancel')}</span>
+        <span class="muted">· <kbd>Esc</kbd> {t('quick.cancel')} · {t('quick.shift_enter_searches')}</span>
       </p>
     {:else if query.trim() && flat.length === 0}
       <p class="muted hint">{t('app.no_matches_press_enter_to_search')}</p>
@@ -312,6 +347,7 @@
     {/if}
     <p class="muted hint" role="status">
       {status}
+      {#if openLast}<a href={openLast} target="_blank" rel="noopener noreferrer">{t('quick.open')}</a>{/if}
       {#if undoLast}<button class="btn" type="button" onclick={undo}>{t('dashboard.undo')}</button>{/if}
     </p>
     {#if !query.trim() && !status}<p class="muted hint">{t('quick.palette_hint')}</p>{/if}

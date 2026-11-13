@@ -38,3 +38,33 @@ func TestRepository(t *testing.T) {
 		t.Fatalf("expected not found, got %v", err)
 	}
 }
+
+func TestBarOptions(t *testing.T) {
+	ctx := context.Background()
+	db := dbtest.Open(t, "search", Migrations())
+	repo := NewRepository(db)
+	if o, err := repo.BarOptions(ctx); err != nil || o != domain.DefaultBarOptions() {
+		t.Fatalf("no row yet: %+v %v", o, err)
+	}
+	want, _ := domain.NewBarOptions(true, domain.CapturePrefixes{Todo: "a", Note: "n", Bookmark: "lz"})
+	if err := repo.SetBarOptions(ctx, want); err != nil {
+		t.Fatal(err)
+	}
+	if o, _ := repo.BarOptions(ctx); o != want {
+		t.Fatalf("round trip: %+v", o)
+	}
+	if id, _ := repo.DefaultProvider(ctx); id != "" {
+		t.Fatalf("saving the options must not pick a provider, got %q", id)
+	}
+	_ = repo.SetDefaultProvider(ctx, "google")
+	if o, _ := repo.BarOptions(ctx); o != want {
+		t.Fatal("changing the provider must keep the options")
+	}
+	// A stored value that breaks today's rules falls back to the default prefixes.
+	if _, err := db.ExecContext(ctx, `UPDATE search_settings SET capture_prefixes = '{"Todo":"x","Note":"x","Bookmark":"b"}'`); err != nil {
+		t.Fatal(err)
+	}
+	if o, _ := repo.BarOptions(ctx); !o.OpenInNewTab() || o.Prefixes() != domain.DefaultCapturePrefixes {
+		t.Fatalf("fallback: %+v", o)
+	}
+}

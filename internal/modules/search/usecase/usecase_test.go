@@ -6,12 +6,22 @@ import (
 	"testing"
 
 	"trisse-home/internal/modules/search/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 type memRepo struct {
 	provider  string
 	shortcuts []domain.Shortcut
+	bar       *domain.BarOptions
 }
+
+func (m *memRepo) BarOptions(context.Context) (domain.BarOptions, error) {
+	if m.bar == nil {
+		return domain.DefaultBarOptions(), nil
+	}
+	return *m.bar, nil
+}
+func (m *memRepo) SetBarOptions(_ context.Context, o domain.BarOptions) error { m.bar = &o; return nil }
 
 func (m *memRepo) DefaultProvider(context.Context) (string, error)       { return m.provider, nil }
 func (m *memRepo) SetDefaultProvider(_ context.Context, id string) error { m.provider = id; return nil }
@@ -64,5 +74,24 @@ func TestSearcher(t *testing.T) {
 	}
 	if _, err := uc.DeleteShortcut(ctx, "nope"); !errors.Is(err, ErrShortcutNotFound) {
 		t.Fatalf("expected not found, got %v", err)
+	}
+}
+
+func TestSearchFieldOptions(t *testing.T) {
+	repo := &memRepo{}
+	uc := NewSearcher(repo)
+	res, err := uc.Settings(context.Background())
+	if err != nil || res.Bar != (BarView{TodoPrefix: "t", NotePrefix: "n", BookmarkPrefix: "b"}) {
+		t.Fatalf("defaults: %+v %v", res.Bar, err)
+	}
+	res, err = uc.SetBarOptions(context.Background(), SetBarRequest{OpenInNewTab: true, TodoPrefix: "A", NotePrefix: "n", BookmarkPrefix: "lz"})
+	if err != nil || res.Bar != (BarView{OpenInNewTab: true, TodoPrefix: "a", NotePrefix: "n", BookmarkPrefix: "lz"}) {
+		t.Fatalf("saved: %+v %v", res.Bar, err)
+	}
+	if _, err := uc.SetBarOptions(context.Background(), SetBarRequest{TodoPrefix: "x", NotePrefix: "x", BookmarkPrefix: "b"}); !errors.Is(err, kernel.ErrInvalid) {
+		t.Fatalf("duplicate prefixes must be refused, got %v", err)
+	}
+	if repo.bar.Prefixes().Todo != "a" {
+		t.Fatal("a refused request must not change the stored options")
 	}
 }

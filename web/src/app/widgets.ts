@@ -5,44 +5,12 @@ import { t } from '../shared/i18n';
  * other; this file is the only place that combines them.
  */
 import type { IconName } from '../shared/ui/icons/paths';
-import { prefixesFromConfig } from '../features/quickactions/domain/command';
-import { quickCapture } from './quickCapture';
 import { lazy, type Renderer, type WidgetDefinition } from './widgetKit';
-import { widgetAnswers } from './widgetAnswers';
 
 export type { Renderer, WidgetDefinition };
 
 /** The widgets that are still defined here; new ones live in src/app/widgets/<kind>.ts (#193). */
 const legacyDefinitions: WidgetDefinition[] = [
-  {
-    type: {
-      kind: 'search',
-      category: 'everyday',
-      keywords: ['web', 'google', 'duckduckgo', 'suche', 'shortcut'],
-      get title() {
-        return t('widget.search.title');
-      },
-      get description() {
-        return t('widget.search.description');
-      },
-      defaultSize: { w: 8, h: 2 },
-    },
-    chromeless: true,
-    icon: 'search',
-    view: lazy(
-      () => import('../features/search/ui/SearchWidget.svelte'),
-      (config, c) => ({
-        config,
-        search: c.search,
-        quick: quickCapture(c.quickActions, prefixesFromConfig(config['quickPrefixes'])),
-        answers: widgetAnswers(c),
-      }),
-    ),
-    settings: lazy(
-      () => import('../features/search/ui/SearchWidgetSettings.svelte'),
-      (config) => ({ config }),
-    ),
-  },
   {
     type: {
       kind: 'clock',

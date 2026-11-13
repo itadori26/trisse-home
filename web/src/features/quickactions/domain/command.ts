@@ -40,6 +40,20 @@ export function prefixesFromConfig(raw: unknown): Prefixes {
   return out;
 }
 
+/**
+ * Combines prefix sets, e.g. the palette's "todo:" with the search field's
+ * short "t" (#221): the search field opens the palette, so both apply there.
+ */
+export function mergePrefixes(...sets: Prefixes[]): Prefixes {
+  const out: Prefixes = {};
+  for (const set of sets) {
+    for (const [kind, list] of Object.entries(set) as [QuickKind, string[]][]) {
+      out[kind] = [...new Set([...(out[kind] ?? []), ...list])];
+    }
+  }
+  return out;
+}
+
 /** Turns "example.org/x" into "https://example.org/x"; null if it is no URL. */
 export function normaliseUrl(raw: string): string | null {
   const s = raw.trim();

@@ -23,8 +23,7 @@ type defaultWidget struct {
 // defaultWidgets give a new installation a useful starting point; kinds of
 // disabled modules are skipped.
 var defaultWidgets = []defaultWidget{
-	{kind: "search", x: 2, y: 0, w: 8, h: 2},
-	{kind: "clock", x: 0, y: 2, w: 3, h: 3},
+	{kind: "clock", x: 0, y: 0, w: 3, h: 3},
 }
 
 type getDashboard struct{ deps Deps }

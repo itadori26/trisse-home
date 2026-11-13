@@ -9,3 +9,14 @@
 export interface DefaultProviderDTO {
   defaultProvider: string;
 }
+/**
+ * BarOptionsDTO is the body of PUT /api/search/bar (#221).
+ */
+export interface BarOptionsDTO {
+  openInNewTab: boolean;
+  capturePrefixes: {
+    todo: string;
+    note: string;
+    bookmark: string;
+  };
+}
