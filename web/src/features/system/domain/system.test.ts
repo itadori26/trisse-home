@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysUntilFull, loadPercent, type SystemSnapshot } from './system';
+import { daysUntilFull, loadPercent, parseInstallMethod, updateHintKey, type SystemSnapshot } from './system';
 
 const base: SystemSnapshot = {
   cpuPercent: 0,
@@ -8,6 +8,7 @@ const base: SystemSnapshot = {
   memory: { total: 0, used: 0, percent: 0 },
   swap: { total: 0, used: 0, percent: 0 },
   disks: [],
+  hostname: '',
   uptimeSeconds: 0,
   temperature: 0,
 };
@@ -16,6 +17,24 @@ describe('loadPercent', () => {
   it('normalises by cpu count', () => expect(loadPercent(base)).toBe(50));
   it('caps at 100', () => expect(loadPercent({ ...base, load: [9, 0, 0] })).toBe(100));
   it('handles missing cpu count', () => expect(loadPercent({ ...base, cpuCount: 0 })).toBe(0));
+});
+
+describe('install method', () => {
+  it('accepts the known methods', () => {
+    expect(parseInstallMethod('docker')).toBe('docker');
+    expect(parseInstallMethod('package')).toBe('package');
+    expect(parseInstallMethod('appliance')).toBe('appliance');
+  });
+  it('maps anything else to unknown', () => {
+    expect(parseInstallMethod('')).toBe('unknown');
+    expect(parseInstallMethod('snap')).toBe('unknown');
+  });
+  it('has an update hint per method', () => {
+    expect(updateHintKey('docker')).toBe('system.update_how_docker');
+    expect(updateHintKey('package')).toBe('system.update_how_package');
+    expect(updateHintKey('appliance')).toBe('system.update_how_appliance');
+    expect(updateHintKey('unknown')).toBeNull();
+  });
 });
 
 describe('daysUntilFull', () => {

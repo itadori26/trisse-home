@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { alertTypes, suggestTopic } from '../domain/notifications';
@@ -82,6 +83,7 @@
           bind:value={form.serverUrl}
         /></label
       >
+      <PlainHttpWarning url={form.serverUrl} />
       <label class="field"
         ><span>{t('notifications.topic')}</span><input class="input" bind:value={form.topic} /></label
       >

@@ -25,3 +25,14 @@ export interface NewEventDTO {
   start: string;
   end: string;
 }
+/**
+ * SubscriptionInputDTO is the body of POST /api/calendar/subscriptions and
+ * PUT /api/calendar/subscriptions/{id}; an empty URL keeps the stored one
+ * when updating.
+ */
+export interface SubscriptionInputDTO {
+  name: string;
+  url: string;
+  color: string;
+  refreshMinutes: number /* int */;
+}

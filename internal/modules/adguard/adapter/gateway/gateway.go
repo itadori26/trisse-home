@@ -43,10 +43,11 @@ func NewSettingsRepository(db *sql.DB, cipher Cipher) *SettingsRepository {
 }
 
 // Load implements usecase.SettingsRepository.
-func (r *SettingsRepository) Load(ctx context.Context) (domain.Settings, error) {
-	var s domain.Settings
+func (r *SettingsRepository) Load(ctx context.Context, p domain.Provider) (domain.Settings, error) {
+	s := domain.Settings{Provider: p}
 	var enc string
-	err := r.db.QueryRowContext(ctx, `SELECT url, username, password_encrypted FROM adguard_settings WHERE id = 1`).Scan(&s.URL, &s.Username, &enc)
+	err := r.db.QueryRowContext(ctx, `SELECT url, username, password_encrypted FROM adguard_connections WHERE provider = ?`, string(p)).
+		Scan(&s.URL, &s.Username, &enc)
 	if errors.Is(err, sql.ErrNoRows) {
 		return domain.Settings{}, domain.ErrNotConfigured
 	}
@@ -65,19 +66,16 @@ func (r *SettingsRepository) Save(ctx context.Context, s domain.Settings) error 
 	if err != nil {
 		return fmt.Errorf("encrypt password: %w", err)
 	}
-	_, err = r.db.ExecContext(ctx, `INSERT INTO adguard_settings (id, url, username, password_encrypted) VALUES (1, ?, ?, ?)
-		ON CONFLICT (id) DO UPDATE SET url = excluded.url, username = excluded.username, password_encrypted = excluded.password_encrypted`,
-		s.URL, s.Username, enc)
+	_, err = r.db.ExecContext(ctx, `INSERT INTO adguard_connections (provider, url, username, password_encrypted) VALUES (?, ?, ?, ?)
+		ON CONFLICT (provider) DO UPDATE SET url = excluded.url, username = excluded.username, password_encrypted = excluded.password_encrypted`,
+		string(s.Provider), s.URL, s.Username, enc)
 	if err != nil {
 		return fmt.Errorf("upsert settings: %w", err)
 	}
 	return nil
 }
 
-const (
-	maxResponseBytes = 2 << 20
-	topBlockedLimit  = 5
-)
+const maxResponseBytes = 2 << 20
 
 // API queries the AdGuard Home control API.
 type API struct{ client *http.Client }
@@ -96,7 +94,7 @@ type statusPayload struct {
 	ProtectionEnabled bool `json:"protection_enabled"`
 }
 
-// Stats implements usecase.StatsSource.
+// Stats implements usecase.DNSFilterProvider.
 func (a *API) Stats(ctx context.Context, s domain.Settings) (domain.Stats, error) {
 	var st statsPayload
 	if err := a.get(ctx, s, "/control/stats", &st); err != nil {
@@ -108,7 +106,7 @@ func (a *API) Stats(ctx context.Context, s domain.Settings) (domain.Stats, error
 	}
 	out := domain.Stats{
 		Queries: st.Queries, Blocked: st.Blocked, ProtectionEnabled: status.ProtectionEnabled,
-		AvgProcessingTime: time.Duration(st.AvgProcessingTime * float64(time.Second)),
+		AvgProcessingTime: time.Duration(st.AvgProcessingTime * float64(time.Second)), HasAvgProcessingTime: true,
 	}
 	for _, entry := range st.TopBlocked {
 		for d, n := range entry {
@@ -116,8 +114,8 @@ func (a *API) Stats(ctx context.Context, s domain.Settings) (domain.Stats, error
 		}
 	}
 	slices.SortFunc(out.TopBlocked, func(a, b domain.BlockedDomain) int { return b.Count - a.Count })
-	if len(out.TopBlocked) > topBlockedLimit {
-		out.TopBlocked = out.TopBlocked[:topBlockedLimit]
+	if len(out.TopBlocked) > domain.TopBlockedLimit {
+		out.TopBlocked = out.TopBlocked[:domain.TopBlockedLimit]
 	}
 	return out, nil
 }

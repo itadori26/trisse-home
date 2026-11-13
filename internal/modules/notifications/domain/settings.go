@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -60,10 +59,11 @@ func NewSettings(enabled bool, serverURL, topic, token string, rules Rules) (Set
 	if serverURL == "" {
 		serverURL = DefaultServerURL
 	}
-	u, err := url.Parse(serverURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return Settings{}, kernel.NewValidationError("serverUrl", "The ntfy server URL must start with http:// or https://.")
+	u, err := kernel.ParseTarget("serverUrl", serverURL, kernel.WithTargetPath())
+	if err != nil {
+		return Settings{}, err
 	}
+	serverURL = u.String()
 	topic = strings.TrimSpace(topic)
 	if (enabled || topic != "") && !topicPattern.MatchString(topic) {
 		return Settings{}, kernel.NewValidationError("topic", "The topic may contain letters, digits, - and _ (max. 64 characters).")

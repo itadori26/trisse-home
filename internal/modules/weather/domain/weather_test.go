@@ -23,3 +23,11 @@ func TestNewLocation(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeDegrees(t *testing.T) {
+	for in, want := range map[float64]float64{0: 0, 90: 90, 359.5: 359.5, 360: 0, 450: 90, -45: 315, -360: 0, 720.5: 0.5} {
+		if got := NormalizeDegrees(in); got != want {
+			t.Errorf("NormalizeDegrees(%v) = %v, want %v", in, got, want)
+		}
+	}
+}

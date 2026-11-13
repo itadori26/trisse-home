@@ -15,7 +15,29 @@ type BookmarkDTO struct {
 	Description string    `json:"description"`
 	Tags        []string  `json:"tags"`
 	CreatedAt   time.Time `json:"createdAt"`
+	// Link is the result of the last link check (#72).
+	Link LinkDTO `json:"link"`
+	// HasIcon reports whether a favicon is stored (GET /api/bookmarks/{id}/icon).
+	HasIcon bool `json:"hasIcon"`
 }
+
+// LinkDTO is a link check result: state "" (not checked), "ok",
+// "redirect" or "broken"; checkedAt is empty when never checked.
+type LinkDTO struct {
+	State     string `json:"state"`
+	Code      int    `json:"code"`
+	Target    string `json:"target"`
+	CheckedAt string `json:"checkedAt"`
+}
+
+// SettingsDTO switches the outbound features of the bookmarks module.
+type SettingsDTO struct {
+	Enrich     bool `json:"enrich"`
+	CheckLinks bool `json:"checkLinks"`
+}
+
+// Settings maps a SettingsView.
+func Settings(v usecase.SettingsView) SettingsDTO { return SettingsDTO(v) }
 
 // FolderDTO is a folder with its bookmark count.
 type FolderDTO struct {
@@ -44,7 +66,12 @@ func Bookmark(v usecase.BookmarkView) BookmarkDTO {
 	if tags == nil {
 		tags = []string{}
 	}
-	return BookmarkDTO{ID: v.ID, FolderID: v.FolderID, Title: v.Title, URL: v.URL, Description: v.Description, Tags: tags, CreatedAt: v.CreatedAt}
+	dto := BookmarkDTO{ID: v.ID, FolderID: v.FolderID, Title: v.Title, URL: v.URL, Description: v.Description, Tags: tags, CreatedAt: v.CreatedAt,
+		HasIcon: v.HasIcon, Link: LinkDTO{State: string(v.Link.State), Code: v.Link.Code, Target: v.Link.Target}}
+	if !v.Link.CheckedAt.IsZero() {
+		dto.Link.CheckedAt = v.Link.CheckedAt.UTC().Format(time.RFC3339)
+	}
+	return dto
 }
 
 // Folder maps a FolderView.

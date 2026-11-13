@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"trisse-home/internal/modules/system/domain"
 )
@@ -158,6 +159,30 @@ func (h *Host) Uptime(context.Context) (time.Duration, error) {
 		return 0, fmt.Errorf("parse /proc/uptime: %w", err)
 	}
 	return time.Duration(secs * float64(time.Second)), nil
+}
+
+// maxHostnameLength is the longest valid DNS host name.
+const maxHostnameLength = 253
+
+// Hostname reads sys/kernel/hostname of the host's procfs (not the
+// container's own name). It returns "" when the file is missing or empty;
+// control characters are dropped and the length is capped, because the name is
+// shown in the UI.
+func (h *Host) Hostname(context.Context) string {
+	b, err := h.read(filepath.Join("sys", "kernel", "hostname"))
+	if err != nil {
+		return ""
+	}
+	name := strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, strings.TrimSpace(string(b)))
+	if len(name) > maxHostnameLength {
+		name = name[:maxHostnameLength]
+	}
+	return name
 }
 
 // Disks stats every configured mount.

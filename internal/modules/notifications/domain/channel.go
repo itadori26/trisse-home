@@ -2,7 +2,6 @@ package domain
 
 import (
 	"net/mail"
-	"net/url"
 	"slices"
 	"strings"
 
@@ -52,9 +51,14 @@ type Channel struct {
 	TLS string
 }
 
-func httpURL(raw string) bool {
-	u, err := url.Parse(raw)
-	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
+// targetURL validates a channel URL (#191); webhooks may carry a token in
+// the query.
+func targetURL(raw string, opts ...kernel.TargetOption) (string, error) {
+	u, err := kernel.ParseTarget("url", raw, append([]kernel.TargetOption{kernel.WithTargetPath()}, opts...)...)
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
 }
 
 // Validate checks the channel and fills defaults.
@@ -73,13 +77,17 @@ func (c *Channel) Validate() error {
 	}
 	switch c.Kind {
 	case ChannelGotify:
-		if !httpURL(c.URL) {
-			return kernel.NewValidationError("url", "The URL must start with http:// or https://.")
+		u, err := targetURL(c.URL)
+		if err != nil {
+			return err
 		}
+		c.URL = u
 	case ChannelWebhook:
-		if !httpURL(c.URL) {
-			return kernel.NewValidationError("url", "The URL must start with http:// or https://.")
+		u, err := targetURL(c.URL, kernel.WithTargetQuery())
+		if err != nil {
+			return err
 		}
+		c.URL = u
 		if strings.TrimSpace(c.Template) == "" {
 			c.Template = DefaultWebhookTemplate
 		}

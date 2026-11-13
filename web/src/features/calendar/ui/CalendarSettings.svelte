@@ -1,7 +1,9 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
+  import CalendarSubscriptions from './CalendarSubscriptions.svelte';
 
   /** Props of the CalDAV connection settings. */
   interface Props {
@@ -52,6 +54,7 @@
       required
       placeholder="https://cloud.example.com/remote.php/dav/calendars/USER/personal/"></textarea>
   </label>
+  <PlainHttpWarning url={urls} />
   <p class="muted">
     {t('calendar.nextcloud_open_the_calendar_app_click')}
   </p>
@@ -83,3 +86,5 @@
     >{busy ? t('common.testing') : t('common.test_save')}</button
   >
 </form>
+
+<CalendarSubscriptions {calendar} />

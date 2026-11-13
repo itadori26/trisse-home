@@ -42,5 +42,13 @@
       {#each tags as t (t.name)}<option value={t.name}>#{t.name} ({t.count})</option>{/each}
     </select>
   </label>
+  <label class="field">
+    <span>{t('bookmarks.sort')}</span>
+    <select class="input" bind:value={form.sort}>
+      <option value="manual">{t('bookmarks.sort_manual')}</option>
+      <option value="az">{t('bookmarks.sort_az')}</option>
+      <option value="newest">{t('bookmarks.sort_newest')}</option>
+    </select>
+  </label>
   <button class="btn btn-primary" type="submit">{t('bookmarks.save')}</button>
 </form>

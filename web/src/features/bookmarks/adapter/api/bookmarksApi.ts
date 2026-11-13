@@ -1,10 +1,16 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { BookmarkDTO, FolderDTO, ListDTO } from '../../../../shared/api-client/generated/bookmarks';
+import type {
+  BookmarkDTO,
+  FolderDTO,
+  ListDTO,
+  SettingsDTO,
+} from '../../../../shared/api-client/generated/bookmarks';
 import type {
   BookmarkInputDTO,
   FolderInputDTO,
+  SettingsInputDTO,
 } from '../../../../shared/api-client/generated/bookmarks-requests';
-import type { Bookmark, BookmarkInput, Folder } from '../../domain/bookmark';
+import type { Bookmark, BookmarkInput, BookmarkSettings, Folder, LinkStatus } from '../../domain/bookmark';
 import type {
   BookmarkFilter,
   BookmarkImportResult,
@@ -19,9 +25,23 @@ const toBookmark = (d: BookmarkDTO): Bookmark => ({
   url: d.url,
   description: d.description,
   tags: d.tags,
+  link: {
+    state: (d.link?.state ?? '') as LinkStatus['state'],
+    code: d.link?.code ?? 0,
+    target: d.link?.target ?? '',
+    checkedAt: d.link?.checkedAt ?? '',
+  },
+  hasIcon: d.hasIcon ?? false,
+  createdAt: d.createdAt,
 });
 const toFolder = (d: FolderDTO): Folder => ({ id: d.id, name: d.name, count: d.count });
-const toDTO = (i: BookmarkInput): BookmarkInputDTO => ({ ...i });
+const toDTO = (i: BookmarkInput): BookmarkInputDTO => ({
+  folderId: i.folderId,
+  title: i.title,
+  url: i.url,
+  description: i.description,
+  tags: i.tags,
+});
 const path = (id: string) => `/api/bookmarks/${encodeURIComponent(id)}`;
 const folderPath = (id: string) => `/api/bookmarks/folders/${encodeURIComponent(id)}`;
 
@@ -34,6 +54,7 @@ export class BookmarksApi implements BookmarksGateway {
     if (filter.folderId) q.set('folder', filter.folderId);
     if (filter.tag) q.set('tag', filter.tag);
     if (filter.query) q.set('q', filter.query);
+    if (filter.broken) q.set('status', 'broken');
     const dto = await this.http.get<ListDTO>(`/api/bookmarks?${q}`);
     return { bookmarks: dto.bookmarks.map(toBookmark), folders: dto.folders.map(toFolder), tags: dto.tags };
   }
@@ -56,6 +77,20 @@ export class BookmarksApi implements BookmarksGateway {
   }
   deleteFolder(id: string): Promise<void> {
     return this.http.delete(folderPath(id));
+  }
+
+  async getSettings(): Promise<BookmarkSettings> {
+    return { ...(await this.http.get<SettingsDTO>('/api/bookmarks/settings')) };
+  }
+  async saveSettings(s: BookmarkSettings): Promise<BookmarkSettings> {
+    const body: SettingsInputDTO = { enrich: s.enrich, checkLinks: s.checkLinks };
+    return { ...(await this.http.put<SettingsDTO>('/api/bookmarks/settings', body)) };
+  }
+  async enrich(id: string): Promise<Bookmark> {
+    return toBookmark(await this.http.post<BookmarkDTO>(`${path(id)}/enrich`));
+  }
+  async checkLink(id: string): Promise<Bookmark> {
+    return toBookmark(await this.http.post<BookmarkDTO>(`${path(id)}/check`));
   }
 
   importHtml(html: string): Promise<BookmarkImportResult> {

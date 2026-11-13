@@ -40,6 +40,7 @@
       bind:value={form.limit}
     /></label
   >
-  <label><input type="checkbox" bind:checked={form.unreadOnly} /> {t('rss.unread_items_only')}</label>
+  <label><input type="checkbox" bind:checked={form.unreadOnly} /> {t('rss.unread_items_only')}</label><br />
+  <label><input type="checkbox" bind:checked={form.compact} /> {t('rss.compact')}</label>
   <p><button class="btn btn-primary" type="submit">{t('rss.save')}</button></p>
 </form>

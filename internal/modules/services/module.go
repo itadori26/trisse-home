@@ -131,3 +131,7 @@ func (m *Module) Metrics(ctx context.Context) []kernel.MetricSample {
 	}
 	return out
 }
+
+// Services returns all services with their last status (read access for
+// the briefing, ADR 0016).
+func (m *Module) Services(ctx context.Context) ([]usecase.ServiceView, error) { return m.uc.List(ctx) }

@@ -1,3 +1,4 @@
+import './app/featureMessages';
 import { loadLanguage } from './shared/i18n';
 
 // The UI catalogues are loaded lazily (#116); load the active one (English

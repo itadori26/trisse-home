@@ -14,4 +14,27 @@ export interface TodoDTO {
   overdue: boolean;
   position: number /* int */;
   completedAt: string;
+  /**
+   * Repeat is the recurrence (kind "" = none, #68).
+   */
+  repeat: RepeatDTO;
+  /**
+   * Reminder fires at "HH:MM" on the due date or days before ("" = none).
+   */
+  reminder: ReminderDTO;
+}
+/**
+ * RepeatDTO describes a recurrence.
+ */
+export interface RepeatDTO {
+  kind: string;
+  every: number /* int */;
+  days: number /* int */[];
+}
+/**
+ * ReminderDTO describes a reminder.
+ */
+export interface ReminderDTO {
+  at: string;
+  daysBefore: number /* int */;
 }

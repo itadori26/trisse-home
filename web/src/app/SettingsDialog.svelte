@@ -1,9 +1,10 @@
 <script lang="ts">
   import { TimelineSettings } from '../features/timeline';
+  import { BriefingSettings } from '../features/briefing';
   import { AboutSettings, ForecastSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
+  import { registeredSections } from './settingsSections';
   import { AdGuardSettings } from '../features/adguard';
-  import { FuelSettings } from '../features/fuel';
   import { SpeedtestSettings } from '../features/speedtest';
   import { ImageUpdateSettings } from '../features/docker';
   import { FritzBoxSettings } from '../features/fritzbox';
@@ -26,7 +27,7 @@
   import { BackupSettings } from '../features/backup';
   import { BackupSourcesManager } from '../features/backupmonitor';
   import { NotificationSettings } from '../features/notifications';
-  import { BookmarkImport, FoldersManager } from '../features/bookmarks';
+  import { BookmarkImport, BookmarkLinkSettings, FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
   import { SearchSettings } from '../features/search';
@@ -47,7 +48,7 @@
   let { container, modules, appearance, onappearance, onrestarttour, onclose }: Props = $props();
 
   type Section = { id: string; label: MessageKey; module?: string };
-  const sections: Section[] = [
+  const ownSections: Section[] = [
     { id: 'appearance', label: 'settings.section.appearance', module: 'appearance' },
     { id: 'search', label: 'settings.section.search', module: 'search' },
     { id: 'services', label: 'settings.section.services', module: 'services' },
@@ -55,7 +56,6 @@
     { id: 'folders', label: 'settings.section.bookmark_folders', module: 'bookmarks' },
     { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
     { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
-    { id: 'fuel', label: 'settings.section.fuel', module: 'fuel' },
     { id: 'speedtest', label: 'settings.section.speedtest', module: 'speedtest' },
     { id: 'docker-updates', label: 'settings.section.docker_updates', module: 'docker' },
     { id: 'nextcloud', label: 'settings.section.nextcloud', module: 'nextcloud' },
@@ -67,6 +67,7 @@
     { id: 'transfer', label: 'settings.section.transfer', module: 'transfer' },
     { id: 'notifications', label: 'settings.section.notifications', module: 'notifications' },
     { id: 'timeline', label: 'settings.section.timeline', module: 'timeline' },
+    { id: 'briefing', label: 'settings.section.briefing', module: 'briefing' },
     { id: 'backups', label: 'settings.section.backups', module: 'backup' },
     { id: 'backupmonitor', label: 'settings.section.backupmonitor', module: 'backupmonitor' },
     { id: 'account', label: 'settings.section.account' },
@@ -75,6 +76,13 @@
     { id: 'tokens', label: 'settings.section.tokens' },
     { id: 'forecast', label: 'settings.section.forecast', module: 'system' },
     { id: 'about', label: 'settings.section.about', module: 'system' },
+  ];
+  // Features that register themselves (src/app/settings, #193) come before the account sections.
+  const accountAt = ownSections.findIndex((s) => s.id === 'account');
+  const sections: Section[] = [
+    ...ownSections.slice(0, accountAt),
+    ...registeredSections,
+    ...ownSections.slice(accountAt),
   ];
   /** Guests only manage their own account (ADR 0012). */
   const guestSections = new Set(['account']);
@@ -89,6 +97,7 @@
   });
   let active = $state('');
   const current = $derived(active || visible[0]?.id || 'account');
+  const registered = $derived(registeredSections.find((s) => s.id === current));
 </script>
 
 <Modal title={t('app.settings')} {onclose}>
@@ -109,6 +118,7 @@
     <FeedsManager rss={container.rss} />
   {:else if current === 'folders'}
     <FoldersManager bookmarks={container.bookmarks} />
+    <BookmarkLinkSettings bookmarks={container.bookmarks} />
   {:else if current === 'calendar'}
     <CalendarSettings calendar={container.calendar} />
   {:else if current === 'transfer'}
@@ -122,6 +132,8 @@
     <GuestsSettings auth={container.auth} tabs={guestTabs} />
   {:else if current === 'timeline'}
     <TimelineSettings timeline={container.timeline} />
+  {:else if current === 'briefing'}
+    <BriefingSettings briefing={container.briefing} canPush={modules.has('notifications')} />
   {:else if current === 'forecast'}
     <ForecastSettings system={container.system} />
   {:else if current === 'about'}
@@ -152,11 +164,10 @@
     <SpeedtestSettings speedtest={container.speedtest} />
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
-  {:else if current === 'fuel'}
-    <FuelSettings
-      fuel={container.fuel}
-      searchPlaces={modules.has('weather') ? (q) => container.weather.searchPlaces(q) : undefined}
-    />
+  {:else if registered}
+    {#await registered.load() then Section}
+      <Section {...registered.props(container, { modules })} />
+    {/await}
   {:else if current === 'notifications'}
     <NotificationSettings notifications={container.notifications} />
   {:else if current === 'backupmonitor'}

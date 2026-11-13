@@ -27,6 +27,7 @@ func (f *fakeHost) CPUTimes(context.Context) (domain.CPUTimes, error) {
 func (f *fakeHost) CPUCount(context.Context) (int, error)         { return 4, nil }
 func (f *fakeHost) Load(context.Context) (domain.Load, error)     { return domain.Load{One: 0.5}, nil }
 func (f *fakeHost) Uptime(context.Context) (time.Duration, error) { return time.Hour, nil }
+func (f *fakeHost) Hostname(context.Context) string               { return "pi5-nas" }
 func (f *fakeHost) Disks(context.Context) ([]domain.Disk, error) {
 	return []domain.Disk{{Label: "/"}}, nil
 }
@@ -44,7 +45,7 @@ func TestMonitor(t *testing.T) {
 	host := &fakeHost{cpu: []domain.CPUTimes{{Idle: 0, Total: 0}, {Idle: 75, Total: 100}}}
 	m := NewMonitor(host, &memHistory{}, kernel.DiscardObservations{}, clk{})
 	first, err := m.Current(ctx)
-	if err != nil || first.CPUPercent != 0 || first.CPUCount != 4 {
+	if err != nil || first.CPUPercent != 0 || first.CPUCount != 4 || first.Hostname != "pi5-nas" {
 		t.Fatalf("first snapshot: %+v %v", first, err)
 	}
 	if err := m.Sample(ctx); err != nil {

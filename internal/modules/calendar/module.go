@@ -1,6 +1,7 @@
 package calendar
 
 import (
+	"context"
 	"database/sql"
 	"io/fs"
 	"net/http"
@@ -18,15 +19,20 @@ const refreshInterval = 15 * time.Minute
 // Module wires the calendar rings and implements modules.Module.
 type Module struct {
 	modules.Base
-	uc       usecase.Calendar
+	uc       usecase.Service
 	handlers *controller.Handlers
+	subs     *controller.SubscriptionHandlers
 }
 
 // New builds the calendar module. Floating event times are interpreted in loc.
 func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock, ids kernel.IDGenerator, loc *time.Location) *Module {
 	caldav := gateway.NewCalDAV(client, loc)
-	uc := usecase.NewCalendar(gateway.NewSettingsRepository(db, cipher), caldav, caldav, ids, clock)
-	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
+	uc := usecase.NewCalendar(usecase.Deps{
+		Repo: gateway.NewSettingsRepository(db, cipher), Source: caldav, Writer: caldav,
+		Subscriptions: gateway.NewSubscriptionRepository(db, cipher), Feeds: gateway.NewFeed(client, loc, clock.Now),
+		IDs: ids, Clock: clock,
+	})
+	return &Module{uc: uc, handlers: controller.NewHandlers(uc), subs: controller.NewSubscriptionHandlers(uc)}
 }
 
 // Name implements modules.Module.
@@ -44,9 +50,19 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("PUT /api/calendar/settings", m.handlers.SaveSettings)
 	r.Protected("GET /api/calendar/events", m.handlers.Events)
 	r.Protected("POST /api/calendar/events", m.handlers.CreateEvent)
+	r.Protected("GET /api/calendar/subscriptions", m.subs.List)
+	r.Protected("POST /api/calendar/subscriptions", m.subs.Add)
+	r.Protected("PUT /api/calendar/subscriptions/{id}", m.subs.Update)
+	r.Protected("DELETE /api/calendar/subscriptions/{id}", m.subs.Delete)
 }
 
 // Jobs implements modules.Module.
 func (m *Module) Jobs() []modules.Job {
 	return []modules.Job{{Name: "calendar.refresh", Interval: refreshInterval, Run: m.uc.Refresh}}
+}
+
+// Upcoming returns the events of the next days (read access for the
+// briefing, ADR 0016).
+func (m *Module) Upcoming(ctx context.Context, days int) (usecase.AgendaResponse, error) {
+	return m.uc.Upcoming(ctx, days)
 }
