@@ -129,6 +129,12 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /control/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
+	// ICS subscription (#98): an event tomorrow, served with an ETag.
+	mux.HandleFunc("GET /holidays.ics", func(w http.ResponseWriter, _ *http.Request) {
+		day := time.Now().Add(24 * time.Hour).UTC().Format("20060102")
+		w.Header().Set("ETag", `"h1"`)
+		_, _ = io.WriteString(w, "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:h\r\nSUMMARY:Holiday\r\nDTSTART;VALUE=DATE:"+day+"\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")
+	})
 	mux.HandleFunc("GET /ha/api/states", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer ha-token" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -681,6 +687,25 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.json(http.MethodPost, "/api/calendar/events", newEvent, http.StatusCreated, nil)
 	newEvent["calendarUrl"] = "https://elsewhere.example/cal/"
 	c.do(http.MethodPost, "/api/calendar/events", newEvent, http.StatusUnprocessableEntity)
+
+	// --- ICS subscriptions (#98): merged into the agenda, URL never returned ---
+	c.do(http.MethodPost, "/api/calendar/subscriptions", obj{"name": "Broken", "url": up.URL + "/missing.ics"}, http.StatusUnprocessableEntity)
+	var sub obj
+	c.json(http.MethodPost, "/api/calendar/subscriptions", obj{"name": "Holidays", "url": up.URL + "/holidays.ics?token=secret", "color": "#00aa00"}, http.StatusCreated, &sub)
+	if body := string(c.do(http.MethodGet, "/api/calendar/subscriptions", nil, http.StatusOK)); strings.Contains(body, "secret") {
+		t.Fatalf("subscription URL leaked: %s", body)
+	}
+	c.json(http.MethodGet, "/api/calendar/events?days=7", nil, http.StatusOK, &agenda)
+	var holiday obj
+	for _, e := range agenda.Events {
+		if e["calendar"] == "Holidays" {
+			holiday = e
+		}
+	}
+	if holiday == nil || holiday["color"] != "#00aa00" || holiday["allDay"] != true {
+		t.Fatalf("subscription events in the agenda: %+v", agenda)
+	}
+	c.do(http.MethodDelete, "/api/calendar/subscriptions/"+sub["id"].(string), nil, http.StatusNoContent)
 
 	// --- browser bookmark import (Netscape HTML) ---
 	html := `<!DOCTYPE NETSCAPE-Bookmark-file-1><DL><p><DT><H3>Imported</H3><DL><p>` +

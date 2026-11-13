@@ -197,7 +197,7 @@ export const de: Record<MessageKey, string> = {
   'calendar.username': 'Benutzername',
   'calendar.app_password': 'App-Passwort {value}',
   'calendar.connect_a_caldav_calendar_under_settings':
-    'Verbinde einen CalDAV-Kalender unter Einstellungen → Kalender.',
+    'Verbinde einen CalDAV-Kalender oder füge ein ICS-Abo unter Einstellungen → Kalender hinzu.',
   'calendar.no_events_in_the_next_days': 'Keine Termine in den nächsten {days} Tagen.',
   'calendar.new_event': 'Neuer Termin',
   'calendar.view': 'Ansicht',
@@ -1194,6 +1194,23 @@ export const de: Record<MessageKey, string> = {
   'quick.prefix_todo': 'Präfix für To-dos',
   'quick.prefix_note': 'Präfix für Notizen',
   'quick.prefix_bookmark': 'Präfix für Lesezeichen',
+  'calendar.subscriptions': 'ICS-Abos',
+  'calendar.subscriptions_hint':
+    'Schreibgeschützte Kalender aus einem .ics- oder webcal://-Link, z. B. Stundenplan, Spielplan oder Feiertage. Der Link wird verschlüsselt gespeichert, weil er oft ein privates Token enthält.',
+  'calendar.subscription_name': 'Name',
+  'calendar.subscription_url': 'ICS-URL',
+  'calendar.subscription_url_keep': 'ICS-URL (leer lassen, um {hint} zu behalten)',
+  'calendar.subscription_color': 'Farbe',
+  'calendar.subscription_refresh': 'Aktualisierung',
+  'calendar.refresh_minutes': 'alle {n} Min.',
+  'calendar.refresh_hours': 'alle {n} Std.',
+  'calendar.add_subscription': 'Abo hinzufügen',
+  'calendar.edit_subscription': '{name} bearbeiten',
+  'calendar.delete_subscription': '{name} löschen',
+  'calendar.subscription_name_required': 'Bitte gib einen Namen ein.',
+  'calendar.subscription_url_invalid': 'Die ICS-URL muss mit https://, http:// oder webcal:// beginnen.',
+  'calendar.quick_add_needs_caldav':
+    'Neue Termine werden in einem CalDAV-Kalender gespeichert; ICS-Abos sind schreibgeschützt. Verbinde einen unter Einstellungen → Kalender.',
   'widget.smarthome.title': 'Smart Home',
   'widget.smarthome.description':
     'Zustände von Home-Assistant-Geräten und -Sensoren; optional Schalter und Taster.',

@@ -137,6 +137,8 @@ type Event struct {
 	End      time.Time
 	AllDay   bool
 	Calendar string
+	// Color of the calendar (#rrggbb); empty for CalDAV calendars.
+	Color string
 }
 
 // EndsAfter reports whether the event is still relevant at t.
