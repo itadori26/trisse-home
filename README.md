@@ -271,6 +271,17 @@ widget data (network first, cache only as fallback). Login, settings,
 exports, backups, logs and every non-GET request are never cached, and the
 cached data is deleted on logout.
 
+## Browser extension: trisse-home as the new tab page (optional)
+
+The extension in `extension/` (Manifest V3, Chrome/Edge and Firefox) opens your dashboard on every new tab, with the cursor in the search field, and adds **Save page to trisse-home** to the toolbar and the context menu (opens the quick capture page with the page, link or selected text).
+
+1. Download `trisse-home-extension-<version>.zip` from the [release](https://github.com/itadori26/trisse-home/releases) (or build it: `cd extension && npm run build`) and unzip it.
+2. **Chrome/Edge:** `chrome://extensions` → *Developer mode* → *Load unpacked* → the unzipped folder.
+   **Firefox:** `about:debugging#/runtime/this-firefox` → *Load Temporary Add-on* → `manifest.json` (temporary until restart; for a permanent install the add-on has to be signed via addons.mozilla.org).
+3. In the extension's options enter the address of your dashboard, e.g. `http://homeserver:8090`.
+
+Permissions: only `storage` (the address), `contextMenus` and `activeTab` (URL and title of the tab you save, only when you click). No host permissions, no content scripts, no tracking; the extension makes no request besides a reachability check of your dashboard. If the address is not set or the server is not reachable, the new tab says so and links to the options. Chrome keeps the cursor in the address bar for new tabs; click into the page or press `/` to search.
+
 ## Wake-on-LAN (optional)
 
 > **Why is this an extra step?** Broadcasts cannot leave a Docker bridge network, and moving the whole app into the

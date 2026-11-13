@@ -883,6 +883,17 @@ test.describe('calendar split view', () => {
   });
 });
 
+test('?focus=search puts the cursor into the search field (browser extension, #65)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.goto('/?focus=search');
+  await expect(page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' })).toBeFocused();
+  // The parameter is dropped, so a reload does not grab the focus again.
+  await expect(page).toHaveURL(/\/$/);
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);

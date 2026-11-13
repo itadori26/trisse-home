@@ -43,6 +43,18 @@
   let shortcutHelp = $state(false);
   let dashboard = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
   let hero = $state<{ focus: () => void }>();
+
+  // ?focus=search (the browser extension's new tab, #65): put the cursor into
+  // the search field once it exists, then drop the parameter from the address.
+  let focusRequested = new URLSearchParams(location.search).get('focus') === 'search';
+  $effect(() => {
+    if (!focusRequested || !hero) return;
+    focusRequested = false;
+    hero.focus();
+    const url = new URL(location.href);
+    url.searchParams.delete('focus');
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+  });
   let launcherOpen = $state<Segment | null>(null);
   let launcherTrigger = $state<HTMLButtonElement>();
   let serviceStatus = $state<ReturnType<typeof statusSummary>>({ kind: 'none', offline: 0 });
