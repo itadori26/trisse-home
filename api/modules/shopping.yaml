@@ -1,0 +1,40 @@
+tags:
+  - name: shopping
+
+paths:
+  /api/shopping/settings:
+    get:
+      tags: [shopping]
+      summary: CalDAV task list settings (the password is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [shopping]
+      summary: Test and save the task list; an empty password keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { listUrl: { type: string }, username: { type: string }, password: { type: string } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error or list not readable } }
+  /api/shopping/items:
+    get:
+      tags: [shopping]
+      summary: Open items (oldest first) and the ten most recently completed ones, read live from the task list
+      responses: { "200": { description: OK }, "404": { description: Not configured }, "503": { description: Task list not reachable } }
+    post:
+      tags: [shopping]
+      summary: Add an item (VTODO via CalDAV PUT with If-None-Match)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { summary: { type: string, maxLength: 200 } } } } } }
+      responses: { "201": { description: Created }, "422": { description: Validation error } }
+  /api/shopping/items/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string }, description: CalDAV object name (….ics) }]
+    put:
+      tags: [shopping]
+      summary: Check or uncheck an item; only the completion properties change, written with If-Match
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { done: { type: boolean } } } } } }
+      responses: { "204": { description: Saved }, "404": { description: Not found }, "409": { description: Changed in another app meanwhile } }
+    delete:
+      tags: [shopping]
+      summary: Delete an item
+      responses: { "204": { description: Deleted }, "404": { description: Not found } }
+  /api/shopping/clear-completed:
+    post:
+      tags: [shopping]
+      summary: Delete all completed items
+      responses: { "200": { description: "Number of deleted items ({deleted})" } }

@@ -1,0 +1,17 @@
+tags:
+  - name: transfer
+
+paths:
+  /api/transfer/export:
+    get:
+      tags: [transfer]
+      summary: Download all user data (layout, bookmarks, notes, to-dos, feeds, services, settings) as a versioned JSON file; never contains secrets
+      responses: { "200": { description: "Export file (format trisse-home-export, version, exportedAt, sections)" } }
+  /api/transfer/import:
+    post:
+      tags: [transfer]
+      summary: Import an export file (max. 16 MB). Each contained section replaces the module's data atomically; sections of disabled modules are skipped
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { format: { type: string, enum: [trisse-home-export] }, version: { type: integer }, sections: { type: object } } } } } }
+      responses:
+        "200": { description: "Result (imported, skipped, failed with reasons)" }
+        "422": { description: Not an export file, unsupported version or too large }

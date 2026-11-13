@@ -7,6 +7,8 @@
 // existing file (#193):
 //
 //	cmd/server/module_<name>.go                       registers the backend module
+//	cmd/server/api_<name>_test.go                     its end-to-end check (#194)
+//	api/modules/<name>.yaml                           its OpenAPI fragment (#194)
 //	web/src/app/widgets/<name>.ts                     widget definition
 //	web/src/app/services/<name>.ts                    use cases in the container
 //	web/src/features/<name>/i18n/{en,de}.ts           UI texts
@@ -92,6 +94,8 @@ func files(d Data) []file {
 		{"frontend/app_service.ts.tmpl", "web/src/app/services/" + d.Name + ".ts"},
 		{"frontend/server_de.ts.tmpl", "web/src/shared/i18n/locales/server-de/" + d.Name + ".ts"},
 		{"docs/module.md.tmpl", "docs/modules/" + d.Name + ".md"},
+		{"api/module.yaml.tmpl", "api/modules/" + d.Name + ".yaml"},
+		{"backend/e2e_test.go.tmpl", "cmd/server/api_" + d.Name + "_test.go"},
 	}
 }
 

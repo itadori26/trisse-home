@@ -1,0 +1,216 @@
+tags:
+  - name: dashboard
+
+paths:
+  /api/dashboard:
+    get:
+      tags: [dashboard]
+      summary: All tabs with their widgets and the default tab by rules (creates a default tab on first use)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Dashboard" } } } }
+  /api/dashboard/tabs:
+    post:
+      tags: [dashboard]
+      summary: Create a tab
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TabName" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/order:
+    put:
+      tags: [dashboard]
+      summary: Reorder tabs (must list every tab once)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TabOrder" } } } }
+      responses:
+        "204": { description: Saved }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    patch:
+      tags: [dashboard]
+      summary: Rename a tab
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/TabName" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [dashboard]
+      summary: Delete a tab and its widgets
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: The last tab cannot be deleted, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/dashboard/tabs/{id}/widgets:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [dashboard]
+      summary: Add a widget to a tab
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/AddWidget" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Widget" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}/layout:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Store widget positions of a tab
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Layout" } } } }
+      responses:
+        "204": { description: Saved }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}/background:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Set the background image of a tab (http(s) URL; empty = global background)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { background: { type: string } } } } } }
+      responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/NotFound" }, "422": { description: Invalid URL } }
+  /api/dashboard/tabs/{id}/rules:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Set the rules that open a tab by default (at most 10; the first tab with a matching rule wins)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [rules], properties: { rules: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/TabRule" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/tabs/{id}/mobile-layout:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [dashboard]
+      summary: Store the phone layout of a tab (order, hidden on phones, height); widgets left out are appended
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [items], properties: { items: { type: array, items: { $ref: "#/components/schemas/MobileItem" } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [dashboard]
+      summary: Reset the phone layout so it follows the desktop grid again
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/dashboard/templates:
+    get:
+      tags: [dashboard]
+      summary: Tab templates
+      security: [{ session: [] }]
+      responses: { "200": { description: "OK (id, name, widgets, kinds)" } }
+    post:
+      tags: [dashboard]
+      summary: Save the widgets of a tab as a template
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { tabId: { type: string }, name: { type: string, maxLength: 40 } } } } } }
+      responses: { "201": { description: Created }, "404": { $ref: "#/components/responses/NotFound" }, "409": { description: Too many templates } }
+  /api/dashboard/templates/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    delete:
+      tags: [dashboard]
+      summary: Delete a template
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { $ref: "#/components/responses/NotFound" } }
+  /api/dashboard/templates/{id}/tabs:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [dashboard]
+      summary: Create a tab from a template (empty name = template name); widgets of disabled modules are skipped
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+      responses: { "201": { description: Created }, "404": { $ref: "#/components/responses/NotFound" } }
+  /api/dashboard/widgets/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    patch:
+      tags: [dashboard]
+      summary: Replace a widget's configuration
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/WidgetConfig" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Widget" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [dashboard]
+      summary: Remove a widget
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+schemas:
+  TabName: { type: object, required: [name], properties: { name: { type: string, maxLength: 40 } } }
+  TabOrder: { type: object, required: [tabIds], properties: { tabIds: { type: array, items: { type: string } } } }
+  Dashboard:
+    type: object
+    required: [tabs, defaultTabId]
+    properties:
+      tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } }
+      defaultTabId: { type: string, description: 'Tab whose rules match the server time and the client address; "" = keep the last used tab' }
+  MobileItem:
+    type: object
+    required: [id, hidden, rows]
+    properties:
+      id: { type: string, description: Widget ID }
+      hidden: { type: boolean, description: Hidden on phones only }
+      rows: { type: integer, minimum: 1, maximum: 24, description: Minimum height in grid rows }
+  TabRule:
+    type: object
+    description: Opens a tab by default. Empty parts always match; a range like 22:00–02:00 runs over midnight and belongs to the weekday it starts on.
+    properties:
+      days: { type: array, maxItems: 7, items: { type: integer, minimum: 0, maximum: 6 }, description: Weekdays, 0 = Sunday }
+      from: { type: string, example: "07:00", description: HH:MM, empty together with `to` = whole day }
+      to: { type: string, example: "09:30" }
+      networks: { type: array, maxItems: 10, items: { type: string, example: 192.168.178.0/24 }, description: CIDR ranges matched against the client address }
+  Tab:
+    type: object
+    required: [id, name, position, widgets]
+    properties:
+      id: { type: string }
+      name: { type: string }
+      position: { type: integer }
+      background: { type: string }
+      rules: { type: array, items: { $ref: "#/components/schemas/TabRule" } }
+      widgets: { type: array, items: { $ref: "#/components/schemas/Widget" } }
+      mobile: { type: array, items: { $ref: "#/components/schemas/MobileItem" }, description: Phone layout in display order (derived from the desktop grid until edited) }
+      mobileCustom: { type: boolean, description: "false = the phone layout follows the desktop grid" }
+  Widget:
+    allOf:
+      - $ref: "#/components/schemas/Rect"
+      - type: object
+        required: [id, tabId, kind, config]
+        properties:
+          id: { type: string }
+          tabId: { type: string }
+          kind: { type: string, examples: [clock, search, weather, services, bookmarks, notes, todos, rss, calendar, system, docker, adguard] }
+          config: { type: object, additionalProperties: true }
+  AddWidget:
+    allOf:
+      - $ref: "#/components/schemas/Rect"
+      - type: object
+        required: [kind]
+        properties:
+          kind: { type: string }
+          config: { type: object, additionalProperties: true }
+  WidgetConfig: { type: object, required: [config], properties: { config: { type: object, additionalProperties: true } } }
+  Layout:
+    type: object
+    required: [items]
+    properties:
+      items:
+        type: array
+        items: { allOf: [{ $ref: "#/components/schemas/Rect" }, { type: object, required: [id], properties: { id: { type: string } } }] }

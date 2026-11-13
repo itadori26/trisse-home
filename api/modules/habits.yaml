@@ -1,0 +1,72 @@
+tags:
+  - name: habits
+
+paths:
+  /api/habits:
+    get:
+      tags: [habits]
+      summary: Habits in order with done today, current and best streak and the 4-week heatmap, computed from the completions (#106)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Habit" } } } } }
+    post:
+      tags: [habits]
+      summary: Create a habit
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/HabitInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Habit" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/habits/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [habits]
+      summary: Change name, emoji and weekdays
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/HabitInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Habit" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [habits]
+      summary: Delete a habit and its completions
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/habits/{id}/toggle:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [habits]
+      summary: Check a habit off for today or yesterday, or undo it
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [date], properties: { date: { type: string, format: date, description: Today or yesterday } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Habit" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  HabitInput:
+    type: object
+    required: [name]
+    properties:
+      name: { type: string, maxLength: 60 }
+      emoji: { type: string, maxLength: 8 }
+      days: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, description: "Weekdays (0 = Sunday); empty = every day" }
+  Habit:
+    allOf:
+      - { $ref: "#/components/schemas/HabitInput" }
+      - type: object
+        required: [id, doneToday, current, best, heatmap]
+        properties:
+          id: { type: string }
+          doneToday: { type: boolean }
+          current: { type: integer, description: Due days in a row that were done; days off do not break it }
+          best: { type: integer }
+          heatmap:
+            type: array
+            description: Last 28 days, oldest first
+            items: { type: object, properties: { date: { type: string, format: date }, due: { type: boolean }, done: { type: boolean } } }

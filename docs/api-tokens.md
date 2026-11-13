@@ -28,7 +28,9 @@ curl -X POST -H "Authorization: Bearer th_…" -H "Content-Type: application/jso
   -d '{"title":"Milch kaufen"}' http://192.168.178.115:8090/api/todos
 ```
 
-All endpoints are described in [`api/openapi.yaml`](../api/openapi.yaml).
+All endpoints are described in OpenAPI: [`api/openapi.base.yaml`](../api/openapi.base.yaml)
+plus one fragment per module in [`api/modules/`](../api/modules/); `make openapi` merges
+them into `dist/openapi.yaml`.
 
 ## Example: iOS Shortcut "Add to-do"
 

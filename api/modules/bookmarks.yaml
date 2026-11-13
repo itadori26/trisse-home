@@ -1,0 +1,152 @@
+tags:
+  - name: bookmarks
+
+paths:
+  /api/bookmarks/settings:
+    get:
+      tags: [bookmarks]
+      summary: Opt-in outbound features (title/favicon fetching, weekly link check); both off by default
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkSettings" } } } } }
+    put:
+      tags: [bookmarks]
+      summary: Switch title/favicon fetching and the weekly link check
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkSettings" } } } }
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkSettings" } } } } }
+  /api/bookmarks/{id}/enrich:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [bookmarks]
+      summary: Fetch the favicon and – if the title is still the host name – the page title (requires the setting)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { description: Fetching is disabled }
+        "503": { description: The page could not be read }
+  /api/bookmarks/{id}/check:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [bookmarks]
+      summary: Check the link now (requires the setting)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { description: The link check is disabled }
+  /api/bookmarks/{id}/icon:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    get:
+      tags: [bookmarks]
+      summary: Stored favicon (PNG, ICO, JPEG, GIF or WebP; served with nosniff and a sandbox CSP)
+      responses:
+        "200": { description: The image, content: { image/png: {}, image/x-icon: {}, image/jpeg: {}, image/gif: {}, image/webp: {} } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/bookmarks:
+    get:
+      tags: [bookmarks]
+      summary: Bookmarks matching a filter, plus all folders and tags
+      parameters:
+        - { name: folder, in: query, schema: { type: string }, description: 'Folder ID, or "none" for bookmarks without folder' }
+        - { name: tag, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string }, description: Text search in title, URL and description }
+        - { name: status, in: query, schema: { type: string, enum: [broken] }, description: Only bookmarks whose last link check failed }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkList" } } } }
+    post:
+      tags: [bookmarks]
+      summary: Create a bookmark
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/bookmarks/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [bookmarks]
+      summary: Update a bookmark
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BookmarkInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Bookmark" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [bookmarks]
+      summary: Delete a bookmark
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/bookmarks/import:
+    post:
+      tags: [bookmarks]
+      summary: Import a browser bookmark export (Netscape HTML, max. 8 MB); folders are kept as "Parent / Child", existing URLs and non-http(s) links are skipped
+      requestBody: { required: true, content: { text/html: { schema: { type: string } } } }
+      responses:
+        "200": { description: "Counts (created, skippedInvalid, skippedExists, foldersCreated)" }
+        "422": { description: No bookmarks found or file too large }
+  /api/bookmarks/folders:
+    post:
+      tags: [bookmarks]
+      summary: Create a folder
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Name" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Folder" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/bookmarks/folders/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    patch:
+      tags: [bookmarks]
+      summary: Rename a folder
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Name" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Folder" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [bookmarks]
+      summary: Delete a folder (its bookmarks are kept without folder)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+schemas:
+  Name: { type: object, required: [name], properties: { name: { type: string } } }
+  BookmarkInput:
+    type: object
+    required: [url]
+    properties:
+      folderId: { type: string }
+      title: { type: string, maxLength: 200 }
+      url: { type: string, format: uri }
+      description: { type: string, maxLength: 1000 }
+      tags: { type: array, maxItems: 10, items: { type: string, maxLength: 30 } }
+  Bookmark:
+    allOf:
+      - $ref: "#/components/schemas/BookmarkInput"
+      - type: object
+        properties:
+          id: { type: string }
+          createdAt: { type: string, format: date-time }
+          hasIcon: { type: boolean, description: "A favicon is stored (GET /api/bookmarks/{id}/icon)" }
+          link:
+            type: object
+            description: Result of the last link check
+            properties:
+              state: { type: string, enum: ["", ok, redirect, broken], description: '"" = not checked yet' }
+              code: { type: integer, description: HTTP status, 0 when unreachable }
+              target: { type: string, description: Final URL of a redirect }
+              checkedAt: { type: string, description: RFC 3339 or empty }
+  BookmarkSettings: { type: object, properties: { enrich: { type: boolean }, checkLinks: { type: boolean } } }
+  Folder: { type: object, properties: { id: { type: string }, name: { type: string }, position: { type: integer }, count: { type: integer } } }
+  BookmarkList:
+    type: object
+    properties:
+      bookmarks: { type: array, items: { $ref: "#/components/schemas/Bookmark" } }
+      folders: { type: array, items: { $ref: "#/components/schemas/Folder" } }
+      tags: { type: array, items: { type: object, properties: { name: { type: string }, count: { type: integer } } } }

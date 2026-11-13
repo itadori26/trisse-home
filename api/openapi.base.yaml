@@ -1,0 +1,131 @@
+openapi: 3.1.0
+info:
+  title: trisse-home API
+  version: 1.0.0
+  summary: JSON API of trisse-home, a self-hosted personal start page.
+  description: |
+    All endpoints below `/api/` except the ones marked as public require a
+    session cookie (`trisse_session`, or `__Host-trisse_session` when
+    `COOKIE_SECURE=true`). State-changing requests (POST, PUT, PATCH, DELETE)
+    additionally require the session's CSRF token in the `X-CSRF-Token`
+    header; it is returned by login, setup and `GET /api/auth/status`.
+    Cross-site requests are rejected (Sec-Fetch-Site / Origin checks).
+
+    Errors use a common envelope (`ErrorBody`). Validation errors are
+    returned as 422 with the offending `field`.
+
+    Endpoints of modules disabled via `MODULES_DISABLED` return 404.
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8090
+security:
+  - session: []
+  - apiToken: []
+tags:
+  - name: auth
+  - name: system
+  - name: platform
+
+paths:
+  /healthz:
+    get:
+      tags: [platform]
+      summary: Health check (database reachable)
+      security: []
+      responses:
+        "200": { description: Healthy, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: Database unavailable }
+  /api/modules:
+    get:
+      tags: [platform]
+      summary: Enabled modules and widget kinds
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ModulesInfo" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: trisse_session
+      description: HttpOnly, SameSite=Strict session cookie (`__Host-trisse_session` with COOKIE_SECURE=true).
+    csrf:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Per-session CSRF token, required for state-changing requests.
+    apiToken:
+      type: http
+      scheme: bearer
+      description: Personal API token (th_…) with module scopes such as todos:write; no CSRF token needed. Cannot reach /api/auth. See docs/api-tokens.md.
+  parameters:
+    id: { name: id, in: path, required: true, schema: { type: string } }
+  responses:
+    Session: { description: Session started; the cookie is set, content: { application/json: { schema: { $ref: "#/components/schemas/Session" } } } }
+    SearchSettings: { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SearchSettings" } } } }
+    Unauthorized: { description: Missing or invalid session or credentials, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    NotFound: { description: Not found, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    Invalid: { description: Validation failed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    TooManyRequests: { description: Too many failed attempts, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    Unavailable: { description: Upstream service unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  schemas:
+    ErrorBody:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, enum: [bad_request, invalid, not_found, conflict, unauthorized, forbidden, too_many_requests, unavailable, internal] }
+            message: { type: string }
+            field: { type: string }
+    Health: { type: object, properties: { status: { type: string, enum: [ok, unavailable] } } }
+    ModulesInfo:
+      type: object
+      required: [modules, widgetKinds]
+      properties:
+        modules: { type: array, items: { type: string } }
+        widgetKinds: { type: array, items: { type: string } }
+    Session:
+      type: object
+      required: [csrfToken, expiresAt]
+      properties:
+        csrfToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+    Rect:
+      type: object
+      required: [x, y, w, h]
+      properties:
+        x: { type: integer, minimum: 0, maximum: 11 }
+        y: { type: integer, minimum: 0, maximum: 500 }
+        w: { type: integer, minimum: 1, maximum: 12 }
+        h: { type: integer, minimum: 1, maximum: 24 }
+    SearchSettings:
+      type: object
+      required: [defaultProvider, providers, shortcuts]
+      properties:
+        defaultProvider: { type: string, examples: [duckduckgo] }
+        providers: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string } } } }
+        shortcuts: { type: array, items: { $ref: "#/components/schemas/Shortcut" } }
+    Shortcut:
+      type: object
+      required: [keyword, name, urlTemplate]
+      properties:
+        keyword: { type: string, pattern: '^!?[a-z0-9]{1,16}$' }
+        name: { type: string }
+        urlTemplate: { type: string, description: 'http(s) URL containing {query}' }
+    TodoRepeat:
+      type: object
+      properties:
+        kind: { type: string, enum: ["", daily, weekly, monthly, after], description: '"" = no repeat; "after" = N days after completion' }
+        every: { type: integer, minimum: 1, maximum: 365 }
+        days: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, description: Weekdays of weekly rules (0 = Sunday) }
+    TodoReminder:
+      type: object
+      properties:
+        at: { type: string, example: "08:00", description: 'HH:MM; "" = no reminder (needs a due date). Sent once as a "reminder" notification.' }
+        daysBefore: { type: integer, minimum: 0, maximum: 30 }
+    Usage: { type: object, properties: { total: { type: integer }, used: { type: integer }, percent: { type: number } } }

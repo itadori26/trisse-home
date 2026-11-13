@@ -92,8 +92,16 @@ check-generated: generate ## Fail if generated files are out of date
 test-deploy: ## Test the server deploy script with stubbed git and docker (#211)
 	bash scripts/deploy/deploy_test.sh
 
+.PHONY: openapi
+openapi: ## Build the merged OpenAPI document dist/openapi.yaml from api/openapi.base.yaml and api/modules/*.yaml
+	go run ./scripts/openapi -o dist/openapi.yaml
+
+.PHONY: check-openapi
+check-openapi: ## Validate the OpenAPI fragments (no duplicates, declared tags, resolvable $refs)
+	go run ./scripts/openapi -check
+
 .PHONY: ci
-ci: lint test test-deploy check-generated build ## Everything CI runs
+ci: lint test test-deploy check-generated check-openapi build ## Everything CI runs
 
 .PHONY: docker-build
 docker-build: ## Build the container image
