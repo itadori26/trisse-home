@@ -102,6 +102,9 @@ func (uc *speedtest) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 	token := in.Token
 	if token == "" {
 		if old, err := uc.repo.Load(ctx); err == nil {
+			if kernel.TargetChanged([]string{old.URL}, []string{in.URL}) {
+				return SettingsView{}, kernel.SecretRequired("token")
+			}
 			token = old.Token
 		}
 	}
@@ -111,7 +114,7 @@ func (uc *speedtest) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 	}
 	list, err := uc.source.Results(ctx, s, uc.clock.Now().Add(-HistoryRange))
 	if err != nil {
-		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not connect to Speedtest Tracker: {detail}", "detail", err.Error())
+		return SettingsView{}, kernel.TargetFailure(kernel.ErrInvalid, err)
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)

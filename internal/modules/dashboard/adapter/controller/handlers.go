@@ -208,6 +208,35 @@ func (h *Handlers) SetRules(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Tab(res))
 }
 
+// SaveMobileLayout handles PUT /api/dashboard/tabs/{id}/mobile-layout.
+func (h *Handlers) SaveMobileLayout(w http.ResponseWriter, r *http.Request) {
+	var dto MobileLayoutDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	in := make([]domain.MobileEntry, 0, len(dto.Items))
+	for _, x := range dto.Items {
+		in = append(in, domain.MobileEntry{WidgetID: x.ID, Hidden: x.Hidden, Rows: x.Rows})
+	}
+	res, err := h.tabs.SaveMobileLayout(r.Context(), r.PathValue("id"), in)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Tab(res))
+}
+
+// ResetMobileLayout handles DELETE /api/dashboard/tabs/{id}/mobile-layout.
+func (h *Handlers) ResetMobileLayout(w http.ResponseWriter, r *http.Request) {
+	res, err := h.tabs.ResetMobileLayout(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Tab(res))
+}
+
 // ListTemplates handles GET /api/dashboard/templates.
 func (h *Handlers) ListTemplates(w http.ResponseWriter, r *http.Request) {
 	res, err := h.templates.List(r.Context())

@@ -26,6 +26,8 @@ export interface RssConfig {
   feedId: string;
   unreadOnly: boolean;
   limit: number;
+  /** Titles only: feed name and age move into the link's tooltip (#125). */
+  compact: boolean;
 }
 
 /** Reads a stored widget configuration. */
@@ -35,7 +37,21 @@ export function parseRssConfig(raw: Record<string, unknown>): RssConfig {
     feedId: typeof raw['feedId'] === 'string' ? raw['feedId'] : '',
     unreadOnly: raw['unreadOnly'] !== false,
     limit: Math.min(Math.max(limit, 5), 100),
+    compact: raw['compact'] === true,
   };
+}
+
+/**
+ * The "feed · age" line of an entry. The feed name is left out when the widget
+ * shows a single feed, where it would only repeat itself.
+ */
+export function itemMeta(
+  item: Pick<FeedItem, 'feedTitle' | 'publishedAt'>,
+  singleFeed: boolean,
+  now: Date,
+): string {
+  const when = age(item.publishedAt, now);
+  return singleFeed || !item.feedTitle ? when : `${item.feedTitle} · ${when}`;
 }
 
 /** Formats an age such as "5 min", "3 h" or "2 d". */

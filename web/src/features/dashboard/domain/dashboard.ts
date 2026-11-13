@@ -1,6 +1,7 @@
 import type { WidgetCategory } from './catalog';
 import { t } from '../../../shared/i18n';
 import type { LayoutItem } from './layout';
+import type { MobileItem } from './mobile';
 
 /** Opaque widget configuration owned by the widget's feature. */
 export type WidgetConfig = Record<string, unknown>;
@@ -22,6 +23,10 @@ export interface Tab {
   /** Rules that open this tab by default (#71). */
   rules: TabRule[];
   widgets: Widget[];
+  /** Phone layout in display order (#92). */
+  mobile: MobileItem[];
+  /** False while the phone layout follows the desktop grid. */
+  mobileCustom: boolean;
 }
 
 /**

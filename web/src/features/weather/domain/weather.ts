@@ -25,6 +25,8 @@ export interface Forecast {
   apparentTemperature: number;
   humidity: number;
   windSpeed: number;
+  /** Degrees the wind comes from (0 = north, 90 = east); null when unknown (#118). */
+  windDirection: number | null;
   code: number;
   isDay: boolean;
   days: ForecastDay[];
@@ -142,4 +144,19 @@ export function validity(w: Pick<WeatherWarning, 'onset' | 'expires'>, now: Date
 /** Cache-busting key that changes every five minutes (radar refresh). */
 export function radarKey(now: Date): number {
   return Math.floor(now.getTime() / 300_000);
+}
+
+/** The eight points of the compass rose. */
+export type Compass = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
+
+const COMPASS: readonly Compass[] = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+
+/**
+ * The compass point a direction in degrees belongs to. Each point covers 45°
+ * centred on itself, so north is [337.5°, 22.5°). Angles outside 0-360 wrap
+ * around (-45 is north-west).
+ */
+export function compass(degrees: number): Compass {
+  const normalised = ((degrees % 360) + 360) % 360;
+  return COMPASS[Math.round(normalised / 45) % 8] ?? 'n';
 }

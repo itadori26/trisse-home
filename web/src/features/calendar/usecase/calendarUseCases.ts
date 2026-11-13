@@ -1,8 +1,11 @@
 import {
   type CalendarEvent,
   type CalendarSettings,
+  type CalendarSubscription,
   type NewEventInput,
+  type SubscriptionInput,
   validateNewEvent,
+  validateSubscription,
 } from '../domain/calendar';
 
 /** Upcoming events with status information. */
@@ -25,6 +28,10 @@ export interface CalendarGateway {
     start: string;
     end: string;
   }): Promise<CalendarEvent>;
+  subscriptions(): Promise<CalendarSubscription[]>;
+  addSubscription(input: SubscriptionInput): Promise<CalendarSubscription>;
+  updateSubscription(id: string, input: SubscriptionInput): Promise<CalendarSubscription>;
+  deleteSubscription(id: string): Promise<void>;
 }
 
 /** Application logic of the calendar feature. */
@@ -67,5 +74,22 @@ export class CalendarUseCases {
       return this.gateway.create({ ...base, start: input.date, end: input.endDate || input.date });
     const at = (time: string) => new Date(`${input.date}T${time}`).toISOString();
     return this.gateway.create({ ...base, start: at(input.startTime), end: at(input.endTime) });
+  }
+
+  /** ICS subscriptions (#98). */
+  subscriptions(): Promise<CalendarSubscription[]> {
+    return this.gateway.subscriptions();
+  }
+
+  /** Adds or updates a subscription after validation; an empty URL keeps the stored one. */
+  saveSubscription(input: SubscriptionInput, id?: string): Promise<CalendarSubscription> {
+    const problem = validateSubscription(input, !id);
+    if (problem) return Promise.reject(new Error(problem));
+    const clean = { ...input, name: input.name.trim(), url: input.url.trim() };
+    return id ? this.gateway.updateSubscription(id, clean) : this.gateway.addSubscription(clean);
+  }
+
+  deleteSubscription(id: string): Promise<void> {
+    return this.gateway.deleteSubscription(id);
   }
 }

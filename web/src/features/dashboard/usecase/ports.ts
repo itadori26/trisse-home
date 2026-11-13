@@ -1,5 +1,6 @@
 import type { Dashboard, Tab, TabRule, TabTemplate, Widget, WidgetConfig } from '../domain/dashboard';
 import type { LayoutItem, Rect } from '../domain/layout';
+import type { MobileItem } from '../domain/mobile';
 
 /** Output port: persistence of tabs and widgets. */
 export interface DashboardGateway {
@@ -14,6 +15,8 @@ export interface DashboardGateway {
   deleteWidget(id: string): Promise<void>;
   setBackground(tabId: string, background: string): Promise<Tab>;
   setRules(tabId: string, rules: TabRule[]): Promise<Tab>;
+  saveMobileLayout(tabId: string, items: MobileItem[]): Promise<Tab>;
+  resetMobileLayout(tabId: string): Promise<Tab>;
   listTemplates(): Promise<TabTemplate[]>;
   saveTemplate(tabId: string, name: string): Promise<TabTemplate>;
   deleteTemplate(id: string): Promise<void>;

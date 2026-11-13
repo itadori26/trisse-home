@@ -57,3 +57,11 @@ func TestReport(t *testing.T) {
 		t.Fatal(buf.String())
 	}
 }
+
+func TestReportListsThePiImage(t *testing.T) {
+	var buf bytes.Buffer
+	exceeded := report(&buf, Measurements{PiImage: 560}, Measurements{PiImage: 613}, Measurements{})
+	if len(exceeded) != 0 || !strings.Contains(buf.String(), "Raspberry Pi image (.img.xz) | 560.0 MB | 613.0 MB") {
+		t.Fatalf("exceeded %v, table:\n%s", exceeded, buf.String())
+	}
+}

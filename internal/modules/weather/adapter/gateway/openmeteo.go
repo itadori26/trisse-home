@@ -43,8 +43,10 @@ type forecastPayload struct {
 		ApparentTemperature float64 `json:"apparent_temperature"`
 		Humidity            float64 `json:"relative_humidity_2m"`
 		WindSpeed           float64 `json:"wind_speed_10m"`
-		WeatherCode         int     `json:"weather_code"`
-		IsDay               int     `json:"is_day"`
+		// WindDirection is absent when the service has no value; a pointer keeps "north" (0) apart from "unknown".
+		WindDirection *float64 `json:"wind_direction_10m"`
+		WeatherCode   int      `json:"weather_code"`
+		IsDay         int      `json:"is_day"`
 	} `json:"current"`
 	Daily struct {
 		Time           []string   `json:"time"`
@@ -60,7 +62,7 @@ func (o *OpenMeteo) Forecast(ctx context.Context, loc domain.Location) (domain.F
 	q := url.Values{}
 	q.Set("latitude", strconv.FormatFloat(loc.Lat(), 'f', 2, 64))
 	q.Set("longitude", strconv.FormatFloat(loc.Lon(), 'f', 2, 64))
-	q.Set("current", "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day")
+	q.Set("current", "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code,is_day")
 	q.Set("daily", "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max")
 	q.Set("timezone", "auto")
 	q.Set("forecast_days", strconv.Itoa(forecastDays))
@@ -75,6 +77,10 @@ func (o *OpenMeteo) Forecast(ctx context.Context, loc domain.Location) (domain.F
 			Humidity: p.Current.Humidity, WindSpeed: p.Current.WindSpeed,
 			WeatherCode: p.Current.WeatherCode, IsDay: p.Current.IsDay == 1,
 		},
+	}
+	if p.Current.WindDirection != nil {
+		f.Current.WindDirection = domain.NormalizeDegrees(*p.Current.WindDirection)
+		f.Current.HasWindDirection = true
 	}
 	d := p.Daily
 	for i, day := range d.Time {

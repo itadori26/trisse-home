@@ -66,6 +66,9 @@ type PublicError struct {
 	// Template and Params: see ValidationError.
 	Template string
 	Params   map[string]string
+	// Cause is the technical error behind it (e.g. of an outbound call,
+	// #191). It is logged by the transport and never shown to the user.
+	Cause error
 }
 
 // NewPublicError returns an error of the given kind with a user-facing

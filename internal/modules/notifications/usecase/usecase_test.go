@@ -106,6 +106,11 @@ func TestAlert(t *testing.T) {
 	if len(sender.sent) != 1 {
 		t.Fatal("security rule off must suppress the alert")
 	}
+	n.Alert(ctx, kernel.Alert{Kind: "reminder", Title: "Water the plants"})
+	nn.Wait()
+	if got := sender.sent[len(sender.sent)-1]; got.Severity != domain.SeverityInfo || got.Tags[0] != "bell" {
+		t.Fatalf("reminder must be an info message with a bell: %+v", got)
+	}
 }
 
 type memChannels struct{ list []domain.Channel }

@@ -14,3 +14,54 @@ export interface NoteDTO {
   createdAt: string /* RFC 3339 */;
   updatedAt: string /* RFC 3339 */;
 }
+/**
+ * SegmentDTO is a piece of highlighted search output; hit marks a match.
+ * Text is plain text, never HTML.
+ */
+export interface SegmentDTO {
+  text: string;
+  hit: boolean;
+}
+/**
+ * SearchHitDTO is a note found by GET /api/notes/search (#73).
+ */
+export interface SearchHitDTO {
+  id: string;
+  title: SegmentDTO[];
+  snippet: SegmentDTO[];
+}
+/**
+ * NoteRefDTO names a note (backlinks, #73).
+ */
+export interface NoteRefDTO {
+  id: string;
+  title: string;
+}
+/**
+ * RevisionDTO describes an earlier version of a note (#73).
+ */
+export interface RevisionDTO {
+  id: string;
+  title: string;
+  createdAt: string /* RFC 3339 */;
+  size: number /* int */;
+}
+/**
+ * DiffLineDTO is one line of a diff: op " ", "+" or "-".
+ */
+export interface DiffLineDTO {
+  op: string;
+  text: string;
+}
+/**
+ * RevisionDetailDTO is a revision with its body and the diff from the
+ * revision to the current note.
+ */
+export interface RevisionDetailDTO {
+  id: string;
+  title: string;
+  createdAt: string /* RFC 3339 */;
+  size: number /* int */;
+  body: string;
+  diff: DiffLineDTO[];
+}

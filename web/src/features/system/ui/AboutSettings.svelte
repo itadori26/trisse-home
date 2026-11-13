@@ -1,7 +1,7 @@
 <script lang="ts">
   import { errorMessage } from '../../../shared/api-client/http';
   import { t } from '../../../shared/i18n';
-  import type { VersionInfo } from '../domain/system';
+  import { updateHintKey, type VersionInfo } from '../domain/system';
   import type { SystemUseCases } from '../usecase/systemUseCases';
 
   /** Props of the about section (version and update check). */
@@ -37,10 +37,15 @@
     {t('system.update_check')}
   </label>
   <p class="muted small">{t('system.update_check_hint')}</p>
+  {#if info.installMethod === 'appliance'}
+    <p class="muted small">{t('system.update_how_appliance')}</p>
+  {/if}
   {#if info.updateAvailable && info.latest}
+    {@const hint = updateHintKey(info.installMethod)}
     <p class="update" role="status">
       {t('system.update_available', { version: info.latest.version })}
       <a href={info.latest.url} target="_blank" rel="noopener noreferrer">{t('system.release_notes')}</a>
+      {#if hint}<br />{t(hint)}{/if}
     </p>
   {:else if info.checkEnabled && info.latest}
     <p class="muted">{t('system.up_to_date')}</p>

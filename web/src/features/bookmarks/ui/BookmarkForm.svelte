@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { t } from '../../../shared/i18n';
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
-  import { type Bookmark, type Folder, parseTags } from '../domain/bookmark';
+  import { type Bookmark, type Folder, linkProblem, parseTags } from '../domain/bookmark';
   import type { BookmarksUseCases } from '../usecase/bookmarksUseCases';
 
   /** Props of the bookmark create/edit form. */
@@ -25,6 +25,30 @@
     folderId: bookmark?.folderId ?? folderId,
   });
   let error = $state('');
+  let info = $state('');
+  let busy = $state(false);
+
+  /** Re-fetches title and icon or checks the link of a saved bookmark (#72). */
+  async function action(kind: 'enrich' | 'check') {
+    if (!bookmark) return;
+    error = info = '';
+    busy = true;
+    try {
+      const b =
+        kind === 'enrich' ? await bookmarks.enrich(bookmark.id) : await bookmarks.checkLink(bookmark.id);
+      if (kind === 'enrich') form.title = b.title;
+      info =
+        kind === 'enrich'
+          ? b.hasIcon
+            ? t('bookmarks.enriched')
+            : t('bookmarks.enriched_no_icon')
+          : linkProblem(b.link, intlLocale()) || t('bookmarks.link_ok');
+    } catch (err) {
+      error = errorMessage(err);
+    } finally {
+      busy = false;
+    }
+  }
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -71,5 +95,24 @@
     /></label
   >
   {#if error}<p class="error" role="alert">{error}</p>{/if}
-  <button class="btn btn-primary" type="submit">{t('bookmarks.save')}</button>
+  {#if info}<p class="muted" role="status">{info}</p>{/if}
+  <p class="actions">
+    <button class="btn btn-primary" type="submit">{t('bookmarks.save')}</button>
+    {#if bookmark}
+      <button class="btn" type="button" disabled={busy} onclick={() => action('enrich')}
+        >{t('bookmarks.fetch_title_icon')}</button
+      >
+      <button class="btn" type="button" disabled={busy} onclick={() => action('check')}
+        >{t('bookmarks.check_link')}</button
+      >
+    {/if}
+  </p>
 </form>
+
+<style>
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+</style>

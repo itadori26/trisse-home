@@ -1,7 +1,19 @@
 // Command newmodule creates a new feature module from templates: backend
-// (internal/modules/<name>, all four rings with tests and a migration) and
-// frontend (web/src/features/<name> with a widget), and registers it in the
-// composition roots, tygo.yaml and both message catalogues.
+// (internal/modules/<name>, all four rings with tests and a migration),
+// frontend (web/src/features/<name> with a widget) and the glue that makes
+// the module known to the application.
+//
+// The glue lives in files of the module itself, so creating a module edits no
+// existing file (#193):
+//
+//	cmd/server/module_<name>.go                       registers the backend module
+//	web/src/app/widgets/<name>.ts                     widget definition
+//	web/src/app/services/<name>.ts                    use cases in the container
+//	web/src/features/<name>/i18n/{en,de}.ts           UI texts
+//	web/src/shared/i18n/locales/server-de/<name>.ts   German backend messages
+//	docs/modules/<name>.md                            documentation
+//
+// tygo and the backend message catalogue find the module by convention.
 //
 // Usage: go run ./scripts/newmodule -name recipes [-title "Recipes"]
 // (or: make new-module NAME=recipes)
@@ -19,6 +31,8 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+
+	"trisse-home/internal/shared/kernel"
 )
 
 //go:embed templates
@@ -29,9 +43,19 @@ type Data struct {
 	Name   string // package and URL name, e.g. "recipes"
 	Pascal string // "Recipes"
 	Title  string // human-readable, e.g. "Recipes"
+	// KeyNotFound and KeyTitle are the kernel.MessageKey of the two backend
+	// messages of the domain template, for the German translations.
+	KeyNotFound, KeyTitle string
 }
 
 var namePattern = regexp.MustCompile(`^[a-z][a-z0-9]{1,19}$`)
+
+// withKeys fills the message keys of the domain template for d.Title.
+func withKeys(d Data) Data {
+	d.KeyNotFound = kernel.MessageKey("The " + d.Title + " item does not exist.")
+	d.KeyTitle = kernel.MessageKey("The title of a " + d.Title + " item must be between 1 and 200 characters long.")
+	return d
+}
 
 // file maps a template to its output path (relative to the repository root).
 type file struct{ tmpl, out string }
@@ -54,6 +78,7 @@ func files(d Data) []file {
 		{"backend/handlers.go.tmpl", b + "/adapter/controller/handlers.go"},
 		{"backend/handlers_test.go.tmpl", b + "/adapter/controller/handlers_test.go"},
 		{"backend/module.go.tmpl", b + "/module.go"},
+		{"backend/register.go.tmpl", "cmd/server/module_" + d.Name + ".go"},
 		{"frontend/domain.ts.tmpl", f + "/domain/" + d.Name + ".ts"},
 		{"frontend/domain.test.ts.tmpl", f + "/domain/" + d.Name + ".test.ts"},
 		{"frontend/usecase.ts.tmpl", f + "/usecase/" + d.Name + "UseCases.ts"},
@@ -61,6 +86,12 @@ func files(d Data) []file {
 		{"frontend/api.ts.tmpl", f + "/adapter/api/" + d.Name + "Api.ts"},
 		{"frontend/widget.svelte.tmpl", f + "/ui/" + d.Pascal + "Widget.svelte"},
 		{"frontend/index.ts.tmpl", f + "/index.ts"},
+		{"frontend/i18n_en.ts.tmpl", f + "/i18n/en.ts"},
+		{"frontend/i18n_de.ts.tmpl", f + "/i18n/de.ts"},
+		{"frontend/app_widget.ts.tmpl", "web/src/app/widgets/" + d.Name + ".ts"},
+		{"frontend/app_service.ts.tmpl", "web/src/app/services/" + d.Name + ".ts"},
+		{"frontend/server_de.ts.tmpl", "web/src/shared/i18n/locales/server-de/" + d.Name + ".ts"},
+		{"docs/module.md.tmpl", "docs/modules/" + d.Name + ".md"},
 	}
 }
 
@@ -80,108 +111,6 @@ func render(name string, d Data) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// insertBefore inserts text on a new line before the line containing marker.
-func insertBefore(src, marker, text string) (string, error) {
-	i := strings.Index(src, marker)
-	if i < 0 {
-		return "", fmt.Errorf("marker %q not found", marker)
-	}
-	lineStart := strings.LastIndex(src[:i], "\n") + 1
-	return src[:lineStart] + text + src[lineStart:], nil
-}
-
-// insertAfterLastImport adds an import line after the last top-level import.
-func insertAfterLastImport(src, line string) string {
-	lines := strings.Split(src, "\n")
-	last := -1
-	for i, l := range lines {
-		if strings.HasPrefix(l, "import ") {
-			last = i
-		}
-	}
-	lines = append(lines[:last+1], append([]string{line}, lines[last+1:]...)...)
-	return strings.Join(lines, "\n")
-}
-
-type edit func(string, Data) (string, error)
-
-var registrations = map[string]edit{
-	"cmd/server/modules.go": func(s string, d Data) (string, error) {
-		s, err := insertBefore(s, "// scaffold:modules", fmt.Sprintf("\t\t{%q, func() modules.Module { return %s.New(db, clk, ids) }},\n", d.Name, d.Name))
-		if err != nil {
-			return "", err
-		}
-		s = strings.Replace(s, "\t\"trisse-home/internal/modules\"\n", "\t\"trisse-home/internal/modules\"\n\t\"trisse-home/internal/modules/"+d.Name+"\"\n", 1)
-		out, err := format.Source([]byte(s))
-		return string(out), err
-	},
-	"tygo.yaml": func(s string, d Data) (string, error) {
-		return strings.TrimRight(s, "\n") + fmt.Sprintf(`
-  - path: "trisse-home/internal/modules/%[1]s/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/%[1]s.ts"
-  - path: "trisse-home/internal/modules/%[1]s/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/%[1]s-requests.ts"
-    include_files: ["dto.go"]
-`, d.Name), nil
-	},
-	"web/src/app/container.ts": func(s string, d Data) (string, error) {
-		s = insertAfterLastImport(s, fmt.Sprintf("import { %[1]sApi, %[1]sUseCases } from '../features/%[2]s';", d.Pascal, d.Name))
-		s, err := insertBefore(s, "// scaffold:container-fields", fmt.Sprintf("  %s: %sUseCases;\n", d.Name, d.Pascal))
-		if err != nil {
-			return "", err
-		}
-		return insertBefore(s, "// scaffold:container-init", fmt.Sprintf("    %s: new %sUseCases(new %sApi(http)),\n", d.Name, d.Pascal, d.Pascal))
-	},
-	"web/src/app/widgets.ts": func(s string, d Data) (string, error) {
-		s = insertAfterLastImport(s, fmt.Sprintf("import { %sWidget } from '../features/%s';", d.Pascal, d.Name))
-		return insertBefore(s, "// scaffold:widgets", fmt.Sprintf(`  {
-    type: {
-      kind: '%[1]s',
-      get title() {
-        return t('widget.%[1]s.title');
-      },
-      get description() {
-        return t('widget.%[1]s.description');
-      },
-      defaultSize: { w: 4, h: 3 },
-    },
-    view: renderer(%[2]sWidget, (_config, c) => ({ %[1]s: c.%[1]s })),
-  },
-`, d.Name, d.Pascal))
-	},
-	"web/src/shared/i18n/locales/en.ts": func(s string, d Data) (string, error) {
-		return insertBefore(s, "} as const;", messages(d, map[string]string{
-			"widget." + d.Name + ".title":       d.Title,
-			"widget." + d.Name + ".description": "Example widget of the " + d.Title + " module.",
-			d.Name + ".add_placeholder":         "New item…",
-			d.Name + ".remove":                  "Remove {title}",
-			d.Name + ".empty":                   "No items yet.",
-		}))
-	},
-	"web/src/shared/i18n/locales/de.ts": func(s string, d Data) (string, error) {
-		i := strings.LastIndex(s, "};")
-		if i < 0 {
-			return "", errors.New("end of the German catalogue not found")
-		}
-		return s[:i] + messages(d, map[string]string{
-			"widget." + d.Name + ".title":       d.Title,
-			"widget." + d.Name + ".description": "Beispiel-Widget des Moduls " + d.Title + ".",
-			d.Name + ".add_placeholder":         "Neuer Eintrag …",
-			d.Name + ".remove":                  "{title} entfernen",
-			d.Name + ".empty":                   "Noch keine Einträge.",
-		}) + s[i:], nil
-	},
-}
-
-func messages(d Data, m map[string]string) string {
-	keys := []string{"widget." + d.Name + ".title", "widget." + d.Name + ".description", d.Name + ".add_placeholder", d.Name + ".remove", d.Name + ".empty"}
-	var b strings.Builder
-	for _, k := range keys {
-		fmt.Fprintf(&b, "  %q: %q,\n", k, m[k])
-	}
-	return b.String()
-}
-
 func run(root string, d Data) error {
 	if !namePattern.MatchString(d.Name) {
 		return errors.New("the name must be 2-20 lowercase letters or digits and start with a letter")
@@ -189,30 +118,30 @@ func run(root string, d Data) error {
 	if _, err := os.Stat(filepath.Join(root, "internal/modules", d.Name)); err == nil {
 		return fmt.Errorf("module %q already exists", d.Name)
 	}
+	d = withKeys(d)
+	// Render everything first, so a template error leaves no half-created module.
+	type output struct {
+		path string
+		data []byte
+	}
+	var outs []output
 	for _, f := range files(d) {
-		out, err := render(f.tmpl, d)
+		data, err := render(f.tmpl, d)
 		if err != nil {
 			return fmt.Errorf("%s: %w", f.tmpl, err)
 		}
-		path := filepath.Join(root, f.out)
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nolint:gosec // source directories are world-readable
-			return err
-		}
-		if err := os.WriteFile(path, out, 0o644); err != nil { //nolint:gosec // source files are world-readable
-			return err
+		outs = append(outs, output{filepath.Join(root, f.out), data})
+	}
+	for _, o := range outs {
+		if _, err := os.Stat(o.path); err == nil {
+			return fmt.Errorf("%s already exists", o.path)
 		}
 	}
-	for path, change := range registrations {
-		full := filepath.Join(root, path)
-		src, err := os.ReadFile(full) //nolint:gosec // fixed paths inside the repository
-		if err != nil {
+	for _, o := range outs {
+		if err := os.MkdirAll(filepath.Dir(o.path), 0o755); err != nil { //nolint:gosec // source directories are world-readable
 			return err
 		}
-		out, err := change(string(src), d)
-		if err != nil {
-			return fmt.Errorf("%s: %w", path, err)
-		}
-		if err := os.WriteFile(full, []byte(out), 0o644); err != nil { //nolint:gosec // source files are world-readable
+		if err := os.WriteFile(o.path, o.data, 0o644); err != nil { //nolint:gosec // source files are world-readable
 			return err
 		}
 	}
@@ -233,5 +162,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "newmodule:", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Created module %s. Next: make generate && (cd web && npx prettier --write src) && make ci\n", d.Name)
+	fmt.Printf("Created module %s; no existing file was changed.\n"+
+		"Next: make generate && (cd web && npx prettier --write src) && make ci\n"+
+		"Then adjust the picker category and icon in web/src/app/widgets/%s.ts and describe the module in docs/modules/%s.md.\n",
+		d.Name, d.Name, d.Name)
 }

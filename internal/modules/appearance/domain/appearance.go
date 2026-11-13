@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"trisse-home/internal/shared/kernel"
 )
@@ -35,7 +37,56 @@ type Appearance struct {
 	backgroundImage string
 	customCSS       string
 	language        string
+	greetingName    string
+	launcher        Launcher
 }
+
+// Launcher says what the launcher of the top bar lists (#189).
+type Launcher string
+
+// Launcher contents; both is the default.
+const (
+	LauncherBoth      Launcher = "both"
+	LauncherServices  Launcher = "services"
+	LauncherBookmarks Launcher = "bookmarks"
+)
+
+// SetLauncher chooses the launcher content; empty means both.
+func (a *Appearance) SetLauncher(l string) error {
+	switch Launcher(l) {
+	case "", LauncherBoth:
+		a.launcher = LauncherBoth
+	case LauncherServices, LauncherBookmarks:
+		a.launcher = Launcher(l)
+	default:
+		return kernel.NewValidationError("launcher", "The launcher shows both, services or bookmarks.")
+	}
+	return nil
+}
+
+// Launcher returns what the launcher lists.
+func (a Appearance) Launcher() Launcher {
+	if a.launcher == "" {
+		return LauncherBoth
+	}
+	return a.launcher
+}
+
+// MaxGreetingNameLength limits the name in the greeting (#167, #189).
+const MaxGreetingNameLength = 40
+
+// SetGreetingName sets the name the greeting addresses (may be empty).
+func (a *Appearance) SetGreetingName(name string) error {
+	name = strings.TrimSpace(name)
+	if utf8.RuneCountInString(name) > MaxGreetingNameLength || strings.ContainsFunc(name, unicode.IsControl) {
+		return kernel.NewValidationError("greetingName", "The name must be at most 40 characters long.")
+	}
+	a.greetingName = name
+	return nil
+}
+
+// GreetingName is the name used in the greeting.
+func (a Appearance) GreetingName() string { return a.greetingName }
 
 // Languages lists the supported UI languages; "" follows the browser.
 var Languages = []string{"", "en", "de"}

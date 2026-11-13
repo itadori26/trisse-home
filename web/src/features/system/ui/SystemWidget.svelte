@@ -71,6 +71,7 @@
       <span title={t('system.load_average_1_5_15_min')}
         >{t('system.load', { value: snap.load.map((l) => l.toFixed(2)).join(' · ') })}</span
       >
+      {#if snap.hostname}<span title={t('system.host_name')}>{snap.hostname}</span>{/if}
       <span>{t('system.up', { value: formatUptime(snap.uptimeSeconds) })}</span>
       {#if snap.temperature > 0}<span>{snap.temperature.toFixed(0)} °C</span>{/if}
     </p>
