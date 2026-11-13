@@ -55,9 +55,10 @@ make ci   # the untouched scaffold is green
 
 The generator creates all rings with an example `Item` entity (here: the
 quote text in `Title`), a SQLite table, CRUD endpoints, a widget and tests,
-and registers everything (`cmd/server/modules.go`, `tygo.yaml`,
-`web/src/app/container.ts`, `web/src/app/widgets.ts`, both message
-catalogues). The widget can already add and delete quotes.
+and wires it up with files of its own (`cmd/server/module_quotes.go`,
+`web/src/app/widgets/quotes.ts`, `web/src/app/services/quotes.ts`, the
+`i18n/en.ts` and `de.ts` of the feature, the German backend messages); no
+existing file changes. The widget can already add and delete quotes.
 
 ## 3. Domain: the rule (≈ 5 min)
 
@@ -211,7 +212,7 @@ list:
 
 Add `today: vi.fn()` to the gateway fake in `usecase/quotesUseCases.test.ts`
 (the type checker tells you). Every visible text goes through `t('…')` with
-keys in `web/src/shared/i18n/locales/en.ts` and `de.ts`.
+keys in `web/src/features/quotes/i18n/en.ts` and `de.ts`.
 
 ```sh
 cd web && npx svelte-check && npx vitest run src/features/quotes
@@ -219,9 +220,9 @@ cd web && npx svelte-check && npx vitest run src/features/quotes
 
 ## 8. Registry and the widget picker (≈ 1 min)
 
-The generator already added the widget to `web/src/app/widgets.ts`
-(`kind`, title, description, default size) and the module to
-`cmd/server/modules.go`. The backend reports the module's `WidgetKinds()`,
+The generator already created the widget definition
+`web/src/app/widgets/quotes.ts` (`kind`, title, description, default size) and
+registered the module in `cmd/server/module_quotes.go`. The backend reports the module's `WidgetKinds()`,
 so the widget only appears in the picker when the module is enabled
 (`MODULES_DISABLED=quotes` hides it). Once the grouped picker (#104) is in
 place, also give the definition a category and an icon.

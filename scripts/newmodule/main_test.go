@@ -56,16 +56,16 @@ func TestRunCreatesOnlyNewFiles(t *testing.T) {
 			}
 		}
 	}
-	if got, _ := os.ReadFile(existing); string(got) != "untouched" { //nolint:gosec // test fixture
+	if got, _ := os.ReadFile(existing); string(got) != "untouched" {
 		t.Fatalf("an existing file was modified: %q", got)
 	}
 
-	register, err := os.ReadFile(filepath.Join(root, "cmd/server/module_sample.go")) //nolint:gosec // test fixture
+	register, err := os.ReadFile(filepath.Join(root, "cmd/server/module_sample.go"))
 	if err != nil || !strings.Contains(string(register), `registerModule("sample"`) {
 		t.Fatalf("module_sample.go: %v\n%s", err, register)
 	}
 	// The German backend messages are keyed by the hash of the English text.
-	de, err := os.ReadFile(filepath.Join(root, "web/src/shared/i18n/locales/server-de/sample.ts")) //nolint:gosec // test fixture
+	de, err := os.ReadFile(filepath.Join(root, "web/src/shared/i18n/locales/server-de/sample.ts"))
 	if err != nil || !strings.Contains(string(de), withKeys(Data{Title: "sample"}).KeyNotFound+":") {
 		t.Fatalf("server-de/sample.ts: %v\n%s", err, de)
 	}

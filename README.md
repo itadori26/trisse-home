@@ -608,19 +608,24 @@ step, using a `quotes` module that shows a random quote as the example:
    needs a session), `Jobs` and `WidgetKinds` as needed. Optionally
    implement `modules.Seeder` with an idempotent sample-data use case and
    add the widget to `SampleLayout` in the dashboard module.
-7. **Composition root** – add the module to the `optional` list in
-   `cmd/server/modules.go` and to the module list in `.env.example`.
-8. **Types** – add the presenter (and controller `dto.go`) packages to
-   `tygo.yaml` and run `make generate`.
+7. **Composition root** – register the module in its own file,
+   `cmd/server/module_quotes.go` (`registerModule` in `init()`), and add it to
+   the module list in `.env.example`. No shared list needs an edit (#193).
+8. **Types** – run `make generate`; tygo finds the presenter and controller
+   `dto.go` packages by convention.
 9. **Frontend** – `web/src/features/quotes/` with `domain/`, `usecase/`
    (port interface and use case class), `adapter/api/` (implements the port,
    maps DTO → domain), `ui/` (widget and optional settings component) and an
-   `index.ts` exporting the public API. Wire it in
-   `web/src/app/container.ts` and register the widget in
-   `web/src/app/widgets.ts`.
-10. **Docs** – add the endpoints to `api/openapi.yaml`, mention the module in
-    this README and write an ADR if the module introduces a notable
-    decision. Run `make ci` before committing.
+   `index.ts` exporting the public API. Wire it in with files of its own:
+   `web/src/app/services/quotes.ts` (container), `web/src/app/widgets/quotes.ts`
+   (widget), `i18n/en.ts` and `de.ts` inside the feature and, if it has
+   settings, `web/src/app/settings/quotes.ts`. `make new-module` creates all of
+   them.
+10. **Docs** – describe the module in `docs/modules/quotes.md`, add the
+    endpoints to `api/openapi.yaml` in alphabetical position among the module
+    sections and write an ADR if the module introduces a notable decision. Run
+    `make ci` before committing. See [docs/modules](docs/modules/README.md) for
+    why modules avoid shared files.
 
 ## Contributing
 
