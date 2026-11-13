@@ -533,7 +533,10 @@ test('header with greeting, search pill, launcher and account menu (#189)', asyn
   const errors: string[] = [];
   let step = 'login';
   page.on('pageerror', (e) => errors.push(`${step}: ${e.message}`));
-  page.on('console', (m) => m.type() === 'error' && console.log(`[${step}] console: ${m.text().slice(0, 2000)}`));
+  page.on(
+    'console',
+    (m) => m.type() === 'error' && console.log(`[${step}] console: ${m.text().slice(0, 2000)}`),
+  );
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
