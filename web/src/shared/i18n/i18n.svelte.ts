@@ -1,5 +1,6 @@
 import type { MessageKey } from './locales/en';
 import { formatMessage, type Locale, type MessageParams, resolveLocale } from './format';
+import type { FeatureLoaders } from './registry';
 
 type Catalogue = Record<MessageKey, string>;
 
@@ -10,6 +11,18 @@ type Catalogue = Record<MessageKey, string>;
  */
 let english = $state.raw<Catalogue | null>(null);
 let german = $state.raw<Catalogue | null>(null);
+
+/** Loaders of the feature catalogues, registered by src/app (#193). */
+let featureLoaders: FeatureLoaders | undefined;
+
+/**
+ * Registers where the texts of the features come from. They are merged into
+ * the shared catalogue when a language loads, so features add their texts
+ * without editing a shared file.
+ */
+export function registerFeatureMessages(loaders: FeatureLoaders): void {
+  featureLoaders = loaders;
+}
 
 const browserLanguages = (): readonly string[] =>
   typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language]);
@@ -29,11 +42,18 @@ export function t(key: MessageKey, params?: MessageParams): string {
 /** Loads the catalogues of the active language; resolves when they are ready. */
 export async function loadLanguage(): Promise<void> {
   if (state.locale === 'de') {
-    german ??= (await import('./locales/de')).de;
+    german ??= await merged((await import('./locales/de')).de, featureLoaders?.de);
   } else {
-    english ??= (await import('./locales/en')).en;
+    english ??= await merged((await import('./locales/en')).en, featureLoaders?.en);
   }
   await loadServerMessages();
+}
+
+async function merged(
+  shared: object,
+  features: (() => Promise<Record<string, string>>) | undefined,
+): Promise<Catalogue> {
+  return { ...shared, ...(await features?.()) } as Catalogue;
 }
 
 /** The active UI language. */

@@ -131,6 +131,38 @@ func (uc *manageTabs) SetRules(ctx context.Context, tabID string, in []domain.Ru
 	return toTabResponse(tab, widgets), nil
 }
 
+// SaveMobileLayout implements ManageTabs.
+func (uc *manageTabs) SaveMobileLayout(ctx context.Context, tabID string, entries []domain.MobileEntry) (TabResponse, error) {
+	return uc.updateMobile(ctx, tabID, func(widgets []domain.Widget) ([]domain.MobileEntry, error) {
+		return domain.NewMobileLayout(entries, widgets)
+	})
+}
+
+// ResetMobileLayout implements ManageTabs.
+func (uc *manageTabs) ResetMobileLayout(ctx context.Context, tabID string) (TabResponse, error) {
+	return uc.updateMobile(ctx, tabID, func([]domain.Widget) ([]domain.MobileEntry, error) { return nil, nil })
+}
+
+func (uc *manageTabs) updateMobile(ctx context.Context, tabID string, build func([]domain.Widget) ([]domain.MobileEntry, error)) (TabResponse, error) {
+	tab, err := uc.deps.Tabs.GetTab(ctx, tabID)
+	if err != nil {
+		return TabResponse{}, err
+	}
+	widgets, err := uc.deps.Widgets.ListWidgetsByTab(ctx, tab.ID())
+	if err != nil {
+		return TabResponse{}, fmt.Errorf("list widgets: %w", err)
+	}
+	mobile, err := build(widgets)
+	if err != nil {
+		return TabResponse{}, err
+	}
+	tab = tab.WithMobile(mobile)
+	if err := uc.deps.Tabs.UpdateTab(ctx, tab); err != nil {
+		return TabResponse{}, fmt.Errorf("update tab: %w", err)
+	}
+	return toTabResponse(tab, widgets), nil
+}
+
 // SetBackground implements ManageTabs.
 func (uc *manageTabs) SetBackground(ctx context.Context, tabID, background string) (TabResponse, error) {
 	tab, err := uc.deps.Tabs.GetTab(ctx, tabID)

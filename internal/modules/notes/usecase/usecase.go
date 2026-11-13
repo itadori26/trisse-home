@@ -43,6 +43,63 @@ type DeleteNote interface {
 	Execute(ctx context.Context, id string) error
 }
 
+// SearchNotes runs the full-text search (input port, #73).
+type SearchNotes interface {
+	Execute(ctx context.Context, query string) ([]domain.SearchHit, error)
+}
+
+// ListBacklinks returns the notes that link to a note with [[Title]] (input port, #73).
+type ListBacklinks interface {
+	Execute(ctx context.Context, id string) ([]NoteRef, error)
+}
+
+// ListRevisions returns the earlier versions of a note, newest first (input port, #73).
+type ListRevisions interface {
+	Execute(ctx context.Context, id string) ([]RevisionView, error)
+}
+
+// GetRevision returns an earlier version and its diff to the current note (input port, #73).
+type GetRevision interface {
+	Execute(ctx context.Context, id, revisionID string) (RevisionDetail, error)
+}
+
+// RestoreRevision makes an earlier version current again; the current
+// content becomes a revision itself (input port, #73).
+type RestoreRevision interface {
+	Execute(ctx context.Context, id, revisionID string) (NoteView, error)
+}
+
+// NoteRef names a note.
+type NoteRef struct{ ID, Title string }
+
+// RevisionView describes a revision without its body.
+type RevisionView struct {
+	ID, Title string
+	CreatedAt time.Time
+	Size      int
+}
+
+// RevisionDetail is a revision with its body and the diff from the
+// revision to the current note.
+type RevisionDetail struct {
+	RevisionView
+	Body string
+	Diff []domain.DiffLine
+}
+
+// SearchIndex is the full-text index of the notes (output port, #73).
+type SearchIndex interface {
+	Search(ctx context.Context, ftsQuery string, limit int) ([]domain.SearchHit, error)
+}
+
+// RevisionRepository stores earlier versions of notes (output port, #73).
+type RevisionRepository interface {
+	// ListRevisions returns the revisions of a note, newest first.
+	ListRevisions(ctx context.Context, noteID string) ([]domain.Revision, error)
+	AddRevision(ctx context.Context, r domain.Revision) error
+	DeleteRevisions(ctx context.Context, ids ...string) error
+}
+
 // Repository persists notes (output port).
 type Repository interface {
 	List(ctx context.Context) ([]domain.Note, error)
@@ -56,6 +113,9 @@ type Deps struct {
 	Repo  Repository
 	Clock kernel.Clock
 	IDs   kernel.IDGenerator
+	// Search and Revisions are optional (nil = feature off).
+	Search    SearchIndex
+	Revisions RevisionRepository
 }
 
 func toView(n domain.Note) NoteView {
@@ -116,7 +176,11 @@ func (uc *saveNote) Execute(ctx context.Context, id string, in NoteInput) (NoteV
 		if err != nil {
 			return NoteView{}, err
 		}
+		before := existing
 		if err := existing.Edit(in.Title, in.Body, in.Pinned, now); err != nil {
+			return NoteView{}, err
+		}
+		if err := uc.d.keepRevision(ctx, before, existing.ContentChanged(before.Title(), before.Body()), false); err != nil {
 			return NoteView{}, err
 		}
 		n = existing

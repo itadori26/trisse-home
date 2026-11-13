@@ -21,6 +21,10 @@ export interface EventDTO {
   summary: string;
   location: string;
   calendar: string;
+  /**
+   * Color is the subscription colour (#rrggbb), empty for CalDAV calendars.
+   */
+  color: string;
   start: string;
   end: string;
   allDay: boolean;
@@ -32,4 +36,15 @@ export interface AgendaDTO {
   events: EventDTO[];
   updatedAt: string /* RFC 3339 */;
   error: string;
+}
+/**
+ * SubscriptionDTO is an ICS subscription; the full URL is never returned
+ * because it may contain a private token.
+ */
+export interface SubscriptionDTO {
+  id: string;
+  name: string;
+  urlHint: string;
+  color: string;
+  refreshMinutes: number /* int */;
 }

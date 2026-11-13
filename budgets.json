@@ -1,18 +1,20 @@
 {
-  "comment": "Resource budgets, see docs/adr/0011-lean-by-default.md. Raise a budget only in a PR that explains why. Baselines measured 2026-11-11 on commit d99655e. Initial JS lowered to 90 KB with lazy widgets, pages and catalogues (#116; measured 33.3 KB on 2026-11-12).",
+  "comment": "Resource budgets, see docs/adr/0011-lean-by-default.md. Raise a budget only in a PR that explains why. Baselines measured 2026-11-11 on commit d99655e. Initial JS lowered to 90 KB with lazy widgets, pages and catalogues (#116; measured 33.3 KB on 2026-11-12). Binary raised to 18.9 MB for the briefing, countdown and focus modules (#52, #54, #58; measured 18.0 MB on 2026-11-12). Image raised to 8.8 MB to match the binary budget (image is about 0.46 x the binary; measured 8.56 MB on 2026-11-13 after #183, #198). piImageMB measured 2026-11-12 in the Raspberry Pi image workflow.",
   "baseline": {
     "initialJsGzipKB": 134.0,
     "initialCssGzipKB": 6.6,
     "binaryMB": 16.2,
     "imageMB": 7.7,
-    "idleMemoryMB": 76.2
+    "idleMemoryMB": 76.2,
+    "piImageMB": 557.5
   },
   "budgets": {
     "initialJsGzipKB": 90,
     "initialCssGzipKB": 10,
     "largestLazyChunkGzipKB": 60,
-    "binaryMB": 17.9,
-    "imageMB": 8.5,
-    "idleMemoryMB": 84
+    "binaryMB": 18.9,
+    "imageMB": 8.8,
+    "idleMemoryMB": 84,
+    "piImageMB": 613
   }
 }

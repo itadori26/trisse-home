@@ -53,8 +53,9 @@ func TestAddWidget(t *testing.T) {
 
 type fakeTabs struct {
 	usecase.ManageTabs
-	id    string
-	rules []domain.RuleInput
+	id     string
+	rules  []domain.RuleInput
+	mobile []domain.MobileEntry
 }
 
 func (f *fakeTabs) SetRules(_ context.Context, id string, in []domain.RuleInput) (usecase.TabResponse, error) {
@@ -112,5 +113,43 @@ func TestGetPassesClientAddress(t *testing.T) {
 	}
 	if fg.client.String() != "10.13.13.2" {
 		t.Fatalf("client %v", fg.client)
+	}
+}
+
+func (f *fakeTabs) SaveMobileLayout(_ context.Context, id string, in []domain.MobileEntry) (usecase.TabResponse, error) {
+	f.id, f.mobile = id, in
+	return usecase.TabResponse{ID: id, MobileCustom: true, Mobile: []usecase.MobileView{{WidgetID: "w1", Rows: 3}}}, nil
+}
+
+func (f *fakeTabs) ResetMobileLayout(_ context.Context, id string) (usecase.TabResponse, error) {
+	f.id, f.mobile = id, nil
+	return usecase.TabResponse{ID: id}, nil
+}
+
+func TestMobileLayoutHandlers(t *testing.T) {
+	ft := &fakeTabs{}
+	h := NewHandlers(nil, ft, nil, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("PUT /api/dashboard/tabs/{id}/mobile-layout", h.SaveMobileLayout)
+	mux.HandleFunc("DELETE /api/dashboard/tabs/{id}/mobile-layout", h.ResetMobileLayout)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/api/dashboard/tabs/t1/mobile-layout",
+		strings.NewReader(`{"items":[{"id":"w1","hidden":true,"rows":3}]}`)))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"mobileCustom":true`) {
+		t.Fatalf("put %d %s", rec.Code, rec.Body)
+	}
+	if ft.id != "t1" || len(ft.mobile) != 1 || !ft.mobile[0].Hidden || ft.mobile[0].Rows != 3 {
+		t.Fatalf("request %+v", ft.mobile)
+	}
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/api/dashboard/tabs/t1/mobile-layout", strings.NewReader(`{"items":{}}`)))
+	if rec.Code != http.StatusBadRequest && rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("bad body %d", rec.Code)
+	}
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, "/api/dashboard/tabs/t1/mobile-layout", nil))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"mobileCustom":false`) {
+		t.Fatalf("delete %d %s", rec.Code, rec.Body)
 	}
 }

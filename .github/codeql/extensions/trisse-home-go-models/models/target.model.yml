@@ -1,0 +1,15 @@
+# kernel.ParseTarget is the central validation of owner-configured
+# integration URLs (#191): http(s) only, a host, no credentials, no query or
+# fragment, no link-local/metadata addresses. The integration HTTP client
+# repeats the address rule for every connection. Its returned URL is
+# therefore a sanitizer for go/request-forgery.
+#
+# Tuple: package, type, subtypes, name, signature, ext, output, kind, provenance
+# (barrierModel needs CodeQL 2.25.2 or later; kind as in
+# RequestForgeryCustomizations.qll: barrierNode(this, "request-forgery")).
+extensions:
+  - addsTo:
+      pack: codeql/go-all
+      extensible: barrierModel
+    data:
+      - ["trisse-home/internal/shared/kernel", "", false, "ParseTarget", "", "", "ReturnValue[0]", "request-forgery", "manual"]

@@ -10,9 +10,14 @@ type AppearanceDTO struct {
 	BackgroundImage string `json:"backgroundImage"`
 	CustomCSS       string `json:"customCss"`
 	Language        string `json:"language" tstype:"'' | 'en' | 'de'"`
+	// GreetingName is the name in the greeting (#189); may be empty.
+	GreetingName string `json:"greetingName"`
+	// Launcher is what the launcher lists (#189).
+	Launcher string `json:"launcher" tstype:"'both' | 'services' | 'bookmarks'"`
 }
 
 // Appearance maps an AppearanceResponse.
 func Appearance(r usecase.AppearanceResponse) AppearanceDTO {
-	return AppearanceDTO{Theme: r.Theme, AccentColor: r.AccentColor, BackgroundImage: r.BackgroundImage, CustomCSS: r.CustomCSS, Language: r.Language}
+	return AppearanceDTO{Theme: r.Theme, AccentColor: r.AccentColor, BackgroundImage: r.BackgroundImage, CustomCSS: r.CustomCSS, Language: r.Language,
+		GreetingName: r.GreetingName, Launcher: r.Launcher}
 }

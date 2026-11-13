@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"trisse-home/internal/modules/system/domain"
@@ -27,6 +28,7 @@ func TestHostReader(t *testing.T) {
 	writeFile(t, filepath.Join(proc, "loadavg"), "0.52 0.41 0.30 1/234 5678\n")
 	writeFile(t, filepath.Join(proc, "meminfo"), "MemTotal:        8000 kB\nMemFree:  100 kB\nMemAvailable:    2000 kB\nSwapTotal: 1000 kB\nSwapFree: 750 kB\n")
 	writeFile(t, filepath.Join(proc, "uptime"), "3600.50 7000.00\n")
+	writeFile(t, filepath.Join(proc, "sys", "kernel", "hostname"), "pi5-nas\n")
 	writeFile(t, filepath.Join(sys, "class", "thermal", "thermal_zone0", "temp"), "48000\n")
 	writeFile(t, filepath.Join(sys, "class", "thermal", "thermal_zone1", "temp"), "52500\n")
 
@@ -55,6 +57,9 @@ func TestHostReader(t *testing.T) {
 	if up, _ := h.Uptime(ctx); up.Seconds() != 3600.5 {
 		t.Fatalf("uptime %v", up)
 	}
+	if name := h.Hostname(ctx); name != "pi5-nas" {
+		t.Fatalf("hostname %q", name)
+	}
 	if d, _ := h.Disks(ctx); len(d) != 1 || d[0].Label != "root" {
 		t.Fatalf("disks %+v", d)
 	}
@@ -67,5 +72,28 @@ func TestParseDiskMounts(t *testing.T) {
 	got := ParseDiskMounts([]string{"Root=/host/rootfs", "/data"})
 	if got[0] != (DiskMount{Label: "Root", Path: "/host/rootfs"}) || got[1] != (DiskMount{Label: "/data", Path: "/data"}) {
 		t.Fatalf("unexpected %+v", got)
+	}
+}
+
+func TestHostnameIsOptionalAndSanitised(t *testing.T) {
+	ctx := context.Background()
+	proc := t.TempDir()
+	h := NewHost(proc, t.TempDir(), nil)
+
+	if name := h.Hostname(ctx); name != "" {
+		t.Fatalf("a missing file must give an empty name, got %q", name)
+	}
+	writeFile(t, filepath.Join(proc, "sys", "kernel", "hostname"), "  \n")
+	if name := h.Hostname(ctx); name != "" {
+		t.Fatalf("a blank file must give an empty name, got %q", name)
+	}
+	writeFile(t, filepath.Join(proc, "sys", "kernel", "hostname"), "nas\x1b[31m-1\n")
+	if name := h.Hostname(ctx); name != "nas[31m-1" {
+		t.Fatalf("control characters must be dropped, got %q", name)
+	}
+	long := strings.Repeat("a", 400)
+	writeFile(t, filepath.Join(proc, "sys", "kernel", "hostname"), long+"\n")
+	if name := h.Hostname(ctx); len(name) != maxHostnameLength {
+		t.Fatalf("the name is capped at %d bytes, got %d", maxHostnameLength, len(name))
 	}
 }

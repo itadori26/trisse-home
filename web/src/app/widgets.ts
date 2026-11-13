@@ -4,57 +4,16 @@ import { t } from '../shared/i18n';
  * component, settings form and default size. Features never know about each
  * other; this file is the only place that combines them.
  */
-import type { Component } from 'svelte';
-import type { WidgetType } from '../features/dashboard';
 import type { IconName } from '../shared/ui/icons/paths';
-import type { Container } from './container';
 import { prefixesFromConfig } from '../features/quickactions/domain/command';
 import { quickCapture } from './quickCapture';
+import { lazy, type Renderer, type WidgetDefinition } from './widgetKit';
+import { widgetAnswers } from './widgetAnswers';
 
-/** Configuration object stored per widget. */
-type Config = Record<string, unknown>;
+export type { Renderer, WidgetDefinition };
 
-/** A lazily loaded component together with a function that builds its props (#116). */
-export interface Renderer {
-  /** Loads the component's chunk; the promise is cached per kind. */
-  load: () => Promise<Component<Record<string, unknown>>>;
-  props: (config: Config, c: Container) => Record<string, unknown>;
-}
-
-/** Everything the dashboard needs to know about one widget kind. */
-export interface WidgetDefinition {
-  type: WidgetType;
-  /** Tile icon of the widget picker (#104); required for every kind. */
-  icon: IconName;
-  /** Rendered without card chrome outside edit mode. */
-  chromeless?: boolean;
-  view: Renderer;
-  /** Settings form; it additionally receives an `onsave(config)` prop. */
-  settings?: Renderer;
-}
-
-/**
- * Type-checks props against the lazily imported component and erases the
- * type for the registry. Only this file knows how widget code is loaded.
- */
-function lazy<P extends object>(
-  load: () => Promise<{ default: Component<P> }>,
-  props: (config: Config, c: Container) => Omit<P, 'onsave'>,
-): Renderer {
-  let loaded: Promise<Component<Record<string, unknown>>> | undefined;
-  return {
-    load: () => {
-      loaded ??= load().then((m) => m.default as unknown as Component<Record<string, unknown>>);
-      // A failed chunk (e.g. offline after an update) can be retried.
-      loaded.catch(() => (loaded = undefined));
-      return loaded;
-    },
-    props,
-  };
-}
-
-/** All widget kinds known to the frontend. */
-export const widgetDefinitions: WidgetDefinition[] = [
+/** The widgets that are still defined here; new ones live in src/app/widgets/<kind>.ts (#193). */
+const legacyDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'search',
@@ -76,6 +35,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
         config,
         search: c.search,
         quick: quickCapture(c.quickActions, prefixesFromConfig(config['quickPrefixes'])),
+        answers: widgetAnswers(c),
       }),
     ),
     settings: lazy(
@@ -355,7 +315,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
     type: {
       kind: 'adguard',
       category: 'network',
-      keywords: ['dns', 'ads', 'blocking', 'werbung'],
+      keywords: ['dns', 'ads', 'blocking', 'werbung', 'pihole', 'pi-hole'],
       get title() {
         return t('widget.adguard.title');
       },
@@ -367,7 +327,11 @@ export const widgetDefinitions: WidgetDefinition[] = [
     icon: 'shield',
     view: lazy(
       () => import('../features/adguard/ui/AdGuardWidget.svelte'),
-      (_config, c) => ({ adguard: c.adguard }),
+      (config, c) => ({ config, adguard: c.adguard }),
+    ),
+    settings: lazy(
+      () => import('../features/adguard/ui/AdGuardWidgetSettings.svelte'),
+      (config) => ({ config }),
     ),
   },
   {
@@ -583,26 +547,14 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (_config, c) => ({ speedtest: c.speedtest }),
     ),
   },
-  {
-    type: {
-      kind: 'gamedeals',
-      category: 'information',
-      keywords: ['steam', 'epic', 'games', 'spiele', 'sale', 'free'],
-      get title() {
-        return t('widget.gamedeals.title');
-      },
-      get description() {
-        return t('widget.gamedeals.description');
-      },
-      defaultSize: { w: 4, h: 5 },
-    },
-    icon: 'cart',
-    view: lazy(
-      () => import('../features/gamedeals/ui/GameDealsWidget.svelte'),
-      (_config, c) => ({ gamedeals: c.gamedeals }),
-    ),
-  },
-  // scaffold:widgets - make new-module inserts new widgets above this line.
+];
+
+const own = import.meta.glob<{ widgets: WidgetDefinition[] }>('./widgets/*.ts', { eager: true });
+
+/** All widget kinds known to the frontend. */
+export const widgetDefinitions: WidgetDefinition[] = [
+  ...legacyDefinitions,
+  ...Object.values(own).flatMap((m) => m.widgets),
 ];
 
 /** Picker icon of a widget kind. */

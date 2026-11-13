@@ -45,8 +45,21 @@ type Current struct {
 	ApparentTemperature float64
 	Humidity            float64
 	WindSpeed           float64
-	WeatherCode         int
-	IsDay               bool
+	// WindDirection is where the wind comes from in degrees (0 = north,
+	// 90 = east), in [0, 360). It is only meaningful when HasWindDirection.
+	WindDirection    float64
+	HasWindDirection bool
+	WeatherCode      int
+	IsDay            bool
+}
+
+// NormalizeDegrees maps any angle into [0, 360).
+func NormalizeDegrees(degrees float64) float64 {
+	d := math.Mod(degrees, 360)
+	if d < 0 {
+		d += 360
+	}
+	return d
 }
 
 // Day is the forecast for one day.

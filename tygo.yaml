@@ -1,6 +1,12 @@
 # Generates TypeScript types from the Go DTOs (presenters and request DTOs).
 # Run `make generate` after changing a DTO; the output is committed so the
 # frontend can be built without a Go toolchain.
+#
+# This file lists only shared and irregular packages. Every module that
+# follows the naming convention is added by scripts/tygoconfig (#193):
+#   internal/modules/<m>/adapter/presenter          -> generated/<m>.ts
+#   internal/modules/<m>/adapter/controller/dto.go  -> generated/<m>-requests.ts
+# so a new module needs no edit here.
 type_mappings:
   time.Time: "string /* RFC 3339 */"
 packages:
@@ -10,139 +16,8 @@ packages:
   - path: "trisse-home/internal/shared/httpapi"
     output_path: "web/src/shared/api-client/generated/httpapi.ts"
     include_files: ["errors.go"]
-  - path: "trisse-home/internal/modules/auth/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/auth.ts"
-  - path: "trisse-home/internal/modules/auth/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/auth-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/dashboard/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/dashboard.ts"
-  - path: "trisse-home/internal/modules/dashboard/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/dashboard-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/appearance/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/appearance.ts"
-  - path: "trisse-home/internal/modules/search/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/search.ts"
-  - path: "trisse-home/internal/modules/search/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/search-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/weather/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/weather.ts"
-  - path: "trisse-home/internal/modules/services/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/services.ts"
-  - path: "trisse-home/internal/modules/services/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/services-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/bookmarks/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/bookmarks.ts"
-  - path: "trisse-home/internal/modules/bookmarks/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/bookmarks-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/notes/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/notes.ts"
-  - path: "trisse-home/internal/modules/notes/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/notes-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/todos/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/todos.ts"
-  - path: "trisse-home/internal/modules/todos/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/todos-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/rss/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/rss.ts"
-  - path: "trisse-home/internal/modules/rss/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/rss-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/system/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/system.ts"
-  - path: "trisse-home/internal/modules/docker/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/docker.ts"
-  - path: "trisse-home/internal/modules/docker/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/docker-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/adguard/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/adguard.ts"
-  - path: "trisse-home/internal/modules/adguard/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/adguard-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/calendar/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/calendar.ts"
-  - path: "trisse-home/internal/modules/calendar/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/calendar-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/onboarding/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/onboarding.ts"
-  - path: "trisse-home/internal/modules/onboarding/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/onboarding-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/backup/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/backup.ts"
-  - path: "trisse-home/internal/modules/backup/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/backup-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/notifications/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/notifications.ts"
-  - path: "trisse-home/internal/modules/notifications/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/notifications-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/backupmonitor/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/backupmonitor.ts"
-  - path: "trisse-home/internal/modules/backupmonitor/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/backupmonitor-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/nextcloud/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/nextcloud.ts"
-  - path: "trisse-home/internal/modules/nextcloud/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/nextcloud-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/fritzbox/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/fritzbox.ts"
-  - path: "trisse-home/internal/modules/fritzbox/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/fritzbox-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/wireguard/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/wireguard.ts"
-  - path: "trisse-home/internal/modules/wireguard/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/wireguard-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/waste/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/waste.ts"
-  - path: "trisse-home/internal/modules/waste/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/waste-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/shopping/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/shopping.ts"
-  - path: "trisse-home/internal/modules/shopping/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/shopping-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/transit/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/transit.ts"
-  - path: "trisse-home/internal/modules/parcels/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/parcels.ts"
-  - path: "trisse-home/internal/modules/parcels/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/parcels-requests.ts"
-    include_files: ["dto.go"]
   - path: "trisse-home/internal/modules/transfer/adapter/controller"
     output_path: "web/src/shared/api-client/generated/transfer.ts"
     include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/system/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/system-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/diskhealth/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/diskhealth.ts"
-  - path: "trisse-home/internal/modules/speedtest/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/speedtest.ts"
-  - path: "trisse-home/internal/modules/speedtest/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/speedtest-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/timeline/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/timeline.ts"
-  - path: "trisse-home/internal/modules/timeline/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/timeline-requests.ts"
-    include_files: ["dto.go"]
-  - path: "trisse-home/internal/modules/gamedeals/adapter/presenter"
-    output_path: "web/src/shared/api-client/generated/gamedeals.ts"
-  - path: "trisse-home/internal/modules/gamedeals/adapter/controller"
-    output_path: "web/src/shared/api-client/generated/gamedeals-requests.ts"
-    include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/proxmox/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/proxmox-requests.ts"

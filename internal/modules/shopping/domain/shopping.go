@@ -2,7 +2,6 @@ package domain
 
 import (
 	"cmp"
-	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -38,14 +37,11 @@ type Settings struct {
 
 // NewSettings validates the settings.
 func NewSettings(listURL, username, password string) (Settings, error) {
-	listURL = strings.TrimSpace(listURL)
-	u, err := url.Parse(listURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return Settings{}, kernel.NewValidationError("listUrl", "The list URL must start with http:// or https://.")
+	u, err := kernel.ParseTarget("listUrl", listURL, kernel.WithTargetPath())
+	if err != nil {
+		return Settings{}, err
 	}
-	if !strings.HasSuffix(listURL, "/") {
-		listURL += "/"
-	}
+	listURL = u.String() + "/" // a CalDAV collection
 	if strings.TrimSpace(username) == "" || password == "" {
 		return Settings{}, kernel.NewValidationError("username", "Username and app password are required.")
 	}

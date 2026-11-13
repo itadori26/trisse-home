@@ -3,12 +3,14 @@ package main
 import (
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestTemplatesRender(t *testing.T) {
-	d := Data{Name: "sample", Pascal: "Sample", Title: "Sample"}
+	d := withKeys(Data{Name: "sample", Pascal: "Sample", Title: "Sample"})
 	for _, f := range files(d) {
 		out, err := render(f.tmpl, d)
 		if err != nil {
@@ -25,19 +27,58 @@ func TestTemplatesRender(t *testing.T) {
 	}
 }
 
-func TestRegistrations(t *testing.T) {
+// A new module consists of files of its own only (#193): scaffolding it must
+// not change or even read any existing file, and two modules must not share a
+// single output path.
+func TestRunCreatesOnlyNewFiles(t *testing.T) {
+	root := t.TempDir()
+	existing := filepath.Join(root, "cmd/server/modules.go")
+	if err := os.MkdirAll(filepath.Dir(existing), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(existing, []byte("untouched"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	paths := map[string]string{}
+	for _, name := range []string{"sample", "other"} {
+		d := Data{Name: name, Pascal: strings.ToUpper(name[:1]) + name[1:], Title: name}
+		if err := run(root, d); err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range files(withKeys(d)) {
+			if prev, dup := paths[f.out]; dup {
+				t.Errorf("%s is written for %s and %s", f.out, prev, name)
+			}
+			paths[f.out] = name
+			if _, err := os.Stat(filepath.Join(root, f.out)); err != nil {
+				t.Errorf("%s was not created: %v", f.out, err)
+			}
+		}
+	}
+	if got, _ := os.ReadFile(existing); string(got) != "untouched" {
+		t.Fatalf("an existing file was modified: %q", got)
+	}
+
+	register, err := os.ReadFile(filepath.Join(root, "cmd/server/module_sample.go"))
+	if err != nil || !strings.Contains(string(register), `registerModule("sample"`) {
+		t.Fatalf("module_sample.go: %v\n%s", err, register)
+	}
+	// The German backend messages are keyed by the hash of the English text.
+	de, err := os.ReadFile(filepath.Join(root, "web/src/shared/i18n/locales/server-de/sample.ts"))
+	if err != nil || !strings.Contains(string(de), withKeys(Data{Title: "sample"}).KeyNotFound+":") {
+		t.Fatalf("server-de/sample.ts: %v\n%s", err, de)
+	}
+}
+
+func TestRunRefusesToOverwrite(t *testing.T) {
+	root := t.TempDir()
 	d := Data{Name: "sample", Pascal: "Sample", Title: "Sample"}
-	modules := "package main\n\nimport (\n\t\"trisse-home/internal/modules\"\n)\n\nvar _ = []struct{}{\n\t\t// scaffold:modules\n}\n"
-	out, err := registrations["cmd/server/modules.go"](modules, d)
-	if err != nil || !strings.Contains(out, `"trisse-home/internal/modules/sample"`) || !strings.Contains(out, `sample.New(db, clk, ids)`) {
-		t.Fatalf("modules.go: %v\n%s", err, out)
+	if err := run(root, d); err != nil {
+		t.Fatal(err)
 	}
-	en, err := registrations["web/src/shared/i18n/locales/en.ts"]("export const en = {\n  \"a\": \"b\",\n} as const;\n", d)
-	if err != nil || !strings.Contains(en, `"sample.remove": "Remove {title}"`) {
-		t.Fatalf("en.ts: %v\n%s", err, en)
-	}
-	if _, err := registrations["web/src/app/widgets.ts"]("import x from 'y';\n];\n", d); err == nil {
-		t.Fatal("missing marker must be an error")
+	if err := run(root, d); err == nil {
+		t.Fatal("scaffolding an existing module must fail")
 	}
 }
 

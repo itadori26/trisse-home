@@ -30,6 +30,17 @@ type TabDTO struct {
 	Background string      `json:"background"`
 	Rules      []RuleDTO   `json:"rules"`
 	Widgets    []WidgetDTO `json:"widgets"`
+	// Mobile is the phone layout in display order (#92).
+	Mobile []MobileItemDTO `json:"mobile"`
+	// MobileCustom is false while the phone layout follows the desktop grid.
+	MobileCustom bool `json:"mobileCustom"`
+}
+
+// MobileItemDTO places a widget in the phone layout.
+type MobileItemDTO struct {
+	ID     string `json:"id"`
+	Hidden bool   `json:"hidden"`
+	Rows   int    `json:"rows"`
 }
 
 // WidgetDTO describes a widget. Config is the widget's JSON configuration.
@@ -62,6 +73,11 @@ func Tab(t usecase.TabResponse) TabDTO {
 	}
 	for _, w := range t.Widgets {
 		dto.Widgets = append(dto.Widgets, Widget(w))
+	}
+	dto.MobileCustom = t.MobileCustom
+	dto.Mobile = make([]MobileItemDTO, 0, len(t.Mobile))
+	for _, m := range t.Mobile {
+		dto.Mobile = append(dto.Mobile, MobileItemDTO{ID: m.WidgetID, Hidden: m.Hidden, Rows: m.Rows})
 	}
 	return dto
 }

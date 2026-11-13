@@ -8,6 +8,10 @@ export interface Appearance {
   customCss: string;
   /** UI language; "" follows the browser. */
   language: '' | 'en' | 'de';
+  /** Name in the greeting of the header (#189); may be empty. */
+  greetingName: string;
+  /** What the launcher lists (#189). */
+  launcher: 'both' | 'services' | 'bookmarks';
 }
 
 /** Defaults before the preferences are loaded. */
@@ -17,6 +21,8 @@ export const defaultAppearance: Appearance = {
   backgroundImage: '',
   customCss: '',
   language: '',
+  greetingName: '',
+  launcher: 'both',
 };
 
 /**

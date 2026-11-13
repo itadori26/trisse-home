@@ -22,6 +22,8 @@ ExecStartPre=+/usr/lib/trisse-home/trisse-home-init
 # moving from Docker) overrides the generated one.
 EnvironmentFile=-/etc/trisse-home/secret.env
 EnvironmentFile=/etc/trisse-home/trisse-home.env
+# Selects the update hint in the settings (the image overrides it).
+Environment=INSTALL_METHOD=package
 ExecStart=/usr/bin/trisse-home serve
 
 Restart=on-failure
