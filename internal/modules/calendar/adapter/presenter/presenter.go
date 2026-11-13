@@ -20,7 +20,10 @@ type EventDTO struct {
 	UID      string `json:"uid"`
 	Summary  string `json:"summary"`
 	Location string `json:"location"`
-	Calendar string `json:"calendar"`
+	// Description is plain text; URL an http(s) link or empty (#163).
+	Description string `json:"description"`
+	URL         string `json:"url"`
+	Calendar    string `json:"calendar"`
 	// Color is the subscription colour (#rrggbb), empty for CalDAV calendars.
 	Color  string `json:"color"`
 	Start  string `json:"start"`
@@ -55,7 +58,8 @@ func Agenda(r usecase.AgendaResponse) AgendaDTO {
 
 // Event maps one EventView; all-day events use dates, timed events RFC 3339.
 func Event(e usecase.EventView) EventDTO {
-	ev := EventDTO{UID: e.UID, Summary: e.Summary, Location: e.Location, Calendar: e.Calendar, Color: e.Color, AllDay: e.AllDay}
+	ev := EventDTO{UID: e.UID, Summary: e.Summary, Location: e.Location, Description: e.Description, URL: e.URL,
+		Calendar: e.Calendar, Color: e.Color, AllDay: e.AllDay}
 	if e.AllDay {
 		ev.Start, ev.End = e.Start.Format(time.DateOnly), e.End.Format(time.DateOnly)
 	} else {

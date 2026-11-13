@@ -60,7 +60,11 @@ export class DashboardUseCases {
   }
 
   /** Adds a widget of the given type at the first free spot of the tab. */
-  addWidget(tab: Tab, type: WidgetType, config: WidgetConfig = {}): Promise<Widget> {
+  addWidget(
+    tab: Tab,
+    type: WidgetType,
+    config: WidgetConfig = structuredClone(type.defaultConfig ?? {}),
+  ): Promise<Widget> {
     const rect = findFreeSpot(tab.widgets, type.defaultSize.w, type.defaultSize.h);
     return this.gateway.addWidget(tab.id, type.kind, rect, config);
   }

@@ -104,6 +104,24 @@ describe('DashboardUseCases', () => {
     expect(gateway.addWidget).toHaveBeenCalledWith('a', 'weather', { x: 4, y: 0, w: 4, h: 3 }, {});
   });
 
+  it('gives new widgets the default configuration of their type (#163)', async () => {
+    const { uc, gateway } = setup();
+    const defaultConfig = { view: 'split' };
+    const type = {
+      kind: 'calendar',
+      title: '',
+      description: '',
+      defaultSize: { w: 8, h: 5 },
+      category: 'information' as const,
+      keywords: [],
+      defaultConfig,
+    };
+    await uc.addWidget(tab('a', 0, []), type);
+    const config = gateway.addWidget.mock.calls[0]?.[3];
+    expect(config).toEqual({ view: 'split' });
+    expect(config).not.toBe(defaultConfig);
+  });
+
   it('skips saving unchanged layouts', async () => {
     const { uc, gateway } = setup();
     const items = [{ id: 'w', x: 0, y: 0, w: 1, h: 1 }];

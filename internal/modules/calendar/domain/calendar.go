@@ -133,6 +133,10 @@ type Event struct {
 	UID      string
 	Summary  string
 	Location string
+	// Description is plain text (#163); the UI never renders it as HTML.
+	Description string
+	// URL is a link of the event, http(s) only (see SafeLink).
+	URL      string
 	Start    time.Time
 	End      time.Time
 	AllDay   bool
@@ -166,4 +170,15 @@ func SortEvents(events []Event) {
 		}
 		return a.Start.Compare(b.Start)
 	})
+}
+
+// SafeLink returns raw if it is an absolute http(s) URL and "" otherwise, so
+// a calendar from somewhere else cannot put a javascript: or file: link into
+// the page (#163).
+func SafeLink(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return ""
+	}
+	return u.String()
 }

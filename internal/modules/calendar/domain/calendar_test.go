@@ -93,3 +93,19 @@ func TestNewSubscription(t *testing.T) {
 		}
 	}
 }
+
+func TestSafeLink(t *testing.T) {
+	for _, c := range []struct{ raw, want string }{
+		{"https://example.org/meet", "https://example.org/meet"},
+		{" http://intranet/x ", "http://intranet/x"},
+		{"javascript:alert(1)", ""},
+		{"file:///etc/passwd", ""},
+		{"mailto:a@example.org", ""},
+		{"/relative", ""},
+		{"", ""},
+	} {
+		if got := SafeLink(c.raw); got != c.want {
+			t.Errorf("SafeLink(%q) = %q, want %q", c.raw, got, c.want)
+		}
+	}
+}

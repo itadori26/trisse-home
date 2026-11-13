@@ -6,6 +6,7 @@
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
   import MonthView from './MonthView.svelte';
   import QuickAddEvent from './QuickAddEvent.svelte';
+  import SplitView from './SplitView.svelte';
 
   /** Props of the calendar widget. */
   interface Props {
@@ -22,12 +23,14 @@
   let warning = $state('');
   let error = $state('');
   let unconfigured = $state(false);
-  let adding = $state(false);
+  let adding = $state<Date | null>(null);
   let reload = $state(0);
 
+  // The agenda list; the month and split views load their own months.
   $effect(() => {
     void reload;
     const c = cfg;
+    if (c.view !== 'agenda') return;
     const load = () =>
       calendar
         .events(c.days)
@@ -61,16 +64,24 @@
   <p class="muted">{t('calendar.connect_a_caldav_calendar_under_settings')}</p>
 {:else if error && !loaded}
   <p class="error">{error}</p>
+{:else if cfg.view === 'split'}
+  <SplitView
+    {calendar}
+    weekStart={cfg.weekStart}
+    {reload}
+    onadd={(d) => (adding = d)}
+    onunconfigured={() => (unconfigured = true)}
+  />
 {:else}
   <button
     class="btn btn-icon add"
     type="button"
     title={t('calendar.new_event')}
     aria-label={t('calendar.new_event')}
-    onclick={() => (adding = true)}>+</button
+    onclick={() => (adding = new Date())}>+</button
   >
   {#if cfg.view === 'month'}
-    <MonthView {calendar} {reload} />
+    <MonthView {calendar} weekStart={cfg.weekStart} {reload} onunconfigured={() => (unconfigured = true)} />
   {:else}
     {#if warning}<p class="error small">{warning}</p>{/if}
     {#each days as day (day.key)}
@@ -95,7 +106,7 @@
   {/if}
 {/if}
 {#if adding}
-  <QuickAddEvent {calendar} onclose={() => (adding = false)} oncreated={() => reload++} />
+  <QuickAddEvent {calendar} date={adding} onclose={() => (adding = null)} oncreated={() => reload++} />
 {/if}
 
 <style>

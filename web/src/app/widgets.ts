@@ -225,7 +225,9 @@ const legacyDefinitions: WidgetDefinition[] = [
       get description() {
         return t('widget.calendar.description');
       },
-      defaultSize: { w: 4, h: 5 },
+      // New calendars are wide enough for the split view (#163); old ones keep their view.
+      defaultSize: { w: 8, h: 5 },
+      defaultConfig: { view: 'split' },
     },
     icon: 'calendar',
     view: lazy(
