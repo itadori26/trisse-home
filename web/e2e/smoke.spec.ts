@@ -1,8 +1,14 @@
 import { createHmac } from 'node:crypto';
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { setupToken } from '../playwright.config';
 
 const password = 'smoke-test-password-123';
+
+/** Edit, Done, Settings and Log out live in the account menu of the top bar (#189). */
+async function account(page: Page, item: string) {
+  await page.getByRole('button', { name: 'Account menu', exact: true }).click();
+  await page.getByRole('menuitem', { name: item, exact: true }).click();
+}
 
 test('setup, logout and login lead to the dashboard', async ({ page }) => {
   await page.goto('/');
@@ -35,7 +41,7 @@ test('setup, logout and login lead to the dashboard', async ({ page }) => {
   await expect(page.getByText(/CPU \(\d+ cores\)/)).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Home', exact: true }).click();
 
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await account(page, 'Log out');
   await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
 
   await page.getByLabel('Password').fill('wrong-password-123');
@@ -59,7 +65,7 @@ test('edit mode adds a tab and a widget', async ({ page }) => {
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await account(page, 'Edit');
   await page.getByRole('button', { name: '+ Tab' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('Study');
   await page.getByRole('button', { name: 'Create' }).click();
@@ -68,7 +74,7 @@ test('edit mode adds a tab and a widget', async ({ page }) => {
   await page.getByRole('button', { name: '+ Add widget' }).click();
   await page.getByRole('button', { name: /^Clock/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await account(page, 'Done');
   await expect(page.locator('time')).toBeVisible();
 
   await page.reload();
@@ -81,7 +87,7 @@ test('widgets can be moved and resized with the keyboard', async ({ page }) => {
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await page.getByRole('button', { name: 'Study' }).click();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await account(page, 'Edit');
 
   const clock = page.getByRole('group', { name: /^Clock, column 1, row 1/ });
   await clock.focus();
@@ -90,11 +96,11 @@ test('widgets can be moved and resized with the keyboard', async ({ page }) => {
   await page.keyboard.press('Shift+ArrowRight');
   await expect(page.getByText(/^Clock resized: column 2, row 1, \d+ × \d+ cells/)).toBeAttached();
   await expect(page.getByRole('group', { name: /^Clock, column 2, row 1/ })).toBeFocused();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await account(page, 'Done');
 
   await page.reload();
   await page.getByRole('button', { name: 'Study' }).click();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await account(page, 'Edit');
   await expect(page.getByRole('group', { name: /^Clock, column 2, row 1/ })).toBeVisible();
 });
 
@@ -166,8 +172,10 @@ test('the UI follows a German browser language', async ({ browser }) => {
   await page.getByLabel('Passwort').fill(password);
   await page.getByRole('button', { name: 'Anmelden', exact: true }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Einstellungen' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Bearbeiten', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Kontomenü', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Kontomenü', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Bearbeiten', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Einstellungen', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'de');
   await context.close();
 });
@@ -176,7 +184,7 @@ test('settings sections of self-registering features load on demand (#193)', asy
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await account(page, 'Settings');
   await page.getByRole('button', { name: 'Proxmox', exact: true }).click();
   await expect(page.getByLabel('Proxmox VE URL')).toBeVisible();
 });
@@ -187,7 +195,7 @@ test('a guest sees only the shared tab and cannot edit', async ({ page }) => {
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await account(page, 'Settings');
   await page.getByRole('button', { name: 'Guests', exact: true }).click();
   const form = page.locator('form.new');
   await form.getByLabel('Guest name').fill('anna');
@@ -197,7 +205,7 @@ test('a guest sees only the shared tab and cannot edit', async ({ page }) => {
   await page.getByRole('button', { name: 'Create guest' }).click();
   await expect(page.getByText('anna', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Close' }).click();
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await account(page, 'Log out');
 
   await page.getByRole('button', { name: 'Sign in as guest' }).click();
   await page.getByLabel('Guest name').fill('anna');
@@ -207,11 +215,12 @@ test('a guest sees only the shared tab and cannot edit', async ({ page }) => {
   // A single shared tab needs no tab bar (#167).
   await expect(page.getByRole('navigation', { name: 'Dashboard tabs' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Server', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Account menu', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: 'Edit', exact: true })).toHaveCount(0);
+  await page.getByRole('menuitem', { name: 'Settings', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Guests', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Close' }).click();
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await account(page, 'Log out');
   await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
 });
 
@@ -246,7 +255,7 @@ test('the widget picker is searchable and works with the keyboard (#104)', async
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await account(page, 'Edit');
   await page.getByRole('button', { name: '+ Tab' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('Picker');
   await page.getByRole('button', { name: 'Create' }).click();
@@ -267,7 +276,7 @@ test('the widget picker is searchable and works with the keyboard (#104)', async
   await page.keyboard.press('Enter');
   // The clock has settings; they open right after adding.
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await account(page, 'Done');
   await expect(page.locator('time')).toBeVisible();
 });
 
@@ -295,15 +304,15 @@ test('keyboard shortcuts switch tabs, toggle edit mode and show an overview (#95
   );
 
   await page.keyboard.press('e');
-  await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '+ Add widget' })).toBeVisible();
   await page.keyboard.press('e');
-  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '+ Add widget' })).toHaveCount(0);
 
   await page.keyboard.press('/');
   await expect(page.getByRole('dialog', { name: /Quick search/ })).toBeVisible();
   // Typing in the search field must not trigger shortcuts.
   await page.keyboard.type('e2');
-  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '+ Add widget' })).toHaveCount(0);
 });
 
 test('removed widgets come back with undo, and redo works (#93)', async ({ page }) => {
@@ -311,7 +320,7 @@ test('removed widgets come back with undo, and redo works (#93)', async ({ page 
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await account(page, 'Edit');
   await page.getByRole('button', { name: '+ Tab' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('Undo');
   await page.getByRole('button', { name: 'Create' }).click();
@@ -382,11 +391,7 @@ test('phones get their own layout that hides widgets independently (#92)', async
   await page.getByRole('button', { name: 'Log in' }).click();
   await page.getByRole('button', { name: 'Home', exact: true }).click();
   await expect(page.locator('time')).toBeVisible();
-  // On phones the actions sit behind the menu button of the top bar (#167).
-  const menu = async (name: string) => {
-    await page.getByRole('button', { name: 'Menu' }).click();
-    await page.getByRole('button', { name, exact: true }).click();
-  };
+  const menu = (name: string) => account(page, name);
 
   await menu('Edit');
   await expect(page.getByText('Phone layout follows the desktop grid.', { exact: false })).toBeVisible();
@@ -419,11 +424,11 @@ test('the daily briefing sums up the day and leads to the source widget (#52)', 
   await page.getByRole('button', { name: 'Home', exact: true }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await account(page, 'Edit');
   await page.getByRole('button', { name: '+ Add widget' }).click();
   await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('briefing');
   await page.getByRole('button', { name: /^Daily briefing/ }).click();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await account(page, 'Done');
 
   // "Steuer" was created for today by the quick capture test.
   const toTodos = page.getByRole('button', { name: 'To-dos', exact: true });
@@ -438,7 +443,7 @@ test('the daily briefing sums up the day and leads to the source widget (#52)', 
   await expect(page.locator('[data-widget-id].flash')).toContainText('Milch kaufen');
 
   // Hiding the section in the settings removes it from the widget.
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await account(page, 'Settings');
   await page.getByRole('button', { name: 'Daily briefing', exact: true }).click();
   await page.getByRole('checkbox', { name: 'To-dos' }).uncheck();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -457,7 +462,7 @@ test('countdowns count the days and can be edited and deleted (#54)', async ({ p
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await account(page, 'Edit');
   await page.getByRole('button', { name: '+ Tab' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('Dates');
   await page.getByRole('button', { name: 'Create' }).click();
@@ -467,7 +472,7 @@ test('countdowns count the days and can be edited and deleted (#54)', async ({ p
   // The widget has settings; they open right after adding.
   await page.getByLabel('Highlight when fewer days are left than').fill('5');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await account(page, 'Done');
 
   const inDays = (n: number) => {
     const d = new Date();
@@ -506,7 +511,7 @@ test('the focus timer runs on timestamps and counts finished sessions (#58)', as
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await account(page, 'Edit');
   await page.getByRole('button', { name: '+ Tab' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('Deep work');
   await page.getByRole('button', { name: 'Create' }).click();
@@ -515,7 +520,7 @@ test('the focus timer runs on timestamps and counts finished sessions (#58)', as
   await page.getByRole('button', { name: /^Focus timer/ }).click();
   await page.getByLabel('Focus (min)').fill('1');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await account(page, 'Done');
 
   const timer = page.getByRole('timer');
   await expect(timer).toHaveText('1:00');
@@ -532,7 +537,15 @@ test('the focus timer runs on timestamps and counts finished sessions (#58)', as
   await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
 });
 
-test('one compact top bar with tabs, search field and greeting (#167)', async ({ page }) => {
+test('header with greeting, search pill, launcher and account menu (#189)', async ({ page }) => {
+  // Any uncaught error (e.g. an effect loop) fails the test.
+  const errors: string[] = [];
+  let step = 'login';
+  page.on('pageerror', (e) => errors.push(`${step}: ${e.message}`));
+  page.on(
+    'console',
+    (m) => m.type() === 'error' && console.log(`[${step}] console: ${m.text().slice(0, 2000)}`),
+  );
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
@@ -540,26 +553,55 @@ test('one compact top bar with tabs, search field and greeting (#167)', async ({
   await page.getByRole('button', { name: 'Home', exact: true }).click();
   await expect(page.locator('time')).toBeVisible();
 
-  // Tabs live in the top bar; the first widget starts right below it.
-  const bar = page.locator('header.topbar');
-  await expect(bar.getByRole('navigation', { name: 'Dashboard tabs' })).toBeVisible();
+  // Height budget (#189, decided against the mockup): top bar, greeting,
+  // search pill and tab pills before the first widget.
   const firstWidget = await page.locator('[data-widget-id]').first().boundingBox();
-  expect(firstWidget?.y ?? 999).toBeLessThan(90);
+  expect(firstWidget?.y ?? 999).toBeLessThan(260);
 
-  // Typing into the bar continues in the quick search.
-  await bar.getByRole('searchbox', { name: 'Quick search (Ctrl+K or /)' }).pressSequentially('Dock');
+  // Typing into the search pill continues in the quick search.
+  step = 'search';
+  await page.getByRole('searchbox', { name: 'Quick search (Ctrl+K or /)' }).pressSequentially('Dock');
   await expect(page.getByRole('combobox', { name: /Search bookmarks/ })).toHaveValue('Dock');
-  await expect(page.getByRole('option', { name: /Docker documentation/ })).toBeVisible();
   await page.keyboard.press('Escape');
 
-  // The greeting line is off by default and addresses the user by name.
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  // Launcher: filter across services and bookmarks; Esc returns the focus.
+  step = 'launcher';
+  const trigger = page.getByRole('button', { name: 'Services and bookmarks' });
+  await trigger.click();
+  const launcher = page.getByRole('dialog', { name: 'Services and bookmarks' });
+  await expect(launcher.getByRole('heading', { name: 'Services' })).toBeVisible();
+  await launcher.getByRole('searchbox', { name: /Filter services/ }).fill('docker');
+  await expect(launcher.getByRole('link', { name: /Docker documentation/ })).toBeVisible();
+  await expect(launcher.getByText('DuckDuckGo')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(launcher).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+
+  // Account menu: keyboard operable, Esc returns the focus.
+  step = 'account';
+  const accountButton = page.getByRole('button', { name: 'Account menu', exact: true });
+  await accountButton.click();
+  await expect(page.getByRole('menuitem', { name: 'Edit', exact: true })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('menuitem', { name: 'Settings', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(accountButton).toBeFocused();
+
+  // The greeting addresses the user by name; the launcher shows only bookmarks.
+  step = 'settings';
+  await account(page, 'Settings');
   await page.getByRole('button', { name: 'Appearance', exact: true }).click();
-  await page.getByLabel(/Show a greeting line/).check();
   await page.getByLabel('Your name in the greeting (optional)').fill('Tristan');
+  await page.getByLabel(/The launcher/).selectOption('bookmarks');
   await page.getByRole('button', { name: 'Save appearance' }).click();
   await page.getByRole('button', { name: 'Close' }).click();
-  await expect(page.locator('p.greeting')).toContainText(/(Good (morning|evening|night)|Hello), Tristan/);
+  await expect(page.locator('.hero h1')).toHaveText(/^Good (morning|afternoon|evening|night), Tristan$/);
+  step = 'launcher bookmarks';
+  await trigger.click();
+  await expect(launcher.getByRole('heading', { name: 'Services' })).toHaveCount(0);
+  await expect(launcher.getByRole('heading', { name: 'Bookmarks' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
 });
 
 test('the smart search answers questions about the server (#156)', async ({ page }) => {
@@ -603,7 +645,7 @@ test('two-factor authentication can be enabled and is required at login', async 
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await account(page, 'Settings');
   await page.getByRole('button', { name: 'Account', exact: true }).click();
   await page.getByRole('button', { name: 'Set up two-factor authentication' }).click();
   await expect(page.getByAltText('QR code for the authenticator app')).toBeVisible();
@@ -614,7 +656,7 @@ test('two-factor authentication can be enabled and is required at login', async 
   await page.getByRole('button', { name: 'I saved them' }).click();
   await page.getByRole('button', { name: 'Close' }).click();
 
-  await page.getByRole('button', { name: 'Log out' }).click();
+  await account(page, 'Log out');
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByLabel('Authentication code (or recovery code)')).toBeVisible();

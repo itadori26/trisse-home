@@ -5,6 +5,7 @@ export const serverMessages = {
   srv_1c9c8a99006c73fe: "The accent color must look like #3b6ef5.",
   srv_b410fbcb84d6e168: "The custom CSS must be at most 64 KiB.",
   srv_d55a4312396d903f: "The language must be en, de or empty (browser).",
+  srv_64b6233c48b2792b: "The launcher shows both, services or bookmarks.",
   srv_d28e94f3f2756a0b: "The theme must be system, light or dark.",
 } as const;
 

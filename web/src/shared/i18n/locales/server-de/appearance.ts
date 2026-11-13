@@ -6,6 +6,8 @@ import type { ServerMessageKey } from '../../../api-client/generated/server-mess
  * compile error. The English original is shown as a comment above each entry.
  */
 export const serverDe: Record<ServerMessageKey, string> = {
+  // The launcher shows both, services or bookmarks.
+  srv_64b6233c48b2792b: 'Der Launcher zeigt beides, nur Dienste oder nur Lesezeichen.',
   // The accent color must look like #3b6ef5.
   srv_1c9c8a99006c73fe: 'Die Akzentfarbe muss wie #3b6ef5 aussehen.',
   // The custom CSS must be at most 64 KiB.
