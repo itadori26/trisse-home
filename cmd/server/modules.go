@@ -11,6 +11,7 @@ import (
 	"trisse-home/internal/modules"
 	"trisse-home/internal/modules/adguard"
 	"trisse-home/internal/modules/appearance"
+	"trisse-home/internal/modules/arr"
 	"trisse-home/internal/modules/auth"
 	"trisse-home/internal/modules/backup"
 	"trisse-home/internal/modules/backupmonitor"
@@ -174,6 +175,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"countdown", func() modules.Module { return countdown.New(db, clk, ids) }},
 		{"focus", func() modules.Module { return focus.New(db, clk, ids) }},
+		{"arr", func() modules.Module { return arr.New(db, secrets, out.integration, clk, ids) }},
 		{"media", func() modules.Module { return media.New(db, secrets, out.integration, clk) }},
 		// scaffold:modules - make new-module inserts new modules above this line.
 	}

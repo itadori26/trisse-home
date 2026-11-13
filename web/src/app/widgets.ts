@@ -591,6 +591,29 @@ export const widgetDefinitions: WidgetDefinition[] = [
   },
   {
     type: {
+      kind: 'arr',
+      category: 'server',
+      keywords: ['sonarr', 'radarr', 'prowlarr', 'downloads', 'series', 'movies'],
+      get title() {
+        return t('widget.arr.title');
+      },
+      get description() {
+        return t('widget.arr.description');
+      },
+      defaultSize: { w: 4, h: 6 },
+    },
+    icon: 'package',
+    view: lazy(
+      () => import('../features/arr/ui/ArrWidget.svelte'),
+      (config, c) => ({ config, arr: c.arr }),
+    ),
+    settings: lazy(
+      () => import('../features/arr/ui/ArrWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
+  {
+    type: {
       kind: 'media',
       category: 'network',
       keywords: ['jellyfin', 'plex', 'movies', 'series', 'filme', 'serien'],
