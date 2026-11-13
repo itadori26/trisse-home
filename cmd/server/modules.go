@@ -173,13 +173,15 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"countdown", func() modules.Module { return countdown.New(db, clk, ids) }},
 		{"focus", func() modules.Module { return focus.New(db, clk, ids) }},
-		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {
 		if cfg.ModuleEnabled(m.name) {
 			registry.Register(m.build())
 		}
 	}
+	// Modules from cmd/server/module_<name>.go (#193).
+	registerSelfRegistered(moduleDeps{cfg: cfg, db: db, clock: clk, ids: ids, out: out, sink: sink,
+		alerts: alerts, auth: authModule, registry: registry})
 	if cfg.ModuleEnabled("backup") && !cfg.DemoMode {
 		b, err := backup.New(backup.Config{Dir: cfg.BackupDir, Interval: cfg.BackupInterval, Retention: cfg.BackupRetention,
 			Cipher: secrets, Client: out.backupRemote, Alerts: alerts, Log: log,

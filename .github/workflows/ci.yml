@@ -26,7 +26,8 @@ jobs:
       - name: Generated TypeScript types and backend messages are up to date
         run: |
           go install github.com/gzuidhof/tygo@latest
-          tygo generate
+          go run ./scripts/tygoconfig -o .tygo.generated.yaml
+          tygo generate --config .tygo.generated.yaml
           go run ./scripts/servermessages
           cd web && npm ci --no-audit --no-fund && npx prettier --write src/shared/api-client/generated >/dev/null
           git diff --exit-code -- src/shared/api-client/generated

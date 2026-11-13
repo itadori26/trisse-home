@@ -23,7 +23,9 @@ deps: ## Install Go modules and frontend dependencies
 
 .PHONY: generate
 generate: ## Generate TypeScript DTO types (tygo) and the backend message catalogue
-	tygo generate
+	go run ./scripts/tygoconfig -o .tygo.generated.yaml
+	tygo generate --config .tygo.generated.yaml
+	rm -f .tygo.generated.yaml
 	go run ./scripts/servermessages
 	cd $(WEB) && npx prettier --log-level warn --write src/shared/api-client/generated >/dev/null || true
 
