@@ -6,6 +6,7 @@ import {
   MAX_ANSWERS,
   type Match,
   rank,
+  THRESHOLD,
 } from '../domain/smart/intent';
 
 /**
@@ -41,6 +42,8 @@ export interface SmartSearchOptions {
   canAct: boolean;
   askBack: AskBack;
   now?: () => Date;
+  /** Applies the learned boost to a match score (#159); target "answer:<intent>". */
+  score?: (query: string, target: string, score: number) => number;
 }
 
 const DEFAULT_CACHE_MS = 15_000;
@@ -73,7 +76,15 @@ export class SmartSearch {
 
   /** The ranked matches of a query, without resolving them (synchronous). */
   matches(query: string): Match[] {
-    return rank(interpret(query, this.intents, this.entityList, this.now()));
+    const found = interpret(query, this.intents, this.entityList, this.now());
+    const score = this.opts.score;
+    if (!score) return rank(found);
+    // The boost reorders answers above the threshold; it never lifts one over it.
+    return rank(
+      found
+        .filter((m) => m.score >= THRESHOLD)
+        .map((m) => ({ ...m, score: score(query, `answer:${m.intent.id}`, m.score) })),
+    );
   }
 
   /**

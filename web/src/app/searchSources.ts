@@ -309,12 +309,16 @@ function askBack(m: Match): Answer {
 export function createSmartSearch(
   c: Container,
   modules: Set<string>,
-  opts: { canAct: boolean; weatherLocation: () => WeatherConfig | null },
+  opts: {
+    canAct: boolean;
+    weatherLocation: () => WeatherConfig | null;
+    score?: (query: string, target: string, score: number) => number;
+  },
 ): SmartSearch {
   const sources: SearchSource[] = [calcSource()];
   if (modules.has('system')) sources.push(systemSource(c));
   if (modules.has('docker')) sources.push(dockerSource(c));
   if (modules.has('services')) sources.push(servicesSource(c));
   if (modules.has('weather')) sources.push(weatherSource(c, opts.weatherLocation));
-  return new SmartSearch({ intents: INTENTS, sources, canAct: opts.canAct, askBack });
+  return new SmartSearch({ intents: INTENTS, sources, canAct: opts.canAct, askBack, score: opts.score });
 }

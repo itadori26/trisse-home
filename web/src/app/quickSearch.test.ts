@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fold, type QuickItem, score, search } from './quickSearch';
+import { fold, itemTarget, type QuickItem, score, search } from './quickSearch';
 
 const items: QuickItem[] = [
   {
@@ -30,5 +30,17 @@ describe('quick search', () => {
   });
   it('returns nothing for blank queries', () => {
     expect(search(items, '  ')).toEqual([]);
+  });
+
+  it('ranks results chosen before higher (#159)', () => {
+    const list: QuickItem[] = [
+      { kind: 'service', id: 'a', title: 'Plex', detail: '' },
+      { kind: 'service', id: 'b', title: 'My Plex mirror', detail: '' },
+    ];
+    expect(search(list, 'plex')[0]?.items.map((i) => i.id)).toEqual(['a', 'b']);
+    const boosted = search(list, 'plex', 5, (it, s) => (itemTarget(it) === 'service:b' ? s * 2 : s));
+    expect(boosted[0]?.items.map((i) => i.id)).toEqual(['b', 'a']);
+    // A boost never turns a non-match into a result.
+    expect(search(list, 'jelly', 5, (_, s) => s + 10)).toEqual([]);
   });
 });

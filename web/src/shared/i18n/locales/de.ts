@@ -359,6 +359,12 @@ export const de: Record<BaseMessageKey, string> = {
   'search.url_with': 'URL mit {value}',
   'search.search_bangs_like_w_work': 'Suchen – !Bangs wie !w funktionieren',
   'search.search': 'Suchen',
+  'search.history_heading': 'Suchverlauf',
+  'search.history_learn': 'Aus meinen Auswahlen lernen und sie weiter oben zeigen',
+  'search.history_hint':
+    'Bleibt in diesem Browser: nur kurze Anfangsstücke der Suche und die IDs gewählter Treffer, nach einigen Wochen verblasst.',
+  'search.history_clear': 'Suchverlauf löschen',
+  'search.history_count': '{n} gemerkte Auswahlen',
   'search.open_results_in_a_new_tab': 'Ergebnisse in neuem Tab öffnen',
   'search.the_search_engine_and_custom_shortcuts':
     'Suchmaschine und eigene Kürzel legst du unter Einstellungen → Suche fest.',

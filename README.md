@@ -70,7 +70,7 @@ Not sure whether trisse-home is the right fit? See the
 | **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
 | **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
 | **transfer**   | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)     |
-| **quick search** | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web |
+| **quick search** | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web; learns from your choices (frecency, kept in the browser, can be switched off and cleared under Settings → Search) |
 | **appearance** | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS; optional greeting line below the compact top bar (name, date, weather of the first weather widget) |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings; optional off-site copies to WebDAV/Nextcloud with their own retention; guided restore (password + 2FA, validated before the swap) |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |

@@ -1,6 +1,7 @@
 import type { Answer } from '../features/search/domain/smart/answer';
 import type { SmartSearch } from '../features/search/usecase/smartSearch';
 import type { Container } from './container';
+import { searchUsage } from './searchUsage';
 
 const engines = new WeakMap<Container, Promise<SmartSearch>>();
 
@@ -14,7 +15,11 @@ export function widgetAnswers(c: Container): (query: string, signal: AbortSignal
     let engine = engines.get(c);
     if (!engine) {
       engine = Promise.all([import('./searchSources'), c.enabledModules()]).then(([m, info]) =>
-        m.createSmartSearch(c, info.modules, { canAct: false, weatherLocation: () => null }),
+        m.createSmartSearch(c, info.modules, {
+          canAct: false,
+          weatherLocation: () => null,
+          score: (q, target, score) => searchUsage.score(q, target, score),
+        }),
       );
       engines.set(c, engine);
     }

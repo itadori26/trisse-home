@@ -349,6 +349,12 @@ export const en = {
   'search.url_with': 'URL with {value}',
   'search.search_bangs_like_w_work': 'Search — !bangs like !w work',
   'search.search': 'Search',
+  'search.history_heading': 'Search history',
+  'search.history_learn': 'Learn from my choices and rank them higher',
+  'search.history_hint':
+    'Stays in this browser: only short query prefixes and the ids of chosen results, faded out after a few weeks.',
+  'search.history_clear': 'Clear search history',
+  'search.history_count': '{n} remembered choices',
   'search.open_results_in_a_new_tab': 'Open results in a new tab',
   'search.the_search_engine_and_custom_shortcuts':
     'The search engine and custom shortcuts are configured under Settings → Search.',

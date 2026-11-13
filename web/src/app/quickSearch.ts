@@ -23,6 +23,9 @@ export interface QuickGroup {
   items: QuickItem[];
 }
 
+/** Id of an item in the search history (#159). */
+export const itemTarget = (item: QuickItem) => `${item.kind}:${item.id}`;
+
 const order: QuickKind[] = ['bookmark', 'service', 'note', 'todo'];
 const labels: Record<QuickKind, MessageKey> = {
   bookmark: 'app.group.bookmarks',
@@ -56,10 +59,21 @@ export function score(item: QuickItem, query: string): number {
   return 1;
 }
 
-/** Ranks the items, groups them by kind and limits each group. */
-export function search(items: readonly QuickItem[], query: string, perGroup = 5): QuickGroup[] {
+/**
+ * Ranks the items, groups them by kind and limits each group. `boost`
+ * applies the learned frecency to a match score (#159).
+ */
+export function search(
+  items: readonly QuickItem[],
+  query: string,
+  perGroup = 5,
+  boost?: (item: QuickItem, score: number) => number,
+): QuickGroup[] {
   const scored = items
-    .map((item) => ({ item, s: score(item, query) }))
+    .map((item) => {
+      const s = score(item, query);
+      return { item, s: s > 0 && boost ? boost(item, s) : s };
+    })
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s || a.item.title.localeCompare(b.item.title));
   return order
