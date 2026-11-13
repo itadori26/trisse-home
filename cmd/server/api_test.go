@@ -159,6 +159,17 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 		w.Header().Set("ETag", `"h1"`)
 		_, _ = io.WriteString(w, "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:h\r\nSUMMARY:Holiday\r\nDTSTART;VALUE=DATE:"+day+"\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")
 	})
+	// Immich (#85).
+	mux.HandleFunc("GET /immich/api/assets/statistics", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("x-api-key") != "immich-key" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `{"images":10,"videos":2}`)
+	})
+	mux.HandleFunc("GET /immich/api/server/version", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"major":1,"minor":120,"patch":0}`)
+	})
 	mux.HandleFunc("GET /ha/api/states", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer ha-token" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -715,6 +726,15 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatalf("poster: %q", body)
 	}
 	c.do(http.MethodGet, "/api/media/posters/other", nil, http.StatusNotFound)
+
+	// --- Immich (#85): optional parts (storage, memories) may be forbidden ---
+	c.do(http.MethodGet, "/api/immich/overview", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/immich/settings", obj{"url": up.URL + "/immich", "apiKey": "immich-key"}, http.StatusOK, nil)
+	var immich obj
+	c.json(http.MethodGet, "/api/immich/overview", nil, http.StatusOK, &immich)
+	if immich["photos"] != float64(10) || immich["version"] != "1.120.0" || len(immich["memories"].([]any)) != 0 {
+		t.Fatalf("immich: %v", immich)
+	}
 
 	// --- calendar ---
 	c.do(http.MethodGet, "/api/calendar/events", nil, http.StatusNotFound)
