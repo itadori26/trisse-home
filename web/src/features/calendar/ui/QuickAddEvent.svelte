@@ -2,7 +2,7 @@
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
-  import { calendarName, type NewEventInput } from '../domain/calendar';
+  import { calendarName, dateInputValue, type NewEventInput } from '../domain/calendar';
   import type { CalendarUseCases } from '../usecase/calendarUseCases';
 
   /** Props of the quick-add dialog. */
@@ -10,11 +10,15 @@
     calendar: CalendarUseCases;
     onclose: () => void;
     oncreated: () => void;
+    /** Day to prefill (the selected day of the split view, #163); default today. */
+    date?: Date;
   }
-  let { calendar, onclose, oncreated }: Props = $props();
+  let { calendar, onclose, oncreated, date = new Date() }: Props = $props();
 
   const pad = (n: number) => String(n).padStart(2, '0');
   const now = new Date();
+  // svelte-ignore state_referenced_locally
+  const initialDate = dateInputValue(date);
   const nextHour = (now.getHours() + 1) % 24;
   let calendars = $state<string[]>([]);
   let form = $state<NewEventInput>({
@@ -22,7 +26,7 @@
     summary: '',
     location: '',
     allDay: false,
-    date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+    date: initialDate,
     endDate: '',
     startTime: `${pad(nextHour)}:00`,
     endTime: `${pad((nextHour + 1) % 24)}:00`,

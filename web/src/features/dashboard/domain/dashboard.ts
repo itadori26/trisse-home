@@ -124,6 +124,8 @@ export interface WidgetType {
   title: string;
   description: string;
   defaultSize: { w: number; h: number };
+  /** Configuration of a newly placed widget (e.g. the calendar's split view, #163). */
+  defaultConfig?: WidgetConfig;
   /** Column of the widget picker (#104). */
   category: WidgetCategory;
   /** Extra search terms of the widget picker. */

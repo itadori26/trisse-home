@@ -124,6 +124,8 @@ schemas:
             uid: { type: string }
             summary: { type: string }
             location: { type: string }
+            description: { type: string, description: Plain text, at most 2000 characters (#163) }
+            url: { type: string, description: 'http(s) link of the event, empty otherwise (#163)' }
             calendar: { type: string, description: CalDAV collection or subscription name }
             color: { type: string, description: "Subscription colour (#rrggbb); empty for CalDAV calendars" }
             start: { type: string, description: RFC 3339, or YYYY-MM-DD for all-day events }

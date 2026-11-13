@@ -2,9 +2,11 @@ import {
   type CalendarEvent,
   type CalendarSettings,
   type CalendarSubscription,
+  monthGrid,
   type NewEventInput,
   type SubscriptionInput,
   validateNewEvent,
+  type WeekStart,
   validateSubscription,
 } from '../domain/calendar';
 
@@ -36,6 +38,9 @@ export interface CalendarGateway {
 
 /** Application logic of the calendar feature. */
 export class CalendarUseCases {
+  /** Month grids already loaded, by year-month-weekStart (#163). */
+  private readonly months = new Map<string, Promise<Agenda>>();
+
   constructor(private readonly gateway: CalendarGateway) {}
 
   settings(): Promise<CalendarSettings> {
@@ -58,6 +63,28 @@ export class CalendarUseCases {
   /** Events of a period, e.g. a month grid (at most 42 days). */
   range(from: Date, to: Date): Promise<Agenda> {
     return this.gateway.range(from, to);
+  }
+
+  /**
+   * Events of the 6×7 grid of a month (one range request of at most 42 days),
+   * cached per month so navigating back and forth loads nothing twice (#163).
+   * fresh bypasses and renews the cache (the periodic refresh, a new event);
+   * a failed request is not cached.
+   */
+  month(year: number, month: number, weekStart: WeekStart, fresh = false): Promise<Agenda> {
+    const key = `${year}-${month}-${weekStart}`;
+    const cached = this.months.get(key);
+    if (cached && !fresh) return cached;
+    const cells = monthGrid(year, month, new Date(), weekStart);
+    const first = cells[0]?.date ?? new Date(year, month, 1);
+    const last = cells[cells.length - 1]?.date ?? new Date(year, month + 1, 0);
+    const to = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1);
+    const load = this.gateway.range(first, to);
+    this.months.set(key, load);
+    load.catch(() => {
+      if (this.months.get(key) === load) this.months.delete(key);
+    });
+    return load;
   }
 
   /** Validates and creates an event from the quick-add form. */
