@@ -3,12 +3,15 @@ import { calculate } from '../features/search/domain/calc/calc';
 import type { Answer, State } from '../features/search/domain/smart/answer';
 import type { Entity, Match } from '../features/search/domain/smart/intent';
 import { INTENTS } from '../features/search/domain/smart/intents';
+import type { IntentSpec } from '../features/search/domain/smart/intent';
 import { type SearchSource, SmartSearch } from '../features/search/usecase/smartSearch';
 import type { ServiceState } from '../features/services/domain/service';
+import { daysUntilFull } from '../features/system/domain/system';
 import { describe, type WeatherConfig } from '../features/weather/domain/weather';
 import { intlLocale, t } from '../shared/i18n';
 import { formatBytes, formatUptime } from '../shared/ui/format';
 import type { Container } from './container';
+import { type SearchContribution, type WidgetConfig } from './searchKit';
 
 /**
  * Answer sources of the smart search (#156): small adapters on top of the
@@ -57,7 +60,16 @@ function systemSource(c: Container): SearchSource {
             empty: t('smart.no_disks'),
             items: s.disks.map((d) => ({
               label: d.label,
-              value: `${percent(d.usage.percent)} · ${t('smart.free', { free: formatBytes(d.usage.total - d.usage.used) })}`,
+              // With the fill forecast (#108, #161): "platte voll" asks exactly this.
+              value: [
+                percent(d.usage.percent),
+                t('smart.free', { free: formatBytes(d.usage.total - d.usage.used) }),
+                daysUntilFull(d.forecast) !== null
+                  ? t('smart.full_in', { n: daysUntilFull(d.forecast) ?? 0 })
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' · '),
               percent: d.usage.percent,
             })),
           };
@@ -299,10 +311,31 @@ function askBack(m: Match): Answer {
     kind: 'text',
     intent: m.intent.id,
     title: t('smart.which_title'),
-    text: t(m.missing.includes('service') ? 'smart.which_service' : 'smart.which_container'),
+    text: t(
+      m.missing.includes('service')
+        ? 'smart.which_service'
+        : m.missing.includes('job')
+          ? 'smart.which_job'
+          : 'smart.which_container',
+    ),
     suggestions: names,
     at: null,
   };
+}
+
+// Intents and sources of modules from src/app/search/<name>.ts (#161, #193).
+const found = import.meta.glob<{ search: SearchContribution }>(['./search/*.ts', '!./search/*.test.ts'], {
+  eager: true,
+});
+
+/** The search contributions of the modules, sorted by module name. */
+export const contributions: readonly SearchContribution[] = Object.values(found)
+  .map((f) => f.search)
+  .sort((a, b) => a.module.localeCompare(b.module));
+
+/** The built-in intents plus those of all module contributions. */
+export function allIntents(): IntentSpec[] {
+  return [...INTENTS, ...contributions.flatMap((c) => c.intents)];
 }
 
 /** Builds the smart search with the sources of the enabled modules. */
@@ -312,6 +345,8 @@ export function createSmartSearch(
   opts: {
     canAct: boolean;
     weatherLocation: () => WeatherConfig | null;
+    /** First widget config of a kind, e.g. the stop of the transit widget (#161). */
+    widgetConfig?: WidgetConfig;
     score?: (query: string, target: string, score: number) => number;
   },
 ): SmartSearch {
@@ -320,5 +355,7 @@ export function createSmartSearch(
   if (modules.has('docker')) sources.push(dockerSource(c));
   if (modules.has('services')) sources.push(servicesSource(c));
   if (modules.has('weather')) sources.push(weatherSource(c, opts.weatherLocation));
-  return new SmartSearch({ intents: INTENTS, sources, canAct: opts.canAct, askBack, score: opts.score });
+  const context = { widgetConfig: opts.widgetConfig ?? (() => null) };
+  for (const m of contributions) if (modules.has(m.module)) sources.push(m.source(c, context));
+  return new SmartSearch({ intents: allIntents(), sources, canAct: opts.canAct, askBack, score: opts.score });
 }

@@ -40,6 +40,7 @@ const table: [string, string | null][] = [
   ['is the disk full', 'system.disk'],
   ['how much storage is free', 'system.disk'],
   ['plate voll', 'system.disk'], // typo
+  ['platte voll', 'system.disk'],
   ['/disk', 'system.disk'],
   ['load', 'system.load'],
   ['systemlast', 'system.load'],

@@ -19,6 +19,7 @@ A module consists of files of its own; collectors find them by convention:
 | Widget | `web/src/app/widgets/<name>.ts` | `web/src/app/widgets.ts` |
 | Container service | `web/src/app/services/<name>.ts` | `web/src/app/container.ts` |
 | Settings section | `web/src/app/settings/<name>.ts` | `web/src/app/SettingsDialog.svelte` |
+| Search answers (optional) | `web/src/app/search/<name>.ts` (`defineSearch`: intents as data plus an answer source) | `web/src/app/searchSources.ts` |
 
 Existing modules that were added before this layout (the older entries in
 `modules.go`, `widgets.ts`, `container.ts` and the shared catalogues) move over

@@ -1371,6 +1371,21 @@ export const de: Record<BaseMessageKey, string> = {
   'smart.copy': 'Kopieren',
   'smart.copied': 'Kopiert',
   'smart.enter_copies': 'Enter kopiert das Ergebnis',
+  'smart.waste': 'Müllabfuhr',
+  'smart.agenda': 'Termine',
+  'smart.no_events': 'Keine Termine',
+  'smart.parcels': 'Pakete',
+  'smart.no_parcels': 'Keine verfolgten Pakete',
+  'smart.parcel_eta': 'erwartet am {date}',
+  'smart.which_stop':
+    'Nenne eine Haltestelle, z. B. „Abfahrt Oldenburg Hbf“, oder wähle eine im ÖPNV-Widget.',
+  'smart.backups': '{ok} von {total} Backups und Checks OK',
+  'smart.job_gone': 'Diesen Job gibt es nicht mehr.',
+  'smart.which_job': 'Welchen Job meinst du?',
+  'smart.speedtest': 'Internetgeschwindigkeit',
+  'smart.disk_health': 'Festplattenzustand',
+  'smart.timeline': 'Letzte Ereignisse',
+  'smart.full_in': 'voll in ~{n} Tagen',
   'common.plain_http_warning':
     'Diese Adresse nutzt http://: Passwort oder Token gehen unverschlüsselt durch dein Netz. Nimm https://, wo das Gerät es unterstützt.',
 };
