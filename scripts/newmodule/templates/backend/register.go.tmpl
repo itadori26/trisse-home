@@ -1,0 +1,11 @@
+package main
+
+import (
+	"trisse-home/internal/modules"
+	"trisse-home/internal/modules/{{.Name}}"
+)
+
+// The {{.Title}} module registers itself; no shared file lists it (#193).
+func init() {
+	registerModule("{{.Name}}", func(d moduleDeps) modules.Module { return {{.Name}}.New(d.db, d.clock, d.ids) })
+}

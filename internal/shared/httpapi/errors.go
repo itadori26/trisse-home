@@ -69,6 +69,10 @@ func WriteDomainError(w http.ResponseWriter, r *http.Request, err error) {
 		case errors.As(err, &perr):
 			detail.Message = perr.Message
 			detail.MessageKey, detail.Params = messageKey(perr.Template), perr.Params
+			if perr.Cause != nil {
+				// Details of outbound calls stay in the log (#191).
+				slog.WarnContext(r.Context(), "target call failed", "path", r.URL.Path, "err", perr.Cause)
+			}
 		}
 		if m.status >= http.StatusInternalServerError {
 			slog.WarnContext(r.Context(), "upstream failure", "path", r.URL.Path, "err", err)

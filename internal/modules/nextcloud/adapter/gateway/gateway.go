@@ -17,6 +17,7 @@ import (
 	"net/url"
 
 	"trisse-home/internal/modules/nextcloud/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 //go:embed migrations/*.sql
@@ -183,7 +184,7 @@ func (a *API) Status(ctx context.Context, s domain.Settings) (domain.Status, err
 	if err := a.get(ctx, s, "/ocs/v1.php/cloud/users/"+url.PathEscape(s.Username)+"?format=json", true, &user); err != nil {
 		var hs httpStatusError
 		if errors.As(err, &hs) && hs.code == http.StatusUnauthorized {
-			return domain.Status{}, errors.New("username or app password is wrong")
+			return domain.Status{}, fmt.Errorf("%w: username or app password is wrong", kernel.ErrTargetAuth)
 		}
 		return domain.Status{}, fmt.Errorf("user api: %w", err)
 	}

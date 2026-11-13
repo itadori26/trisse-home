@@ -36,13 +36,27 @@ func (s Severity) Valid() bool {
 }
 
 // AlertTypes are the notification types the user can configure.
-var AlertTypes = []string{"service", "container", "disk", "tls", "backup", "check", "security", "diskhealth", "forecast", "speedtest", "image"}
+var AlertTypes = []string{"service", "container", "disk", "tls", "backup", "check", "security", "diskhealth", "forecast", "speedtest", "image", "reminder", "briefing"}
 
 // DefaultSeverities apply when the user did not choose one.
 var DefaultSeverities = map[string]Severity{
 	"service": SeverityCritical, "container": SeverityWarning, "disk": SeverityWarning, "tls": SeverityWarning,
 	"backup": SeverityCritical, "check": SeverityCritical, "security": SeverityWarning, "diskhealth": SeverityCritical,
 	"forecast": SeverityWarning, "speedtest": SeverityInfo, "image": SeverityInfo,
+	"reminder": SeverityInfo, "briefing": SeverityInfo,
+}
+
+// alertTags are the ntfy tags (emoji) of one-off alerts; the security tag
+// stays the fallback for unknown kinds so an unexpected alert never looks
+// harmless.
+var alertTags = map[string]string{"security": "lock", "reminder": "bell", "briefing": "sunny"}
+
+// AlertTag returns the ntfy tag for a one-off alert of the given kind.
+func AlertTag(kind string) string {
+	if tag, ok := alertTags[kind]; ok {
+		return tag
+	}
+	return "lock"
 }
 
 // QuietHours mute non-critical notifications during a daily period on the

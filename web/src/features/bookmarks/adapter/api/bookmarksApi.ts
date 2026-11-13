@@ -32,6 +32,7 @@ const toBookmark = (d: BookmarkDTO): Bookmark => ({
     checkedAt: d.link?.checkedAt ?? '',
   },
   hasIcon: d.hasIcon ?? false,
+  createdAt: d.createdAt,
 });
 const toFolder = (d: FolderDTO): Folder => ({ id: d.id, name: d.name, count: d.count });
 const toDTO = (i: BookmarkInput): BookmarkInputDTO => ({

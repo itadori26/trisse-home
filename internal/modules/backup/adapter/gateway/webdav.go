@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"trisse-home/internal/modules/backup/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 //go:embed migrations/*.sql
@@ -124,9 +125,9 @@ func expect(res *http.Response, codes ...int) error {
 	_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, 64<<10))
 	switch res.StatusCode {
 	case http.StatusUnauthorized, http.StatusForbidden:
-		return errors.New("access denied – check user name and (app) password")
+		return fmt.Errorf("%w: access denied", kernel.ErrTargetAuth)
 	case http.StatusNotFound, http.StatusConflict:
-		return errors.New("the folder does not exist")
+		return fmt.Errorf("%w: the folder does not exist", kernel.ErrTargetNotFound)
 	case http.StatusInsufficientStorage:
 		return errors.New("the target is full")
 	}

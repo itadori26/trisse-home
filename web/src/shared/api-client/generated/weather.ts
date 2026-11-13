@@ -41,6 +41,10 @@ export interface ForecastDTO {
   apparentTemperature: number /* float64 */;
   humidity: number /* float64 */;
   windSpeed: number /* float64 */;
+  /**
+   * WindDirection is where the wind comes from in whole degrees (0 = north); null when unknown.
+   */
+  windDirection?: number /* int */;
   weatherCode: number /* int */;
   isDay: boolean;
   days: DayDTO[];

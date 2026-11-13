@@ -18,6 +18,8 @@ type HostReader interface {
 	Memory(ctx context.Context) (mem, swap domain.Usage, err error)
 	Uptime(ctx context.Context) (time.Duration, error)
 	Disks(ctx context.Context) ([]domain.Disk, error)
+	// Hostname returns the name of the host, or "" when it cannot be read.
+	Hostname(ctx context.Context) string
 	// Temperature returns the highest sensor reading in °C, or 0 if unknown.
 	Temperature(ctx context.Context) (float64, error)
 }
@@ -59,6 +61,7 @@ type DiskView struct {
 
 // SnapshotView is the host metrics snapshot at the use case boundary.
 type SnapshotView struct {
+	Hostname     string
 	CPUPercent   float64
 	CPUCount     int
 	Load1, Load5 float64
@@ -78,7 +81,7 @@ func toView(s domain.Snapshot) SnapshotView {
 	v := SnapshotView{
 		CPUPercent: s.CPUPercent, CPUCount: s.CPUCount, Load1: s.Load.One, Load5: s.Load.Five, Load15: s.Load.Fifteen,
 		Memory: usageView(s.Memory), Swap: usageView(s.Swap), Disks: make([]DiskView, 0, len(s.Disks)),
-		Uptime: s.Uptime, Temperature: s.Temperature, TakenAt: s.TakenAt,
+		Uptime: s.Uptime, Temperature: s.Temperature, TakenAt: s.TakenAt, Hostname: s.Hostname,
 	}
 	for _, d := range s.Disks {
 		v.Disks = append(v.Disks, DiskView{Label: d.Label, Usage: usageView(d.Usage)})
@@ -130,6 +133,8 @@ func (m *monitor) Sample(ctx context.Context) error {
 	if snap.Disks, err = m.host.Disks(ctx); err != nil {
 		return fmt.Errorf("read disks: %w", err)
 	}
+	// The host name is informational: an unreadable one is shown as empty.
+	snap.Hostname = m.host.Hostname(ctx)
 	// Temperature sensors are optional (VMs often have none).
 	snap.Temperature, _ = m.host.Temperature(ctx)
 

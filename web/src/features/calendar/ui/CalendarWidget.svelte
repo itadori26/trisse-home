@@ -78,7 +78,11 @@
         <h4>{dayLabel(day.date)}</h4>
         <ul>
           {#each day.events as e (e.uid + e.start.getTime())}
-            <li title={[e.location, e.calendar].filter(Boolean).join(' · ')}>
+            <li
+              title={[e.location, e.calendar].filter(Boolean).join(' · ')}
+              class:colored={e.color !== ''}
+              style:--event-color={e.color || null}
+            >
               <span class="time">{e.allDay ? t('calendar.all_day_short') : time(e.start)}</span>
               <span class="summary">{e.summary}</span>
             </li>
@@ -95,6 +99,10 @@
 {/if}
 
 <style>
+  li.colored {
+    border-left: 3px solid var(--event-color);
+    padding-left: var(--space-1);
+  }
   .add {
     float: right;
     margin: -4px 0 0 var(--space-1);

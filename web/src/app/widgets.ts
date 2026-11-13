@@ -4,58 +4,16 @@ import { t } from '../shared/i18n';
  * component, settings form and default size. Features never know about each
  * other; this file is the only place that combines them.
  */
-import type { Component } from 'svelte';
-import type { WidgetType } from '../features/dashboard';
 import type { IconName } from '../shared/ui/icons/paths';
-import type { Container } from './container';
 import { prefixesFromConfig } from '../features/quickactions/domain/command';
 import { quickCapture } from './quickCapture';
+import { lazy, type Renderer, type WidgetDefinition } from './widgetKit';
 import { widgetAnswers } from './widgetAnswers';
 
-/** Configuration object stored per widget. */
-type Config = Record<string, unknown>;
+export type { Renderer, WidgetDefinition };
 
-/** A lazily loaded component together with a function that builds its props (#116). */
-export interface Renderer {
-  /** Loads the component's chunk; the promise is cached per kind. */
-  load: () => Promise<Component<Record<string, unknown>>>;
-  props: (config: Config, c: Container) => Record<string, unknown>;
-}
-
-/** Everything the dashboard needs to know about one widget kind. */
-export interface WidgetDefinition {
-  type: WidgetType;
-  /** Tile icon of the widget picker (#104); required for every kind. */
-  icon: IconName;
-  /** Rendered without card chrome outside edit mode. */
-  chromeless?: boolean;
-  view: Renderer;
-  /** Settings form; it additionally receives an `onsave(config)` prop. */
-  settings?: Renderer;
-}
-
-/**
- * Type-checks props against the lazily imported component and erases the
- * type for the registry. Only this file knows how widget code is loaded.
- */
-function lazy<P extends object>(
-  load: () => Promise<{ default: Component<P> }>,
-  props: (config: Config, c: Container) => Omit<P, 'onsave'>,
-): Renderer {
-  let loaded: Promise<Component<Record<string, unknown>>> | undefined;
-  return {
-    load: () => {
-      loaded ??= load().then((m) => m.default as unknown as Component<Record<string, unknown>>);
-      // A failed chunk (e.g. offline after an update) can be retried.
-      loaded.catch(() => (loaded = undefined));
-      return loaded;
-    },
-    props,
-  };
-}
-
-/** All widget kinds known to the frontend. */
-export const widgetDefinitions: WidgetDefinition[] = [
+/** The widgets that are still defined here; new ones live in src/app/widgets/<kind>.ts (#193). */
+const legacyDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'search',
@@ -357,7 +315,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
     type: {
       kind: 'adguard',
       category: 'network',
-      keywords: ['dns', 'ads', 'blocking', 'werbung'],
+      keywords: ['dns', 'ads', 'blocking', 'werbung', 'pihole', 'pi-hole'],
       get title() {
         return t('widget.adguard.title');
       },
@@ -369,7 +327,11 @@ export const widgetDefinitions: WidgetDefinition[] = [
     icon: 'shield',
     view: lazy(
       () => import('../features/adguard/ui/AdGuardWidget.svelte'),
-      (_config, c) => ({ adguard: c.adguard }),
+      (config, c) => ({ config, adguard: c.adguard }),
+    ),
+    settings: lazy(
+      () => import('../features/adguard/ui/AdGuardWidgetSettings.svelte'),
+      (config) => ({ config }),
     ),
   },
   {
@@ -585,95 +547,14 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (_config, c) => ({ speedtest: c.speedtest }),
     ),
   },
-  {
-    type: {
-      kind: 'briefing',
-      category: 'information',
-      keywords: ['today', 'summary', 'morning', 'heute', 'tagesüberblick', 'zusammenfassung'],
-      get title() {
-        return t('widget.briefing.title');
-      },
-      get description() {
-        return t('widget.briefing.description');
-      },
-      defaultSize: { w: 4, h: 4 },
-    },
-    icon: 'sun',
-    view: lazy(
-      () => import('../features/briefing/ui/BriefingWidget.svelte'),
-      (_config, c) => ({ briefing: c.briefing }),
-    ),
-  },
-  {
-    type: {
-      kind: 'countdown',
-      category: 'everyday',
-      keywords: ['days', 'deadline', 'exam', 'holiday', 'countdown', 'tage', 'frist', 'prüfung', 'urlaub'],
-      get title() {
-        return t('widget.countdown.title');
-      },
-      get description() {
-        return t('widget.countdown.description');
-      },
-      defaultSize: { w: 4, h: 4 },
-    },
-    icon: 'hourglass',
-    view: lazy(
-      () => import('../features/countdown/ui/CountdownWidget.svelte'),
-      (config, c) => ({ config, countdown: c.countdown }),
-    ),
-    settings: lazy(
-      () => import('../features/countdown/ui/CountdownSettings.svelte'),
-      (config) => ({ config }),
-    ),
-  },
-  {
-    type: {
-      kind: 'focus',
-      category: 'everyday',
-      keywords: ['pomodoro', 'timer', 'study', 'concentration', 'lernen', 'konzentration', 'pause'],
-      get title() {
-        return t('widget.focus.title');
-      },
-      get description() {
-        return t('widget.focus.description');
-      },
-      defaultSize: { w: 3, h: 4 },
-    },
-    icon: 'timer',
-    view: lazy(
-      () => import('../features/focus/ui/FocusWidget.svelte'),
-      (config, c) => ({ config, focus: c.focus }),
-    ),
-    settings: lazy(
-      () => import('../features/focus/ui/FocusSettings.svelte'),
-      (config, c) => ({ config, focus: c.focus }),
-    ),
-  },
-  {
-    type: {
-      kind: 'habits',
-      category: 'everyday',
-      keywords: ['habit', 'streak', 'routine', 'gewohnheit', 'routine', 'serie', 'tracker'],
-      get title() {
-        return t('widget.habits.title');
-      },
-      get description() {
-        return t('widget.habits.description');
-      },
-      defaultSize: { w: 4, h: 4 },
-    },
-    icon: 'check',
-    view: lazy(
-      () => import('../features/habits/ui/HabitsWidget.svelte'),
-      (config, c) => ({ config, habits: c.habits }),
-    ),
-    settings: lazy(
-      () => import('../features/habits/ui/HabitsSettings.svelte'),
-      (config) => ({ config }),
-    ),
-  },
-  // scaffold:widgets - make new-module inserts new widgets above this line.
+];
+
+const own = import.meta.glob<{ widgets: WidgetDefinition[] }>('./widgets/*.ts', { eager: true });
+
+/** All widget kinds known to the frontend. */
+export const widgetDefinitions: WidgetDefinition[] = [
+  ...legacyDefinitions,
+  ...Object.values(own).flatMap((m) => m.widgets),
 ];
 
 /** Picker icon of a widget kind. */

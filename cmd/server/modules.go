@@ -23,17 +23,18 @@ import (
 	"trisse-home/internal/modules/docker"
 	"trisse-home/internal/modules/focus"
 	"trisse-home/internal/modules/fritzbox"
-	"trisse-home/internal/modules/habits"
 	"trisse-home/internal/modules/nextcloud"
 	"trisse-home/internal/modules/notes"
 	"trisse-home/internal/modules/notifications"
 	"trisse-home/internal/modules/onboarding"
 	"trisse-home/internal/modules/parcels"
+	"trisse-home/internal/modules/proxmox"
 	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
 	servicesusecase "trisse-home/internal/modules/services/usecase"
 	"trisse-home/internal/modules/shopping"
+	"trisse-home/internal/modules/smarthome"
 	"trisse-home/internal/modules/speedtest"
 	"trisse-home/internal/modules/system"
 	"trisse-home/internal/modules/timeline"
@@ -96,7 +97,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	var maintenance maintenanceReader
 	var notifier kernel.AlertSink
 	if cfg.ModuleEnabled("notifications") {
-		n := notifications.New(db, secrets, client, clk, ids)
+		n := notifications.New(db, secrets, out.integration, clk, ids)
 		notifier = n
 		registry.Register(n)
 		sinks = append(sinks, n)
@@ -145,36 +146,45 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths, Version: version, Client: client, InstallMethod: cfg.InstallMethod}, db, sink, clk)
 		}},
 		{"docker", func() modules.Module { return dockerModule }},
-		{"adguard", func() modules.Module { return adguard.New(db, secrets, client, clk) }},
-		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, client, clk) }},
+		{"adguard", func() modules.Module { return adguard.New(db, secrets, out.integration, clk) }},
+		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, out.integration, clk) }},
 		{"parcels", func() modules.Module { return parcels.New(db, secrets, client, clk, ids) }},
 		{"transfer", func() modules.Module { return transfer.New(registry.Portables, clk, authModule) }},
 		{"transit", func() modules.Module { return transit.New(client, cfg.TransitAPIURL, clk) }},
-		{"shopping", func() modules.Module { return shopping.New(db, secrets, client, ids) }},
+		{"shopping", func() modules.Module { return shopping.New(db, secrets, out.integration, ids) }},
 		{"waste", func() modules.Module { return waste.New(db, client, clk, time.Local) }},
 		{"wireguard", func() modules.Module { return wireguard.New(db, cfg.WireGuardDir, clk) }},
-		{"fritzbox", func() modules.Module { return fritzbox.New(db, secrets, client, clk, time.Local) }},
+		{"fritzbox", func() modules.Module { return fritzbox.New(db, secrets, out.integration, clk, time.Local) }},
 		{"backupmonitor", func() modules.Module {
 			return backupmonitor.New(backupmonitor.Deps{DB: db, Tokens: crypto.RandomTokens{}, Clock: clk, IDs: ids, Observations: sink})
 		}},
 		{"diskhealth", func() modules.Module {
 			return diskhealth.New(diskhealth.Config{Dir: cfg.DiskHealthDir, StaleAfter: cfg.DiskHealthStaleAfter}, sink, clk)
 		}},
-		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
-		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
+		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, out.integration, sink, clk) }},
+		{"calendar", func() modules.Module { return calendar.New(db, secrets, out.integration, clk, ids, time.Local) }},
+		{"proxmox", func() modules.Module {
+			return proxmox.New(proxmox.Config{DB: db, Cipher: secrets, Client: out.integration, Pinned: out.pinned,
+				ActionGuests: cfg.ProxmoxActionsGuests, Clock: clk, Audit: authModule})
+		}},
+		{"smarthome", func() modules.Module {
+			return smarthome.New(smarthome.Config{DB: db, Cipher: secrets, Client: out.integration,
+				ActionEntities: cfg.SmartHomeActionsEntities, Clock: clk, Audit: authModule})
+		}},
 		{"countdown", func() modules.Module { return countdown.New(db, clk, ids) }},
 		{"focus", func() modules.Module { return focus.New(db, clk, ids) }},
-		{"habits", func() modules.Module { return habits.New(db, clk, ids) }},
-		// scaffold:modules - make new-module inserts new modules above this line.
 	}
 	for _, m := range optional {
 		if cfg.ModuleEnabled(m.name) {
 			registry.Register(m.build())
 		}
 	}
+	// Modules from cmd/server/module_<name>.go (#193).
+	registerSelfRegistered(moduleDeps{cfg: cfg, db: db, clock: clk, ids: ids, out: out, sink: sink,
+		alerts: alerts, auth: authModule, registry: registry})
 	if cfg.ModuleEnabled("backup") && !cfg.DemoMode {
 		b, err := backup.New(backup.Config{Dir: cfg.BackupDir, Interval: cfg.BackupInterval, Retention: cfg.BackupRetention,
-			Cipher: secrets, Client: client, Alerts: alerts, Log: log,
+			Cipher: secrets, Client: out.backupRemote, Alerts: alerts, Log: log,
 			Swapper: database.NewRestorer(cfg.DatabasePath, backup.MaxRestoreBytes), Reauth: authModule, Restart: requestRestart}, db, clk)
 		if err != nil {
 			return nil, nil, err
@@ -249,6 +259,12 @@ type outbound struct {
 		Wake(context.Context, kernel.MAC) error
 	}
 	secrets secretStore
+	// integration calls owner-configured targets (AdGuard, Nextcloud,
+	// Proxmox, …) with the address guard, no redirects and a response limit
+	// (#191); backupRemote is the same with room for whole backups.
+	integration, backupRemote *http.Client
+	// pinned builds clients that trust one certificate fingerprint (Proxmox).
+	pinned func(fingerprint string) *http.Client
 }
 
 // bookmarkFetchTimeout bounds title, favicon and link check requests.
@@ -262,6 +278,11 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 			insecureHealth: &http.Client{Transport: demo.HealthyTransport{}},
 			waker:          demo.NoWake{},
 			secrets:        demo.ReadOnlySecrets{Inner: cipher},
+			integration:    &http.Client{Transport: demo.Transport{Now: clk.Now}, Timeout: healthCheckTimeout},
+			backupRemote:   &http.Client{Transport: demo.Transport{Now: clk.Now}, Timeout: healthCheckTimeout},
+			pinned: func(string) *http.Client {
+				return &http.Client{Transport: demo.Transport{Now: clk.Now}, Timeout: healthCheckTimeout}
+			},
 		}
 	}
 	return outbound{
@@ -271,6 +292,12 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 		guarded:        httpclient.New(httpclient.WithTimeout(bookmarkFetchTimeout), httpclient.WithInternalAddressGuard()),
 		waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
 		secrets:        cipher,
+		integration:    httpclient.New(httpclient.WithIntegrationGuard()),
+		backupRemote: httpclient.New(httpclient.WithIntegrationGuard(),
+			httpclient.WithMaxResponseBytes(backup.MaxRestoreBytes)),
+		pinned: func(fp string) *http.Client {
+			return httpclient.New(httpclient.WithPinnedCertificate(fp), httpclient.WithIntegrationGuard())
+		},
 	}
 }
 

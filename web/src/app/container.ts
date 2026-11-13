@@ -68,17 +68,14 @@ import { WeatherApi } from '../features/weather/adapter/api/weatherApi';
 import { WeatherUseCases } from '../features/weather/usecase/weatherUseCases';
 import type { InfoResponse } from '../shared/api-client/generated/modules';
 import { FetchHttpClient } from '../shared/api-client/http';
-import { BriefingApi } from '../features/briefing/adapter/api/briefingApi';
-import { BriefingUseCases } from '../features/briefing/usecase/briefingUseCases';
-import { CountdownApi } from '../features/countdown/adapter/api/countdownApi';
-import { CountdownUseCases } from '../features/countdown/usecase/countdownUseCases';
-import { browserNotifier, FocusApi } from '../features/focus/adapter/api/focusApi';
-import { FocusUseCases } from '../features/focus/usecase/focusUseCases';
-import { HabitsApi } from '../features/habits/adapter/api/habitsApi';
-import { HabitsUseCases } from '../features/habits/usecase/habitsUseCases';
+import type { ServiceFactory, Services } from './serviceKit';
 
 /** All use cases available to the UI. */
-export interface Container {
+/**
+ * Everything the UI talks to. Features that register themselves from
+ * src/app/services/<name>.ts (#193) add their fields through `Services`.
+ */
+export interface Container extends Services {
   http: FetchHttpClient;
   auth: AuthUseCases;
   dashboard: DashboardUseCases;
@@ -110,11 +107,6 @@ export interface Container {
   shortcuts: ShortcutRegistry;
   /** Quick capture and palette commands (#105, #67). */
   quickActions: QuickActionsUseCases;
-  briefing: BriefingUseCases;
-  countdown: CountdownUseCases;
-  focus: FocusUseCases;
-  habits: HabitsUseCases;
-  // scaffold:container-fields
   calendar: CalendarUseCases;
   onboarding: OnboardingUseCases;
   backup: BackupUseCases;
@@ -124,10 +116,20 @@ export interface Container {
   enabledModules(): Promise<{ modules: Set<string>; widgetKinds: Set<string> }>;
 }
 
+const registered = import.meta.glob<{ service: ServiceFactory }>('./services/*.ts', { eager: true });
+
+/** Creates the services that registered themselves from src/app/services. */
+function createRegisteredServices(http: FetchHttpClient): Services {
+  return Object.fromEntries(
+    Object.values(registered).map(({ service }) => [service.key, service.create(http)]),
+  ) as unknown as Services;
+}
+
 /** Builds the container. `onUnauthorized` fires when the session expired. */
 export function createContainer(onUnauthorized: () => void): Container {
   const http = new FetchHttpClient(onUnauthorized);
   const c: Omit<Container, 'quickActions'> = {
+    ...createRegisteredServices(http),
     http,
     auth: new AuthUseCases(new AuthApi(http), http, new BrowserPasskeys()),
     dashboard: new DashboardUseCases(new DashboardApi(http)),
@@ -155,11 +157,6 @@ export function createContainer(onUnauthorized: () => void): Container {
     speedtest: new SpeedtestUseCases(new SpeedtestApi(http)),
     refresh: createRefreshScheduler(),
     shortcuts: new ShortcutRegistry(),
-    briefing: new BriefingUseCases(new BriefingApi(http)),
-    countdown: new CountdownUseCases(new CountdownApi(http)),
-    focus: new FocusUseCases(new FocusApi(http), browserNotifier),
-    habits: new HabitsUseCases(new HabitsApi(http)),
-    // scaffold:container-init
     calendar: new CalendarUseCases(new CalendarApi(http)),
     onboarding: new OnboardingUseCases(new OnboardingApi(http)),
     backup: new BackupUseCases(new BackupApi(http)),

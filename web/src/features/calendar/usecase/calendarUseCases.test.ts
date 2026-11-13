@@ -8,6 +8,10 @@ const gateway = () =>
     events: vi.fn(),
     range: vi.fn(),
     create: vi.fn(),
+    subscriptions: vi.fn(),
+    addSubscription: vi.fn(),
+    updateSubscription: vi.fn(),
+    deleteSubscription: vi.fn(),
   }) satisfies CalendarGateway;
 
 describe('CalendarUseCases', () => {
@@ -38,5 +42,26 @@ describe('CalendarUseCases', () => {
       expect.objectContaining({ start: '2026-11-12', end: '2026-11-12' }),
     );
     await expect(uc.createEvent({ ...base, allDay: false, summary: '' })).rejects.toThrow(/title/);
+  });
+
+  it('validates subscriptions and keeps the stored URL when editing', async () => {
+    const g = gateway();
+    const uc = new CalendarUseCases(g);
+    const input = {
+      name: ' Uni ',
+      url: ' webcal://uni.example/plan.ics ',
+      color: '#aa0000',
+      refreshMinutes: 60,
+    };
+    await expect(uc.saveSubscription({ ...input, url: 'ftp://x' })).rejects.toThrow();
+    await expect(uc.saveSubscription({ ...input, url: '' })).rejects.toThrow();
+    await uc.saveSubscription(input);
+    expect(g.addSubscription).toHaveBeenCalledWith({
+      ...input,
+      name: 'Uni',
+      url: 'webcal://uni.example/plan.ics',
+    });
+    await uc.saveSubscription({ ...input, url: '' }, 'id1');
+    expect(g.updateSubscription).toHaveBeenCalledWith('id1', { ...input, name: 'Uni', url: '' });
   });
 });
