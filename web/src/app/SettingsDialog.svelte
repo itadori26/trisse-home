@@ -3,11 +3,8 @@
   import { BriefingSettings } from '../features/briefing';
   import { AboutSettings, ForecastSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
+  import { registeredSections } from './settingsSections';
   import { AdGuardSettings } from '../features/adguard';
-  import { ArrSettings } from '../features/arr';
-  import { MediaSettings } from '../features/media';
-  import { SmartHomeSettings } from '../features/smarthome';
-  import { ProxmoxSettings } from '../features/proxmox';
   import { SpeedtestSettings } from '../features/speedtest';
   import { ImageUpdateSettings } from '../features/docker';
   import { FritzBoxSettings } from '../features/fritzbox';
@@ -51,7 +48,7 @@
   let { container, modules, appearance, onappearance, onrestarttour, onclose }: Props = $props();
 
   type Section = { id: string; label: MessageKey; module?: string };
-  const sections: Section[] = [
+  const ownSections: Section[] = [
     { id: 'appearance', label: 'settings.section.appearance', module: 'appearance' },
     { id: 'search', label: 'settings.section.search', module: 'search' },
     { id: 'services', label: 'settings.section.services', module: 'services' },
@@ -59,10 +56,6 @@
     { id: 'folders', label: 'settings.section.bookmark_folders', module: 'bookmarks' },
     { id: 'calendar', label: 'settings.section.calendar', module: 'calendar' },
     { id: 'adguard', label: 'settings.section.adguard', module: 'adguard' },
-    { id: 'arr', label: 'settings.section.arr', module: 'arr' },
-    { id: 'media', label: 'settings.section.media', module: 'media' },
-    { id: 'smarthome', label: 'settings.section.smarthome', module: 'smarthome' },
-    { id: 'proxmox', label: 'settings.section.proxmox', module: 'proxmox' },
     { id: 'speedtest', label: 'settings.section.speedtest', module: 'speedtest' },
     { id: 'docker-updates', label: 'settings.section.docker_updates', module: 'docker' },
     { id: 'nextcloud', label: 'settings.section.nextcloud', module: 'nextcloud' },
@@ -84,6 +77,13 @@
     { id: 'forecast', label: 'settings.section.forecast', module: 'system' },
     { id: 'about', label: 'settings.section.about', module: 'system' },
   ];
+  // Features that register themselves (src/app/settings, #193) come before the account sections.
+  const accountAt = ownSections.findIndex((s) => s.id === 'account');
+  const sections: Section[] = [
+    ...ownSections.slice(0, accountAt),
+    ...registeredSections,
+    ...ownSections.slice(accountAt),
+  ];
   /** Guests only manage their own account (ADR 0012). */
   const guestSections = new Set(['account']);
   const visible = $derived(
@@ -97,6 +97,7 @@
   });
   let active = $state('');
   const current = $derived(active || visible[0]?.id || 'account');
+  const registered = $derived(registeredSections.find((s) => s.id === current));
 </script>
 
 <Modal title={t('app.settings')} {onclose}>
@@ -163,14 +164,10 @@
     <SpeedtestSettings speedtest={container.speedtest} />
   {:else if current === 'adguard'}
     <AdGuardSettings adguard={container.adguard} />
-  {:else if current === 'arr'}
-    <ArrSettings arr={container.arr} />
-  {:else if current === 'media'}
-    <MediaSettings media={container.media} />
-  {:else if current === 'smarthome'}
-    <SmartHomeSettings smarthome={container.smarthome} />
-  {:else if current === 'proxmox'}
-    <ProxmoxSettings proxmox={container.proxmox} />
+  {:else if registered}
+    {#await registered.load() then Section}
+      <Section {...registered.props(container, { modules })} />
+    {/await}
   {:else if current === 'notifications'}
     <NotificationSettings notifications={container.notifications} />
   {:else if current === 'backupmonitor'}

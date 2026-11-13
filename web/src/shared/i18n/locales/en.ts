@@ -1,3 +1,5 @@
+import type { FeatureMessages } from '../registry';
+
 /** English UI texts (source catalogue; keys are referenced by t()). */
 export const en = {
   'app.could_not_reach_the_server': 'Could not reach the server: {loadError}',
@@ -1166,44 +1168,6 @@ export const en = {
   'quick.prefix_todo': 'Prefix for to-dos',
   'quick.prefix_note': 'Prefix for notes',
   'quick.prefix_bookmark': 'Prefix for bookmarks',
-  'widget.arr.title': 'Sonarr / Radarr',
-  'widget.arr.description':
-    'Upcoming episodes and movies, the download queue and health warnings of Sonarr, Radarr and Prowlarr.',
-  'settings.section.arr': 'Sonarr / Radarr',
-  'arr.connect_under_settings': 'Add Sonarr, Radarr or Prowlarr under Settings → Sonarr / Radarr.',
-  'arr.queue': 'Downloads',
-  'arr.queue_empty': 'No downloads.',
-  'arr.upcoming': 'Upcoming',
-  'arr.nothing_upcoming': 'Nothing in the next two weeks.',
-  'arr.health': 'Health warnings',
-  'arr.missing': '{name}: {count} missing',
-  'arr.time_left': '{value} left',
-  'arr.unreachable': 'Not reachable: {detail}',
-  'arr.app': 'App',
-  'arr.name': 'Name',
-  'arr.api_key': 'API key {value}',
-  'arr.key_hint':
-    'The API key is under Settings → General in each app. It is stored encrypted and never shown again.',
-  'arr.add': 'Add instance',
-  'arr.edit': 'Edit {name}',
-  'arr.delete': 'Delete {name}',
-  'arr.invalid_url': 'The URL must start with http:// or https://.',
-  'arr.key_required': 'Please enter the API key.',
-  'widget.media.title': 'Media server',
-  'widget.media.description': 'Now playing and recently added on Jellyfin or Plex.',
-  'settings.section.media': 'Media server',
-  'media.connect_under_settings': 'Connect Jellyfin or Plex under Settings → Media server.',
-  'media.now_playing': 'Now playing',
-  'media.nothing_playing': 'Nothing is playing.',
-  'media.recently_added': 'Recently added',
-  'media.server': 'Media server',
-  'media.url': '{name} URL',
-  'media.jellyfin_key': 'API key {value}',
-  'media.plex_token': 'Plex token {value}',
-  'media.jellyfin_hint':
-    'Create an API key in Jellyfin under Dashboard → API keys. It is stored encrypted; posters are loaded through trisse-home.',
-  'media.plex_hint':
-    'Use the X-Plex-Token of your account (Plex support article "Finding an authentication token"). It is stored encrypted; posters are loaded through trisse-home.',
   'calendar.subscriptions': 'ICS subscriptions',
   'calendar.subscriptions_hint':
     'Read-only calendars from an .ics or webcal:// link, e.g. a university timetable, sports fixtures or public holidays. The link is stored encrypted because it often contains a private token.',
@@ -1221,58 +1185,6 @@ export const en = {
   'calendar.subscription_url_invalid': 'The ICS URL must start with https://, http:// or webcal://.',
   'calendar.quick_add_needs_caldav':
     'New events are saved in a CalDAV calendar; ICS subscriptions are read-only. Connect one under Settings → Calendar.',
-  'widget.smarthome.title': 'Smart home',
-  'widget.smarthome.description':
-    'States of Home Assistant devices and sensors; optional switches and buttons.',
-  'settings.section.smarthome': 'Home Assistant',
-  'smarthome.connect_under_settings': 'Connect Home Assistant under Settings → Home Assistant.',
-  'smarthome.choose_entities': 'Choose entities in the widget settings.',
-  'smarthome.unavailable': 'unavailable',
-  'smarthome.on': 'on',
-  'smarthome.off': 'off',
-  'smarthome.turn_on': 'Turn on',
-  'smarthome.turn_off': 'Turn off',
-  'smarthome.press': 'Press',
-  'smarthome.confirm_toggle': 'Switch {name}?',
-  'smarthome.confirm_press': 'Press {name}?',
-  'smarthome.search_entities': 'Search entities',
-  'smarthome.selected': '{count} of at most {max} selected',
-  'smarthome.url': 'Home Assistant URL',
-  'smarthome.token': 'Long-lived access token {value}',
-  'smarthome.token_hint':
-    'Create the token in Home Assistant under your profile → Security → Long-lived access tokens. It is stored encrypted and never shown again.',
-  'smarthome.actions_hint':
-    'Switches and buttons stay read-only unless SMARTHOME_ACTIONS_ENTITIES lists their entity IDs.',
-  'widget.proxmox.title': 'Proxmox VE',
-  'widget.proxmox.description': 'Node load and the status of VMs and LXC containers.',
-  'settings.section.proxmox': 'Proxmox',
-  'proxmox.connect_under_settings': 'Connect Proxmox VE under Settings → Proxmox.',
-  'proxmox.uptime': 'up {value}',
-  'proxmox.offline': 'offline',
-  'proxmox.cpu': 'CPU ({cpus} cores)',
-  'proxmox.memory': 'Memory',
-  'proxmox.disk': 'Root disk',
-  'proxmox.no_guests': 'No VMs or containers.',
-  'proxmox.status.stopped': 'stopped',
-  'proxmox.status.paused': 'paused',
-  'proxmox.status.suspended': 'suspended',
-  'proxmox.status.prelaunch': 'starting',
-  'proxmox.status.unknown': 'unknown',
-  'proxmox.start': 'Start {name}',
-  'proxmox.shutdown': 'Shut down {name}',
-  'proxmox.confirm_start': 'Start {name}?',
-  'proxmox.confirm_shutdown': 'Shut down {name}? Running services in it will stop.',
-  'proxmox.running_only': 'Only show running guests',
-  'proxmox.url': 'Proxmox VE URL',
-  'proxmox.token_id': 'API token ID',
-  'proxmox.secret': 'Token secret {value}',
-  'proxmox.fingerprint': 'Certificate fingerprint (SHA-256, optional)',
-  'proxmox.fingerprint_hint':
-    'Proxmox uses a self-signed certificate. Paste its SHA-256 fingerprint (node → System → Certificates) to trust exactly this certificate, or leave it empty if the certificate is signed by a known CA.',
-  'proxmox.token_hint':
-    'Create a read-only API token (role PVEAuditor) on a Proxmox node, then enter the token ID and secret below.',
-  'proxmox.actions_hint':
-    'Start and shutdown stay off unless PROXMOX_ACTIONS_GUESTS lists the guest IDs and the token may power them (VM.PowerMgmt).',
   'widget.briefing.title': 'Daily briefing',
   'widget.briefing.description':
     'Today at a glance: warnings, overnight incidents, offline services, due to-dos, appointments and waste collection.',
@@ -1355,24 +1267,6 @@ export const en = {
   'app.search_placeholder': 'Search…',
   'app.menu': 'Menu',
   'app.greeting_temperature': '{t} °C',
-  'launcher.title': 'Services and bookmarks',
-  'launcher.filter': 'Filter services and bookmarks…',
-  'launcher.show': 'Show',
-  'launcher.all': 'All',
-  'launcher.services': 'Services',
-  'launcher.bookmarks': 'Bookmarks',
-  'launcher.show_all_services': 'Show all {n}',
-  'launcher.show_all_bookmarks': 'Show all {n}',
-  'launcher.no_services': 'No matching services.',
-  'launcher.no_bookmarks': 'No matching bookmarks.',
-  'launcher.online_ms': 'online · {ms} ms',
-  'launcher.offline': 'offline',
-  'launcher.unknown': 'not checked yet',
-  'launcher.footer_before': 'Choose what appears here in',
-  'launcher.footer_link': 'Settings → Appearance',
-  'launcher.footer_ctrl_k': 'Everything is also searchable with Ctrl K',
-  'launcher.all_online': 'All services online',
-  'launcher.some_offline': '{n} offline',
   'search.hint.learn': 'What would you like to learn today?',
   'search.hint.todo': 'Type “t call the bank” to add a to-do',
   'search.hint.cpu': 'Ask “how full is the disk?”',
@@ -1440,5 +1334,8 @@ export const en = {
     'This address uses http://: the password or token travels unencrypted through your network. Prefer https:// where the device supports it.',
 } as const;
 
-/** Every message key. */
-export type MessageKey = keyof typeof en;
+/** Keys of the shared catalogue below. */
+export type BaseMessageKey = keyof typeof en;
+
+/** Every message key: the shared ones plus those of the features (#193). */
+export type MessageKey = BaseMessageKey | keyof FeatureMessages;

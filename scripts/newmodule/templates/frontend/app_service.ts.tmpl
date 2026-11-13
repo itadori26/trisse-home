@@ -1,0 +1,10 @@
+import { {{.Pascal}}Api, {{.Pascal}}UseCases } from '../../features/{{.Name}}';
+import { defineService } from '../serviceKit';
+
+declare module '../serviceKit' {
+  interface Services {
+    {{.Name}}: {{.Pascal}}UseCases;
+  }
+}
+
+export const service = defineService('{{.Name}}', (http) => new {{.Pascal}}UseCases(new {{.Pascal}}Api(http)));

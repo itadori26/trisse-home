@@ -1,4 +1,5 @@
 import { mount } from 'svelte';
+import './app/featureMessages';
 import App from './app/App.svelte';
 import { registerServiceWorker } from './shared/pwa';
 import './shared/theme/tokens.css';
