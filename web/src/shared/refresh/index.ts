@@ -1,4 +1,4 @@
-import { getContext, setContext } from 'svelte';
+import { getContext, setContext, untrack } from 'svelte';
 import { browserClock, browserTicker, documentVisibility } from './browser';
 import { type RefreshHandle, RefreshScheduler } from './scheduler';
 
@@ -41,10 +41,15 @@ export function usePolling(): (run: () => Promise<unknown>, intervalMs: number) 
   const ctx = getContext<RefreshContext | undefined>(key);
   const scheduler = ctx?.scheduler ?? (fallback ??= createRefreshScheduler());
   return (run, intervalMs) => {
+    // run is called at once, inside the widget's $effect: what it reads stays a
+    // dependency (a widget that reads its config polls again with the new one).
     const handle = scheduler.register(run, intervalMs);
-    const untrack = ctx?.track(handle) ?? (() => {});
+    // The card's bookkeeping must not be: track() updates the freshness badge,
+    // and reading that state here made every settled request re-run the effect,
+    // which registered again and loaded at once, an endless request loop (#219).
+    const untrackHandle = ctx ? untrack(() => ctx.track(handle)) : () => {};
     return () => {
-      untrack();
+      untrackHandle();
       handle.dispose();
     };
   };
