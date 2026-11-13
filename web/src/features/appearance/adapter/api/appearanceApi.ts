@@ -9,8 +9,8 @@ const toAppearance = (d: AppearanceDTO): Appearance => ({
   backgroundImage: d.backgroundImage,
   customCss: d.customCss,
   language: d.language ?? '',
-  greeting: d.greeting ?? false,
   greetingName: d.greetingName ?? '',
+  launcher: d.launcher ?? 'both',
 });
 
 /** AppearanceGateway backed by the REST API. */

@@ -36,6 +36,7 @@
   <label
     ><input type="checkbox" bind:checked={form.problemsOnly} />
     {t('docker.only_show_containers_that_need_attention')}</label
-  >
+  ><br />
+  <label><input type="checkbox" bind:checked={form.stoppedOnly} /> {t('docker.only_stopped')}</label>
   <p><button class="btn btn-primary" type="submit">{t('docker.save')}</button></p>
 </form>

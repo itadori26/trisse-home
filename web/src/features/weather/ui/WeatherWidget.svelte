@@ -3,6 +3,7 @@
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import {
+    compass,
     describe,
     type Forecast,
     parseWeatherConfig,
@@ -85,6 +86,14 @@
             value2: Math.round(forecast.humidity),
             value3: Math.round(forecast.windSpeed),
           })}
+          {#if forecast.windDirection !== null}
+            {@const wind = compass(forecast.windDirection)}
+            {@const full = t('weather.wind_from', { direction: t(`weather.wind_name_${wind}`) })}
+            <span class="wind" title={full}
+              ><span aria-hidden="true">{t(`weather.wind_${wind}`)}</span><span class="sr-only">{full}</span
+              ></span
+            >
+          {/if}
         </div>
       </div>
     </div>
@@ -109,6 +118,17 @@
 {/if}
 
 <style>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .wind {
+    white-space: nowrap;
+  }
   .warning {
     display: block;
     width: 100%;

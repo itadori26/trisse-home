@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { t } from '../../../shared/i18n';
+  import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Markdown from '../../../shared/ui/Markdown.svelte';
-  import type { Note } from '../domain/note';
+  import { countText, type Note } from '../domain/note';
   import type { NotesUseCases } from '../usecase/notesUseCases';
 
   /** Props of the note editor. */
@@ -17,6 +17,20 @@
   // svelte-ignore state_referenced_locally
   let form = $state({ title: note?.title ?? '', body: note?.body ?? '', pinned: note?.pinned ?? true });
   let preview = $state(false);
+  // Muted "12 words · 80 characters" below the text; not a live region, so
+  // typing does not make screen readers talk (#121).
+  const count = $derived(countText(form.body));
+  const plural = $derived(new Intl.PluralRules(intlLocale()));
+  const countLine = $derived(
+    [
+      t(plural.select(count.words) === 'one' ? 'notes.word_count_one' : 'notes.word_count_other', {
+        n: count.words,
+      }),
+      t(plural.select(count.characters) === 'one' ? 'notes.char_count_one' : 'notes.char_count_other', {
+        n: count.characters,
+      }),
+    ].join(' · '),
+  );
   let error = $state('');
 
   async function save(e: SubmitEvent) {
@@ -62,6 +76,7 @@
       placeholder={t('notes.markdown_supported')}
       aria-label={t('notes.note_text')}></textarea>
   {/if}
+  <p class="count muted">{countLine}</p>
   <label><input type="checkbox" bind:checked={form.pinned} /> {t('notes.pin_to_dashboard')}</label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <p class="actions">
@@ -88,6 +103,10 @@
     padding: var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-small);
+  }
+  .count {
+    margin: var(--space-1) 0;
+    font-size: 0.8rem;
   }
   .actions {
     display: flex;

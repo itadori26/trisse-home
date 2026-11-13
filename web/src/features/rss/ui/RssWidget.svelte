@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
-  import { age, type FeedItem, parseRssConfig } from '../domain/feed';
+  import { type FeedItem, itemMeta, parseRssConfig } from '../domain/feed';
   import type { RssUseCases } from '../usecase/rssUseCases';
 
   /** Props of the RSS widget. */
@@ -62,13 +62,19 @@
           href={item.link}
           target="_blank"
           rel="noopener noreferrer"
+          title={cfg.compact ? itemMeta(item, !!cfg.feedId, now) : undefined}
           onclick={() => open(item)}
           onauxclick={() => open(item)}>{item.title}</a
         >
       {:else}
-        <button class="linklike" type="button" onclick={() => open(item)}>{item.title}</button>
+        <button
+          class="linklike"
+          type="button"
+          title={cfg.compact ? itemMeta(item, !!cfg.feedId, now) : undefined}
+          onclick={() => open(item)}>{item.title}</button
+        >
       {/if}
-      <span class="meta muted">{cfg.feedId ? '' : `${item.feedTitle} · `}{age(item.publishedAt, now)}</span>
+      {#if !cfg.compact}<span class="meta muted">{itemMeta(item, !!cfg.feedId, now)}</span>{/if}
     </li>
   {:else}
     <li class="muted">{cfg.unreadOnly ? t('rss.all_caught_up') : t('rss.no_items')}</li>

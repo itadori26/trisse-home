@@ -4,7 +4,6 @@
 export const serverMessages = {
   srv_7ef0897648a1c97c: "Latitude must be between -90 and 90, longitude between -180 and 180.",
   srv_777fe9a31de38b1d: "Notifications are not enabled.",
-  srv_40623194d868a5f0: "Weekdays are 0 (Sunday) to 6.",
 } as const;
 
 /** Key of a backend message. */

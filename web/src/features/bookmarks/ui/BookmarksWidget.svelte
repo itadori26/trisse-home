@@ -2,7 +2,13 @@
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import Modal from '../../../shared/ui/Modal.svelte';
-  import { type Bookmark, iconSrc, linkProblem, parseBookmarksConfig } from '../domain/bookmark';
+  import {
+    type Bookmark,
+    iconSrc,
+    linkProblem,
+    parseBookmarksConfig,
+    sortBookmarks,
+  } from '../domain/bookmark';
   import type { BookmarkList, BookmarksUseCases } from '../usecase/bookmarksUseCases';
   import BookmarkForm from './BookmarkForm.svelte';
 
@@ -74,7 +80,7 @@
 {#if error}<p class="error">{error}</p>{/if}
 {#if data}
   <ul class="list">
-    {#each data.bookmarks as b (b.id)}
+    {#each sortBookmarks(data.bookmarks, cfg.sort, intlLocale()) as b (b.id)}
       {@const icon = iconSrc(b)}
       {@const problem = linkProblem(b.link, intlLocale())}
       <li>

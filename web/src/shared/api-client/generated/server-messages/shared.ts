@@ -25,8 +25,10 @@ export const serverMessages = {
   srv_5cd46d3ed824e037: "The server did not answer in time.",
   srv_d6ecea29338eeff4: "The server rejected the login. Check user name, password or token.",
   srv_cc10ad5b6bd86945: "The server sent an unexpected answer.",
+  srv_61031ab185b65e33: "Use a single emoji.",
   srv_8fe21afcca496dfb: "Username and app password are required.",
   srv_eceee41d79cdfdb2: "Wake-on-LAN is disabled in the demo.",
+  srv_40623194d868a5f0: "Weekdays are 0 (Sunday) to 6.",
 } as const;
 
 /** Key of a backend message. */

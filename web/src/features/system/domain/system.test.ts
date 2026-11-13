@@ -8,6 +8,7 @@ const base: SystemSnapshot = {
   memory: { total: 0, used: 0, percent: 0 },
   swap: { total: 0, used: 0, percent: 0 },
   disks: [],
+  hostname: '',
   uptimeSeconds: 0,
   temperature: 0,
 };

@@ -1,6 +1,7 @@
 package presenter
 
 import (
+	"math"
 	"time"
 
 	"trisse-home/internal/modules/weather/usecase"
@@ -17,17 +18,19 @@ type DayDTO struct {
 
 // ForecastDTO is returned by GET /api/weather.
 type ForecastDTO struct {
-	Lat                 float64   `json:"lat"`
-	Lon                 float64   `json:"lon"`
-	Timezone            string    `json:"timezone"`
-	Temperature         float64   `json:"temperature"`
-	ApparentTemperature float64   `json:"apparentTemperature"`
-	Humidity            float64   `json:"humidity"`
-	WindSpeed           float64   `json:"windSpeed"`
-	WeatherCode         int       `json:"weatherCode"`
-	IsDay               bool      `json:"isDay"`
-	Days                []DayDTO  `json:"days"`
-	UpdatedAt           time.Time `json:"updatedAt"`
+	Lat                 float64 `json:"lat"`
+	Lon                 float64 `json:"lon"`
+	Timezone            string  `json:"timezone"`
+	Temperature         float64 `json:"temperature"`
+	ApparentTemperature float64 `json:"apparentTemperature"`
+	Humidity            float64 `json:"humidity"`
+	WindSpeed           float64 `json:"windSpeed"`
+	// WindDirection is where the wind comes from in whole degrees (0 = north); null when unknown.
+	WindDirection *int      `json:"windDirection"`
+	WeatherCode   int       `json:"weatherCode"`
+	IsDay         bool      `json:"isDay"`
+	Days          []DayDTO  `json:"days"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
 // PlaceDTO is a geocoding result returned by GET /api/weather/places.
@@ -48,6 +51,11 @@ func Forecast(r usecase.ForecastResponse) ForecastDTO {
 	}
 	for _, d := range r.Days {
 		dto.Days = append(dto.Days, DayDTO(d))
+	}
+	if r.HasWindDirection {
+		// 359.6° rounds to 360°, which is north again.
+		deg := int(math.Round(r.WindDirection)) % 360
+		dto.WindDirection = &deg
 	}
 	return dto
 }

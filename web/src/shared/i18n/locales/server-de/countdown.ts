@@ -14,6 +14,4 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_1532da22068d27c4: 'Den Countdown gibt es nicht.',
   // The title must be between 1 and 120 characters long.
   srv_28a208881a6ef97d: 'Der Titel muss zwischen 1 und 120 Zeichen lang sein.',
-  // Use a single emoji.
-  srv_61031ab185b65e33: 'Bitte nur ein einzelnes Emoji verwenden.',
 };

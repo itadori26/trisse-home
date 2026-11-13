@@ -49,6 +49,7 @@ Not sure whether trisse-home is the right fit? See the
 | **todos**      | To-do list with due dates and overdue highlighting, recurring to-dos (daily, weekly on weekdays, monthly, N days after completion) and reminders via the notification channels |
 | **countdown**  | Countdowns to exams, holidays and deadlines: days left (hours and minutes on the last day), highlighted when fewer than N days remain, past ones hidden after a grace period |
 | **focus**      | Pomodoro focus timer (focus, short and long break; durations per widget) that keeps running in background tabs, optional browser notification at the end of a phase, finished sessions per day for the last week |
+| **habits**     | Habit tracker: daily habits or chosen weekdays, one tap to check off today (or yesterday), current and best streak (days off never break it), 4-week heatmap |
 | **timeline**   | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days) |
 | **briefing**   | Daily briefing widget: weather warnings, failures since yesterday evening, offline services, due to-dos, appointments and waste collection at a glance (sections orderable, each optional); optional daily push at a set time ([ADR 0016](docs/adr/0016-cross-module-read-models.md)) |
 | **rss**        | Feed reader (RSS, Atom, JSON Feed) with read state                                                    |
@@ -60,6 +61,10 @@ Not sure whether trisse-home is the right fit? See the
 | **smarthome**  | Home Assistant entities as tiles (state with unit, last change), picked per widget; optional [switches and buttons](#home-assistant-optional) for allow-listed entities |
 | **arr**        | Sonarr, Radarr and Prowlarr (several instances): upcoming episodes and movies for two weeks, download queue with progress and stuck downloads, health warnings, number of missing items |
 | **media**      | Jellyfin or Plex: what is playing right now (user, device, progress) and recently added movies, episodes and albums with posters (proxied by trisse-home, token stays on the server) |
+| **immich**     | Immich photo library: number of photos and videos, storage, and today's "on this day" memories (thumbnails proxied by trisse-home; API key with minimal permissions) |
+| **fuel**       | Fuel prices in Germany ([Tankerkönig](https://creativecommons.tankerkoenig.de), free API key): cheapest open stations around a place for E5/E10/Diesel, or your favourite stations |
+| **releases**   | New albums, singles and EPs of the artists you follow, from [MusicBrainz](https://musicbrainz.org) with covers from the Cover Art Archive (proxied) |
+| **gamedeals**  | Discounts on your public Steam wishlist (price, discount, end date, minimum discount) and current/upcoming free games on the Epic Games Store |
 | **speedtest**  | Internet speed from an existing [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker): latest download/upload/ping, 24 h and 7 day sparklines, optional notification below a threshold (runs no tests itself) |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
 | **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
@@ -443,6 +448,7 @@ service tiles are configured in the web interface.
 | `HOST_SYS`          | `/sys` (`/host/sys` in compose)   | Host sysfs (temperatures).                                                    |
 | `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
 | `TRANSIT_API_URL`   | `https://api.transitous.org`      | MOTIS API for departures; point it to your own MOTIS instance if you like.    |
+| `FUEL_API_URL`      | `https://creativecommons.tankerkoenig.de/json` | Tankerkönig API for fuel prices (change only for a mirror or tests). |
 | `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
 | `METRICS_ENABLED`   | `false`                           | Expose `GET /metrics` for Prometheus ([docs/metrics.md](docs/metrics.md)).    |
 | `METRICS_TOKEN`     | –                                 | Bearer token for `/metrics`, at least 32 characters.                          |
@@ -499,7 +505,7 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, Sonarr/Radarr/Prowlarr (while an *arr widget is open, at most once a minute), Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
+RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, MusicBrainz (artist search when you use it; releases of followed artists every 6 hours, at most one request per second) and the Cover Art Archive, the Steam and Epic Games stores (game deals, every 12 hours once enabled), Sonarr/Radarr/Prowlarr (while an *arr widget is open, at most once a minute), Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Immich (while an Immich widget is open, at most every 5 minutes), Tankerkönig fuel prices (while a fuel widget is open, at most every 5 minutes), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 (only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
 ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can

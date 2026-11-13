@@ -59,4 +59,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_8fe21afcca496dfb: 'Benutzername und App-Passwort sind erforderlich.',
   // Wake-on-LAN is disabled in the demo.
   srv_eceee41d79cdfdb2: 'Wake-on-LAN ist in der Demo deaktiviert.',
+  // Weekdays are 0 (Sunday) to 6.
+  srv_40623194d868a5f0: 'Wochentage sind 0 (Sonntag) bis 6.',
+  // Use a single emoji.
+  srv_61031ab185b65e33: 'Bitte nur ein einzelnes Emoji verwenden.',
 };
