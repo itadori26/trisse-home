@@ -13,12 +13,14 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	"trisse-home/internal/shared/kernel"
 )
 
 const maxResponseBytes = 2 << 20
 
 // errUnauthorized is returned when the box rejects the credentials.
-var errUnauthorized = errors.New("username or password is wrong")
+var errUnauthorized = fmt.Errorf("%w: username or password is wrong", kernel.ErrTargetAuth)
 
 // soapClient calls UPnP/TR-064 actions.
 type soapClient struct{ http *http.Client }

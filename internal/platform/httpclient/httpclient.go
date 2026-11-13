@@ -6,12 +6,16 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/netip"
 	"strings"
 	"syscall"
 	"time"
+
+	"trisse-home/internal/shared/kernel"
 )
 
 // UserAgent identifies this application to external services.
@@ -25,6 +29,39 @@ type options struct {
 	insecureSkipVerify bool
 	pinnedSHA256       []byte
 	guard              bool
+	integration        bool
+	maxResponseBytes   int64
+}
+
+// WithIntegrationGuard hardens a client for owner-configured integrations
+// such as AdGuard, Nextcloud or Proxmox (#191): every connection is checked
+// against kernel.TargetAddrAllowed on the resolved address (so DNS cannot
+// get around the check of kernel.ParseTarget), redirects are not followed,
+// no proxy is used and responses are limited to DefaultMaxResponseBytes
+// unless WithMaxResponseBytes says otherwise. Loopback and LAN addresses
+// stay allowed: home-lab services live there.
+func WithIntegrationGuard() Option { return func(o *options) { o.integration = true } }
+
+// WithMaxResponseBytes limits the size of a response body; reading more
+// returns ErrResponseTooLarge.
+func WithMaxResponseBytes(n int64) Option { return func(o *options) { o.maxResponseBytes = n } }
+
+// DefaultMaxResponseBytes is the response limit of integration clients.
+const DefaultMaxResponseBytes = 32 << 20
+
+// ErrResponseTooLarge is returned when a response exceeds the limit.
+var ErrResponseTooLarge = errors.New("the response is too large")
+
+func integrationControl(_, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil || !kernel.TargetAddrAllowed(ip) {
+		return ErrBlockedAddress
+	}
+	return nil
 }
 
 // WithInternalAddressGuard refuses connections to loopback, link-local
@@ -36,7 +73,7 @@ type options struct {
 func WithInternalAddressGuard() Option { return func(o *options) { o.guard = true } }
 
 // ErrBlockedAddress is returned when the guard refuses a connection.
-var ErrBlockedAddress = errors.New("connections to this address are not allowed")
+var ErrBlockedAddress = kernel.ErrTargetBlocked
 
 // Blocked reports whether the guard refuses ip.
 func Blocked(ip netip.Addr) bool {
@@ -115,7 +152,22 @@ func New(opts ...Option) *http.Client {
 	case o.insecureSkipVerify:
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // explicit opt-in for LAN health checks
 	}
-	client := &http.Client{Timeout: o.timeout, Transport: userAgentTransport{next: transport}}
+	if o.integration && o.maxResponseBytes == 0 {
+		o.maxResponseBytes = DefaultMaxResponseBytes
+	}
+	var rt http.RoundTripper = userAgentTransport{next: transport}
+	if o.maxResponseBytes > 0 {
+		rt = limitTransport{next: rt, max: o.maxResponseBytes}
+	}
+	client := &http.Client{Timeout: o.timeout, Transport: rt}
+	if o.integration {
+		dialer := &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second, Control: integrationControl}
+		transport.DialContext = dialer.DialContext
+		transport.Proxy = nil // a proxy would connect on our behalf and bypass the check
+		// Integrations talk to one configured server; a redirect elsewhere is
+		// answered with the redirect response itself instead of following it.
+		client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	}
 	if o.guard {
 		dialer := &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second, Control: guardControl}
 		transport.DialContext = dialer.DialContext
@@ -139,3 +191,46 @@ func (t userAgentTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	}
 	return t.next.RoundTrip(r)
 }
+
+// limitTransport limits the size of response bodies.
+type limitTransport struct {
+	next http.RoundTripper
+	max  int64
+}
+
+func (t limitTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	res, err := t.next.RoundTrip(r)
+	if err != nil {
+		return nil, err
+	}
+	if res.ContentLength > t.max {
+		_ = res.Body.Close()
+		return nil, fmt.Errorf("%w (%d bytes)", ErrResponseTooLarge, res.ContentLength)
+	}
+	res.Body = &limitedBody{rc: res.Body, left: t.max}
+	return res, nil
+}
+
+type limitedBody struct {
+	rc   io.ReadCloser
+	left int64
+}
+
+func (b *limitedBody) Read(p []byte) (int, error) {
+	if b.left <= 0 {
+		// One more byte tells "exactly at the limit" from "too large".
+		var one [1]byte
+		if n, _ := b.rc.Read(one[:]); n > 0 {
+			return 0, ErrResponseTooLarge
+		}
+		return 0, io.EOF
+	}
+	if int64(len(p)) > b.left {
+		p = p[:b.left]
+	}
+	n, err := b.rc.Read(p)
+	b.left -= int64(n)
+	return n, err
+}
+
+func (b *limitedBody) Close() error { return b.rc.Close() }

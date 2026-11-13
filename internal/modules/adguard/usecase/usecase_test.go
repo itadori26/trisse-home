@@ -69,10 +69,17 @@ func TestAdGuard(t *testing.T) {
 	if _, err := uc.SaveSettings(ctx, SettingsInput{URL: "http://ag:3000", Username: "admin", Password: "secret"}); err != nil {
 		t.Fatal(err)
 	}
-	// An empty password keeps the stored one.
-	view, err := uc.SaveSettings(ctx, SettingsInput{URL: "http://ag:3000", Username: "admin2"})
+	// An empty password keeps the stored one for the same server and user …
+	view, err := uc.SaveSettings(ctx, SettingsInput{URL: "http://ag:3000/", Username: "admin"})
 	if err != nil || !view.HasPassword || repo.s[domain.ProviderAdGuard].Password != "secret" {
 		t.Fatalf("password not kept: %+v %v", view, err)
+	}
+	// … but is never sent to a changed server or user (#191).
+	for _, in := range []SettingsInput{{URL: "http://ag:3000", Username: "admin2"}, {URL: "http://other:3000", Username: "admin"}} {
+		var v *kernel.ValidationError
+		if _, err := uc.SaveSettings(ctx, in); !errors.As(err, &v) || v.Field != "password" {
+			t.Fatalf("%+v: %v", in, err)
+		}
 	}
 	stats, _ := uc.Stats(ctx, "adguard")
 	if stats.BlockedPercent != 20 || stats.AvgProcessingMs != 1.5 || !stats.HasAvgProcessing {

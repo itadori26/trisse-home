@@ -2,7 +2,6 @@ package domain
 
 import (
 	"encoding/hex"
-	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -31,10 +30,9 @@ type Settings struct {
 
 // NewSettings validates and normalises the settings.
 func NewSettings(rawURL, tokenID, secret, fingerprint string) (Settings, error) {
-	rawURL = strings.TrimRight(strings.TrimSpace(rawURL), "/")
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || (u.Path != "" && u.Path != "/") {
-		return Settings{}, kernel.NewValidationError("url", "The URL must look like https://192.168.1.10:8006.")
+	u, err := kernel.ParseTarget("url", rawURL)
+	if err != nil {
+		return Settings{}, err
 	}
 	tokenID = strings.TrimSpace(tokenID)
 	if !tokenIDPattern.MatchString(tokenID) {
@@ -51,7 +49,7 @@ func NewSettings(rawURL, tokenID, secret, fingerprint string) (Settings, error) 
 	if fp != "" && u.Scheme != "https" {
 		return Settings{}, kernel.NewValidationError("fingerprint", "A certificate fingerprint needs an https:// URL.")
 	}
-	return Settings{URL: rawURL, TokenID: tokenID, Secret: secret, Fingerprint: fp}, nil
+	return Settings{URL: u.String(), TokenID: tokenID, Secret: secret, Fingerprint: fp}, nil
 }
 
 // NormaliseFingerprint accepts a SHA-256 fingerprint with or without

@@ -105,6 +105,11 @@ func (uc *proxmox) SaveSettings(ctx context.Context, in SettingsInput) (Settings
 	secret := in.Secret
 	if secret == "" {
 		if old, err := uc.d.Repo.Load(ctx); err == nil {
+			// URL, token ID and pinned certificate identify the target (#191).
+			fp, _ := domain.NormaliseFingerprint(in.Fingerprint) // validated by NewSettings below
+			if kernel.TargetChanged([]string{old.URL, old.TokenID, old.Fingerprint}, []string{in.URL, in.TokenID, fp}) {
+				return SettingsView{}, kernel.SecretRequired("secret")
+			}
 			secret = old.Secret
 		}
 	}
@@ -114,7 +119,7 @@ func (uc *proxmox) SaveSettings(ctx context.Context, in SettingsInput) (Settings
 	}
 	cluster, err := uc.d.Client.Cluster(ctx, s)
 	if err != nil {
-		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not connect to Proxmox VE: {detail}", "detail", err.Error())
+		return SettingsView{}, kernel.TargetFailure(kernel.ErrInvalid, err)
 	}
 	if err := uc.d.Repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
@@ -183,7 +188,7 @@ func (uc *proxmox) Act(ctx context.Context, guestID int, action string) error {
 		return domain.ErrGuestNotFound
 	}
 	if err := uc.d.Client.Act(ctx, s, g, a); err != nil {
-		return kernel.NewPublicErrorf(kernel.ErrUnavailable, "Proxmox VE rejected the action: {detail}", "detail", err.Error())
+		return kernel.TargetFailure(kernel.ErrUnavailable, err)
 	}
 	uc.d.Audit.Audit(ctx, kernel.AuditEvent{Type: "proxmox_" + string(a), Detail: fmt.Sprintf("%s %d (%s)", g.Kind, g.ID, g.Name)})
 	_ = uc.Refresh(ctx) // the new state shows up with the next refresh at the latest

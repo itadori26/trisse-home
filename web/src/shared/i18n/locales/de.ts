@@ -1306,4 +1306,6 @@ export const de: Record<MessageKey, string> = {
   'focus.notify_denied':
     'Der Browser blockiert Benachrichtigungen für diese Seite. Bitte in den Website-Einstellungen erlauben.',
   'focus.notify_unsupported': 'Dieser Browser unterstützt keine Benachrichtigungen.',
+  'common.plain_http_warning':
+    'Diese Adresse nutzt http://: Passwort oder Token gehen unverschlüsselt durch dein Netz. Nimm https://, wo das Gerät es unterstützt.',
 };

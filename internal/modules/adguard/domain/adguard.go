@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"net/url"
 	"strings"
 	"time"
 
@@ -48,12 +47,12 @@ type Settings struct {
 
 // NewSettings validates and normalises the settings of a provider.
 func NewSettings(p Provider, rawURL, username, password string) (Settings, error) {
-	rawURL = strings.TrimRight(strings.TrimSpace(rawURL), "/")
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return Settings{}, kernel.NewValidationError("url", "The URL must look like http://192.168.1.2:3000.")
+	// A path is allowed: Pi-hole and reverse proxies often serve a sub path.
+	u, err := kernel.ParseTarget("url", rawURL, kernel.WithTargetPath())
+	if err != nil {
+		return Settings{}, err
 	}
-	s := Settings{Provider: p, URL: rawURL, Password: password}
+	s := Settings{Provider: p, URL: u.String(), Password: password}
 	switch p {
 	case ProviderAdGuard:
 		if strings.TrimSpace(username) == "" || password == "" {

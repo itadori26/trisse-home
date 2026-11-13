@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"trisse-home/internal/modules/proxmox/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 const maxResponseBytes = 4 << 20
@@ -122,9 +123,9 @@ func (a *API) do(ctx context.Context, s domain.Settings, method, path string, ds
 	switch res.StatusCode {
 	case http.StatusOK:
 	case http.StatusUnauthorized:
-		return fmt.Errorf("the API token was rejected (%s)", res.Status)
+		return fmt.Errorf("%w: the API token was rejected (%s)", kernel.ErrTargetAuth, res.Status)
 	case http.StatusForbidden:
-		return fmt.Errorf("the API token lacks a permission (%s)", res.Status)
+		return fmt.Errorf("%w: the API token lacks a permission (%s)", kernel.ErrTargetAuth, res.Status)
 	default:
 		return fmt.Errorf("unexpected answer from Proxmox VE: %s", res.Status)
 	}

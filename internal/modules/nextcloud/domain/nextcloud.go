@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"net/url"
 	"strings"
 
 	"trisse-home/internal/shared/kernel"
@@ -19,15 +18,15 @@ type Settings struct {
 
 // NewSettings validates and normalises the settings.
 func NewSettings(rawURL, username, appPassword string) (Settings, error) {
-	rawURL = strings.TrimRight(strings.TrimSpace(rawURL), "/")
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return Settings{}, kernel.NewValidationError("url", "The URL must look like https://cloud.example.com.")
+	// A path is allowed for installations in a sub directory.
+	u, err := kernel.ParseTarget("url", rawURL, kernel.WithTargetPath())
+	if err != nil {
+		return Settings{}, err
 	}
 	if strings.TrimSpace(username) == "" || appPassword == "" {
 		return Settings{}, kernel.NewValidationError("username", "Username and app password are required.")
 	}
-	return Settings{URL: rawURL, Username: strings.TrimSpace(username), AppPassword: appPassword}, nil
+	return Settings{URL: u.String(), Username: strings.TrimSpace(username), AppPassword: appPassword}, nil
 }
 
 // Quota is the storage of the configured account in bytes. Total is 0 when

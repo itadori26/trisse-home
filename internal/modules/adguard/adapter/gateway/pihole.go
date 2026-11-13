@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"trisse-home/internal/modules/adguard/domain"
+	"trisse-home/internal/shared/kernel"
 )
 
 // PiHole queries the Pi-hole v6 REST API (#83).
@@ -35,7 +36,7 @@ func NewPiHole(client *http.Client) *PiHole {
 var errPassword = errors.New("the password was rejected by Pi-hole")
 
 // errUnauthorized marks a 401 answer that a fresh session may fix.
-var errUnauthorized = errors.New("unauthorized: Pi-hole answered 401")
+var errUnauthorized = fmt.Errorf("%w: Pi-hole answered 401", kernel.ErrTargetAuth)
 
 type piholeSummary struct {
 	Queries struct {

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,6 +90,19 @@ func TestSettingsAndStatus(t *testing.T) {
 	view, err := uc.SaveSettings(ctx, keep)
 	if err != nil || !view.HasSecret || repo.s.Secret != "secret" {
 		t.Fatalf("an empty secret keeps the stored one: %+v %v", view, err)
+	}
+	// A changed URL, token ID or fingerprint needs the secret again (#191).
+	for name, change := range map[string]func(*SettingsInput){
+		"url":         func(in *SettingsInput) { in.URL = "https://10.0.0.99:8006" },
+		"token id":    func(in *SettingsInput) { in.TokenID = "other@pve!th" },
+		"fingerprint": func(in *SettingsInput) { in.Fingerprint = strings.Repeat("AB", 32) },
+	} {
+		changed := keep
+		change(&changed)
+		var v *kernel.ValidationError
+		if _, err := uc.SaveSettings(ctx, changed); !errors.As(err, &v) || v.Field != "secret" {
+			t.Fatalf("%s: stored secret reused: %v", name, err)
+		}
 	}
 	if s, _ := uc.Settings(ctx); !s.Configured || s.TokenID != "monitor@pve!th" {
 		t.Fatalf("settings: %+v", s)
