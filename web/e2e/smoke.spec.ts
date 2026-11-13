@@ -645,7 +645,7 @@ test('habits are checked off with streaks and a heatmap (#106)', async ({ page }
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await account(page, 'Edit');
   await page.getByRole('button', { name: '+ Tab' }).click();
   await page.getByRole('textbox', { name: 'Name' }).fill('Routine');
   await page.getByRole('button', { name: 'Create' }).click();
@@ -653,7 +653,7 @@ test('habits are checked off with streaks and a heatmap (#106)', async ({ page }
   await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('gewohnheit');
   await page.getByRole('button', { name: /^Habits/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click(); // widget settings
-  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await account(page, 'Done');
 
   await page.getByRole('button', { name: '+ New habit' }).click();
   const dialog = page.getByRole('dialog', { name: 'New habit' });
