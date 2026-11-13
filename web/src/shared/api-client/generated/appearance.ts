@@ -14,8 +14,11 @@ export interface AppearanceDTO {
   customCss: string;
   language: '' | 'en' | 'de';
   /**
-   * Greeting shows the greeting line below the top bar (#167).
+   * GreetingName is the name in the greeting (#189); may be empty.
    */
-  greeting: boolean;
   greetingName: string;
+  /**
+   * Launcher is what the launcher lists (#189).
+   */
+  launcher: 'both' | 'services' | 'bookmarks';
 }

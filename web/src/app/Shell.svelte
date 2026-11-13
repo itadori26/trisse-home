@@ -9,7 +9,12 @@
   import DashboardPage from './DashboardPage.svelte';
   import { attachShortcuts } from '../shared/shortcuts';
   import Icon from '../shared/ui/icons/Icon.svelte';
-  import Greeting from './Greeting.svelte';
+  import AccountMenu from './AccountMenu.svelte';
+  import Hero from './Hero.svelte';
+  import TopInfo from './TopInfo.svelte';
+  import { launcherSources } from './launcherSources';
+  import { LauncherUseCases } from '../features/launcher/usecase/launcherUseCases';
+  import { type Segment, statusSummary } from '../features/launcher/domain/launcher';
   import { firstWidgetConfig, type Tab } from '../features/dashboard';
   import { parseWeatherConfig } from '../features/weather/domain/weather';
 
@@ -38,21 +43,44 @@
   let quickSearch = $state(false);
   let shortcutHelp = $state(false);
   let dashboard = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
-  let menuOpen = $state(false);
   let searchStart = $state('');
+  let launcherOpen = $state<Segment | null>(null);
+  let launcherTrigger = $state<HTMLButtonElement>();
+  let serviceStatus = $state<ReturnType<typeof statusSummary>>({ kind: 'none', offline: 0 });
+  const launcher = $derived(modules ? new LauncherUseCases(launcherSources(container, modules)) : null);
+
+  // Status pill (#189): all online, or how many services are offline.
+  $effect(() => {
+    const l = launcher;
+    if (!l?.hasServices) return;
+    const poll = () =>
+      l
+        .services()
+        .then((s) => (serviceStatus = statusSummary(s)))
+        .catch(() => {});
+    poll();
+    const id = setInterval(poll, 60_000);
+    return () => clearInterval(id);
+  });
+
+  function closeLauncher() {
+    launcherOpen = null;
+    launcherTrigger?.focus();
+  }
+
+  const accountInitial = $derived(appearance.greetingName.trim().charAt(0).toUpperCase());
   let dashboardState = $state<{ tabs: Tab[]; activeId: string }>({ tabs: [], activeId: '' });
 
-  // The greeting line shows the weather of the first weather widget (#167).
+  // The top bar shows the weather of the first weather widget (#167, #189).
   const weatherLocation = $derived.by(() => {
     const cfg = firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, 'weather');
     return cfg ? parseWeatherConfig(cfg) : null;
   });
 
-  /** Typing into the bar's search field continues in the quick search (#167). */
-  function openSearch(input: HTMLInputElement) {
+  /** Typing into the search pill continues in the quick search (#167, #189). */
+  function openSearch(text: string) {
     // Collect what is typed while the quick search is still loading.
-    searchStart += input.value;
-    input.value = '';
+    searchStart += text;
     quickSearch = true;
   }
 
@@ -195,72 +223,68 @@
 
 <svelte:window ononline={() => (offline = false)} onoffline={() => (offline = true)} />
 
-<!-- One compact top bar: brand, tabs, search and actions (#167). -->
+<!-- Top bar and hero (#189): brand · date, weather, to-dos · status, launcher, account. -->
 <header class="topbar">
-  <strong class="brand">trisse-home</strong>
-  <div id="topbar-tabs" class="tabs-slot"></div>
-  <label class="search">
-    <Icon name="search" size={16} />
-    <input
-      type="search"
-      aria-label={t('app.quick_search_ctrl_k_or')}
-      aria-keyshortcuts="Control+K /"
-      placeholder={t('app.search_placeholder')}
-      autocomplete="off"
-      oninput={(e) => openSearch(e.currentTarget)}
-      onkeydown={(e) => e.key === 'Enter' && openSearch(e.currentTarget)}
-    />
-    <kbd>{t('app.ctrl_k')}</kbd>
-  </label>
-  <button
-    class="btn btn-icon menu"
-    type="button"
-    aria-expanded={menuOpen}
-    aria-controls="topbar-actions"
-    aria-label={t('app.menu')}
-    onclick={() => (menuOpen = !menuOpen)}><Icon name="menu" size={20} /></button
+  <a class="brand" href="/" aria-label="trisse-home"
+    ><span class="logo" aria-hidden="true">t</span>trisse-home</a
   >
-  <nav id="topbar-actions" class="actions" class:open={menuOpen} aria-label={t('app.menu')}>
-    {#if !container.auth.guest}
+  <div class="center">
+    <TopInfo
+      weather={modules?.has('weather') ? container.weather : null}
+      location={weatherLocation}
+      todos={modules?.has('todos') ? container.todos : null}
+    />
+  </div>
+  <div class="right">
+    {#if serviceStatus.kind !== 'none'}
       <button
-        class="btn btn-icon"
-        class:on={editing}
         type="button"
-        data-tour="edit"
-        aria-pressed={editing}
-        aria-label={editing ? t('app.done') : t('app.edit')}
-        title={editing ? t('app.done') : t('app.edit')}
-        onclick={() => ((editing = !editing), (menuOpen = false))}
-        ><Icon name={editing ? 'done' : 'pencil'} size={20} /><span class="label"
-          >{editing ? t('app.done') : t('app.edit')}</span
-        ></button
+        class="status"
+        data-kind={serviceStatus.kind}
+        data-launcher-trigger
+        onclick={() => (launcherOpen = launcherOpen ? null : 'services')}
+      >
+        <span class="dot" aria-hidden="true"></span>
+        {serviceStatus.kind === 'ok'
+          ? t('launcher.all_online')
+          : t('launcher.some_offline', { n: serviceStatus.offline })}
+      </button>
+    {/if}
+    {#if launcher}
+      <button
+        bind:this={launcherTrigger}
+        type="button"
+        class="round"
+        data-launcher-trigger
+        aria-haspopup="dialog"
+        aria-expanded={launcherOpen !== null}
+        aria-label={t('launcher.title')}
+        title={t('launcher.title')}
+        onclick={() => (launcherOpen = launcherOpen ? null : 'all')}><Icon name="grid" size={22} /></button
       >
     {/if}
-    <button
-      class="btn btn-icon"
-      type="button"
-      data-tour="settings"
-      aria-label={t('app.settings')}
-      title={t('app.settings')}
-      onclick={() => ((settingsOpen = true), (menuOpen = false))}
-      ><Icon name="gear" size={20} /><span class="label">{t('app.settings')}</span></button
-    >
-    <button
-      class="btn btn-icon"
-      type="button"
-      aria-label={t('app.log_out')}
-      title={t('app.log_out')}
-      onclick={logout}><Icon name="power" size={20} /><span class="label">{t('app.log_out')}</span></button
-    >
-  </nav>
+    <AccountMenu
+      initial={accountInitial}
+      {editing}
+      canEdit={!container.auth.guest}
+      onedit={() => (editing = !editing)}
+      onsettings={() => (settingsOpen = true)}
+      onlogout={logout}
+    />
+  </div>
+  {#if launcherOpen && launcher}
+    {#await import('../features/launcher/ui/LauncherPanel.svelte') then { default: LauncherPanel }}
+      <LauncherPanel
+        {launcher}
+        content={appearance.launcher}
+        initialSegment={launcherOpen}
+        onclose={closeLauncher}
+        onsettings={() => ((launcherOpen = null), (settingsOpen = true))}
+      />
+    {/await}
+  {/if}
 </header>
-{#if appearance.greeting}
-  <Greeting
-    name={appearance.greetingName}
-    weather={modules?.has('weather') ? container.weather : null}
-    location={weatherLocation}
-  />
-{/if}
+<Hero name={appearance.greetingName} onsearch={openSearch} tabsId="header-tabs" />
 
 <main class="content">
   {#if offline}<p class="offline" role="status">
@@ -276,7 +300,7 @@
       {container}
       {editing}
       {widgetKinds}
-      tabBarTarget="topbar-tabs"
+      tabBarTarget="header-tabs"
       onstate={(tabs, activeId) => (dashboardState = { tabs, activeId })}
     />
   {/if}
@@ -327,11 +351,11 @@
     border-radius: var(--radius-small);
     background: color-mix(in srgb, var(--color-warning) 22%, transparent);
   }
-  /* One compact bar (#167): brand · tabs · search · actions. */
+  /* Top bar (#189): brand left, information centred, actions right. */
   .topbar {
+    position: relative;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) minmax(12rem, 22rem) auto;
-    grid-template-areas: 'brand tabs search actions';
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-4);
@@ -339,96 +363,88 @@
     margin: 0 auto;
   }
   .brand {
-    grid-area: brand;
-    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 700;
+    color: inherit;
+    text-decoration: none;
     white-space: nowrap;
   }
-  .tabs-slot {
-    grid-area: tabs;
+  .logo {
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 0.95rem;
+  }
+  .center {
     min-width: 0;
   }
-  .search {
-    grid-area: search;
+  .right {
+    justify-self: end;
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: 0 var(--space-2);
-    height: 2.25rem;
+  }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 4px var(--space-3);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-small);
+    border-radius: 999px;
     background: var(--color-surface);
-    color: var(--color-text-muted);
-  }
-  .search:focus-within {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
-  }
-  .search input {
-    flex: 1;
-    min-width: 0;
-    border: none;
-    background: none;
     color: var(--color-text);
     font: inherit;
-    outline: none;
+    cursor: pointer;
+    white-space: nowrap;
   }
-  kbd {
-    font-size: 0.7em;
+  .status .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-success, #2e9d55);
+  }
+  .status[data-kind='offline'] {
+    color: var(--color-danger);
+  }
+  .status[data-kind='offline'] .dot {
+    background: var(--color-danger);
+  }
+  .round {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
     border: 1px solid var(--color-border);
-    border-radius: 4px;
-    padding: 0 4px;
-  }
-  .actions {
-    grid-area: actions;
-    display: flex;
-    gap: var(--space-1);
-  }
-  .actions .label {
-    display: none;
-  }
-  .menu {
-    display: none;
-  }
-  .on {
+    background: var(--color-surface);
     color: var(--color-accent);
+    cursor: pointer;
   }
-  /* Phones: brand, search and a menu button; the tabs scroll in a row below. */
-  @media (max-width: 600px) {
+  .round[aria-expanded='true'] {
+    border-color: var(--color-accent);
+  }
+  /* Phones: brand and actions; the information line drops below. */
+  @media (max-width: 900px) {
     .topbar {
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      grid-template-areas: 'brand search menu' 'tabs tabs tabs';
-      gap: var(--space-2);
+      grid-template-columns: 1fr auto;
       padding: var(--space-2) var(--space-3);
-      position: relative;
     }
-    kbd {
-      display: none;
+    .center {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      font-size: 0.85rem;
     }
-    .menu {
-      display: inline-flex;
-      grid-area: menu;
-    }
-    .actions {
-      display: none;
-      position: absolute;
-      top: 100%;
-      right: var(--space-3);
-      z-index: 30;
-      flex-direction: column;
-      padding: var(--space-1);
-      background: var(--color-surface);
-      border-radius: var(--radius-small);
-      box-shadow: var(--shadow);
-    }
-    .actions.open {
-      display: flex;
-    }
-    .actions .btn {
-      justify-content: flex-start;
-      gap: var(--space-2);
-    }
-    .actions .label {
-      display: inline;
+  }
+  @media (max-width: 600px) {
+    .status {
+      font-size: 0;
+      padding: 8px;
     }
   }
   .content {
