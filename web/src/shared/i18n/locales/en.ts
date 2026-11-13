@@ -4,11 +4,6 @@ import type { FeatureMessages } from '../registry';
 export const en = {
   'app.could_not_reach_the_server': 'Could not reach the server: {loadError}',
   'app.back': '‹ Back',
-  'app.no_matches_press_enter_to_search': 'No matches — press Enter to search the web.',
-  'app.to_choose_enter_to_open_to': '↑↓ to choose, Enter to open (to-dos: mark as done), Esc to close.',
-  'app.quick_search': 'Quick search',
-  'app.search_bookmarks_services_notes_and_to': 'Search bookmarks, services, notes and to-dos',
-  'app.search_bookmarks_services_notes_to_dos': 'Search bookmarks, services, notes, to-dos …',
   'app.results': 'Results',
   'app.guided_tour': 'Guided tour',
   'app.shows_the_most_important_features_of':
@@ -547,6 +542,12 @@ export const en = {
   'app.group.services': 'Services',
   'app.group.notes': 'Notes',
   'app.group.todos': 'To-dos',
+  'app.group.quick_add': 'Quick add',
+  'app.group.actions': 'Actions',
+  'app.group.web': 'Web',
+  'app.search_web_with': 'Search “{query}” with {engine}',
+  'app.search_web': 'Search the web for “{query}”',
+  'app.results_count': '{n} results',
   'app.untitled_note': 'Untitled note',
   'app.marked_done': '“{title}” marked as done.',
   'tour.welcome.title': 'Welcome to trisse-home 👋',
@@ -1155,15 +1156,11 @@ export const en = {
   'quick.done_bookmark': 'Bookmark “{title}” saved',
   'quick.done_restart': 'Container {name} restarts',
   'quick.done_wake': 'Wake-up sent to {name}',
-  'quick.shift_enter_searches': 'Shift+Enter searches the web',
   'quick.open': 'Open',
-  'quick.cancel': 'cancel',
   'quick.undone': 'Undone.',
   'quick.not_allowed_restart':
     'This container cannot be restarted from trisse-home (DOCKER_ACTIONS_CONTAINERS).',
   'quick.not_allowed_wake': 'There is no service with this name and a MAC address.',
-  'quick.palette_hint':
-    'Commands: “todo: … tomorrow”, “note: …”, “bm: url”, “restart <container>”, “wake <service>”.',
   'quick.prefixes': 'Quick capture',
   'quick.prefixes_hint':
     'A prefix followed by a space creates an item instead of searching, e.g. “t Milch kaufen morgen”. Shift+Enter always searches.',

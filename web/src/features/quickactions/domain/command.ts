@@ -54,6 +54,25 @@ export function mergePrefixes(...sets: Prefixes[]): Prefixes {
   return out;
 }
 
+/**
+ * The text after a capture prefix ("t Milch kaufen" → "Milch kaufen"), so the
+ * same text can be added as something else (#222); null without a prefix.
+ */
+export function captureRest(input: string, prefixes: Prefixes): string | null {
+  const trimmed = input.trimStart();
+  const lower = trimmed.toLowerCase();
+  for (const kind of ['todo', 'note', 'bookmark'] as const) {
+    for (const p of prefixes[kind] ?? []) {
+      if (!lower.startsWith(p.toLowerCase())) continue;
+      const after = trimmed.slice(p.length);
+      if (!p.endsWith(':') && !/^\s/.test(after)) continue;
+      const rest = after.trim();
+      if (rest) return rest;
+    }
+  }
+  return null;
+}
+
 /** Turns "example.org/x" into "https://example.org/x"; null if it is no URL. */
 export function normaliseUrl(raw: string): string | null {
   const s = raw.trim();

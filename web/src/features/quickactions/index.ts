@@ -2,6 +2,7 @@
 export {
   type Prefixes,
   type QuickCommand,
+  captureRest,
   mergePrefixes,
   normaliseUrl,
   palettePrefixes,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  captureRest,
   mergePrefixes,
   normaliseUrl,
   palettePrefixes,
@@ -127,5 +128,19 @@ describe('mergePrefixes (#221)', () => {
   });
   it('does not repeat a prefix that is in both sets', () => {
     expect(mergePrefixes(searchPrefixes, searchPrefixes).todo).toEqual(['t']);
+  });
+});
+
+describe('captureRest (#222)', () => {
+  const both = mergePrefixes(palettePrefixes, searchPrefixes);
+  it('returns the text after a capture prefix', () => {
+    expect(captureRest('t Milch kaufen morgen', both)).toBe('Milch kaufen morgen');
+    expect(captureRest('todo:Steuer', both)).toBe('Steuer');
+    expect(captureRest('  n  Idee ', both)).toBe('Idee');
+  });
+  it('is null for searches and empty captures', () => {
+    expect(captureRest('tomorrow', both)).toBeNull();
+    expect(captureRest('t ', both)).toBeNull();
+    expect(captureRest('restart nextcloud', both)).toBeNull();
   });
 });
