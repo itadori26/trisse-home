@@ -1,0 +1,23 @@
+package main
+
+import "net/http"
+
+// End-to-end check of the {{.Title}} module against the logged-in test server
+// (#194). Add a fake upstream or a config override to the spec if the module
+// talks to an external service.
+func init() {
+	registerModuleE2E(moduleE2E{
+		Name: "{{.Name}}",
+		Check: func(e e2eEnv) {
+			t, c := e.t, e.c
+			var created obj
+			c.json(http.MethodPost, "/api/{{.Name}}/items", obj{"title": "First"}, http.StatusCreated, &created)
+			var items []obj
+			c.json(http.MethodGet, "/api/{{.Name}}/items", nil, http.StatusOK, &items)
+			if len(items) != 1 || items[0]["title"] != "First" {
+				t.Fatalf("{{.Name}}: %v", items)
+			}
+			c.do(http.MethodDelete, "/api/{{.Name}}/items/"+created["id"].(string), nil, http.StatusNoContent)
+		},
+	})
+}

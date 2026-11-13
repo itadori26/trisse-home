@@ -1,0 +1,50 @@
+tags:
+  - name: gamedeals
+
+paths:
+  /api/gamedeals/settings:
+    get:
+      tags: [gamedeals]
+      summary: Game deal settings (everything off by default)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GameDealsSettings" } } } }
+    put:
+      tags: [gamedeals]
+      summary: Save the settings; a Steam ID is checked by loading the wishlist (it must be public)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/GameDealsSettings" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GameDealsSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/gamedeals/overview:
+    get:
+      tags: [gamedeals]
+      summary: Discounted wishlist games and Epic free games (refreshed every 12 hours)
+      responses:
+        "200":
+          description: OK; sources that could not be loaded are named in errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deals: { type: array, items: { type: object, properties: { name: { type: string }, url: { type: string }, discountPct: { type: integer }, finalPrice: { type: string }, endsAt: { type: [string, "null"], format: date-time } } } }
+                  freeNow: { type: array, items: { $ref: "#/components/schemas/FreeGame" } }
+                  freeNext: { type: array, items: { $ref: "#/components/schemas/FreeGame" } }
+                  errors: { type: array, items: { type: string } }
+
+schemas:
+  GameDealsSettings:
+    type: object
+    properties:
+      steamId: { type: string }
+      country: { type: string }
+      minDiscount: { type: integer }
+      epic: { type: boolean }
+  FreeGame:
+    type: object
+    properties:
+      title: { type: string }
+      url: { type: string }
+      start: { type: string, format: date-time }
+      end: { type: string, format: date-time }

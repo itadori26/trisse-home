@@ -133,8 +133,10 @@ other; `src/app` wires them.
 
 ## API
 
-The HTTP API is described in [`api/openapi.yaml`](../api/openapi.yaml)
-(OpenAPI 3.1). TypeScript types for all DTOs are generated from the Go
+The HTTP API is described in OpenAPI 3.1: a shared base
+([`api/openapi.base.yaml`](../api/openapi.base.yaml)) and one fragment per module
+([`api/modules/`](../api/modules/)), merged by `make openapi` into
+`dist/openapi.yaml` (also a build artifact of every CI run). TypeScript types for all DTOs are generated from the Go
 presenter and request DTOs with tygo (`make generate`).
 
 ## Security layers

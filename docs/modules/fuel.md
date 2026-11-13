@@ -12,4 +12,4 @@ Only the Tankerkönig API, while a fuel widget is open, at most every 5 minutes.
 
 ## API
 
-`GET/PUT /api/fuel/settings`, `GET /api/fuel/overview` and favourites – see `api/openapi.yaml`.
+`GET/PUT /api/fuel/settings`, `GET /api/fuel/overview` and favourites – see `api/modules/fuel.yaml`.

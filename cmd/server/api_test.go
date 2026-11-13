@@ -42,6 +42,7 @@ var ntfyMessages = struct {
 func fakeUpstream(t *testing.T) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
+	registerModuleUpstreams(mux)
 	mux.HandleFunc("GET /flaky", func(w http.ResponseWriter, _ *http.Request) {
 		if flakyDown.Load() {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -129,46 +130,11 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /control/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
-	// Sonarr (#86).
-	mux.HandleFunc("GET /sonarr/api/v3/system/status", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, `{"appName":"Sonarr"}`)
-	})
-	mux.HandleFunc("GET /sonarr/api/v3/calendar", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, `[{"title":"Pilot","seasonNumber":1,"episodeNumber":1,"airDateUtc":"`+time.Now().Add(24*time.Hour).UTC().Format(time.RFC3339)+`","series":{"title":"Show"}}]`)
-	})
-	mux.HandleFunc("GET /sonarr/api/v3/queue", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `{"records":[]}`) })
-	mux.HandleFunc("GET /sonarr/api/v3/health", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `[]`) })
-	mux.HandleFunc("GET /sonarr/api/v3/wanted/missing", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, `{"totalRecords":2}`)
-	})
-	// Jellyfin (#61).
-	mux.HandleFunc("GET /jf/System/Info", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, `{"ServerName":"Home"}`)
-	})
-	mux.HandleFunc("GET /jf/Items", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, `{"Items":[{"Id":"abc","Name":"Film","Type":"Movie"}]}`)
-	})
-	mux.HandleFunc("GET /jf/Sessions", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `[]`) })
-	mux.HandleFunc("GET /jf/Items/abc/Images/Primary", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "image/png")
-		_, _ = io.WriteString(w, "png")
-	})
 	// ICS subscription (#98): an event tomorrow, served with an ETag.
 	mux.HandleFunc("GET /holidays.ics", func(w http.ResponseWriter, _ *http.Request) {
 		day := time.Now().Add(24 * time.Hour).UTC().Format("20060102")
 		w.Header().Set("ETag", `"h1"`)
 		_, _ = io.WriteString(w, "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:h\r\nSUMMARY:Holiday\r\nDTSTART;VALUE=DATE:"+day+"\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")
-	})
-	// Immich (#85).
-	mux.HandleFunc("GET /immich/api/assets/statistics", func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("x-api-key") != "immich-key" {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		_, _ = io.WriteString(w, `{"images":10,"videos":2}`)
-	})
-	mux.HandleFunc("GET /immich/api/server/version", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, `{"major":1,"minor":120,"patch":0}`)
 	})
 	mux.HandleFunc("GET /ha/api/states", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer ha-token" {
@@ -194,10 +160,6 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	})
 	mux.HandleFunc("GET /pihole/api/stats/top_domains", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"domains":[{"domain":"ads.example","count":9}]}`)
-	})
-	// Tankerkönig (#53).
-	mux.HandleFunc("GET /tk/list.php", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, `{"ok":true,"stations":[{"id":"a","name":"JET","place":"Berlin","dist":1.2,"price":1.739,"isOpen":true}]}`)
 	})
 	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut && r.Header.Get("If-None-Match") == "*" && strings.HasSuffix(r.URL.Path, ".ics") {
@@ -303,11 +265,12 @@ func newTestServer(t *testing.T, upstream string, opts ...func(*config.Config)) 
 		AllowedCIDRs: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}, SessionTTL: time.Hour,
 		SecretKey: key, SetupToken: "e2e-setup-token-0123", DockerProxyURL: upstream,
 		DockerActions: true, DockerActionsContainers: []string{"web"}, DockerActionsProxyURL: upstream,
-		WolBroadcast: wolTarget.LocalAddr().String(), TransitAPIURL: upstream, FuelAPIURL: upstream + "/tk",
+		WolBroadcast: wolTarget.LocalAddr().String(), TransitAPIURL: upstream,
 		HostProcPath: fakeProc(t), HostSysPath: t.TempDir(), DiskPaths: []string{"Temp=" + t.TempDir()},
 		ShutdownTimeout: time.Second,
 		BackupDir:       filepath.Join(t.TempDir(), "backups"), BackupInterval: 24 * time.Hour, BackupRetention: 3,
 	}
+	applyModuleE2EConfig(&cfg, upstream)
 	for _, o := range opts {
 		o(&cfg)
 	}
@@ -703,52 +666,7 @@ func TestAPIEndToEnd(t *testing.T) {
 	}
 	c.do(http.MethodPost, "/api/smarthome/entities/switch.coffee/action", nil, http.StatusForbidden)
 
-	// --- *arr (#86): API keys stay on the server ---
-	c.do(http.MethodGet, "/api/arr/overview", nil, http.StatusNotFound)
-	c.do(http.MethodPost, "/api/arr/instances", obj{"app": "radarr", "url": up.URL + "/sonarr", "apiKey": "k"}, http.StatusUnprocessableEntity)
-	c.json(http.MethodPost, "/api/arr/instances", obj{"app": "sonarr", "url": up.URL + "/sonarr", "apiKey": "sonarr-key"}, http.StatusCreated, nil)
-	if body := string(c.do(http.MethodGet, "/api/arr/instances", nil, http.StatusOK)); strings.Contains(body, "sonarr-key") {
-		t.Fatal("arr API key leaked")
-	}
-	var arrOverview obj
-	c.json(http.MethodGet, "/api/arr/overview", nil, http.StatusOK, &arrOverview)
-	if up := arrOverview["upcoming"].([]any); len(up) != 1 || arrOverview["missing"].(obj)["Sonarr"] != float64(2) {
-		t.Fatalf("arr: %v", arrOverview)
-	}
-	// --- media server (#61): posters are proxied, the token never leaves ---
-	c.do(http.MethodGet, "/api/media/overview", nil, http.StatusNotFound)
-	c.json(http.MethodPut, "/api/media/settings", obj{"provider": "jellyfin", "url": up.URL + "/jf", "token": "jf-key"}, http.StatusOK, nil)
-	if body := string(c.do(http.MethodGet, "/api/media/settings", nil, http.StatusOK)); strings.Contains(body, "jf-key") {
-		t.Fatal("media token leaked")
-	}
-	var media obj
-	c.json(http.MethodGet, "/api/media/overview", nil, http.StatusOK, &media)
-	if media["serverName"] != "Home" || len(media["recent"].([]any)) != 1 {
-		t.Fatalf("media: %v", media)
-	}
-	if body := string(c.do(http.MethodGet, "/api/media/posters/abc", nil, http.StatusOK)); body != "png" {
-		t.Fatalf("poster: %q", body)
-	}
-	c.do(http.MethodGet, "/api/media/posters/other", nil, http.StatusNotFound)
-
-	// --- Immich (#85): optional parts (storage, memories) may be forbidden ---
-	c.do(http.MethodGet, "/api/immich/overview", nil, http.StatusNotFound)
-	c.json(http.MethodPut, "/api/immich/settings", obj{"url": up.URL + "/immich", "apiKey": "immich-key"}, http.StatusOK, nil)
-	var immich obj
-	c.json(http.MethodGet, "/api/immich/overview", nil, http.StatusOK, &immich)
-	if immich["photos"] != float64(10) || immich["version"] != "1.120.0" || len(immich["memories"].([]any)) != 0 {
-		t.Fatalf("immich: %v", immich)
-	}
-
-	// --- fuel prices (#53) ---
-	c.do(http.MethodGet, "/api/fuel/overview", nil, http.StatusNotFound)
-	c.json(http.MethodPut, "/api/fuel/settings", obj{"apiKey": "00000000-0000-0000-0000-000000000002", "lat": 52.5, "lon": 13.4,
-		"place": "Berlin", "radiusKm": 5, "fuel": "e10"}, http.StatusOK, nil)
-	var fuel obj
-	c.json(http.MethodGet, "/api/fuel/overview", nil, http.StatusOK, &fuel)
-	if cheapest := fuel["cheapest"].([]any); len(cheapest) != 1 || cheapest[0].(obj)["price"] != 1.739 {
-		t.Fatalf("fuel: %v", fuel)
-	}
+	runModuleE2E(t, c, up)
 
 	// --- calendar ---
 	c.do(http.MethodGet, "/api/calendar/events", nil, http.StatusNotFound)

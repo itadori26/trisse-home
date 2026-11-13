@@ -1,0 +1,86 @@
+tags:
+  - name: rss
+
+paths:
+  /api/rss/feeds:
+    get:
+      tags: [rss]
+      summary: Subscribed feeds with unread counts
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Feed" } } } } }
+    post:
+      tags: [rss]
+      summary: Subscribe to a feed (fetched immediately)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string, format: uri } }, required: [url] } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Feed" } } } }
+        "409": { description: Already subscribed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/rss/feeds/{id}:
+    delete:
+      tags: [rss]
+      summary: Unsubscribe and delete the feed's items
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/rss/items:
+    get:
+      tags: [rss]
+      summary: Items, newest first
+      parameters:
+        - { name: feed, in: query, schema: { type: string } }
+        - { name: unread, in: query, schema: { type: boolean } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/FeedItem" } } } } }
+  /api/rss/items/{id}/read:
+    put:
+      tags: [rss]
+      summary: Set the read state of an item
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { read: { type: boolean } }, required: [read] } } } }
+      responses:
+        "204": { description: Saved }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/rss/read-all:
+    post:
+      tags: [rss]
+      summary: Mark all items (of one feed) as read
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { feedId: { type: string, description: Empty for all feeds } }, required: [feedId] } } } }
+      responses:
+        "204": { description: Saved }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/rss/refresh:
+    post:
+      tags: [rss]
+      summary: Fetch all feeds now
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Feed" } } } } }
+
+schemas:
+  Feed:
+    type: object
+    properties:
+      id: { type: string }
+      url: { type: string }
+      title: { type: string }
+      siteUrl: { type: string }
+      lastError: { type: string }
+      lastFetchedAt: { type: [string, "null"], format: date-time }
+      unread: { type: integer }
+  FeedItem:
+    type: object
+    properties:
+      id: { type: string }
+      feedId: { type: string }
+      feedTitle: { type: string }
+      title: { type: string }
+      link: { type: string, description: http(s) link or empty }
+      publishedAt: { type: string, format: date-time }
+      read: { type: boolean }

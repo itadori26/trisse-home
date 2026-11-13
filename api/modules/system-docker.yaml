@@ -1,0 +1,134 @@
+tags:
+  - name: docker
+
+paths:
+  /api/system:
+    get:
+      tags: [system]
+      summary: Host metrics (sampled every 5 seconds)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SystemSnapshot" } } } }
+        "502": { $ref: "#/components/responses/Unavailable" }
+  /api/system/version:
+    get:
+      tags: [system]
+      summary: Running version and, if the opt-in update check is enabled, the latest release (looked up at most once a day)
+      responses: { "200": { description: "OK (current, checkEnabled, latest, updateAvailable, installMethod: docker, package, appliance or empty)" } }
+  /api/system/update-check:
+    put:
+      tags: [system]
+      summary: Enable or disable the daily update check against the GitHub releases API (default off)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean } } } } } }
+      responses: { "200": { description: OK } }
+  /api/system/forecast-settings:
+    get:
+      tags: [system]
+      summary: Disk forecast window and warning threshold in days (defaults 14/14)
+      responses: { "200": { description: "{windowDays, alertDays}" } }
+    put:
+      tags: [system]
+      summary: Set the forecast window (3-90 days) and warning threshold (1-365 days)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { windowDays: { type: integer }, alertDays: { type: integer } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid } }
+  /api/system/history:
+    get:
+      tags: [system]
+      summary: Metric history (one point per minute, kept 24 h, downsampled to max. 288 points)
+      parameters: [{ name: hours, in: query, schema: { type: integer, minimum: 1, maximum: 24, default: 24 } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object, properties: { at: { type: string, format: date-time }, cpu: { type: number }, memory: { type: number }, disk: { type: number } } } } } } }
+  /api/docker/containers:
+    get:
+      tags: [docker]
+      summary: Containers via the read-only socket proxy (refreshed every 20 seconds)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContainerList" } } } }
+  /api/docker/updates:
+    get:
+      tags: [docker]
+      summary: Running images with their update state (only when the update check is enabled; 404 otherwise)
+      description: >
+        Status up_to_date | update_available | pinned | local | error | unknown, optional newerTag (semver),
+        releaseUrl from the org.opencontainers.image.source label. Registries are asked at most every 6 hours per image.
+      responses: { "200": { description: OK }, "404": { description: Update check disabled } }
+  /api/docker/updates/settings:
+    get:
+      tags: [docker]
+      summary: Update check settings (registry passwords are never returned)
+      responses: { "200": { description: "{enabled, semverTags, registries: [{host, username, hasPassword}]}" } }
+    put:
+      tags: [docker]
+      summary: Save the settings; an empty password keeps the stored one of the same host
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, semverTags: { type: boolean }, registries: { type: array, items: { type: object, properties: { host: { type: string }, username: { type: string }, password: { type: string } } } } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid } }
+  /api/docker/actions:
+    get:
+      tags: [docker]
+      summary: Whether container actions are enabled (DOCKER_ACTIONS) and for which containers
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, containers: { type: array, items: { type: string } } } } } } }
+  /api/docker/containers/{name}/restart:
+    post:
+      tags: [docker]
+      summary: Restart a container on the allow-list (through the restart-only proxy)
+      parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Restarted }, "403": { description: Actions disabled or container not allowed } }
+  /api/docker/containers/{name}/logs:
+    get:
+      tags: [docker]
+      summary: Last 200 log lines of a container on the allow-list
+      parameters: [{ name: name, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { lines: { type: array, items: { type: string } } } } } } }
+        "403": { description: Actions disabled or container not allowed }
+
+schemas:
+  SystemSnapshot:
+    type: object
+    properties:
+      cpuPercent: { type: number }
+      cpuCount: { type: integer }
+      load: { type: array, items: { type: number }, minItems: 3, maxItems: 3 }
+      memory: { $ref: "#/components/schemas/Usage" }
+      swap: { $ref: "#/components/schemas/Usage" }
+      disks:
+        type: array
+        items:
+          type: object
+          properties:
+            label: { type: string }
+            usage: { $ref: "#/components/schemas/Usage" }
+            forecast:
+              type: object
+              nullable: true
+              description: Disk forecast from daily aggregates (null before the first aggregate)
+              properties:
+                status: { type: string, enum: [filling, flat, insufficient] }
+                daysUntilFull: { type: number }
+                bytesPerDay: { type: number }
+                confidence: { type: number, description: R² of the regression (0-1) }
+      uptimeSeconds: { type: integer }
+      temperature: { type: number, description: °C, 0 if unknown }
+      takenAt: { type: string, format: date-time }
+  ContainerList:
+    type: object
+    properties:
+      containers:
+        type: array
+        items:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+            image: { type: string }
+            state: { type: string }
+            status: { type: string }
+            health: { type: string, enum: [none, healthy, unhealthy, starting] }
+            project: { type: string }
+            created: { type: string, format: date-time }
+      total: { type: integer }
+      running: { type: integer }
+      stopped: { type: integer }
+      unhealthy: { type: integer }
+      updatedAt: { type: string, format: date-time }
+      error: { type: string }

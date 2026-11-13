@@ -1,0 +1,61 @@
+tags:
+  - name: smarthome
+
+paths:
+  /api/smarthome/settings:
+    get:
+      tags: [smarthome]
+      summary: Home Assistant connection (the token is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SmartHomeSettings" } } } }
+    put:
+      tags: [smarthome]
+      summary: Test and save the connection (empty token keeps the stored one)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string }, token: { type: string } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SmartHomeSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/smarthome/entities:
+    get:
+      tags: [smarthome]
+      summary: Every entity, sorted by name (for the widget's entity picker)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SmartHomeEntity" } } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/smarthome/states:
+    get:
+      tags: [smarthome]
+      summary: States of the given entities in the given order (cached for 10 seconds)
+      parameters: [{ name: ids, in: query, required: true, description: "Comma-separated entity IDs, at most 50", schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SmartHomeEntity" } } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/smarthome/entities/{id}/action:
+    post:
+      tags: [smarthome]
+      summary: Toggle or press an allow-listed entity (SMARTHOME_ACTIONS_ENTITIES)
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, example: switch.coffee_machine } }]
+      responses:
+        "204": { description: Done }
+        "403": { description: Entity not on the allow-list, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "404": { description: Unknown entity or not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  SmartHomeSettings:
+    type: object
+    properties: { configured: { type: boolean }, url: { type: string }, hasToken: { type: boolean } }
+  SmartHomeEntity:
+    type: object
+    properties:
+      id: { type: string }
+      name: { type: string }
+      state: { type: string }
+      unit: { type: string }
+      lastChanged: { type: string, format: date-time }
+      action: { type: string, enum: ["", toggle, press], description: Empty when read-only or not allow-listed }

@@ -1,0 +1,176 @@
+tags:
+  - name: backup
+  - name: backup-status
+  - name: backupmonitor
+  - name: notifications
+
+paths:
+  /api/notifications/settings:
+    get:
+      tags: [notifications]
+      summary: ntfy notification settings (the token is never returned)
+      responses: { "200": { description: OK } }
+    put:
+      tags: [notifications]
+      summary: Save notification settings; an empty token keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { enabled: { type: boolean }, serverUrl: { type: string }, topic: { type: string }, token: { type: string }, rules: { type: object, properties: { services: { type: boolean }, containers: { type: boolean }, disk: { type: boolean }, diskThreshold: { type: number, minimum: 50, maximum: 99 }, tls: { type: boolean }, tlsDays: { type: integer, minimum: 1, maximum: 90 }, backups: { type: boolean } } } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Validation error } }
+  /api/notifications/test:
+    post:
+      tags: [notifications]
+      summary: Send a test message
+      responses: { "204": { description: Sent }, "503": { description: ntfy server not reachable } }
+  /api/notifications/channels:
+    get:
+      tags: [notifications]
+      summary: Additional channels (Gotify, webhook, e-mail) without secrets
+      responses: { "200": { description: OK } }
+    post:
+      tags: [notifications]
+      summary: Add a channel with minimum importance and optional alert types
+      responses: { "200": { description: Created } }
+  /api/notifications/channels/{id}:
+    put:
+      tags: [notifications]
+      summary: Update a channel (empty secret keeps the stored one)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: OK } }
+    delete:
+      tags: [notifications]
+      summary: Delete a channel
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Deleted } }
+  /api/notifications/channels/{id}/test:
+    post:
+      tags: [notifications]
+      summary: Send a test message through one channel
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Sent } }
+  /api/notifications/maintenance:
+    get:
+      tags: [notifications]
+      summary: Active and upcoming maintenance windows
+      responses: { "200": { description: "List of {id, scope, start, end, note}" } }
+    post:
+      tags: [notifications]
+      summary: "Start a maintenance window: {scope: [\"service:NAS\", \"container:x\" or \"*\"], minutes | start+end, note}"
+      responses: { "201": { description: Created } }
+  /api/notifications/maintenance/{id}:
+    delete:
+      tags: [notifications]
+      summary: End an active window now or remove a planned one
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "204": { description: Ended } }
+  /api/backup-status/sources:
+    get:
+      tags: [backup-status]
+      summary: Monitored backup sources with state ok | overdue | failed | waiting
+      responses: { "200": { description: OK } }
+    post:
+      tags: [backup-status]
+      summary: Create a source; the response contains the ping URL once
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { name: { type: string }, maxAgeHours: { type: number, minimum: 1, maximum: 1440 } } } } } }
+      responses: { "201": { description: Created (source + pingUrl) }, "422": { description: Validation error } }
+  /api/backup-status/sources/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    put:
+      tags: [backup-status]
+      summary: Rename or change the maximum age
+      responses: { "200": { description: OK }, "404": { description: Not found } }
+    delete:
+      tags: [backup-status]
+      summary: Delete a source
+      responses: { "204": { description: Deleted }, "404": { description: Not found } }
+  /api/backup-status/sources/{id}/token:
+    post:
+      tags: [backup-status]
+      summary: Generate a new ping URL; the old one stops working
+      responses: { "200": { description: OK (source + pingUrl) } }
+  /api/checks/ping/{token}/{event}:
+    post:
+      tags: [backupmonitor]
+      summary: "Heartbeat ping with event start (job began, measures duration) or fail (body: message); GET works too. /api/backup-status/ping/... is an alias"
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }, { name: event, in: path, required: true, schema: { type: string, enum: [start, fail] } }]
+      responses: { "204": { description: Recorded }, "404": { description: Unknown token } }
+  /api/backup-status/ping/{token}:
+    post:
+      tags: [backup-status]
+      summary: Report a backup run (no session; the secret token authenticates). Body is an optional message.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [ok, fail] } }
+      responses: { "204": { description: Recorded }, "404": { description: Unknown token } }
+  /api/backups:
+    get:
+      tags: [backup]
+      summary: Stored database backups
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/BackupFile" } } } } }
+    post:
+      tags: [backup]
+      summary: Create a backup now (old ones are pruned per BACKUP_RETENTION)
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BackupFile" } } } }
+  /api/backups/{name}:
+    get:
+      tags: [backup]
+      summary: Download a backup (SQLite database file)
+      parameters: [{ name: name, in: path, required: true, schema: { type: string, pattern: '^trisse-home-\d{8}-\d{6}\.db$' } }]
+      responses:
+        "200": { description: SQLite database, content: { application/vnd.sqlite3: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/backups/remote:
+    get:
+      tags: [backup]
+      summary: Off-site backups in the WebDAV folder, newest first
+      responses: { "200": { description: List of backup files }, "404": { description: No target configured } }
+  /api/backups/remote/settings:
+    get:
+      tags: [backup]
+      summary: Off-site target (the password is never returned)
+      responses: { "200": { description: "{configured, url, username, hasPassword, retention}" } }
+    put:
+      tags: [backup]
+      summary: Test and save the WebDAV target; an empty password keeps the stored one
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, username: { type: string }, password: { type: string }, retention: { type: integer, minimum: 1, maximum: 365 } } } } } }
+      responses: { "200": { description: OK }, "422": { description: Invalid or not usable } }
+    delete:
+      tags: [backup]
+      summary: Stop off-site copies (remote files are kept)
+      responses: { "204": { description: Removed } }
+  /api/backups/remote/test:
+    post:
+      tags: [backup]
+      summary: Check that the folder exists and is writable (writes and deletes a small test file)
+      responses: { "204": { description: Usable }, "422": { description: Not usable } }
+  /api/backups/restore:
+    post:
+      tags: [backup]
+      summary: Restore a backup and restart (owner only; password and 2FA code are re-checked)
+      description: >
+        multipart/form-data with password, code, source (local | remote | upload), name (local/remote) and, last, file
+        (upload). The file is validated (integrity, trisse-home schema not newer than the running version) before the
+        swap is scheduled; the previous database is kept as trisse-home.db.before-restore.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                password: { type: string }
+                code: { type: string }
+                source: { type: string, enum: [local, remote, upload] }
+                name: { type: string }
+                file: { type: string, format: binary }
+      responses:
+        "202": { description: Restore scheduled, the server restarts }
+        "401": { description: Wrong password or code }
+        "403": { description: Guests and API tokens cannot restore }
+        "422": { description: Not a valid or too new backup }
+
+schemas:
+  BackupFile: { type: object, properties: { name: { type: string }, size: { type: integer }, createdAt: { type: string, format: date-time } } }

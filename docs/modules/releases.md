@@ -12,4 +12,4 @@ MusicBrainz: artist search when you use it, and the releases of followed artists
 
 ## API
 
-`/api/releases/...` (followed artists, upcoming and recent releases) – see `api/openapi.yaml`.
+`/api/releases/...` (followed artists, upcoming and recent releases) – see `api/modules/releases.yaml`.

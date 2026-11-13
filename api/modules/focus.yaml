@@ -1,0 +1,43 @@
+tags:
+  - name: focus
+
+paths:
+  /api/focus/stats:
+    get:
+      tags: [focus]
+      summary: Finished focus sessions per day for the last seven days including today, oldest first (#58)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/FocusWeek" } } } }
+  /api/focus/sessions:
+    post:
+      tags: [focus]
+      summary: Record a finished focus phase (the running timer lives in the browser; breaks are not recorded); answers with the updated week
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [minutes, endedAt]
+              properties:
+                minutes: { type: integer, minimum: 1, maximum: 180 }
+                endedAt: { type: string, format: date-time, description: Within the last 24 hours }
+      responses:
+        "201": { description: Recorded, content: { application/json: { schema: { $ref: "#/components/schemas/FocusWeek" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  FocusWeek:
+    type: object
+    required: [days]
+    properties:
+      days:
+        type: array
+        items:
+          type: object
+          required: [date, sessions, minutes]
+          properties:
+            date: { type: string, format: date }
+            sessions: { type: integer }
+            minutes: { type: integer }

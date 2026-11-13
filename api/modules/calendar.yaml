@@ -1,0 +1,133 @@
+tags:
+  - name: calendar
+
+paths:
+  /api/calendar/settings:
+    get:
+      tags: [calendar]
+      summary: CalDAV settings (the password is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSettings" } } } }
+    put:
+      tags: [calendar]
+      summary: Test and save the CalDAV connection (empty password keeps the stored one)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSettingsInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/calendar/events:
+    get:
+      tags: [calendar]
+      summary: Upcoming events (cached, refreshed every 15 minutes) or, with from/to, the events of a period of at most 42 days (month view)
+      parameters:
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 31, default: 7 } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Agenda" } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { description: Invalid period, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+    post:
+      tags: [calendar]
+      summary: Create an event in one of the configured calendars (CalDAV PUT with If-None-Match)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [calendarUrl, summary, start, end]
+              properties:
+                calendarUrl: { type: string, description: One of the configured calendar URLs }
+                summary: { type: string, maxLength: 200 }
+                location: { type: string, maxLength: 200 }
+                allDay: { type: boolean }
+                start: { type: string, description: "RFC 3339 instant, or YYYY-MM-DD for all-day events" }
+                end: { type: string, description: "RFC 3339 instant, or YYYY-MM-DD (inclusive) for all-day events" }
+      responses:
+        "201": { description: Created }
+        "422": { description: Validation error or unknown calendar, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/calendar/subscriptions:
+    get:
+      tags: [calendar]
+      summary: ICS subscriptions (#98); the URL is never returned, only a hint without path and query
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CalendarSubscription" } } } } }
+    post:
+      tags: [calendar]
+      summary: Add an ICS subscription (the feed is loaded once to test it)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscriptionInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscription" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/calendar/subscriptions/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [calendar]
+      summary: Update a subscription; an empty URL keeps the stored one
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscriptionInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CalendarSubscription" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [calendar]
+      summary: Delete a subscription
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503": { description: The calendar server rejected the event, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+
+schemas:
+  CalendarSubscription:
+    type: object
+    properties:
+      id: { type: string }
+      name: { type: string }
+      urlHint: { type: string, example: "https://calendar.example.com/…" }
+      color: { type: string, example: "#3b6ef5" }
+      refreshMinutes: { type: integer }
+  CalendarSubscriptionInput:
+    type: object
+    required: [name]
+    properties:
+      name: { type: string, maxLength: 60 }
+      url: { type: string, description: "https://, http:// or webcal://; required when adding" }
+      color: { type: string, description: "#rrggbb, default #3b6ef5" }
+      refreshMinutes: { type: integer, minimum: 15, maximum: 1440, default: 60 }
+  CalendarSettings:
+    type: object
+    properties:
+      configured: { type: boolean }
+      calendarUrls: { type: array, items: { type: string } }
+      username: { type: string }
+      hasPassword: { type: boolean }
+  CalendarSettingsInput:
+    type: object
+    required: [calendarUrls, username, password]
+    properties:
+      calendarUrls: { type: array, maxItems: 10, items: { type: string, format: uri } }
+      username: { type: string }
+      password: { type: string, description: App password; empty keeps the stored one }
+  Agenda:
+    type: object
+    properties:
+      events:
+        type: array
+        items:
+          type: object
+          properties:
+            uid: { type: string }
+            summary: { type: string }
+            location: { type: string }
+            calendar: { type: string, description: CalDAV collection or subscription name }
+            color: { type: string, description: "Subscription colour (#rrggbb); empty for CalDAV calendars" }
+            start: { type: string, description: RFC 3339, or YYYY-MM-DD for all-day events }
+            end: { type: string, description: RFC 3339, or YYYY-MM-DD (exclusive) for all-day events }
+            allDay: { type: boolean }
+      updatedAt: { type: string, format: date-time }
+      error: { type: string }

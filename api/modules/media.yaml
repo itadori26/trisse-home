@@ -1,0 +1,50 @@
+tags:
+  - name: media
+
+paths:
+  /api/media/settings:
+    get:
+      tags: [media]
+      summary: Media server connection (the token is never returned)
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { configured: { type: boolean }, provider: { type: string, enum: [jellyfin, plex] }, url: { type: string }, hasToken: { type: boolean } } } } }
+    put:
+      tags: [media]
+      summary: Test and save the connection (empty token keeps the stored one for the same provider)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [provider, url], properties: { provider: { type: string, enum: [jellyfin, plex] }, url: { type: string }, token: { type: string } } } } }
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/media/overview:
+    get:
+      tags: [media]
+      summary: Now playing and recently added (cached for 15 seconds, fetched on demand)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serverName: { type: string }
+                  recent:
+                    type: array
+                    items: { type: object, properties: { id: { type: string }, title: { type: string }, series: { type: string }, kind: { type: string }, year: { type: integer }, addedAt: { type: string, format: date-time } } }
+                  sessions:
+                    type: array
+                    items: { type: object, properties: { user: { type: string }, device: { type: string }, title: { type: string }, series: { type: string }, kind: { type: string }, paused: { type: boolean }, progress: { type: number } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/media/posters/{id}:
+    get:
+      tags: [media]
+      summary: Poster of a recently added item, proxied from the media server (raster images only)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { description: Not one of the recently added items, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }

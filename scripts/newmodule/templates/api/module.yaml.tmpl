@@ -1,0 +1,38 @@
+# OpenAPI fragment of the {{.Title}} module (#194). `make openapi` merges it with
+# api/openapi.base.yaml and checks it: every tag must be declared here, every
+# $ref must resolve and no path or schema may exist twice.
+tags:
+  - name: {{.Name}}
+
+paths:
+  /api/{{.Name}}/items:
+    get:
+      tags: [{{.Name}}]
+      summary: List the items
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/{{.Pascal}}Item" } } } } }
+    post:
+      tags: [{{.Name}}]
+      summary: Add an item
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [title], properties: { title: { type: string } } } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/{{.Pascal}}Item" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/{{.Name}}/items/{id}:
+    delete:
+      tags: [{{.Name}}]
+      summary: Delete an item
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+schemas:
+  {{.Pascal}}Item:
+    type: object
+    properties:
+      id: { type: string }
+      title: { type: string }
+      createdAt: { type: string, format: date-time }

@@ -107,7 +107,8 @@ web/src/
   app/                   frontend composition root, widget registry
   features/<name>/{domain,usecase,adapter/api,ui}/
   shared/                API client, generated DTO types, theme, UI
-api/openapi.yaml         API description
+api/openapi.base.yaml    API description: shared part (info, security, shared schemas)
+api/modules/<name>.yaml  API description of one module (merged by make openapi)
 ```
 
 ## Quick start (Raspberry Pi)
@@ -628,8 +629,8 @@ step, using a `quotes` module that shows a random quote as the example:
    settings, `web/src/app/settings/quotes.ts`. `make new-module` creates all of
    them.
 10. **Docs** – describe the module in `docs/modules/quotes.md`, add the
-    endpoints to `api/openapi.yaml` in alphabetical position among the module
-    sections and write an ADR if the module introduces a notable decision. Run
+    endpoints to `api/modules/quotes.yaml` (`make new-module` creates it; `make
+    openapi` merges and checks the fragments) and write an ADR if the module introduces a notable decision. Run
     `make ci` before committing. See [docs/modules](docs/modules/README.md) for
     why modules avoid shared files.
 

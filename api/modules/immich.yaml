@@ -1,0 +1,46 @@
+tags:
+  - name: immich
+
+paths:
+  /api/immich/settings:
+    get:
+      tags: [immich]
+      summary: Immich connection (the API key is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { configured: { type: boolean }, url: { type: string }, hasApiKey: { type: boolean } } } } } }
+    put:
+      tags: [immich]
+      summary: Test and save the connection (empty key keeps the stored one)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string }, apiKey: { type: string } } } } } }
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/immich/overview:
+    get:
+      tags: [immich]
+      summary: Library statistics, storage and today's memories (cached for 5 minutes, fetched on demand)
+      responses:
+        "200":
+          description: OK; storage and memories are empty when the key lacks server.storage or memory.read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version: { type: string }
+                  photos: { type: integer }
+                  videos: { type: integer }
+                  diskUsed: { type: integer }
+                  diskTotal: { type: integer }
+                  diskPercent: { type: number }
+                  memories: { type: array, items: { type: object, properties: { yearsAgo: { type: integer }, assetIds: { type: array, items: { type: string } } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/immich/thumbnails/{id}:
+    get:
+      tags: [immich]
+      summary: Thumbnail of a photo of today's memories, proxied from Immich
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { description: Not part of today's memories, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
