@@ -184,7 +184,7 @@ test('settings sections of self-registering features load on demand (#193)', asy
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await account(page, 'Settings');
   await page.getByRole('button', { name: 'Proxmox', exact: true }).click();
   await expect(page.getByLabel('Proxmox VE URL')).toBeVisible();
 });
