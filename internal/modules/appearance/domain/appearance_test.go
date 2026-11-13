@@ -43,17 +43,26 @@ func TestLanguage(t *testing.T) {
 	}
 }
 
-func TestGreeting(t *testing.T) {
+func TestGreetingNameAndLauncher(t *testing.T) {
 	a := Default()
-	if a.Greeting() || a.GreetingName() != "" {
-		t.Fatal("greeting must be off by default")
+	if a.GreetingName() != "" || a.Launcher() != LauncherBoth {
+		t.Fatal("defaults")
 	}
-	if err := a.SetGreeting(true, "  Tristan "); err != nil || !a.Greeting() || a.GreetingName() != "Tristan" {
-		t.Fatalf("%v %q %v", a.Greeting(), a.GreetingName(), err)
+	if err := a.SetGreetingName("  Tristan "); err != nil || a.GreetingName() != "Tristan" {
+		t.Fatalf("%q %v", a.GreetingName(), err)
 	}
 	for _, bad := range []string{strings.Repeat("x", 41), "Tris\ntan"} {
-		if err := a.SetGreeting(true, bad); err == nil {
+		if err := a.SetGreetingName(bad); err == nil {
 			t.Errorf("name %q accepted", bad)
 		}
+	}
+	if err := a.SetLauncher("services"); err != nil || a.Launcher() != LauncherServices {
+		t.Fatalf("launcher %v", err)
+	}
+	if err := a.SetLauncher(""); err != nil || a.Launcher() != LauncherBoth {
+		t.Fatal("empty launcher is both")
+	}
+	if err := a.SetLauncher("widgets"); err == nil {
+		t.Fatal("unknown launcher accepted")
 	}
 }

@@ -14,8 +14,8 @@ type AppearanceResponse struct {
 	AccentColor     string
 	BackgroundImage string
 	CustomCSS       string
-	Greeting        bool
 	GreetingName    string
+	Launcher        string
 }
 
 // UpdateAppearanceRequest is the input of UpdateAppearance.
@@ -25,8 +25,8 @@ type UpdateAppearanceRequest struct {
 	AccentColor     string
 	BackgroundImage string
 	CustomCSS       string
-	Greeting        bool
 	GreetingName    string
+	Launcher        string
 }
 
 // GetAppearance returns the current preferences (input port).
@@ -48,7 +48,7 @@ type Repository interface {
 
 func toResponse(a domain.Appearance) AppearanceResponse {
 	return AppearanceResponse{Theme: string(a.Theme()), AccentColor: a.AccentColor(), BackgroundImage: a.BackgroundImage(), CustomCSS: a.CustomCSS(), Language: a.Language(),
-		Greeting: a.Greeting(), GreetingName: a.GreetingName()}
+		GreetingName: a.GreetingName(), Launcher: string(a.Launcher())}
 }
 
 type getAppearance struct{ repo Repository }
@@ -77,7 +77,10 @@ func (uc *updateAppearance) Execute(ctx context.Context, req UpdateAppearanceReq
 		err = a.SetLanguage(req.Language)
 	}
 	if err == nil {
-		err = a.SetGreeting(req.Greeting, req.GreetingName)
+		err = a.SetGreetingName(req.GreetingName)
+	}
+	if err == nil {
+		err = a.SetLauncher(req.Launcher)
 	}
 	if err != nil {
 		return AppearanceResponse{}, err

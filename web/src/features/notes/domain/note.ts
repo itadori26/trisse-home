@@ -119,3 +119,32 @@ export function findByTitle<T extends { title: string }>(notes: readonly T[], ti
 
 /** Plain text of highlighted segments. */
 export const plain = (segments: readonly Segment[]): string => segments.map((s) => s.text).join('');
+
+/** Length of a note's text (#121). */
+export interface TextCount {
+  words: number;
+  /** Visible characters including spaces; line breaks are not counted. */
+  characters: number;
+}
+
+const segmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl ? new Intl.Segmenter() : undefined;
+
+/**
+ * Counts the words and characters of a note.
+ *
+ * Markdown syntax does not count as words: code fence lines are skipped, a
+ * link `[text](url)` or image counts only its text, and a token needs a letter
+ * or digit, so `#`, `-`, `---`, `>` and `*` stand for nothing. Characters are
+ * grapheme clusters, so an emoji, a flag or a letter with an accent is one.
+ */
+export function countText(text: string): TextCount {
+  const prose = text
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(```|~~~)/.test(line))
+    .join('\n')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1');
+  const words = prose.split(/\s+/).filter((token) => /[\p{L}\p{N}]/u.test(token)).length;
+  const visible = text.replace(/[\r\n]/g, '');
+  const characters = segmenter ? [...segmenter.segment(visible)].length : [...visible].length;
+  return { words, characters };
+}

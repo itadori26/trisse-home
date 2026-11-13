@@ -34,7 +34,8 @@
   </label>
   <label><input type="checkbox" bind:checked={form.hour12} /> {t('clock.12_hour_clock')}</label><br />
   <label><input type="checkbox" bind:checked={form.showSeconds} /> {t('clock.show_seconds')}</label><br />
-  <label><input type="checkbox" bind:checked={form.showDate} /> {t('clock.show_date')}</label>
+  <label><input type="checkbox" bind:checked={form.showDate} /> {t('clock.show_date')}</label><br />
+  <label><input type="checkbox" bind:checked={form.showWeek} /> {t('clock.show_week')}</label>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <p><button class="btn btn-primary" type="submit">{t('clock.save')}</button></p>
 </form>

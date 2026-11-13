@@ -24,11 +24,12 @@ func TestRepository(t *testing.T) {
 		}
 	}
 	a := domain.Default()
-	_ = a.SetGreeting(true, "Tristan")
+	_ = a.SetGreetingName("Tristan")
+	_ = a.SetLauncher("bookmarks")
 	if err := repo.Save(ctx, a); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := repo.Load(ctx); !got.Greeting() || got.GreetingName() != "Tristan" {
-		t.Fatalf("greeting round trip: %v %q", got.Greeting(), got.GreetingName())
+	if got, _ := repo.Load(ctx); got.GreetingName() != "Tristan" || got.Launcher() != "bookmarks" {
+		t.Fatalf("round trip: %q %q", got.GreetingName(), got.Launcher())
 	}
 }

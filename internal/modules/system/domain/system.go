@@ -55,6 +55,8 @@ type Load struct {
 
 // Snapshot is a complete set of host metrics at one point in time.
 type Snapshot struct {
+	// Hostname of the machine; empty when it cannot be read (#123).
+	Hostname    string
 	CPUPercent  float64
 	CPUCount    int
 	Load        Load
