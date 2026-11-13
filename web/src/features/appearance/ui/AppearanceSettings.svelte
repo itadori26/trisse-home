@@ -34,6 +34,18 @@
 
 <form onsubmit={submit}>
   <label class="field">
+    <span>{t('appearance.greeting_name')}</span>
+    <input class="input" bind:value={form.greetingName} maxlength="40" autocomplete="given-name" />
+  </label>
+  <label class="field" id="settings-launcher">
+    <span>{t('appearance.launcher')}</span>
+    <select class="input" bind:value={form.launcher}>
+      <option value="both">{t('appearance.launcher_both')}</option>
+      <option value="services">{t('appearance.launcher_services')}</option>
+      <option value="bookmarks">{t('appearance.launcher_bookmarks')}</option>
+    </select>
+  </label>
+  <label class="field">
     <span>{t('appearance.language')}</span>
     <select class="input" bind:value={form.language}>
       <option value="">{t('appearance.language_browser')}</option>

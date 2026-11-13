@@ -36,6 +36,10 @@ export interface DiskDTO {
  * SnapshotDTO is returned by GET /api/system.
  */
 export interface SnapshotDTO {
+  /**
+   * Hostname of the host; empty when unknown.
+   */
+  hostname: string;
   cpuPercent: number /* float64 */;
   cpuCount: number /* int */;
   load: number /* float64 */[];

@@ -5,6 +5,8 @@ export interface CalendarEvent {
   summary: string;
   location: string;
   calendar: string;
+  /** Colour of an ICS subscription (#rrggbb); empty for CalDAV calendars. */
+  color: string;
   start: Date;
   end: Date;
   allDay: boolean;
@@ -139,4 +141,41 @@ export function groupByDay(events: CalendarEvent[], today: Date, days: number): 
 export function parseLocalDate(s: string): Date {
   const [y, m, d] = s.split('-').map(Number);
   return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+}
+
+/** An ICS subscription (#98); the URL is never returned, only a hint. */
+export interface CalendarSubscription {
+  id: string;
+  name: string;
+  urlHint: string;
+  color: string;
+  refreshMinutes: number;
+}
+
+/** Editable fields; an empty URL keeps the stored one when updating. */
+export interface SubscriptionInput {
+  name: string;
+  url: string;
+  color: string;
+  refreshMinutes: number;
+}
+
+/** Refresh intervals offered in the settings, in minutes. */
+export const refreshChoices = [15, 60, 360, 1440] as const;
+
+/** An empty subscription form. */
+export const emptySubscription = (): SubscriptionInput => ({
+  name: '',
+  url: '',
+  color: '#3b6ef5',
+  refreshMinutes: 60,
+});
+
+/** Validates a subscription form; the URL is required only for new ones. */
+export function validateSubscription(input: SubscriptionInput, isNew: boolean): string | null {
+  if (input.name.trim() === '') return t('calendar.subscription_name_required');
+  const url = input.url.trim();
+  if ((isNew || url !== '') && !/^(https?|webcal):\/\/\S+$/i.test(url))
+    return t('calendar.subscription_url_invalid');
+  return null;
 }

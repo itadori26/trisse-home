@@ -41,6 +41,11 @@ export default ts.config(
     },
   },
   {
+    // Features add their message keys by augmenting an empty interface (#193).
+    files: ['src/shared/i18n/registry.ts', 'src/features/*/i18n/en.ts', 'src/app/serviceKit.ts'],
+    rules: { '@typescript-eslint/no-empty-object-type': 'off' },
+  },
+  {
     files: ['src/features/*/domain/**'],
     rules: restrict([
       {

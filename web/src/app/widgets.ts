@@ -4,57 +4,16 @@ import { t } from '../shared/i18n';
  * component, settings form and default size. Features never know about each
  * other; this file is the only place that combines them.
  */
-import type { Component } from 'svelte';
-import type { WidgetType } from '../features/dashboard';
 import type { IconName } from '../shared/ui/icons/paths';
-import type { Container } from './container';
 import { prefixesFromConfig } from '../features/quickactions/domain/command';
 import { quickCapture } from './quickCapture';
+import { lazy, type Renderer, type WidgetDefinition } from './widgetKit';
+import { widgetAnswers } from './widgetAnswers';
 
-/** Configuration object stored per widget. */
-type Config = Record<string, unknown>;
+export type { Renderer, WidgetDefinition };
 
-/** A lazily loaded component together with a function that builds its props (#116). */
-export interface Renderer {
-  /** Loads the component's chunk; the promise is cached per kind. */
-  load: () => Promise<Component<Record<string, unknown>>>;
-  props: (config: Config, c: Container) => Record<string, unknown>;
-}
-
-/** Everything the dashboard needs to know about one widget kind. */
-export interface WidgetDefinition {
-  type: WidgetType;
-  /** Tile icon of the widget picker (#104); required for every kind. */
-  icon: IconName;
-  /** Rendered without card chrome outside edit mode. */
-  chromeless?: boolean;
-  view: Renderer;
-  /** Settings form; it additionally receives an `onsave(config)` prop. */
-  settings?: Renderer;
-}
-
-/**
- * Type-checks props against the lazily imported component and erases the
- * type for the registry. Only this file knows how widget code is loaded.
- */
-function lazy<P extends object>(
-  load: () => Promise<{ default: Component<P> }>,
-  props: (config: Config, c: Container) => Omit<P, 'onsave'>,
-): Renderer {
-  let loaded: Promise<Component<Record<string, unknown>>> | undefined;
-  return {
-    load: () => {
-      loaded ??= load().then((m) => m.default as unknown as Component<Record<string, unknown>>);
-      // A failed chunk (e.g. offline after an update) can be retried.
-      loaded.catch(() => (loaded = undefined));
-      return loaded;
-    },
-    props,
-  };
-}
-
-/** All widget kinds known to the frontend. */
-export const widgetDefinitions: WidgetDefinition[] = [
+/** The widgets that are still defined here; new ones live in src/app/widgets/<kind>.ts (#193). */
+const legacyDefinitions: WidgetDefinition[] = [
   {
     type: {
       kind: 'search',
@@ -76,6 +35,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
         config,
         search: c.search,
         quick: quickCapture(c.quickActions, prefixesFromConfig(config['quickPrefixes'])),
+        answers: widgetAnswers(c),
       }),
     ),
     settings: lazy(
@@ -587,141 +547,14 @@ export const widgetDefinitions: WidgetDefinition[] = [
       (_config, c) => ({ speedtest: c.speedtest }),
     ),
   },
-  {
-    type: {
-      kind: 'immich',
-      category: 'network',
-      keywords: ['photos', 'fotos', 'gallery', 'memories', 'erinnerungen'],
-      get title() {
-        return t('widget.immich.title');
-      },
-      get description() {
-        return t('widget.immich.description');
-      },
-      defaultSize: { w: 4, h: 5 },
-    },
-    icon: 'archive',
-    view: lazy(
-      () => import('../features/immich/ui/ImmichWidget.svelte'),
-      (config, c) => ({ config, immich: c.immich }),
-    ),
-    settings: lazy(
-      () => import('../features/immich/ui/ImmichWidgetSettings.svelte'),
-      (config) => ({ config }),
-    ),
-  },
-  {
-    type: {
-      kind: 'smarthome',
-      category: 'network',
-      keywords: ['home assistant', 'switch', 'sensor', 'iot', 'smart home', 'hausautomation'],
-      get title() {
-        return t('widget.smarthome.title');
-      },
-      get description() {
-        return t('widget.smarthome.description');
-      },
-      defaultSize: { w: 4, h: 4 },
-    },
-    icon: 'activity',
-    view: lazy(
-      () => import('../features/smarthome/ui/SmartHomeWidget.svelte'),
-      (config, c) => ({ config, smarthome: c.smarthome }),
-    ),
-    settings: lazy(
-      () => import('../features/smarthome/ui/SmartHomeWidgetSettings.svelte'),
-      (config, c) => ({ config, smarthome: c.smarthome }),
-    ),
-  },
-  {
-    type: {
-      kind: 'proxmox',
-      category: 'server',
-      keywords: ['pve', 'vm', 'lxc', 'virtualisation', 'hypervisor'],
-      get title() {
-        return t('widget.proxmox.title');
-      },
-      get description() {
-        return t('widget.proxmox.description');
-      },
-      defaultSize: { w: 4, h: 6 },
-    },
-    icon: 'server',
-    view: lazy(
-      () => import('../features/proxmox/ui/ProxmoxWidget.svelte'),
-      (config, c) => ({ config, proxmox: c.proxmox }),
-    ),
-    settings: lazy(
-      () => import('../features/proxmox/ui/ProxmoxWidgetSettings.svelte'),
-      (config) => ({ config }),
-    ),
-  },
-  {
-    type: {
-      kind: 'briefing',
-      category: 'information',
-      keywords: ['today', 'summary', 'morning', 'heute', 'tagesüberblick', 'zusammenfassung'],
-      get title() {
-        return t('widget.briefing.title');
-      },
-      get description() {
-        return t('widget.briefing.description');
-      },
-      defaultSize: { w: 4, h: 4 },
-    },
-    icon: 'sun',
-    view: lazy(
-      () => import('../features/briefing/ui/BriefingWidget.svelte'),
-      (_config, c) => ({ briefing: c.briefing }),
-    ),
-  },
-  {
-    type: {
-      kind: 'countdown',
-      category: 'everyday',
-      keywords: ['days', 'deadline', 'exam', 'holiday', 'countdown', 'tage', 'frist', 'prüfung', 'urlaub'],
-      get title() {
-        return t('widget.countdown.title');
-      },
-      get description() {
-        return t('widget.countdown.description');
-      },
-      defaultSize: { w: 4, h: 4 },
-    },
-    icon: 'hourglass',
-    view: lazy(
-      () => import('../features/countdown/ui/CountdownWidget.svelte'),
-      (config, c) => ({ config, countdown: c.countdown }),
-    ),
-    settings: lazy(
-      () => import('../features/countdown/ui/CountdownSettings.svelte'),
-      (config) => ({ config }),
-    ),
-  },
-  {
-    type: {
-      kind: 'focus',
-      category: 'everyday',
-      keywords: ['pomodoro', 'timer', 'study', 'concentration', 'lernen', 'konzentration', 'pause'],
-      get title() {
-        return t('widget.focus.title');
-      },
-      get description() {
-        return t('widget.focus.description');
-      },
-      defaultSize: { w: 3, h: 4 },
-    },
-    icon: 'timer',
-    view: lazy(
-      () => import('../features/focus/ui/FocusWidget.svelte'),
-      (config, c) => ({ config, focus: c.focus }),
-    ),
-    settings: lazy(
-      () => import('../features/focus/ui/FocusSettings.svelte'),
-      (config, c) => ({ config, focus: c.focus }),
-    ),
-  },
-  // scaffold:widgets - make new-module inserts new widgets above this line.
+];
+
+const own = import.meta.glob<{ widgets: WidgetDefinition[] }>('./widgets/*.ts', { eager: true });
+
+/** All widget kinds known to the frontend. */
+export const widgetDefinitions: WidgetDefinition[] = [
+  ...legacyDefinitions,
+  ...Object.values(own).flatMap((m) => m.widgets),
 ];
 
 /** Picker icon of a widget kind. */

@@ -19,3 +19,13 @@ type NewEventDTO struct {
 	Start       string `json:"start"`
 	End         string `json:"end"`
 }
+
+// SubscriptionInputDTO is the body of POST /api/calendar/subscriptions and
+// PUT /api/calendar/subscriptions/{id}; an empty URL keeps the stored one
+// when updating.
+type SubscriptionInputDTO struct {
+	Name           string `json:"name"`
+	URL            string `json:"url"`
+	Color          string `json:"color"`
+	RefreshMinutes int    `json:"refreshMinutes"`
+}

@@ -25,6 +25,7 @@ export class SystemApi implements SystemGateway {
   async snapshot(): Promise<SystemSnapshot> {
     const d = await this.http.get<SnapshotDTO>('/api/system');
     return {
+      hostname: d.hostname ?? '',
       cpuPercent: d.cpuPercent,
       cpuCount: d.cpuCount,
       load: [d.load[0] ?? 0, d.load[1] ?? 0, d.load[2] ?? 0],

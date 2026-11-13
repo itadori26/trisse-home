@@ -1,5 +1,30 @@
 import { describe as group, expect, it } from 'vitest';
-import { describe, parseWeatherConfig, placeLabel, radarKey, validity } from './weather';
+import { compass, describe, parseWeatherConfig, placeLabel, radarKey, validity } from './weather';
+
+group('compass (#118)', () => {
+  it.each([
+    [0, 'n'],
+    [22.4, 'n'],
+    [22.5, 'ne'],
+    [45, 'ne'],
+    [90, 'e'],
+    [135, 'se'],
+    [180, 's'],
+    [225, 'sw'],
+    [270, 'w'],
+    [315, 'nw'],
+    [337.4, 'nw'],
+    [337.5, 'n'],
+    [359.9, 'n'],
+  ])('%d° is %s', (degrees, point) => expect(compass(degrees)).toBe(point));
+
+  it('wraps angles outside 0-360', () => {
+    expect(compass(360)).toBe('n');
+    expect(compass(450)).toBe('e');
+    expect(compass(-45)).toBe('nw');
+    expect(compass(-360)).toBe('n');
+  });
+});
 
 group('weather domain', () => {
   it('parses a valid config and clamps days', () => {

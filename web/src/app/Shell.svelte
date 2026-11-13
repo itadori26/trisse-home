@@ -8,6 +8,15 @@
   import { provideRefresh } from '../shared/refresh';
   import DashboardPage from './DashboardPage.svelte';
   import { attachShortcuts } from '../shared/shortcuts';
+  import Icon from '../shared/ui/icons/Icon.svelte';
+  import AccountMenu from './AccountMenu.svelte';
+  import Hero from './Hero.svelte';
+  import TopInfo from './TopInfo.svelte';
+  import { launcherSources } from './launcherSources';
+  import { LauncherUseCases } from '../features/launcher/usecase/launcherUseCases';
+  import { type Segment, statusSummary } from '../features/launcher/domain/launcher';
+  import { firstWidgetConfig, type Tab } from '../features/dashboard';
+  import { parseWeatherConfig } from '../features/weather/domain/weather';
 
   /** Props of the authenticated application shell. */
   interface Props {
@@ -34,6 +43,46 @@
   let quickSearch = $state(false);
   let shortcutHelp = $state(false);
   let dashboard = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
+  let searchStart = $state('');
+  let launcherOpen = $state<Segment | null>(null);
+  let launcherTrigger = $state<HTMLButtonElement>();
+  let serviceStatus = $state<ReturnType<typeof statusSummary>>({ kind: 'none', offline: 0 });
+  const launcher = $derived(modules ? new LauncherUseCases(launcherSources(container, modules)) : null);
+
+  // Status pill (#189): all online, or how many services are offline.
+  $effect(() => {
+    const l = launcher;
+    if (!l?.hasServices) return;
+    const poll = () =>
+      l
+        .services()
+        .then((s) => (serviceStatus = statusSummary(s)))
+        .catch(() => {});
+    poll();
+    const id = setInterval(poll, 60_000);
+    return () => clearInterval(id);
+  });
+
+  function closeLauncher() {
+    launcherOpen = null;
+    launcherTrigger?.focus();
+  }
+
+  const accountInitial = $derived(appearance.greetingName.trim().charAt(0).toUpperCase());
+  let dashboardState = $state<{ tabs: Tab[]; activeId: string }>({ tabs: [], activeId: '' });
+
+  // The top bar shows the weather of the first weather widget (#167, #189).
+  const weatherLocation = $derived.by(() => {
+    const cfg = firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, 'weather');
+    return cfg ? parseWeatherConfig(cfg) : null;
+  });
+
+  /** Typing into the search pill continues in the quick search (#167, #189). */
+  function openSearch(text: string) {
+    // Collect what is typed while the quick search is still loading.
+    searchStart += text;
+    quickSearch = true;
+  }
 
   // Undo/redo shortcuts only exist in edit mode (#93).
   $effect(() => {
@@ -174,34 +223,68 @@
 
 <svelte:window ononline={() => (offline = false)} onoffline={() => (offline = true)} />
 
+<!-- Top bar and hero (#189): brand · date, weather, to-dos · status, launcher, account. -->
 <header class="topbar">
-  <strong class="brand">trisse-home</strong>
-  <nav>
-    <button
-      class="btn btn-icon"
-      type="button"
-      aria-keyshortcuts="Control+K /"
-      title={t('app.quick_search_ctrl_k_or')}
-      onclick={() => (quickSearch = true)}>{t('app.search')} <kbd>{t('app.ctrl_k')}</kbd></button
-    >
-    {#if !container.auth.guest}
+  <a class="brand" href="/" aria-label="trisse-home"
+    ><span class="logo" aria-hidden="true">t</span>trisse-home</a
+  >
+  <div class="center">
+    <TopInfo
+      weather={modules?.has('weather') ? container.weather : null}
+      location={weatherLocation}
+      todos={modules?.has('todos') ? container.todos : null}
+    />
+  </div>
+  <div class="right">
+    {#if serviceStatus.kind !== 'none'}
       <button
-        class="btn btn-icon"
-        class:on={editing}
         type="button"
-        data-tour="edit"
-        aria-pressed={editing}
-        onclick={() => (editing = !editing)}
+        class="status"
+        data-kind={serviceStatus.kind}
+        data-launcher-trigger
+        onclick={() => (launcherOpen = launcherOpen ? null : 'services')}
       >
-        {editing ? t('app.done') : t('app.edit')}
+        <span class="dot" aria-hidden="true"></span>
+        {serviceStatus.kind === 'ok'
+          ? t('launcher.all_online')
+          : t('launcher.some_offline', { n: serviceStatus.offline })}
       </button>
     {/if}
-    <button class="btn btn-icon" type="button" data-tour="settings" onclick={() => (settingsOpen = true)}
-      >{t('app.settings')}</button
-    >
-    <button class="btn btn-icon" type="button" onclick={logout}>{t('app.log_out')}</button>
-  </nav>
+    {#if launcher}
+      <button
+        bind:this={launcherTrigger}
+        type="button"
+        class="round"
+        data-launcher-trigger
+        aria-haspopup="dialog"
+        aria-expanded={launcherOpen !== null}
+        aria-label={t('launcher.title')}
+        title={t('launcher.title')}
+        onclick={() => (launcherOpen = launcherOpen ? null : 'all')}><Icon name="grid" size={22} /></button
+      >
+    {/if}
+    <AccountMenu
+      initial={accountInitial}
+      {editing}
+      canEdit={!container.auth.guest}
+      onedit={() => (editing = !editing)}
+      onsettings={() => (settingsOpen = true)}
+      onlogout={logout}
+    />
+  </div>
+  {#if launcherOpen && launcher}
+    {#await import('../features/launcher/ui/LauncherPanel.svelte') then { default: LauncherPanel }}
+      <LauncherPanel
+        {launcher}
+        content={appearance.launcher}
+        initialSegment={launcherOpen}
+        onclose={closeLauncher}
+        onsettings={() => ((launcherOpen = null), (settingsOpen = true))}
+      />
+    {/await}
+  {/if}
 </header>
+<Hero name={appearance.greetingName} onsearch={openSearch} tabsId="header-tabs" />
 
 <main class="content">
   {#if offline}<p class="offline" role="status">
@@ -212,7 +295,14 @@
     {#if modules.has('notifications') && !container.auth.guest}<MaintenanceBanner
         notifications={container.notifications}
       />{/if}
-    <DashboardPage bind:this={dashboard} {container} {editing} {widgetKinds} />
+    <DashboardPage
+      bind:this={dashboard}
+      {container}
+      {editing}
+      {widgetKinds}
+      tabBarTarget="header-tabs"
+      onstate={(tabs, activeId) => (dashboardState = { tabs, activeId })}
+    />
   {/if}
 </main>
 
@@ -232,7 +322,13 @@
 
 {#if quickSearch && modules}
   {#await import('./QuickSearch.svelte') then { default: QuickSearch }}
-    <QuickSearch {container} {modules} onclose={() => (quickSearch = false)} />
+    <QuickSearch
+      {container}
+      {modules}
+      initialQuery={searchStart}
+      {weatherLocation}
+      onclose={() => ((quickSearch = false), (searchStart = ''))}
+    />
   {/await}
 {/if}
 
@@ -255,32 +351,101 @@
     border-radius: var(--radius-small);
     background: color-mix(in srgb, var(--color-warning) 22%, transparent);
   }
-  kbd {
-    font-size: 0.7em;
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    padding: 0 4px;
-    margin-left: 4px;
-  }
-  @media (max-width: 600px) {
-    kbd {
-      display: none;
-    }
-  }
+  /* Top bar (#189): brand left, information centred, actions right. */
   .topbar {
-    display: flex;
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
-    padding: var(--space-3) var(--space-4);
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
     max-width: 1600px;
     margin: 0 auto;
   }
   .brand {
-    letter-spacing: 0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 700;
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
   }
-  .on {
+  .logo {
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 0.95rem;
+  }
+  .center {
+    min-width: 0;
+  }
+  .right {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 4px var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .status .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-success, #2e9d55);
+  }
+  .status[data-kind='offline'] {
+    color: var(--color-danger);
+  }
+  .status[data-kind='offline'] .dot {
+    background: var(--color-danger);
+  }
+  .round {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
     color: var(--color-accent);
-    font-weight: 600;
+    cursor: pointer;
+  }
+  .round[aria-expanded='true'] {
+    border-color: var(--color-accent);
+  }
+  /* Phones: brand and actions; the information line drops below. */
+  @media (max-width: 900px) {
+    .topbar {
+      grid-template-columns: 1fr auto;
+      padding: var(--space-2) var(--space-3);
+    }
+    .center {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      font-size: 0.85rem;
+    }
+  }
+  @media (max-width: 600px) {
+    .status {
+      font-size: 0;
+      padding: 8px;
+    }
   }
   .content {
     padding: 0 var(--space-4) var(--space-6);

@@ -8,6 +8,7 @@ import {
   parseCalendarConfig,
   parseLocalDate,
   validateNewEvent,
+  validateSubscription,
 } from './calendar';
 
 const ev = (summary: string, start: Date, end: Date, allDay = false): CalendarEvent => ({
@@ -15,6 +16,7 @@ const ev = (summary: string, start: Date, end: Date, allDay = false): CalendarEv
   summary,
   location: '',
   calendar: 'personal',
+  color: '',
   start,
   end,
   allDay,
@@ -85,5 +87,16 @@ describe('groupByDay', () => {
   it('reads the view option', () => {
     expect(parseCalendarConfig({ view: 'month' }).view).toBe('month');
     expect(parseCalendarConfig({}).view).toBe('agenda');
+  });
+});
+
+describe('subscription validation', () => {
+  it('requires a name and an http(s) or webcal URL for new subscriptions', () => {
+    const base = { name: 'Uni', url: 'webcal://uni.example/a.ics', color: '#aa0000', refreshMinutes: 60 };
+    expect(validateSubscription(base, true)).toBeNull();
+    expect(validateSubscription({ ...base, name: ' ' }, true)).not.toBeNull();
+    expect(validateSubscription({ ...base, url: '' }, true)).not.toBeNull();
+    expect(validateSubscription({ ...base, url: '' }, false)).toBeNull();
+    expect(validateSubscription({ ...base, url: 'ftp://x' }, false)).not.toBeNull();
   });
 });

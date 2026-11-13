@@ -29,9 +29,11 @@
   });
   let error = $state('');
   let busy = $state(false);
+  let loaded = $state(false);
 
   $effect(() => {
     calendar.settings().then((s) => {
+      loaded = true;
       calendars = s.calendarUrls;
       form.calendarUrl ||= s.calendarUrls[0] ?? '';
     });
@@ -54,6 +56,10 @@
 </script>
 
 <Modal title={t('calendar.new_event')} {onclose}>
+  {#if loaded && calendars.length === 0}
+    <!-- ICS subscriptions are read-only; new events need a CalDAV calendar. -->
+    <p class="muted" role="status">{t('calendar.quick_add_needs_caldav')}</p>
+  {/if}
   <form onsubmit={submit}>
     <label class="field"
       ><span>{t('calendar.title')}</span><input
