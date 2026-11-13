@@ -566,6 +566,16 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_4c92147e0244306f: 'Der Medienserver ist nicht erreichbar.',
   // The poster does not exist.
   srv_2b05bbdb56e575c6: 'Das Cover existiert nicht.',
+  // At most {max} calendar subscriptions are supported.
+  srv_f74740ac20c25101: 'Höchstens {max} Kalender-Abos werden unterstützt.',
+  // Could not load the ICS calendar: {detail}
+  srv_97f22fc39ea1794a: 'Der ICS-Kalender konnte nicht geladen werden: {detail}',
+  // The calendar subscription does not exist.
+  srv_210a34361dc2d298: 'Das Kalender-Abo existiert nicht.',
+  // The colour must look like #3b6ef5.
+  srv_5fd12f163f5132ff: 'Die Farbe muss wie #3b6ef5 aussehen.',
+  // The refresh interval must be between 15 minutes and 24 hours.
+  srv_99e5a87eee94b355: 'Das Aktualisierungsintervall muss zwischen 15 Minuten und 24 Stunden liegen.',
   // A long-lived access token is required.
   srv_084af9ca0c7d167d: 'Ein langlebiges Zugriffstoken ist erforderlich.',
   // Actions are not enabled for this entity (SMARTHOME_ACTIONS_ENTITIES).

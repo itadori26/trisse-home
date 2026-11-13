@@ -64,3 +64,32 @@ func TestNewEventAndRange(t *testing.T) {
 		t.Fatal("contains wrong")
 	}
 }
+
+func TestNewSubscription(t *testing.T) {
+	s, err := NewSubscription("1", " Uni ", " webcal://uni.example/plan.ics?token=x ", "#AABBCC", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Name != "Uni" || s.URL != "https://uni.example/plan.ics?token=x" || s.Color != "#aabbcc" || s.RefreshInterval != DefaultRefreshInterval {
+		t.Fatalf("not normalised: %+v", s)
+	}
+	if s.URLHint() != "https://uni.example/…" {
+		t.Fatalf("hint: %q", s.URLHint())
+	}
+	if d, _ := NewSubscription("2", "x", "https://h.example", "", time.Hour); d.Color != DefaultColor || d.URLHint() != "https://h.example" {
+		t.Fatalf("defaults: %+v %q", d, d.URLHint())
+	}
+	bad := map[string][4]string{
+		"no name":  {"", "https://x", "", "60"},
+		"ftp":      {"x", "ftp://x/a.ics", "", "60"},
+		"colour":   {"x", "https://x", "red", "60"},
+		"too fast": {"x", "https://x", "", "5"},
+		"too slow": {"x", "https://x", "", "2000"},
+	}
+	for name, c := range bad {
+		mins := map[string]time.Duration{"60": time.Hour, "5": 5 * time.Minute, "2000": 2000 * time.Minute}[c[3]]
+		if _, err := NewSubscription("x", c[0], c[1], c[2], mins); err == nil {
+			t.Errorf("%s accepted", name)
+		}
+	}
+}
