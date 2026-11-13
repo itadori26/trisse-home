@@ -69,7 +69,7 @@ Not sure whether trisse-home is the right fit? See the
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
 | **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
 | **transit**    | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org)) |
-| **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
+| **waste**      | Waste collection dates from your municipality’s ICS calendar, subscribed by link or uploaded as an .ics file (with a reminder before the year’s file runs out); tomorrow’s bin is highlighted |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
 | **diskhealth** | S.M.A.R.T. disk health: overall verdict, temperature, reallocated/pending sectors, NVMe wear and power-on hours; notifies on degradation (from a host export, no device access) |
 | **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
