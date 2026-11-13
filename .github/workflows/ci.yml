@@ -40,6 +40,12 @@ jobs:
           test -z "$(git status --porcelain -- src/shared/api-client/generated)" || { git status --short -- src/shared/api-client/generated; exit 1; }
       - name: Deploy script (stubbed git and docker)
         run: bash scripts/deploy/deploy_test.sh
+      - name: Compose files are valid
+        run: |
+          cp .env.example .env
+          docker compose -f compose.yaml config -q
+          docker compose -f compose.yaml -f compose.build.yaml config -q
+          docker compose -f compose.yaml -f compose.proxy.example.yaml config -q
       - name: OpenAPI fragments merge into a valid document
         run: go run ./scripts/openapi -o dist/openapi.yaml
       - name: Keep the merged OpenAPI document
