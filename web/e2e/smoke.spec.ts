@@ -693,6 +693,27 @@ test('habits are checked off with streaks and a heatmap (#106)', async ({ page }
   await expect(page.getByRole('listitem').filter({ hasText: 'Read' })).toContainText('🔥 1');
 });
 
+test('widgets poll at their interval, not in a loop (#219)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  // Every widget loads once and then every 30 s or more; a polling loop shows
+  // up as the same endpoint dozens of times per second.
+  const counts = new Map<string, number>();
+  page.on('request', (r) => {
+    const path = new URL(r.url()).pathname;
+    if (path.startsWith('/api/')) counts.set(path, (counts.get(path) ?? 0) + 1);
+  });
+  await page.getByRole('button', { name: 'Server', exact: true }).click();
+  await page.waitForTimeout(6000);
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await page.waitForTimeout(4000);
+  const busiest = [...counts].sort((a, b) => b[1] - a[1]);
+  expect(busiest.length, 'the dashboard made no API requests at all').toBeGreaterThan(0);
+  expect(busiest[0]?.[1] ?? 0, JSON.stringify(busiest.slice(0, 5))).toBeLessThanOrEqual(4);
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
