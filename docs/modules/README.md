@@ -19,6 +19,9 @@ A module consists of files of its own; collectors find them by convention:
 | Widget | `web/src/app/widgets/<name>.ts` | `web/src/app/widgets.ts` |
 | Container service | `web/src/app/services/<name>.ts` | `web/src/app/container.ts` |
 | Settings section | `web/src/app/settings/<name>.ts` | `web/src/app/SettingsDialog.svelte` |
+| OpenAPI | `api/modules/<name>.yaml` (tags, paths, schemas) | `scripts/openapi` (`make openapi`) |
+| End-to-end check | `cmd/server/api_<name>_test.go` (`registerModuleE2E`: fake upstream, config override, check) | `cmd/server/e2e_registry_test.go` |
+| Documentation | `docs/modules/<name>.md` (what it does, configuration, outbound requests, API) | the directory listing; the README no longer lists modules |
 | Search answers (optional) | `web/src/app/search/<name>.ts` (`defineSearch`: intents as data plus an answer source) | `web/src/app/searchSources.ts` |
 
 Existing modules that were added before this layout (the older entries in
@@ -27,14 +30,23 @@ whenever their code is next touched; both styles work side by side.
 
 ## Files that are still shared
 
-These still see edits from many modules. Keep changes small and insert at the
-position that matches the module's name instead of at the end, so two branches
-rarely touch the same lines:
+Only a few files remain that a module may have to touch, and only in a narrow case:
 
-- `api/openapi.yaml` (tag, paths, schemas) and the tables of the `README.md`
-- `internal/platform/config/config.go`, `.env.example` (only for new
-  environment variables)
-- `cmd/server/api_test.go` (fake upstream and end-to-end checks)
+- `internal/platform/config/config.go` and `.env.example`, **only** for a new
+  environment variable. Insert the line at the position that matches the
+  module's name instead of at the end. Per-module config loading was evaluated
+  for #194 and left out: most modules need no variable, and a registration
+  indirection for the few that do would cost more than the occasional one-line
+  conflict.
+- `cmd/server/modules.go`, the `widgets.ts`, `container.ts` and catalogue files
+  of older modules, until their code is next touched (they move to the
+  per-module files then).
 
-When such a file conflicts anyway: generated files are never merged by hand,
-run `make generate` instead.
+`README.md` and `api/openapi.base.yaml` are not edited for a module any more:
+the module is described in `docs/modules/<name>.md` and `api/modules/<name>.yaml`
+(`make openapi` merges and validates the fragments into `dist/openapi.yaml`, a
+build artifact of every CI run). A test (`TestSelfRegisteredModulesAreDocumented`)
+fails when a self-registered module lacks either file.
+
+When a generated file conflicts anyway: never merge it by hand, run
+`make generate` instead.
