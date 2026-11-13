@@ -55,7 +55,8 @@ Not sure whether trisse-home is the right fit? See the
 | **calendar**   | Agenda or month view of CalDAV calendars, e.g. Nextcloud (recurring events supported); quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view; opt-in image update hints (digest compared with the registry at most every 6 h, optional newer version tags, release notes link, notification) |
-| **adguard**    | AdGuard Home statistics                                                                               |
+| **adguard**    | DNS filter statistics of AdGuard Home or Pi-hole 6+ (queries, blocked share, top blocked domains, protection status); provider chosen per widget |
+| **proxmox**    | Proxmox VE node load (CPU, memory, root disk) and the status and uptime of VMs and LXC containers via a read-only API token; optional [start/shutdown](#proxmox-ve-optional) for allow-listed guests |
 | **speedtest**  | Internet speed from an existing [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker): latest download/upload/ping, 24 h and 7 day sparklines, optional notification below a threshold (runs no tests itself) |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
 | **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
@@ -307,6 +308,37 @@ The read-only proxy stays unchanged. The additional `docker-actions-proxy` only 
 trisse-home only calls *restart* for containers on the allow-list. Logs are read through the read-only proxy and
 may contain secrets — only list containers whose logs you are fine seeing on the dashboard.
 
+## Proxmox VE (optional)
+
+The Proxmox widget shows each node's CPU, memory and root disk, plus every VM and LXC container with its status
+and uptime. trisse-home needs only a **read-only API token**. Create one on any node:
+
+```sh
+pveum user add monitor@pve
+pveum aclmod / -user monitor@pve -role PVEAuditor
+pveum user token add monitor@pve trisse-home --privsep 0   # prints the secret once
+```
+
+Enter the URL (`https://<node>:8006`), the token ID (`monitor@pve!trisse-home`) and the secret under
+*Settings → Proxmox*. The secret is stored encrypted and never shown again. Proxmox uses a self-signed
+certificate, so also paste its **SHA-256 fingerprint** (*node → System → Certificates*, or
+`openssl x509 -in /etc/pve/local/pve-ssl.pem -noout -fingerprint -sha256`). trisse-home then trusts exactly this
+certificate and rejects any other. TLS verification is never switched off.
+
+**Start and shutdown (off by default).** List the guest IDs in `.env` and give the token the right to power
+exactly these guests:
+
+```sh
+PROXMOX_ACTIONS_GUESTS=100,105
+```
+
+```sh
+pveum aclmod /vms/100 -user monitor@pve -role PVEVMUser   # repeat per guest; includes VM.PowerMgmt
+```
+
+The widget then offers *start* for stopped and *shutdown* (clean ACPI/LXC shutdown, never a hard stop) for running
+guests, each after a confirmation. Every action is written to the security event log. Only the environment can
+widen the allow-list, a browser session cannot.
 ## Docker autodiscovery (optional)
 
 Containers can bring their own service tile: add labels to a service in your compose file, then enable
@@ -402,6 +434,7 @@ service tiles are configured in the web interface.
 | `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
 | `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
 | `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
+| `PROXMOX_ACTIONS_GUESTS` | empty                         | Proxmox guest IDs (e.g. `100,105`) that may be started and shut down from the dashboard; empty = read-only. |
 | `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
 | `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
@@ -446,7 +479,7 @@ service tiles are configured in the web interface.
 ### Outbound requests
 
 Several modules fetch URLs that you configure yourself: service health checks,
-RSS feeds, CalDAV calendars, AdGuard Home, Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
+RSS feeds, CalDAV calendars, AdGuard Home, Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 (only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
 ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can

@@ -143,7 +143,7 @@ func (uc *restorer) open(ctx context.Context, req RestoreRequest) (io.ReadCloser
 			if errors.Is(err, kernel.ErrNotFound) {
 				return nil, err
 			}
-			return nil, kernel.NewPublicErrorf(kernel.ErrUnavailable, "The off-site backup could not be downloaded: {detail}", "detail", err.Error())
+			return nil, kernel.TargetFailure(kernel.ErrUnavailable, err)
 		}
 		return rc, nil
 	}

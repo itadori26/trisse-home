@@ -45,6 +45,9 @@ type Config struct {
 	MetricsToken            string
 	DockerActionsContainers []string
 	DockerActionsProxyURL   string
+	// ProxmoxActionsGuests are the Proxmox guest IDs that may be started and
+	// shut down from the dashboard (#84); empty disables actions.
+	ProxmoxActionsGuests []int
 	// WolRelay is host:port of the Wake-on-LAN relay; empty sends
 	// WolBroadcast directly (host network / no Docker).
 	// TransitAPIURL is the MOTIS API for departures (default Transitous).
@@ -128,6 +131,7 @@ func Load(getenv func(string) string) (Config, error) {
 		MetricsToken:            l.str("METRICS_TOKEN", ""),
 		DockerActionsContainers: l.rawList("DOCKER_ACTIONS_CONTAINERS", ""),
 		DockerActionsProxyURL:   l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
+		ProxmoxActionsGuests:    l.ids("PROXMOX_ACTIONS_GUESTS"),
 		WolRelay:                l.str("WOL_RELAY", ""),
 		WireGuardDir:            l.str("WIREGUARD_DIR", ""),
 		DiskHealthDir:           l.str("DISKHEALTH_DIR", ""),
@@ -178,7 +182,7 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.DemoMode {
 		cfg.SampleData = true
-		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != "", "DISKHEALTH_DIR": cfg.DiskHealthDir != ""} {
+		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "PROXMOX_ACTIONS_GUESTS": len(cfg.ProxmoxActionsGuests) > 0, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != "", "DISKHEALTH_DIR": cfg.DiskHealthDir != ""} {
 			if set {
 				l.fail(key, "must not be set together with DEMO_MODE=true (a demo must not reach real systems)")
 			}
@@ -236,6 +240,20 @@ func (l *loader) rawList(key, def string) []string {
 		if p := strings.TrimSpace(part); p != "" {
 			out = append(out, p)
 		}
+	}
+	return out
+}
+
+// ids returns a comma-separated list of positive integers, e.g. guest IDs.
+func (l *loader) ids(key string) []int {
+	var out []int
+	for _, part := range l.rawList(key, "") {
+		id, err := strconv.Atoi(part)
+		if err != nil || id <= 0 {
+			l.fail(key, "must be a comma-separated list of numeric IDs, e.g. 100,101")
+			return nil
+		}
+		out = append(out, id)
 	}
 	return out
 }

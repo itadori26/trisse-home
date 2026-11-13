@@ -141,6 +141,10 @@ packages:
   - path: "trisse-home/internal/modules/timeline/adapter/controller"
     output_path: "web/src/shared/api-client/generated/timeline-requests.ts"
     include_files: ["dto.go"]
+  - path: "trisse-home/internal/modules/proxmox/adapter/presenter"
+    output_path: "web/src/shared/api-client/generated/proxmox.ts"
+  - path: "trisse-home/internal/modules/proxmox/adapter/controller"
+    output_path: "web/src/shared/api-client/generated/proxmox-requests.ts"
   - path: "trisse-home/internal/modules/briefing/adapter/presenter"
     output_path: "web/src/shared/api-client/generated/briefing.ts"
   - path: "trisse-home/internal/modules/briefing/adapter/controller"

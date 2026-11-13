@@ -60,6 +60,44 @@ optional component.
 | **wol-relay** (profile `wol`) | Accept valid magic packets on UDP 9009 and broadcast them into the LAN, rate-limited | Read data, Docker or secrets; forward anything that is not a magic packet; it has no capabilities and a read-only filesystem |
 | **Stored credentials** | Be used by the module they belong to | Be read back through the API or appear in logs: they are encrypted with AES-256-GCM using `SECRET_KEY` and only returned as "set / not set" |
 
+### Integration targets (#191)
+
+AdGuard Home / Pi-hole, Nextcloud, the FRITZ!Box, Speedtest Tracker,
+CalDAV calendars and task lists, Proxmox VE, the WebDAV backup target and the
+notification channels call an address that **only the signed-in owner**
+enters in the settings. These addresses are handled in one place:
+
+- **Validation when saving** (`kernel.ParseTarget`): `http` or `https` with a
+  host only; no user name or password in the URL (there are fields for them);
+  no query or fragment (webhooks may carry a token in the query); no path
+  unless the integration needs one (WebDAV folder, CalDAV collection, a
+  Pi-hole or Nextcloud sub path).
+- **Address rule, when saving and again for every connection**: loopback and
+  private ranges stay allowed because home-lab services live there;
+  link-local addresses (`169.254.0.0/16`, `fe80::/10`, including the cloud
+  metadata service at `169.254.169.254`), multicast and unspecified addresses
+  are refused. The check runs in the dialer on the resolved address, so a
+  hostname that later resolves elsewhere cannot get around it.
+- **Integration HTTP client** (`httpclient.WithIntegrationGuard`): no
+  redirects are followed, no proxy is used, a timeout applies and responses
+  are limited to 32 MiB (the WebDAV restore allows a whole backup).
+- **Errors**: the browser only sees a generic cause ("not reachable", "did
+  not answer in time", "login rejected", …); the technical detail – host,
+  port, resolver or TLS message – is written to the log only.
+- **Secrets follow their target**: when the address, user name, token ID or
+  certificate fingerprint changes, the stored password or token is not
+  reused – it has to be entered again, so it is never sent to a new server by
+  accident.
+- **`http://`** is accepted for LAN devices without TLS (the FRITZ!Box
+  TR-064 port only speaks http), but the settings show a warning: the
+  password or token then travels unencrypted through your network. Prefer
+  `https://` wherever the device supports it, and a pinned certificate
+  fingerprint for self-signed certificates (Proxmox VE).
+
+This narrows what a hijacked owner session could reach through the
+integrations; it does not change the model that only the owner configures
+them.
+
 ## Why each optional setup is an extra step
 
 ### Docker socket proxy
@@ -75,6 +113,17 @@ Restarting needs `POST`, which the read-only proxy rightly refuses. Instead
 of loosening it, a **second** proxy allows nothing but stop/restart/kill and
 nothing else — not even reads — and trisse-home adds its own allow-list of
 container names on top. Logs are read through the read-only proxy.
+
+### Proxmox VE
+
+The widget only needs to read, so the documented token has the role
+`PVEAuditor`. Proxmox serves a self-signed certificate. Instead of switching
+TLS verification off, trisse-home pins the certificate's SHA-256 fingerprint
+and rejects every other certificate, so a machine in the LAN cannot pose as
+the node and catch the token. Start and shutdown need two independent steps:
+`PROXMOX_ACTIONS_GUESTS` in the environment (a browser session cannot change it)
+and the `VM.PowerMgmt` permission for exactly these guests in Proxmox. A hard
+stop is never offered, and every action lands in the security event log.
 
 ### WireGuard export
 

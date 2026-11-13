@@ -357,7 +357,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
     type: {
       kind: 'adguard',
       category: 'network',
-      keywords: ['dns', 'ads', 'blocking', 'werbung'],
+      keywords: ['dns', 'ads', 'blocking', 'werbung', 'pihole', 'pi-hole'],
       get title() {
         return t('widget.adguard.title');
       },
@@ -369,7 +369,11 @@ export const widgetDefinitions: WidgetDefinition[] = [
     icon: 'shield',
     view: lazy(
       () => import('../features/adguard/ui/AdGuardWidget.svelte'),
-      (_config, c) => ({ adguard: c.adguard }),
+      (config, c) => ({ config, adguard: c.adguard }),
+    ),
+    settings: lazy(
+      () => import('../features/adguard/ui/AdGuardWidgetSettings.svelte'),
+      (config) => ({ config }),
     ),
   },
   {
@@ -583,6 +587,29 @@ export const widgetDefinitions: WidgetDefinition[] = [
     view: lazy(
       () => import('../features/speedtest/ui/SpeedtestWidget.svelte'),
       (_config, c) => ({ speedtest: c.speedtest }),
+    ),
+  },
+  {
+    type: {
+      kind: 'proxmox',
+      category: 'server',
+      keywords: ['pve', 'vm', 'lxc', 'virtualisation', 'hypervisor'],
+      get title() {
+        return t('widget.proxmox.title');
+      },
+      get description() {
+        return t('widget.proxmox.description');
+      },
+      defaultSize: { w: 4, h: 6 },
+    },
+    icon: 'server',
+    view: lazy(
+      () => import('../features/proxmox/ui/ProxmoxWidget.svelte'),
+      (config, c) => ({ config, proxmox: c.proxmox }),
+    ),
+    settings: lazy(
+      () => import('../features/proxmox/ui/ProxmoxWidgetSettings.svelte'),
+      (config) => ({ config }),
     ),
   },
   {

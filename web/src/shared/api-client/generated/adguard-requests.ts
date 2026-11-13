@@ -4,8 +4,8 @@
 // source: dto.go
 
 /**
- * SettingsInputDTO is the body of PUT /api/adguard/settings. An empty
- * password keeps the stored one.
+ * SettingsInputDTO is the body of PUT /api/adguard/settings?provider=….
+ * An empty password keeps the stored one.
  */
 export interface SettingsInputDTO {
   url: string;

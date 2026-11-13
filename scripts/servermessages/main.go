@@ -58,8 +58,7 @@ func collect(roots []string) (map[string]string, []string, error) {
 			if err != nil {
 				return err
 			}
-			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") ||
-				strings.Contains(path, filepath.Join("shared", "kernel")) {
+			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
 			f, err := parser.ParseFile(fset, path, nil, 0)
@@ -71,17 +70,25 @@ func collect(roots []string) (map[string]string, []string, error) {
 				if !ok || len(call.Args) < 2 {
 					return true
 				}
-				sel, ok := call.Fun.(*ast.SelectorExpr)
-				if !ok || !constructors[sel.Sel.Name] {
-					return true
+				// kernel.NewX(...) everywhere, NewX(...) inside the kernel itself (#191).
+				var name string
+				switch fn := call.Fun.(type) {
+				case *ast.SelectorExpr:
+					if pkg, ok := fn.X.(*ast.Ident); ok && pkg.Name == "kernel" {
+						name = fn.Sel.Name
+					}
+				case *ast.Ident:
+					if f.Name.Name == "kernel" {
+						name = fn.Name
+					}
 				}
-				if pkg, ok := sel.X.(*ast.Ident); !ok || pkg.Name != "kernel" {
+				if !constructors[name] {
 					return true
 				}
 				msg, ok := literal(call.Args[1])
 				if !ok {
 					problems = append(problems, fmt.Sprintf("%s: message is not a string literal (use kernel.%sf with {placeholders})",
-						fset.Position(call.Pos()), strings.TrimSuffix(sel.Sel.Name, "f")))
+						fset.Position(call.Pos()), strings.TrimSuffix(name, "f")))
 					return true
 				}
 				messages[kernel.MessageKey(msg)] = msg
