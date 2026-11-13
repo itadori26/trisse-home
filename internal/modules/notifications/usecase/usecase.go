@@ -215,7 +215,7 @@ func (uc *notifier) Alert(ctx context.Context, a kernel.Alert) {
 	if a.Kind == "security" && !s.Rules.Security {
 		return
 	}
-	msg := domain.Message{Title: a.Title, Body: a.Body, Type: a.Kind, Severity: s.Policy.SeverityOf(a.Kind), Tags: []string{"lock"}}
+	msg := domain.Message{Title: a.Title, Body: a.Body, Type: a.Kind, Severity: s.Policy.SeverityOf(a.Kind), Tags: []string{domain.AlertTag(a.Kind)}}
 	if a.Urgent {
 		msg.Severity, msg.Tags = domain.SeverityCritical, []string{"rotating_light"}
 	}

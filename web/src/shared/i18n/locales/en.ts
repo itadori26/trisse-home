@@ -854,6 +854,8 @@ export const en = {
   'notifications.type.forecast': 'Disk full soon',
   'notifications.type.speedtest': 'Internet speed',
   'notifications.type.image': 'Container image update',
+  'notifications.type.reminder': 'To-do reminder',
+  'notifications.type.briefing': 'Daily briefing',
   'notifications.severity.info': 'Info',
   'notifications.severity.warning': 'Warning',
   'notifications.severity.critical': 'Critical',
