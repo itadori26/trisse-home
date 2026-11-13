@@ -39,6 +39,10 @@ tags:
   - name: docker
   - name: adguard
   - name: arr
+  - name: gamedeals
+  - name: releases
+  - name: fuel
+  - name: immich
   - name: media
   - name: smarthome
   - name: proxmox
@@ -46,6 +50,7 @@ tags:
   - name: briefing
   - name: countdown
   - name: focus
+  - name: habits
   - name: platform
 
 paths:
@@ -1100,6 +1105,53 @@ paths:
         "204": { description: Deleted }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  # ---------------------------------------------------------------- habits
+  /api/habits:
+    get:
+      tags: [habits]
+      summary: Habits in order with done today, current and best streak and the 4-week heatmap, computed from the completions (#106)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Habit" } } } } }
+    post:
+      tags: [habits]
+      summary: Create a habit
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/HabitInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Habit" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/habits/{id}:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    put:
+      tags: [habits]
+      summary: Change name, emoji and weekdays
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/HabitInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Habit" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [habits]
+      summary: Delete a habit and its completions
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/habits/{id}/toggle:
+    parameters: [{ $ref: "#/components/parameters/id" }]
+    post:
+      tags: [habits]
+      summary: Check a habit off for today or yesterday, or undo it
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [date], properties: { date: { type: string, format: date, description: Today or yesterday } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Habit" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+
   # ---------------------------------------------------------------- focus
   /api/focus/stats:
     get:
@@ -1577,6 +1629,49 @@ paths:
                   missing: { type: object, additionalProperties: { type: integer } }
                   errors: { type: array, items: { type: string } }
         "404": { description: No instance configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  # ---------------------------------------------------------------- immich
+  /api/immich/settings:
+    get:
+      tags: [immich]
+      summary: Immich connection (the API key is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { configured: { type: boolean }, url: { type: string }, hasApiKey: { type: boolean } } } } } }
+    put:
+      tags: [immich]
+      summary: Test and save the connection (empty key keeps the stored one)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string }, apiKey: { type: string } } } } } }
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/immich/overview:
+    get:
+      tags: [immich]
+      summary: Library statistics, storage and today's memories (cached for 5 minutes, fetched on demand)
+      responses:
+        "200":
+          description: OK; storage and memories are empty when the key lacks server.storage or memory.read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version: { type: string }
+                  photos: { type: integer }
+                  videos: { type: integer }
+                  diskUsed: { type: integer }
+                  diskTotal: { type: integer }
+                  diskPercent: { type: number }
+                  memories: { type: array, items: { type: object, properties: { yearsAgo: { type: integer }, assetIds: { type: array, items: { type: string } } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/immich/thumbnails/{id}:
+    get:
+      tags: [immich]
+      summary: Thumbnail of a photo of today's memories, proxied from Immich
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { description: Not part of today's memories, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
   # ---------------------------------------------------------------- media
   /api/media/settings:
     get:
@@ -1624,6 +1719,150 @@ paths:
       responses:
         "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
         "404": { description: Not one of the recently added items, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  # ---------------------------------------------------------------- fuel
+  /api/fuel/settings:
+    get:
+      tags: [fuel]
+      summary: Fuel price settings (the API key is never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/FuelSettings" } } } }
+    put:
+      tags: [fuel]
+      summary: Test and save key, location, radius and fuel type (empty key keeps the stored one; favourites are kept)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lat, lon, radiusKm, fuel]
+              properties:
+                apiKey: { type: string, format: uuid }
+                lat: { type: number }
+                lon: { type: number }
+                place: { type: string }
+                radiusKm: { type: number, minimum: 1, maximum: 25 }
+                fuel: { type: string, enum: [e5, e10, diesel] }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/FuelSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/fuel/favourites:
+    put:
+      tags: [fuel]
+      summary: Replace the favourite stations (at most 10)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: array, maxItems: 10, items: { type: object, properties: { id: { type: string }, name: { type: string } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/FuelSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/fuel/overview:
+    get:
+      tags: [fuel]
+      summary: Cheapest stations (top 10) and favourites with the price of the chosen fuel (cached for 5 minutes)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fuel: { type: string, enum: [e5, e10, diesel] }
+                  place: { type: string }
+                  cheapest: { type: array, items: { $ref: "#/components/schemas/FuelStation" } }
+                  favourites: { type: array, items: { $ref: "#/components/schemas/FuelStation" } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+
+  # ---------------------------------------------------------------- releases
+  /api/releases:
+    get:
+      tags: [releases]
+      summary: New releases of followed artists, newest first (refreshed every 6 hours)
+      parameters: [{ name: weeks, in: query, schema: { type: integer, minimum: 1, maximum: 12, default: 4 } }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  releases: { type: array, items: { type: object, properties: { id: { type: string }, title: { type: string }, artist: { type: string }, type: { type: string }, date: { type: string, format: date } } } }
+                  updatedAt: { type: string, format: date-time }
+                  error: { type: string }
+  /api/releases/search:
+    get:
+      tags: [releases]
+      summary: Search MusicBrainz artists (at least two characters)
+      parameters: [{ name: q, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ReleaseArtist" } } } } }
+  /api/releases/artists:
+    get:
+      tags: [releases]
+      summary: Followed artists
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ReleaseArtist" } } } } }
+    post:
+      tags: [releases]
+      summary: Follow an artist (at most 50); its releases are loaded right away
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } } } } }
+      responses:
+        "204": { description: Followed }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/releases/artists/{id}:
+    delete:
+      tags: [releases]
+      summary: Unfollow an artist
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Unfollowed }
+  /api/releases/covers/{id}:
+    get:
+      tags: [releases]
+      summary: Front cover (250 px) of a listed release, proxied from the Cover Art Archive
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { description: Not a listed release or no cover, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+
+  # ---------------------------------------------------------------- gamedeals
+  /api/gamedeals/settings:
+    get:
+      tags: [gamedeals]
+      summary: Game deal settings (everything off by default)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GameDealsSettings" } } } }
+    put:
+      tags: [gamedeals]
+      summary: Save the settings; a Steam ID is checked by loading the wishlist (it must be public)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/GameDealsSettings" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GameDealsSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/gamedeals/overview:
+    get:
+      tags: [gamedeals]
+      summary: Discounted wishlist games and Epic free games (refreshed every 12 hours)
+      responses:
+        "200":
+          description: OK; sources that could not be loaded are named in errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deals: { type: array, items: { type: object, properties: { name: { type: string }, url: { type: string }, discountPct: { type: integer }, finalPrice: { type: string }, endsAt: { type: [string, "null"], format: date-time } } } }
+                  freeNow: { type: array, items: { $ref: "#/components/schemas/FreeGame" } }
+                  freeNext: { type: array, items: { $ref: "#/components/schemas/FreeGame" } }
+                  errors: { type: array, items: { type: string } }
+
   # ---------------------------------------------------------------- smarthome
   /api/smarthome/settings:
     get:
@@ -2092,6 +2331,27 @@ components:
         - $ref: "#/components/schemas/NoteInput"
         - type: object
           properties: { id: { type: string }, createdAt: { type: string, format: date-time }, updatedAt: { type: string, format: date-time } }
+    HabitInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 60 }
+        emoji: { type: string, maxLength: 8 }
+        days: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, description: "Weekdays (0 = Sunday); empty = every day" }
+    Habit:
+      allOf:
+        - { $ref: "#/components/schemas/HabitInput" }
+        - type: object
+          required: [id, doneToday, current, best, heatmap]
+          properties:
+            id: { type: string }
+            doneToday: { type: boolean }
+            current: { type: integer, description: Due days in a row that were done; days off do not break it }
+            best: { type: integer }
+            heatmap:
+              type: array
+              description: Last 28 days, oldest first
+              items: { type: object, properties: { date: { type: string, format: date }, due: { type: boolean }, done: { type: boolean } } }
     FocusWeek:
       type: object
       required: [days]
