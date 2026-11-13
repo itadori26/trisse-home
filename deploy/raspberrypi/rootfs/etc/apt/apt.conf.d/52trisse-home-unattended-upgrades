@@ -3,6 +3,8 @@
 Unattended-Upgrade::Origins-Pattern {
 	// Kernel, firmware and Raspberry Pi packages.
 	"origin=Raspberry Pi Foundation,codename=${distro_codename}";
+	// trisse-home releases from its APT repository (sources.list.d/trisse-home.sources).
+	"origin=trisse-home,codename=stable";
 };
 // Reboot only when an update needs it (e.g. a new kernel), at night.
 Unattended-Upgrade::Automatic-Reboot "true";

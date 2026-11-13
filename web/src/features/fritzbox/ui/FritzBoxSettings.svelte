@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { FritzBoxUseCases } from '../usecase/fritzboxUseCases';
@@ -50,6 +51,7 @@
       placeholder="http://192.168.178.1:49000"
     /></label
   >
+  <PlainHttpWarning {url} />
   <label class="field"
     ><span>{t('fritzbox.username_optional')}</span><input
       class="input"

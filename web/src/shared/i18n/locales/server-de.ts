@@ -16,15 +16,15 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_cf47637ff80f03dc: 'Eine Notiz braucht einen Titel oder etwas Text.',
   // A password or access token is required for new registries.
   srv_865d0fdde8c133ca: 'Für neue Registries ist ein Passwort oder Zugriffstoken erforderlich.',
+  // A reminder needs a due date.
+  srv_fc8a2589829c3428: 'Eine Erinnerung braucht ein Fälligkeitsdatum.',
+  // A session lasts between 1 and 180 minutes.
+  srv_e9ad8cf134079d79: 'Eine Einheit dauert zwischen 1 und 180 Minuten.',
   // A shortcut with this keyword already exists.
   srv_76a5625367cbe997: 'Es gibt bereits ein Kürzel mit diesem Schlüsselwort.',
   // Actions are not enabled for this container (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).
   srv_fc1c5d36ee0973d3:
     'Aktionen sind für diesen Container nicht freigeschaltet (DOCKER_ACTIONS / DOCKER_ACTIONS_CONTAINERS).',
-  // AdGuard Home is not configured yet.
-  srv_9bc99814ae6ec519: 'AdGuard Home ist noch nicht eingerichtet.',
-  // AdGuard Home is not reachable.
-  srv_66e0c4283a72cd94: 'AdGuard Home ist nicht erreichbar.',
   // An API token with the results:read scope is required.
   srv_d05b6c7e6905729f: 'Ein API-Token mit dem Bereich results:read ist erforderlich.',
   // At most 10 calendars are supported.
@@ -53,26 +53,31 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_4e9dc8e29fa35fbf: 'Bitte wählen, wofür die Wartung gilt.',
   // Colors must look like #1a2b3c.
   srv_100561a937e88349: 'Farben müssen wie #1a2b3c aussehen.',
-  // Could not connect to AdGuard Home: {detail}
-  srv_a3e65fea5b434e1e: 'Keine Verbindung zu AdGuard Home: {detail}',
-  // Could not connect to Nextcloud: {detail}
-  srv_6d1befe42898ea11: 'Keine Verbindung zu Nextcloud: {detail}',
-  // Could not connect to Speedtest Tracker: {detail}
-  srv_0308331877b78de4: 'Keine Verbindung zu Speedtest Tracker: {detail}',
-  // Could not connect to the FRITZ!Box: {detail}
-  srv_6a8ef763439ca559: 'Keine Verbindung zur FRITZ!Box: {detail}',
-  // Could not load the calendar: {detail}
-  srv_1eb130fb601040a1: 'Der Kalender konnte nicht geladen werden: {detail}',
+  // Connections to this address are not allowed.
+  srv_607f6c84226cd658: 'Verbindungen zu dieser Adresse sind nicht erlaubt.',
   // Could not load the waste calendar: {detail}
   srv_57ceb20ccebc67bb: 'Der Abfallkalender konnte nicht geladen werden: {detail}',
-  // Could not read the task list: {detail}
-  srv_b8061d9b619a4928: 'Die Aufgabenliste konnte nicht gelesen werden: {detail}',
   // DHL does not know this tracking number (yet).
   srv_24f489be60f9182b: 'DHL kennt diese Sendungsnummer (noch) nicht.',
   // DHL rejected the API key.
   srv_099fe605093d8b87: 'DHL hat den API-Schlüssel abgelehnt.',
   // Delivered parcels can be kept for 0 to 30 days.
   srv_7cb71b2e113119ec: 'Zugestellte Sendungen können 0 bis 30 Tage angezeigt werden.',
+  // Enable fetching titles and icons in the bookmark settings first.
+  srv_d7bffa395fc89711:
+    'Bitte zuerst das Abrufen von Titeln und Icons in den Lesezeichen-Einstellungen aktivieren.',
+  // Enable the link check in the bookmark settings first.
+  srv_f8405f015011b4d0: 'Bitte zuerst die Linkprüfung in den Lesezeichen-Einstellungen aktivieren.',
+  // Enter a date like 2026-12-24.
+  srv_22fc413ef29251fa: 'Bitte ein Datum wie 2026-12-24 eingeben.',
+  // Enter a time like 07:00.
+  srv_45cc329a438ca49f: 'Bitte eine Uhrzeit wie 07:00 eingeben.',
+  // Enter an http(s) address with a host, e.g. https://nas.local:8443.
+  srv_c551eccad97486f8: 'Bitte eine http(s)-Adresse mit Host eingeben, z. B. https://nas.local:8443.',
+  // Enter only the server address, without a path.
+  srv_871c0989570954df: 'Bitte nur die Serveradresse ohne Pfad eingeben.',
+  // Every widget may appear only once.
+  srv_cd8384030060ee99: 'Jedes Widget darf nur einmal vorkommen.',
   // Each registry may only be listed once.
   srv_4ae76664f7b46c6b: 'Jede Registry darf nur einmal eingetragen sein.',
   // Each registry needs a host name (e.g. ghcr.io) and a user name.
@@ -81,12 +86,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_1eb555800ce2927d: 'Gib deinen Authentifizierungscode ein, um die Anmeldung abzuschließen.',
   // Events can be at most one year long.
   srv_38ba62864162fcec: 'Termine können höchstens ein Jahr lang sein.',
-  // Every calendar URL must start with http:// or https://.
-  srv_ffb97fcecc45c54a: 'Jede Kalender-URL muss mit http:// oder https:// beginnen.',
   // Every rule needs a match text of at most 40 characters.
   srv_8e50b118b5e6b205: 'Jede Regel braucht einen Suchtext mit höchstens 40 Zeichen.',
   // Export version {version} is not supported by this version of trisse-home.
   srv_43fe335aacf98b3c: 'Exportversion {version} wird von dieser trisse-home-Version nicht unterstützt.',
+  // graceDays must be a number.
+  srv_1bef734e6f2cdc94: 'graceDays muss eine Zahl sein.',
   // Guests can only view this dashboard.
   srv_79bf20d17f6aa6eb: 'Gäste können dieses Dashboard nur ansehen.',
   // Host metrics are not available. Are /proc and /sys mounted?
@@ -103,8 +108,11 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_4cd4b235493d7de0: 'Bezeichnungen dürfen höchstens 40 Zeichen lang sein.',
   // Latitude and longitude are required.
   srv_9d350adc128ef832: 'Breiten- und Längengrad sind erforderlich.',
-  // Login failed: {detail}
-  srv_53c1eb17a03496b2: 'Anmeldung fehlgeschlagen: {detail}',
+  // Latitude must be between -90 and 90, longitude between -180 and 180.
+  srv_7ef0897648a1c97c:
+    'Der Breitengrad muss zwischen -90 und 90 liegen, der Längengrad zwischen -180 und 180.',
+  // Link-local and cloud metadata addresses are not allowed.
+  srv_62a7030824310857: 'Link-lokale Adressen und Cloud-Metadaten-Adressen sind nicht erlaubt.',
   // Missing or invalid CSRF token.
   srv_eccd19aa12e79824: 'CSRF-Token fehlt oder ist ungültig.',
   // Nextcloud is not configured yet.
@@ -127,6 +135,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_7f26dde75768b4ec: 'Es ist kein externes Backup-Ziel eingerichtet.',
   // No waste calendar is configured yet.
   srv_d1f1feb231209e5a: 'Es ist noch kein Abfallkalender eingerichtet.',
+  // Notifications are not enabled.
+  srv_777fe9a31de38b1d: 'Benachrichtigungen sind nicht aktiviert.',
   // Only the owner can do this.
   srv_67f0ba90e3a4e5b4: 'Das kann nur der Besitzer.',
   // Only the owner can restore backups in the browser.
@@ -162,6 +172,15 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_e9295c1002fdd2ba: 'Bitte gültige Empfängeradressen eingeben, durch Kommas getrennt.',
   // Quiet hours need a start and an end such as 22:00 and 07:00.
   srv_04eab3a4b4f8b837: 'Ruhezeiten brauchen einen Beginn und ein Ende, z. B. 22:00 und 07:00.',
+  // Reminders need a time like 08:00 and at most 30 days before the due date.
+  srv_33507329e3cf1562:
+    'Erinnerungen brauchen eine Uhrzeit wie 08:00 und höchstens 30 Tage vor dem Fälligkeitsdatum.',
+  // Remove the user name and password from the address and use the fields below.
+  srv_83cc78074d3e2ff6:
+    'Bitte Benutzername und Passwort aus der Adresse entfernen und die Felder darunter nutzen.',
+  // Repeat every 1–365 days, weeks or months; weekly repeats need at least one weekday.
+  srv_5f173b47eee5e70d:
+    'Wiederholung alle 1–365 Tage, Wochen oder Monate; wöchentliche Wiederholungen brauchen mindestens einen Wochentag.',
   // Rules need weekdays 0–6, times like 07:30 and networks like 192.168.178.0/24.
   srv_560f31f8940f8cfc: 'Regeln brauchen Wochentage 0–6, Uhrzeiten wie 07:30 und Netze wie 192.168.178.0/24.',
   // Session not found.
@@ -176,6 +195,31 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_32f91240e6490e41: 'Bitte zuerst die Einrichtung der Zwei-Faktor-Authentifizierung starten.',
   // Storing credentials is disabled in the demo.
   srv_ea4ce39d77587136: 'Das Speichern von Zugangsdaten ist in der Demo deaktiviert.',
+  // The address must not contain a query (?…) or fragment (#…).
+  srv_693550da2f4a6610: 'Die Adresse darf keine Abfrage (?…) und keinen Anker (#…) enthalten.',
+  // The address or account changed: enter the password or token again.
+  srv_4210fb1d03642aa8: 'Adresse oder Konto wurden geändert: Bitte Passwort oder Token erneut eingeben.',
+  // The certificate of the server is not trusted.
+  srv_73afeaf5a99f225a: 'Dem Zertifikat des Servers wird nicht vertraut.',
+  // The countdown does not exist.
+  srv_1532da22068d27c4: 'Den Countdown gibt es nicht.',
+  // The MAC address must look like aa:bb:cc:dd:ee:ff.
+  srv_022f9a869dd885c4: 'Die MAC-Adresse muss so aussehen: aa:bb:cc:dd:ee:ff.',
+  // The server answered, but the path was not found. Check the address.
+  srv_0d59baf576015864: 'Der Server antwortet, aber der Pfad wurde nicht gefunden. Bitte die Adresse prüfen.',
+  // The server could not be reached. Check the address and port.
+  srv_71b0db214ed1ca3d: 'Der Server ist nicht erreichbar. Bitte Adresse und Port prüfen.',
+  // The server did not answer in time.
+  srv_5cd46d3ed824e037: 'Der Server hat nicht rechtzeitig geantwortet.',
+  // The server rejected the login. Check user name, password or token.
+  srv_d6ecea29338eeff4:
+    'Der Server hat die Anmeldung abgelehnt. Bitte Benutzername, Passwort oder Token prüfen.',
+  // The server sent an unexpected answer.
+  srv_cc10ad5b6bd86945: 'Der Server hat unerwartet geantwortet.',
+  // The session must have ended within the last day.
+  srv_addb603b2e8d10d3: 'Die Einheit muss innerhalb des letzten Tages geendet haben.',
+  // The title must be between 1 and 120 characters long.
+  srv_28a208881a6ef97d: 'Der Titel muss zwischen 1 und 120 Zeichen lang sein.',
   // TLS must be starttls, tls or none.
   srv_8ba7cc04f14ed353: 'TLS muss starttls, tls oder none sein.',
   // Tags may only contain letters, digits, - and _ (max. 30 characters).
@@ -188,24 +232,13 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_457b52382d260269: 'Die ICS-URL muss mit https://, http:// oder webcal:// beginnen.',
   // The URL must contain {query}.
   srv_1605df454fade766: 'Die URL muss {query} enthalten.',
-  // The URL must look like http://192.168.1.2:3000.
-  srv_ff20bffaaad40a7b: 'Die URL muss wie http://192.168.1.2:3000 aussehen.',
-  // The URL must look like http://192.168.1.2:8765.
-  srv_a74063c5a9d4db02: 'Die URL muss wie http://192.168.1.2:8765 aussehen.',
   // The URL must look like http://192.168.178.1:49000.
   srv_d14b64d005d328ef: 'Die URL muss wie http://192.168.178.1:49000 aussehen.',
-  // The URL must look like https://cloud.example.com.
-  srv_c32e8ec6145cd087: 'Die URL muss wie https://cloud.example.com aussehen.',
   // The URL must start with http:// or https://.
   srv_33e6dad254bc6264: 'Die URL muss mit http:// oder https:// beginnen.',
   // The Wake-on-LAN relay did not answer. Is COMPOSE_PROFILES=wol set (see README)?
   srv_7bd9cc89bdd1560a:
     'Das Wake-on-LAN-Relay hat nicht geantwortet. Ist COMPOSE_PROFILES=wol gesetzt (siehe README)?',
-  // The WebDAV URL must look like https://cloud.example.org/remote.php/dav/files/USER/Backups/.
-  srv_aa51a8ab465628a7:
-    'Die WebDAV-URL muss wie https://cloud.example.org/remote.php/dav/files/BENUTZER/Backups/ aussehen.',
-  // The WebDAV target is not usable: {detail}
-  srv_91c4369358de2268: 'Das WebDAV-Ziel ist nicht nutzbar: {detail}',
   // The accent color must look like #3b6ef5.
   srv_1c9c8a99006c73fe: 'Die Akzentfarbe muss wie #3b6ef5 aussehen.',
   // The account has already been set up.
@@ -231,14 +264,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Das Backup stammt von einer neueren trisse-home-Version. Bitte zuerst aktualisieren und dann wiederherstellen.',
   // The bookmark does not exist.
   srv_781f5105c04c646b: 'Das Lesezeichen existiert nicht.',
+  // The bookmark has no icon.
+  srv_0e33c72d2ab4fc96: 'Das Lesezeichen hat kein Icon.',
   // The calendar server is not reachable.
   srv_3e73df212f6df359: 'Der Kalenderserver ist nicht erreichbar.',
-  // The calendar server rejected the event: {detail}
-  srv_6356e14455c5ce13: 'Der Kalenderserver hat den Termin abgelehnt: {detail}',
   // The certificate warning must be between 1 and 90 days.
   srv_55663fc836edb6a7: 'Die Zertifikatswarnung muss zwischen 1 und 90 Tagen liegen.',
-  // The channel could not be reached: {detail}
-  srv_d2989a89176a1847: 'Der Kanal ist nicht erreichbar: {detail}',
   // The channel does not exist.
   srv_e97962ce6df48c04: 'Der Kanal existiert nicht.',
   // The channel type must be gotify, webhook or email.
@@ -295,6 +326,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_0d5b9b677899722e: 'Die Höhe muss zwischen 1 und 24 Zeilen liegen.',
   // The icon is too long.
   srv_42e741b2bbfc2695: 'Das Icon ist zu lang.',
+  // The icon must be a PNG, ICO, JPEG, GIF or WebP image of at most 64 KB.
+  srv_c64f54da73ed8e20: 'Das Icon muss ein PNG-, ICO-, JPEG-, GIF- oder WebP-Bild mit höchstens 64 KB sein.',
   // The identity provider could not be reached: {detail}
   srv_62951ebf93a06287: 'Der Identity Provider ist nicht erreichbar: {detail}',
   // The identity provider did not confirm the sign-in: {detail}
@@ -321,8 +354,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_fd5437e3a5a60614: 'Der letzte Tab kann nicht gelöscht werden.',
   // The latitude must be between -90 and 90.
   srv_3f60e80ed2350494: 'Der Breitengrad muss zwischen -90 und 90 liegen.',
-  // The list URL must start with http:// or https://.
-  srv_fb8b7dd6765aca44: 'Die Listen-URL muss mit http:// oder https:// beginnen.',
   // The location must be at most 200 characters long.
   srv_eeec5bbc9fb36341: 'Der Ort darf höchstens 200 Zeichen lang sein.',
   // The longitude must be between -180 and 180.
@@ -348,16 +379,10 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_f901e92a895881b7: 'Die Notiz existiert nicht.',
   // The note must be at most 100 KiB long.
   srv_4afce48c7ea72d13: 'Die Notiz darf höchstens 100 KiB lang sein.',
-  // The ntfy server URL must start with http:// or https://.
-  srv_81c618d3f04032a6: 'Die ntfy-Server-URL muss mit http:// oder https:// beginnen.',
-  // The ntfy server could not be reached: {detail}
-  srv_d77d58a4fac3d674: 'Der ntfy-Server ist nicht erreichbar: {detail}',
-  // The off-site backup could not be downloaded: {detail}
-  srv_d294e91217ac56a4: 'Das externe Backup konnte nicht heruntergeladen werden: {detail}',
-  // The off-site backups could not be listed: {detail}
-  srv_3b42f48d84e45ed3: 'Die externen Backups konnten nicht aufgelistet werden: {detail}',
   // The owner account is not a guest.
   srv_a8aed831e812c028: 'Das Besitzerkonto ist kein Gast.',
+  // The page could not be read.
+  srv_8dec33ac27b43136: 'Die Seite konnte nicht gelesen werden.',
   // The parcel does not exist.
   srv_f35b41c22f1a21c2: 'Die Sendung existiert nicht.',
   // The passkey does not exist.
@@ -411,8 +436,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_e24dab6aca94e3e8: 'Der Tab-Name darf höchstens 40 Zeichen lang sein.',
   // The tab name must not be empty.
   srv_31748b4a01624458: 'Der Tab-Name darf nicht leer sein.',
-  // The task list is not reachable: {detail}
-  srv_788613837cca8cc6: 'Die Aufgabenliste ist nicht erreichbar: {detail}',
   // The template does not exist.
   srv_4ad756b3998ef1fd: 'Die Vorlage existiert nicht.',
   // The template must be at most 4000 characters long.
@@ -435,6 +458,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_1399b4677ad575ae: 'Das Token darf das nicht.',
   // The topic may contain letters, digits, - and _ (max. 64 characters).
   srv_218a25cf9751b7dd: 'Das Topic darf Buchstaben, Ziffern, - und _ enthalten (max. 64 Zeichen).',
+  // The version does not exist.
+  srv_192c651a50b6f91f: 'Die Version existiert nicht.',
   // The weather warnings are not available right now.
   srv_314a73e152936a17: 'Die Wetterwarnungen sind gerade nicht verfügbar.',
   // The widget configuration is too large.
@@ -493,6 +518,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   // Use a cron expression with five fields, e.g. 0 3 * * * (daily at 03:00).
   srv_564c3b1fecfb1093:
     'Bitte einen Cron-Ausdruck mit fünf Feldern verwenden, z. B. 0 3 * * * (täglich um 03:00).',
+  // Use a single emoji.
+  srv_61031ab185b65e33: 'Bitte nur ein einzelnes Emoji verwenden.',
   // User name and password (or app password) are required.
   srv_1c73ff4160f4ee94: 'Benutzername und Passwort (oder App-Passwort) sind erforderlich.',
   // Username and app password are required.
@@ -501,6 +528,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_ed3a053401c9b56a: 'Benutzername und Passwort sind erforderlich.',
   // Wake-on-LAN is disabled in the demo.
   srv_eceee41d79cdfdb2: 'Wake-on-LAN ist in der Demo deaktiviert.',
+  // Weekdays are 0 (Sunday) to 6.
+  srv_40623194d868a5f0: 'Wochentage sind 0 (Sonntag) bis 6.',
   // You are already subscribed to this feed.
   srv_d6a88cffb18a9963: 'Du hast diesen Feed bereits abonniert.',
   // Your session has expired. Please log in again.
@@ -535,6 +564,48 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_ce1e99b3a7ab0a0d: 'Die URL muss wie http://192.168.1.2:2283 aussehen.',
   // The thumbnail does not exist.
   srv_6493a23b37be9677: 'Das Vorschaubild existiert nicht.',
+  // A long-lived access token is required.
+  srv_084af9ca0c7d167d: 'Ein langlebiges Zugriffstoken ist erforderlich.',
+  // Actions are not enabled for this entity (SMARTHOME_ACTIONS_ENTITIES).
+  srv_0f4d7732f2cd4899: 'Aktionen sind für diese Entität nicht aktiviert (SMARTHOME_ACTIONS_ENTITIES).',
+  // At most {max} entities per widget.
+  srv_3a4c7bf887ab6487: 'Höchstens {max} Entitäten pro Widget.',
+  // Could not connect to Home Assistant: {detail}
+  srv_789dca50a23c7cb8: 'Verbindung zu Home Assistant fehlgeschlagen: {detail}',
+  // Home Assistant is not configured yet.
+  srv_bcbabc6a08a54107: 'Home Assistant ist noch nicht eingerichtet.',
+  // Home Assistant is not reachable.
+  srv_dc90aa2a1e0a5f62: 'Home Assistant ist nicht erreichbar.',
+  // Home Assistant rejected the action: {detail}
+  srv_af1423afec138ad6: 'Home Assistant hat die Aktion abgelehnt: {detail}',
+  // The URL must look like http://homeassistant.local:8123.
+  srv_d26f0cb52cfa0948: 'Die URL muss wie http://homeassistant.local:8123 aussehen.',
+  // The entity does not exist.
+  srv_2ef3700ca8a09eac: 'Die Entität existiert nicht.',
+  // This entity has no action; only switches and buttons can be used.
+  srv_a6715a41424b56f8: 'Diese Entität hat keine Aktion; nur Schalter und Taster lassen sich bedienen.',
+  // A certificate fingerprint needs an https:// URL.
+  srv_56aacb20f1f37331: 'Ein Zertifikats-Fingerabdruck braucht eine https://-URL.',
+  // Actions are not enabled for this guest (PROXMOX_ACTIONS_GUESTS).
+  srv_90d6536f1a9bc239: 'Aktionen sind für diesen Gast nicht aktiviert (PROXMOX_ACTIONS_GUESTS).',
+  // Proxmox VE is not configured yet.
+  srv_d30d28cec1fe8a0e: 'Proxmox VE ist noch nicht eingerichtet.',
+  // Proxmox VE is not reachable.
+  srv_98db8603c1a1c4cd: 'Proxmox VE ist nicht erreichbar.',
+  // The fingerprint must be a SHA-256 value such as AB:CD:…, 32 bytes.
+  srv_53b624415dd21efb: 'Der Fingerabdruck muss ein SHA-256-Wert wie AB:CD:… mit 32 Bytes sein.',
+  // The token ID must look like monitor@pve!trisse-home.
+  srv_98a0961ed24f0281: 'Die Token-ID muss wie monitor@pve!trisse-home aussehen.',
+  // The token secret is required.
+  srv_3d3a9008e1d23718: 'Das Token-Secret ist erforderlich.',
+  // Unknown action, use start or shutdown.
+  srv_048731d99c865141: 'Unbekannte Aktion, verwende start oder shutdown.',
+  // The DNS filter is not reachable.
+  srv_4a327952321d8a3f: 'Der DNS-Filter ist nicht erreichbar.',
+  // This DNS filter is not configured yet.
+  srv_fcbb5bbe636e4559: 'Dieser DNS-Filter ist noch nicht eingerichtet.',
+  // Unknown DNS filter, use adguard or pihole.
+  srv_1a87cc7977ed4993: 'Unbekannter DNS-Filter, verwende adguard oder pihole.',
   // Docker discovery needs the docker module to be enabled.
   srv_1f3976061912504c: 'Die Docker-Autodiscovery braucht das aktivierte Docker-Modul.',
   // The interval must be between 1 and {max} minutes.

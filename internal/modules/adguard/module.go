@@ -9,22 +9,29 @@ import (
 	"trisse-home/internal/modules"
 	"trisse-home/internal/modules/adguard/adapter/controller"
 	"trisse-home/internal/modules/adguard/adapter/gateway"
+	"trisse-home/internal/modules/adguard/domain"
 	"trisse-home/internal/modules/adguard/usecase"
 	"trisse-home/internal/shared/kernel"
 )
 
 const refreshInterval = time.Minute
 
-// Module wires the AdGuard rings and implements modules.Module.
+// Module wires the DNS filter rings (AdGuard Home and Pi-hole, #83) and
+// implements modules.Module. The name stays "adguard" so existing widgets,
+// API clients and MODULES_DISABLED settings keep working.
 type Module struct {
 	modules.Base
-	uc       usecase.AdGuard
+	uc       usecase.DNSFilter
 	handlers *controller.Handlers
 }
 
-// New builds the AdGuard module; cipher encrypts the stored password.
+// New builds the module; cipher encrypts the stored passwords.
 func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock) *Module {
-	uc := usecase.NewAdGuard(gateway.NewSettingsRepository(db, cipher), gateway.NewAPI(client), clock)
+	providers := map[domain.Provider]usecase.DNSFilterProvider{
+		domain.ProviderAdGuard: gateway.NewAPI(client),
+		domain.ProviderPiHole:  gateway.NewPiHole(client),
+	}
+	uc := usecase.NewDNSFilter(gateway.NewSettingsRepository(db, cipher), providers, clock)
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
 }
 

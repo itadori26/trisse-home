@@ -91,6 +91,11 @@ func (uc *fritzbox) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 	password := in.Password
 	if password == "" && in.Username != "" {
 		if old, err := uc.repo.Load(ctx); err == nil && old.Username == in.Username {
+			// Compare the normalised address (default port 49000 added).
+			if norm, err := domain.NewSettings(in.URL, in.Username, old.Password); err == nil &&
+				kernel.TargetChanged([]string{old.URL}, []string{norm.URL}) {
+				return SettingsView{}, kernel.SecretRequired("password")
+			}
 			password = old.Password
 		}
 	}
@@ -99,11 +104,11 @@ func (uc *fritzbox) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 		return SettingsView{}, err
 	}
 	if _, _, err := uc.box.WAN(ctx, s); err != nil {
-		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not connect to the FRITZ!Box: {detail}", "detail", err.Error())
+		return SettingsView{}, kernel.TargetFailure(kernel.ErrInvalid, err)
 	}
 	if s.HasLogin() {
 		if _, err := uc.box.Calls(ctx, s, 1); err != nil {
-			return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Login failed: {detail}", "detail", err.Error())
+			return SettingsView{}, kernel.TargetFailure(kernel.ErrInvalid, err)
 		}
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {

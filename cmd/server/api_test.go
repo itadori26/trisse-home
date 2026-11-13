@@ -140,6 +140,31 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /immich/api/server/version", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"major":1,"minor":120,"patch":0}`)
 	})
+	mux.HandleFunc("GET /ha/api/states", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer ha-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `[{"entity_id":"switch.coffee","state":"off","attributes":{"friendly_name":"Coffee"},"last_changed":"2026-11-12T10:00:00Z"}]`)
+	})
+	mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "PVEAPIToken=monitor@pve!th=uuid" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `{"data":[{"type":"node","node":"pve","status":"online","cpu":0.5,"maxcpu":4},`+
+			`{"type":"qemu","vmid":100,"name":"ha","node":"pve","status":"running"}]}`)
+	})
+	// Pi-hole v6 (#83) without a password: no session needed.
+	mux.HandleFunc("GET /pihole/api/stats/summary", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"queries":{"total":200,"blocked":20}}`)
+	})
+	mux.HandleFunc("GET /pihole/api/dns/blocking", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"blocking":"enabled"}`)
+	})
+	mux.HandleFunc("GET /pihole/api/stats/top_domains", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"domains":[{"domain":"ads.example","count":9}]}`)
+	})
 	mux.HandleFunc("/dav/calendars/me/personal/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut && r.Header.Get("If-None-Match") == "*" && strings.HasSuffix(r.URL.Path, ".ics") {
 			body, _ := io.ReadAll(r.Body)
@@ -609,6 +634,40 @@ func TestAPIEndToEnd(t *testing.T) {
 	if stats["blockedPercent"] != float64(25) {
 		t.Fatalf("adguard: %v", stats)
 	}
+	c.do(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusNotFound)
+	c.do(http.MethodGet, "/api/adguard/stats?provider=bind", nil, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/adguard/settings?provider=pihole", obj{"url": up.URL + "/pihole"}, http.StatusOK, nil)
+	c.json(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusOK, &stats)
+	if stats["blockedPercent"] != float64(10) || stats["avgProcessingMs"] != nil {
+		t.Fatalf("pi-hole: %v", stats)
+	}
+
+	// --- proxmox (#84): read-only, actions off without PROXMOX_ACTIONS_GUESTS ---
+	c.do(http.MethodGet, "/api/proxmox/status", nil, http.StatusNotFound)
+	c.do(http.MethodPut, "/api/proxmox/settings", obj{"url": up.URL, "tokenId": "monitor@pve!th", "secret": "bad"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/proxmox/settings", obj{"url": up.URL, "tokenId": "monitor@pve!th", "secret": "uuid"}, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/proxmox/settings", nil, http.StatusOK)); strings.Contains(body, "uuid") {
+		t.Fatal("token secret leaked")
+	}
+	var pve obj
+	c.json(http.MethodGet, "/api/proxmox/status", nil, http.StatusOK, &pve)
+	if guests := pve["guests"].([]any); len(guests) != 1 || guests[0].(obj)["actions"] != false || pve["nodes"].([]any)[0].(obj)["cpuPercent"] != float64(50) {
+		t.Fatalf("proxmox: %v", pve)
+	}
+	c.do(http.MethodPost, "/api/proxmox/guests/100/shutdown", nil, http.StatusForbidden)
+
+	// --- smart home (#49): read-only without SMARTHOME_ACTIONS_ENTITIES ---
+	c.do(http.MethodGet, "/api/smarthome/states?ids=switch.coffee", nil, http.StatusNotFound)
+	c.json(http.MethodPut, "/api/smarthome/settings", obj{"url": up.URL + "/ha", "token": "ha-token"}, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/smarthome/settings", nil, http.StatusOK)); strings.Contains(body, "ha-token") {
+		t.Fatal("home assistant token leaked")
+	}
+	var entities []obj
+	c.json(http.MethodGet, "/api/smarthome/states?ids=switch.coffee", nil, http.StatusOK, &entities)
+	if len(entities) != 1 || entities[0]["name"] != "Coffee" || entities[0]["action"] != "" {
+		t.Fatalf("smarthome: %v", entities)
+	}
+	c.do(http.MethodPost, "/api/smarthome/entities/switch.coffee/action", nil, http.StatusForbidden)
 
 	// --- Immich (#85): optional parts (storage, memories) may be forbidden ---
 	c.do(http.MethodGet, "/api/immich/overview", nil, http.StatusNotFound)

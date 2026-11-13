@@ -45,6 +45,18 @@ func (uc *listBookmarks) Execute(ctx context.Context, f Filter) (ListResponse, e
 	if err != nil {
 		return ListResponse{}, fmt.Errorf("list folders: %w", err)
 	}
+	statuses := map[string]domain.LinkStatus{}
+	if uc.d.Links != nil {
+		if statuses, err = uc.d.Links.ListLinkStatuses(ctx); err != nil {
+			return ListResponse{}, fmt.Errorf("list link statuses: %w", err)
+		}
+	}
+	icons := map[string]bool{}
+	if uc.d.Icons != nil {
+		if icons, err = uc.d.Icons.IconIDs(ctx); err != nil {
+			return ListResponse{}, fmt.Errorf("list icons: %w", err)
+		}
+	}
 	res := ListResponse{Bookmarks: []BookmarkView{}, Folders: []FolderView{}, Tags: []TagView{}}
 	perFolder := map[string]int{}
 	perTag := map[string]int{}
@@ -53,8 +65,10 @@ func (uc *listBookmarks) Execute(ctx context.Context, f Filter) (ListResponse, e
 		for _, t := range b.Tags() {
 			perTag[t]++
 		}
-		if matches(b, f) {
-			res.Bookmarks = append(res.Bookmarks, toView(b))
+		if matches(b, f) && (!f.Broken || statuses[b.ID()].State == domain.LinkBroken) {
+			v := toView(b)
+			v.Link, v.HasIcon = statuses[b.ID()], icons[b.ID()]
+			res.Bookmarks = append(res.Bookmarks, v)
 		}
 	}
 	for _, fo := range folders {
@@ -84,7 +98,16 @@ func (uc *createBookmark) Execute(ctx context.Context, in Input) (BookmarkView, 
 	if err := uc.d.Repo.SaveBookmark(ctx, b); err != nil {
 		return BookmarkView{}, fmt.Errorf("save bookmark: %w", err)
 	}
-	return toView(b), nil
+	v := toView(b)
+	// Title and favicon are fetched right away when enabled (#72); a page
+	// that cannot be read leaves the bookmark as entered.
+	if s, err := uc.d.settings(ctx); err == nil && uc.d.canEnrich(s) {
+		if enriched, hasIcon, err := uc.d.enrich(ctx, b); err == nil {
+			v = toView(enriched)
+			v.HasIcon = hasIcon
+		}
+	}
+	return v, nil
 }
 
 type updateBookmark struct{ d Deps }

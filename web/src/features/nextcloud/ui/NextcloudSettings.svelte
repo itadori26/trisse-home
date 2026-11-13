@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlainHttpWarning from '../../../shared/ui/PlainHttpWarning.svelte';
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { NextcloudUseCases } from '../usecase/nextcloudUseCases';
@@ -51,6 +52,7 @@
       required
     /></label
   >
+  <PlainHttpWarning {url} />
   <label class="field"
     ><span>{t('nextcloud.username')}</span><input
       class="input"

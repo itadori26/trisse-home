@@ -335,7 +335,7 @@ test('quick capture creates items from the search bar and the palette (#105, #67
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Log in' }).click();
   await page.getByRole('button', { name: 'Home', exact: true }).click();
-  const search = page.getByRole('searchbox', { name: 'Search' });
+  const search = page.getByRole('searchbox', { name: 'Search', exact: true });
 
   await search.fill('t Milch kaufen morgen');
   await expect(page.getByText('Enter: create to-do “Milch kaufen” (Tomorrow)')).toBeVisible();
@@ -363,6 +363,158 @@ test('quick capture creates items from the search bar and the palette (#105, #67
   await expect(page.getByText('create to-do “Steuer” (Today)')).toBeVisible();
   await palette.press('Enter');
   await expect(page.getByText('To-do “Steuer” created')).toBeVisible();
+});
+
+test('phones get their own layout that hides widgets independently (#92)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByText('Phone layout follows the desktop grid.', { exact: false })).toBeVisible();
+  await page.getByRole('group', { name: 'Phone layout of “Clock”' }).getByLabel('Hide on phones').check();
+  await expect(page.getByRole('button', { name: 'Reset from desktop layout' })).toBeVisible();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.locator('time')).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await expect(page.getByText('Try edit mode: drag and resize a widget')).toBeVisible();
+  await expect(page.locator('time')).toHaveCount(0);
+
+  // The desktop grid is unaffected.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.locator('time')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Reset from desktop layout' }).click();
+  await expect(page.getByText('Phone layout follows the desktop grid.', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.locator('time')).toBeVisible();
+});
+
+test('the daily briefing sums up the day and leads to the source widget (#52)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('briefing');
+  await page.getByRole('button', { name: /^Daily briefing/ }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+
+  // "Steuer" was created for today by the quick capture test.
+  const toTodos = page.getByRole('button', { name: 'To-dos', exact: true });
+  await expect(toTodos).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.briefing')).toContainText('Steuer');
+  await expect(page.locator('.briefing')).not.toContainText('Milch kaufen'); // due tomorrow
+  // The waste calendar is not set up yet: that is no outage.
+  await expect(page.locator('.briefing')).not.toContainText('Not available right now');
+
+  // The heading scrolls to and highlights the to-do widget.
+  await toTodos.click();
+  await expect(page.locator('[data-widget-id].flash')).toContainText('Milch kaufen');
+
+  // Hiding the section in the settings removes it from the widget.
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Daily briefing', exact: true }).click();
+  await page.getByRole('checkbox', { name: 'To-dos' }).uncheck();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+  await page.reload();
+  // Sign-ins of this test run still show up under "Since yesterday evening".
+  await expect(page.getByRole('button', { name: 'Since yesterday evening', exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByRole('button', { name: 'To-dos', exact: true })).toHaveCount(0);
+});
+
+test('countdowns count the days and can be edited and deleted (#54)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Dates');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('prüfung');
+  await page.getByRole('button', { name: /^Countdowns/ }).click();
+  // The widget has settings; they open right after adding.
+  await page.getByLabel('Highlight when fewer days are left than').fill('5');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+
+  const inDays = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  await page.getByRole('button', { name: '+ New countdown' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New countdown' });
+  await dialog.getByLabel('Title').fill('Exam');
+  await dialog.getByLabel('Date').fill(inDays(3));
+  await dialog.getByLabel('Emoji').fill('📚');
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const item = page.getByRole('listitem').filter({ hasText: 'Exam' });
+  await expect(item).toContainText('3 days');
+  await expect(item).toHaveClass(/soon/);
+
+  await item.getByRole('button', { name: 'Edit Exam' }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit countdown' });
+  await edit.getByLabel('Title').fill('Holiday');
+  await edit.getByLabel('Date').fill(inDays(30));
+  await edit.getByRole('button', { name: 'Save', exact: true }).click();
+  const holiday = page.getByRole('listitem').filter({ hasText: 'Holiday' });
+  await expect(holiday).toContainText('30 days');
+  await expect(holiday).not.toHaveClass(/soon/);
+
+  page.once('dialog', (d) => d.accept());
+  await holiday.getByRole('button', { name: 'Delete Holiday' }).click();
+  await expect(page.getByText('No countdowns yet.')).toBeVisible();
+});
+
+test('the focus timer runs on timestamps and counts finished sessions (#58)', async ({ page }) => {
+  await page.clock.install();
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Deep work');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('pomodoro');
+  await page.getByRole('button', { name: /^Focus timer/ }).click();
+  await page.getByLabel('Focus (min)').fill('1');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+
+  const timer = page.getByRole('timer');
+  await expect(timer).toHaveText('1:00');
+  await expect(page.getByText('0 sessions in the last 7 days')).toBeVisible();
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.clock.runFor(30_000);
+  await expect(timer).toHaveText('0:30');
+
+  // A sleeping tab: the phase ends once, the break waits to be started.
+  await page.clock.runFor(10 * 60_000);
+  await expect(page.getByText('Short break', { exact: true })).toBeVisible();
+  await expect(timer).toHaveText('5:00');
+  await expect(page.getByText('1 sessions in the last 7 days')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
 });
 
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {

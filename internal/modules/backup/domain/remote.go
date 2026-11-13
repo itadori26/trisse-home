@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"net/url"
 	"strings"
 
 	"trisse-home/internal/shared/kernel"
@@ -23,15 +22,11 @@ type RemoteSettings struct {
 
 // NewRemoteSettings validates and normalises the settings.
 func NewRemoteSettings(rawURL, username, password string, retention int) (RemoteSettings, error) {
-	rawURL = strings.TrimSpace(rawURL)
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.RawQuery != "" || u.Fragment != "" {
-		return RemoteSettings{}, kernel.NewValidationError("url",
-			"The WebDAV URL must look like https://cloud.example.org/remote.php/dav/files/USER/Backups/.")
+	u, err := kernel.ParseTarget("url", rawURL, kernel.WithTargetPath())
+	if err != nil {
+		return RemoteSettings{}, err
 	}
-	if !strings.HasSuffix(rawURL, "/") {
-		rawURL += "/"
-	}
+	rawURL = u.String() + "/" // a WebDAV folder
 	if strings.TrimSpace(username) == "" || password == "" {
 		return RemoteSettings{}, kernel.NewValidationError("username", "User name and password (or app password) are required.")
 	}

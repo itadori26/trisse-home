@@ -327,3 +327,50 @@ func TestDefaultTabRules(t *testing.T) {
 		t.Fatalf("no clock, got %q", got.DefaultTabID)
 	}
 }
+
+func TestMobileLayout(t *testing.T) {
+	deps, _ := newDeps("clock", "notes")
+	tabs, widgets := NewManageTabs(deps), NewManageWidgets(deps)
+	tab, _ := tabs.Create(ctx, CreateTabRequest{Name: "Home"})
+	other, _ := tabs.Create(ctx, CreateTabRequest{Name: "Other"})
+	a, _ := widgets.Add(ctx, AddWidgetRequest{TabID: tab.ID, Kind: "clock", X: 6, W: 3, H: 2})
+	b, _ := widgets.Add(ctx, AddWidgetRequest{TabID: tab.ID, Kind: "notes", W: 3, H: 4})
+	foreign, _ := widgets.Add(ctx, AddWidgetRequest{TabID: other.ID, Kind: "notes", W: 3, H: 4})
+
+	get := func() TabResponse {
+		t.Helper()
+		res, err := NewGetDashboard(deps).Execute(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, x := range res.Tabs {
+			if x.ID == tab.ID {
+				return x
+			}
+		}
+		t.Fatal("tab missing")
+		return TabResponse{}
+	}
+	if m := get(); m.MobileCustom || len(m.Mobile) != 2 || m.Mobile[0].WidgetID != b.ID || m.Mobile[1].Rows != 2 {
+		t.Fatalf("derived layout %+v", m.Mobile)
+	}
+	if _, err := tabs.SaveMobileLayout(ctx, tab.ID, []domain.MobileEntry{{WidgetID: foreign.ID, Rows: 2}}); !errors.Is(err, domain.ErrWidgetNotFound) {
+		t.Fatalf("foreign widget: %v", err)
+	}
+	if _, err := tabs.SaveMobileLayout(ctx, "nope", nil); !errors.Is(err, domain.ErrTabNotFound) {
+		t.Fatalf("unknown tab: %v", err)
+	}
+	res, err := tabs.SaveMobileLayout(ctx, tab.ID, []domain.MobileEntry{{WidgetID: a.ID, Rows: 6}, {WidgetID: b.ID, Hidden: true, Rows: 4}})
+	if err != nil || !res.MobileCustom || res.Mobile[0].WidgetID != a.ID || !res.Mobile[1].Hidden {
+		t.Fatalf("save %+v %v", res, err)
+	}
+	// Widgets added later show up at the end of the custom layout.
+	c, _ := widgets.Add(ctx, AddWidgetRequest{TabID: tab.ID, Kind: "clock", Y: 9, W: 3, H: 3})
+	if m := get(); len(m.Mobile) != 3 || m.Mobile[2].WidgetID != c.ID || m.Mobile[0].Rows != 6 {
+		t.Fatalf("after add %+v", m.Mobile)
+	}
+	res, err = tabs.ResetMobileLayout(ctx, tab.ID)
+	if err != nil || res.MobileCustom || res.Mobile[0].WidgetID != b.ID || res.Mobile[1].Hidden {
+		t.Fatalf("reset %+v %v", res, err)
+	}
+}
