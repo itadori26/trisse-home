@@ -145,7 +145,7 @@ func merge(base string, frags []fragment) (string, error) {
 	idx := func(prefix string) int { return slices.IndexFunc(lines, func(l string) bool { return l == prefix }) }
 	tagsAt, pathsAt, compAt, schemasAt := idx("tags:"), idx("paths:"), idx("components:"), idx("  schemas:")
 	if tagsAt < 0 || pathsAt < tagsAt || compAt < pathsAt || schemasAt < compAt {
-		return "", errors.New("base: needs top-level tags:, paths:, components: in this order and components.schemas:")
+		return "", errors.New("base: needs the top-level blocks tags, paths and components in this order, and components.schemas")
 	}
 	for _, l := range lines[schemasAt+1:] {
 		if strings.TrimSpace(l) == "" || strings.HasPrefix(l, "    ") || strings.HasPrefix(strings.TrimSpace(l), "#") {
