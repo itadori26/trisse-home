@@ -12,7 +12,7 @@ fails=0
 
 PREV=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 MAIN=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-OLDER=cccccccccccccccccccccccccccccccccccccccc
+OLDER_SHA=cccccccccccccccccccccccccccccccccccccccc
 
 make_stubs() {
 	mkdir -p "$ROOT/bin"
@@ -32,7 +32,8 @@ status) [[ -n ${DIRTY:-} ]] && echo " M file" ;;
 fetch) ;;
 rev-parse) case $1 in origin/main) echo "$MAIN" ;; HEAD) cat "$T/head" ;; esac ;;
 cat-file) [[ -z ${UNKNOWN:-} ]] ;;
-merge-base) [[ -z ${NOT_ANCESTOR:-} ]] ;;
+merge-base) # merge-base --is-ancestor <commit> <of>
+	if [[ $3 == origin/main ]]; then [[ -z ${NOT_ANCESTOR:-} ]]; else [[ -n ${OLDER:-} ]]; fi ;;
 worktree) if [[ $1 == remove ]]; then rm -rf "${*: -1}"; fi ;;
 checkout) echo "${*: -1}" >"$T/head" ;;
 esac
@@ -85,7 +86,7 @@ setup() {
 	echo old >"$T/img/local"
 	echo old >"$T/running"
 	echo old-data >"$T/volume/db.sqlite"
-	unset DIRTY UNKNOWN NOT_ANCESTOR FAIL_BUILD NEW_UNHEALTHY SSH_ORIGINAL_COMMAND
+	unset DIRTY UNKNOWN NOT_ANCESTOR FAIL_BUILD NEW_UNHEALTHY OLDER ALLOW_DOWNGRADE SSH_ORIGINAL_COMMAND
 	export MAIN
 }
 
@@ -144,10 +145,27 @@ check "nothing is built or restarted" not_called "docker build"
 
 echo "== explicit commit"
 setup explicit
-export SSH_ORIGINAL_COMMAND="deploy $OLDER"
+export SSH_ORIGINAL_COMMAND="deploy $OLDER_SHA"
 deploy
 check "exit 0" exit_is 0
-check "exactly that commit is deployed, not the head of main" eq "$T/head" "$OLDER"
+check "exactly that commit is deployed, not the head of main" eq "$T/head" "$OLDER_SHA"
+
+echo "== no downgrades"
+setup older
+export SSH_ORIGINAL_COMMAND="deploy $OLDER_SHA"
+OLDER=1 deploy
+check "an older commit is skipped without an error (exit 0)" exit_is 0
+check "  nothing is built, stopped or switched" bash -c "! grep -q -e 'docker build' -e 'stop trisse-home' -e 'git checkout' \"$T/calls.log\""
+check "  the running version stays" eq "$T/head" "$PREV"
+check "  the reason is logged" bash -c "grep -q 'is newer' \"$T/out.log\""
+check "  the data is untouched" bash -c "grep -qx old-data \"$T/volume/db.sqlite\""
+setup forced
+export SSH_ORIGINAL_COMMAND="deploy $OLDER_SHA"
+OLDER=1 ALLOW_DOWNGRADE=1 deploy
+check "an administrator can force it with ALLOW_DOWNGRADE=1" eq "$T/head" "$OLDER_SHA"
+setup newer
+OLDER= deploy
+check "a newer commit still deploys" eq "$T/head" "$MAIN"
 
 echo "== build failure"
 setup buildfail

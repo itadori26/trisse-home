@@ -6,6 +6,9 @@
 #   (empty)              deploy the head of origin/main
 #   deploy <40 hex>      deploy exactly that commit (must be reachable from origin/main)
 #
+# A commit that is older than the running version is skipped (no downgrades,
+# see ALLOW_DOWNGRADE below).
+#
 # Flow: fetch, build the image from a detached worktree while the old version
 # keeps running, stop the service, back up the data volume, switch the stack
 # checkout, start the new image and wait until it is healthy. If anything after
@@ -132,6 +135,16 @@ main() {
 		return 0
 	fi
 	short=${target:0:7}
+	# Migrations only go forward: older code must not run on a database a newer
+	# version already migrated. This also happens without anyone meaning it, when
+	# two merges are close together and the CI run of the older one finishes last,
+	# so it is a skip, not an error. An administrator can force it on the server
+	# (ALLOW_DOWNGRADE=1, not possible through the SSH key) after restoring a
+	# matching backup.
+	if [[ -z ${ALLOW_DOWNGRADE:-} ]] && gitc merge-base --is-ancestor "$target" "$prev"; then
+		log "skipping $short: the running version ${prev:0:7} is newer (older code must not run on a migrated database; ALLOW_DOWNGRADE=1 on the server forces it)"
+		return 0
+	fi
 	stamp=$(date -u +%Y%m%dT%H%M%SZ)
 	backup="$BACKUP_DIR/$stamp-$short"
 	log "deploying $short (running: ${prev:0:7})"
