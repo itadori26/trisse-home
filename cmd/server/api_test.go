@@ -129,6 +129,14 @@ func fakeUpstream(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /control/status", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"protection_enabled":true}`)
 	})
+	mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "PVEAPIToken=monitor@pve!th=uuid" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_, _ = io.WriteString(w, `{"data":[{"type":"node","node":"pve","status":"online","cpu":0.5,"maxcpu":4},`+
+			`{"type":"qemu","vmid":100,"name":"ha","node":"pve","status":"running"}]}`)
+	})
 	// Pi-hole v6 (#83) without a password: no session needed.
 	mux.HandleFunc("GET /pihole/api/stats/summary", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, `{"queries":{"total":200,"blocked":20}}`)
@@ -615,6 +623,20 @@ func TestAPIEndToEnd(t *testing.T) {
 	if stats["blockedPercent"] != float64(10) || stats["avgProcessingMs"] != nil {
 		t.Fatalf("pi-hole: %v", stats)
 	}
+
+	// --- proxmox (#84): read-only, actions off without PROXMOX_ACTIONS_GUESTS ---
+	c.do(http.MethodGet, "/api/proxmox/status", nil, http.StatusNotFound)
+	c.do(http.MethodPut, "/api/proxmox/settings", obj{"url": up.URL, "tokenId": "monitor@pve!th", "secret": "bad"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/proxmox/settings", obj{"url": up.URL, "tokenId": "monitor@pve!th", "secret": "uuid"}, http.StatusOK, nil)
+	if body := string(c.do(http.MethodGet, "/api/proxmox/settings", nil, http.StatusOK)); strings.Contains(body, "uuid") {
+		t.Fatal("token secret leaked")
+	}
+	var pve obj
+	c.json(http.MethodGet, "/api/proxmox/status", nil, http.StatusOK, &pve)
+	if guests := pve["guests"].([]any); len(guests) != 1 || guests[0].(obj)["actions"] != false || pve["nodes"].([]any)[0].(obj)["cpuPercent"] != float64(50) {
+		t.Fatalf("proxmox: %v", pve)
+	}
+	c.do(http.MethodPost, "/api/proxmox/guests/100/shutdown", nil, http.StatusForbidden)
 
 	// --- calendar ---
 	c.do(http.MethodGet, "/api/calendar/events", nil, http.StatusNotFound)

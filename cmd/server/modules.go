@@ -28,6 +28,7 @@ import (
 	"trisse-home/internal/modules/notifications"
 	"trisse-home/internal/modules/onboarding"
 	"trisse-home/internal/modules/parcels"
+	"trisse-home/internal/modules/proxmox"
 	"trisse-home/internal/modules/rss"
 	"trisse-home/internal/modules/search"
 	"trisse-home/internal/modules/services"
@@ -161,6 +162,10 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, client, sink, clk) }},
 		{"calendar", func() modules.Module { return calendar.New(db, secrets, client, clk, ids, time.Local) }},
+		{"proxmox", func() modules.Module {
+			return proxmox.New(proxmox.Config{DB: db, Cipher: secrets, Client: client, Pinned: out.pinned,
+				ActionGuests: cfg.ProxmoxActionsGuests, Clock: clk, Audit: authModule})
+		}},
 		{"countdown", func() modules.Module { return countdown.New(db, clk, ids) }},
 		{"focus", func() modules.Module { return focus.New(db, clk, ids) }},
 		// scaffold:modules - make new-module inserts new modules above this line.
@@ -247,6 +252,8 @@ type outbound struct {
 		Wake(context.Context, kernel.MAC) error
 	}
 	secrets secretStore
+	// pinned builds clients that trust one certificate fingerprint (Proxmox).
+	pinned func(fingerprint string) *http.Client
 }
 
 // bookmarkFetchTimeout bounds title, favicon and link check requests.
@@ -260,6 +267,9 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 			insecureHealth: &http.Client{Transport: demo.HealthyTransport{}},
 			waker:          demo.NoWake{},
 			secrets:        demo.ReadOnlySecrets{Inner: cipher},
+			pinned: func(string) *http.Client {
+				return &http.Client{Transport: demo.Transport{Now: clk.Now}, Timeout: healthCheckTimeout}
+			},
 		}
 	}
 	return outbound{
@@ -269,6 +279,9 @@ func newOutbound(cfg config.Config, clk clock.System, cipher secretStore) outbou
 		guarded:        httpclient.New(httpclient.WithTimeout(bookmarkFetchTimeout), httpclient.WithInternalAddressGuard()),
 		waker:          wol.Sender{Relay: cfg.WolRelay, Broadcast: cfg.WolBroadcast},
 		secrets:        cipher,
+		pinned: func(fp string) *http.Client {
+			return httpclient.New(httpclient.WithPinnedCertificate(fp))
+		},
 	}
 }
 
