@@ -1,5 +1,6 @@
 <script lang="ts">
   import { TimelineSettings } from '../features/timeline';
+  import { BriefingSettings } from '../features/briefing';
   import { AboutSettings, ForecastSettings } from '../features/system';
   import { type MessageKey, t } from '../shared/i18n';
   import { AdGuardSettings } from '../features/adguard';
@@ -26,7 +27,7 @@
   import { BackupSettings } from '../features/backup';
   import { BackupSourcesManager } from '../features/backupmonitor';
   import { NotificationSettings } from '../features/notifications';
-  import { BookmarkImport, FoldersManager } from '../features/bookmarks';
+  import { BookmarkImport, BookmarkLinkSettings, FoldersManager } from '../features/bookmarks';
   import { CalendarSettings } from '../features/calendar';
   import { FeedsManager } from '../features/rss';
   import { SearchSettings } from '../features/search';
@@ -67,6 +68,7 @@
     { id: 'transfer', label: 'settings.section.transfer', module: 'transfer' },
     { id: 'notifications', label: 'settings.section.notifications', module: 'notifications' },
     { id: 'timeline', label: 'settings.section.timeline', module: 'timeline' },
+    { id: 'briefing', label: 'settings.section.briefing', module: 'briefing' },
     { id: 'backups', label: 'settings.section.backups', module: 'backup' },
     { id: 'backupmonitor', label: 'settings.section.backupmonitor', module: 'backupmonitor' },
     { id: 'account', label: 'settings.section.account' },
@@ -109,6 +111,7 @@
     <FeedsManager rss={container.rss} />
   {:else if current === 'folders'}
     <FoldersManager bookmarks={container.bookmarks} />
+    <BookmarkLinkSettings bookmarks={container.bookmarks} />
   {:else if current === 'calendar'}
     <CalendarSettings calendar={container.calendar} />
   {:else if current === 'transfer'}
@@ -122,6 +125,8 @@
     <GuestsSettings auth={container.auth} tabs={guestTabs} />
   {:else if current === 'timeline'}
     <TimelineSettings timeline={container.timeline} />
+  {:else if current === 'briefing'}
+    <BriefingSettings briefing={container.briefing} canPush={modules.has('notifications')} />
   {:else if current === 'forecast'}
     <ForecastSettings system={container.system} />
   {:else if current === 'about'}

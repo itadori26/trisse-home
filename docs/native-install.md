@@ -102,11 +102,48 @@ ReadWritePaths=/mnt/usb/trisse-home
 
 ## Update and rollback
 
-Install the newer package the same way; configuration, key and data are kept
-and the service restarts. To roll back, install the older package with
-`sudo apt install --allow-downgrades ./trisse-home_<old>_<arch>.deb` —
-database migrations only add columns and tables, and a backup is created
-daily. (Automatic updates through an APT repository are planned in #137.)
+**With the APT repository** (recommended; the Raspberry Pi image is set up
+this way and updates itself every night):
+
+```sh
+sudo curl -fsSLo /usr/share/keyrings/trisse-home-archive-keyring.asc \
+  https://itadori26.github.io/trisse-home/apt/trisse-home-archive-keyring.asc
+sudo tee /etc/apt/sources.list.d/trisse-home.sources >/dev/null <<'EOF'
+Types: deb
+URIs: https://itadori26.github.io/trisse-home/apt
+Suites: stable
+Components: main
+Signed-By: /usr/share/keyrings/trisse-home-archive-keyring.asc
+EOF
+sudo apt update && sudo apt install trisse-home
+```
+
+Afterwards `sudo apt upgrade` updates trisse-home like every other package,
+and `unattended-upgrades` can do it automatically (add
+`"origin=trisse-home,codename=stable";` to `Unattended-Upgrade::Origins-Pattern`).
+Check the key's fingerprint against the one in the release notes before
+trusting it.
+
+**Without the repository**, install the newer `.deb` the same way as the
+first one.
+
+Either way configuration, key and data are kept, the service restarts, and
+**before every upgrade the database is copied** to
+`/var/lib/trisse-home/backups/pre-upgrade/` (the three newest copies stay).
+
+**Rollback:** the repository keeps the last five versions.
+
+```sh
+sudo apt install --allow-downgrades trisse-home=1.2.3
+```
+
+Database migrations only add columns and tables, so an older version runs on
+newer data. To return to the exact data of before the upgrade:
+`sudo systemctl stop trisse-home`, delete `trisse-home.db-wal` and
+`trisse-home.db-shm` in `/var/lib/trisse-home`, copy the matching
+`backups/pre-upgrade/trisse-home-<version>-<time>.db` to `trisse-home.db`
+(and its `-wal` file, if there is one, to `trisse-home.db-wal`), then start
+the service again.
 
 ## Forgot the password?
 

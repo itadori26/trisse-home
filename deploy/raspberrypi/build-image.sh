@@ -111,6 +111,21 @@ sed -i -E '/[[:space:]]\/[[:space:]]/ { /noatime/! s/(ext4[[:space:]]+)([^[:spac
 grep -E '[[:space:]]/[[:space:]]' "$root/etc/fstab"
 chroot "$root" systemctl is-enabled trisse-home.service trisse-home-setup-info.timer avahi-daemon.service
 
+keyring="$here/../../packaging/apt/trisse-home-archive-keyring.asc"
+if [ -f "$keyring" ]; then
+	log "APT repository for updates"
+	install -m 0644 "$keyring" "$root/usr/share/keyrings/trisse-home-archive-keyring.asc"
+	cat >"$root/etc/apt/sources.list.d/trisse-home.sources" <<SOURCES
+Types: deb
+URIs: ${APT_REPOSITORY_URL:-https://itadori26.github.io/trisse-home/apt}
+Suites: stable
+Components: main
+Signed-By: /usr/share/keyrings/trisse-home-archive-keyring.asc
+SOURCES
+else
+	echo "::warning::packaging/apt/trisse-home-archive-keyring.asc missing: the image gets no trisse-home updates (run scripts/apt-signing-key.sh)"
+fi
+
 log "clean up"
 chroot "$root" apt-get clean
 rm -rf "$root"/var/lib/apt/lists/* "$root"/var/cache/apt/*.bin "$root"/var/log/apt/* \

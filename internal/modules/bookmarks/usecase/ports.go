@@ -44,6 +44,38 @@ type DeleteFolder interface {
 	Execute(ctx context.Context, id string) error
 }
 
+// GetSettings returns the outbound features (#72).
+type GetSettings interface {
+	Execute(ctx context.Context) (SettingsView, error)
+}
+
+// SaveSettings switches the outbound features (#72).
+type SaveSettings interface {
+	Execute(ctx context.Context, s SettingsView) (SettingsView, error)
+}
+
+// EnrichBookmark fetches title (only if the title is still the host name)
+// and favicon of a bookmark (#72).
+type EnrichBookmark interface {
+	Execute(ctx context.Context, id string) (BookmarkView, error)
+}
+
+// CheckLink checks one bookmark's link now (#72).
+type CheckLink interface {
+	Execute(ctx context.Context, id string) (BookmarkView, error)
+}
+
+// CheckLinks checks the links that are due (background job, #72); it
+// returns how many were checked.
+type CheckLinks interface {
+	Execute(ctx context.Context) (int, error)
+}
+
+// GetIcon returns a stored favicon (#72).
+type GetIcon interface {
+	Execute(ctx context.Context, id string) (domain.Icon, error)
+}
+
 // Output ports.
 
 // Repository persists bookmarks and folders.
@@ -59,9 +91,48 @@ type Repository interface {
 	DeleteFolder(ctx context.Context, id string) error
 }
 
-// Deps bundles the output ports.
+// SettingsRepository stores the module settings (#72).
+type SettingsRepository interface {
+	LoadSettings(ctx context.Context) (domain.Settings, error)
+	SaveSettings(ctx context.Context, s domain.Settings) error
+}
+
+// LinkStatusRepository stores link check results (#72).
+type LinkStatusRepository interface {
+	ListLinkStatuses(ctx context.Context) (map[string]domain.LinkStatus, error)
+	SaveLinkStatus(ctx context.Context, bookmarkID string, s domain.LinkStatus) error
+}
+
+// IconStore keeps favicons locally so the browser never contacts the
+// bookmarked sites (#72).
+type IconStore interface {
+	SaveIcon(ctx context.Context, bookmarkID string, icon domain.Icon) error
+	// Icon returns domain.ErrIconNotFound if none is stored.
+	Icon(ctx context.Context, bookmarkID string) (domain.Icon, error)
+	IconIDs(ctx context.Context) (map[string]bool, error)
+}
+
+// MetadataFetcher reads title and favicon of a page (#72).
+type MetadataFetcher interface {
+	Fetch(ctx context.Context, pageURL string) (domain.PageMetadata, error)
+	FetchIcon(ctx context.Context, iconURL string) (domain.Icon, error)
+}
+
+// LinkChecker requests a URL and reports the HTTP status and final URL;
+// failed is true when no response arrived (#72).
+type LinkChecker interface {
+	Check(ctx context.Context, rawURL string) (code int, finalURL string, failed bool)
+}
+
+// Deps bundles the output ports. Settings, Links, Icons, Metadata and
+// Checker are optional: without them the outbound features stay off.
 type Deps struct {
-	Repo  Repository
-	Clock kernel.Clock
-	IDs   kernel.IDGenerator
+	Repo     Repository
+	Clock    kernel.Clock
+	IDs      kernel.IDGenerator
+	Settings SettingsRepository
+	Links    LinkStatusRepository
+	Icons    IconStore
+	Metadata MetadataFetcher
+	Checker  LinkChecker
 }

@@ -10,6 +10,8 @@ const tab = (id: string, position: number, widgets: Tab['widgets'] = []): Tab =>
   background: '',
   rules: [],
   widgets,
+  mobile: [],
+  mobileCustom: false,
 });
 
 function setup() {
@@ -25,6 +27,8 @@ function setup() {
     deleteWidget: vi.fn(),
     setBackground: vi.fn(),
     setRules: vi.fn().mockResolvedValue(tab('a', 0)),
+    saveMobileLayout: vi.fn().mockResolvedValue(tab('a', 0)),
+    resetMobileLayout: vi.fn().mockResolvedValue(tab('a', 0)),
     listTemplates: vi.fn(),
     saveTemplate: vi.fn(),
     deleteTemplate: vi.fn(),

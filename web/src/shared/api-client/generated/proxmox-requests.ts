@@ -13,3 +13,17 @@ export interface SettingsInputDTO {
   secret: string;
   fingerprint: string;
 }
+
+//////////
+// source: handlers.go
+/*
+Package controller contains the Proxmox HTTP handlers.
+
+Ring: Interface Adapters.
+*/
+
+/**
+ * Handlers serves the Proxmox endpoints.
+ */
+export interface Handlers {
+}

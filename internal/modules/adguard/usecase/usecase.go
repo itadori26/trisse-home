@@ -13,6 +13,7 @@ import (
 
 // SettingsView never contains the password, only whether one is stored.
 type SettingsView struct {
+	Provider    string
 	Configured  bool
 	URL         string
 	Username    string
@@ -22,7 +23,7 @@ type SettingsView struct {
 // SettingsInput is the input of SaveSettings. An empty password keeps the
 // stored one, so the UI never needs to know it.
 type SettingsInput struct {
-	URL, Username, Password string
+	Provider, URL, Username, Password string
 }
 
 // BlockedDomainView is a domain with its query count.
@@ -31,143 +32,174 @@ type BlockedDomainView struct {
 	Count  int
 }
 
-// StatsView are the cached statistics.
+// StatsView are the cached statistics of one provider.
 type StatsView struct {
-	Queries           int
-	Blocked           int
-	BlockedPercent    float64
-	AvgProcessingMs   float64
+	Queries         int
+	Blocked         int
+	BlockedPercent  float64
+	AvgProcessingMs float64
+	// HasAvgProcessing is false for providers that do not report it.
+	HasAvgProcessing  bool
 	ProtectionEnabled bool
 	TopBlocked        []BlockedDomainView
 	UpdatedAt         time.Time
 	Error             string
 }
 
-// AdGuard is the input port of the module.
-type AdGuard interface {
-	Settings(ctx context.Context) (SettingsView, error)
+// DNSFilter is the input port of the module; provider is "adguard",
+// "pihole" or empty (AdGuard Home).
+type DNSFilter interface {
+	Settings(ctx context.Context, provider string) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
-	Stats(ctx context.Context) (StatsView, error)
+	Stats(ctx context.Context, provider string) (StatsView, error)
+	// Refresh updates every configured provider; it is run by the job.
 	Refresh(ctx context.Context) error
 }
 
-// SettingsRepository persists the settings (output port). Load returns
-// domain.ErrNotConfigured when nothing is stored.
+// SettingsRepository persists the settings per provider (output port).
+// Load returns domain.ErrNotConfigured when nothing is stored.
 type SettingsRepository interface {
-	Load(ctx context.Context) (domain.Settings, error)
+	Load(ctx context.Context, p domain.Provider) (domain.Settings, error)
 	Save(ctx context.Context, s domain.Settings) error
 }
 
-// StatsSource queries AdGuard Home (output port).
-type StatsSource interface {
+// DNSFilterProvider queries one DNS filter (output port); AdGuard Home and
+// Pi-hole are adapters implementing it.
+type DNSFilterProvider interface {
 	Stats(ctx context.Context, s domain.Settings) (domain.Stats, error)
 }
 
-type adguard struct {
-	repo   SettingsRepository
-	source StatsSource
-	clock  kernel.Clock
-	mu     sync.RWMutex
-	cached *StatsView
+type dnsFilter struct {
+	repo      SettingsRepository
+	providers map[domain.Provider]DNSFilterProvider
+	clock     kernel.Clock
+	mu        sync.RWMutex
+	cached    map[domain.Provider]StatsView
 }
 
-// NewAdGuard returns the AdGuard use cases.
-func NewAdGuard(repo SettingsRepository, source StatsSource, clock kernel.Clock) AdGuard {
-	return &adguard{repo: repo, source: source, clock: clock}
+// NewDNSFilter returns the use cases; providers maps each supported
+// provider to its adapter.
+func NewDNSFilter(repo SettingsRepository, providers map[domain.Provider]DNSFilterProvider, clock kernel.Clock) DNSFilter {
+	return &dnsFilter{repo: repo, providers: providers, clock: clock, cached: map[domain.Provider]StatsView{}}
 }
 
-// Settings implements AdGuard.
-func (uc *adguard) Settings(ctx context.Context) (SettingsView, error) {
-	s, err := uc.repo.Load(ctx)
+// Settings implements DNSFilter.
+func (uc *dnsFilter) Settings(ctx context.Context, provider string) (SettingsView, error) {
+	p, err := domain.ParseProvider(provider)
+	if err != nil {
+		return SettingsView{}, err
+	}
+	s, err := uc.repo.Load(ctx, p)
 	if errors.Is(err, domain.ErrNotConfigured) {
-		return SettingsView{}, nil
+		return SettingsView{Provider: string(p)}, nil
 	}
 	if err != nil {
 		return SettingsView{}, fmt.Errorf("load settings: %w", err)
 	}
-	return SettingsView{Configured: true, URL: s.URL, Username: s.Username, HasPassword: s.Password != ""}, nil
+	return settingsView(s), nil
 }
 
-// SaveSettings implements AdGuard. The connection is tested before saving so
-// typos are reported immediately.
-func (uc *adguard) SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error) {
-	password := in.Password
-	if password == "" {
-		if old, err := uc.repo.Load(ctx); err == nil {
-			password = old.Password
-		}
-	}
-	s, err := domain.NewSettings(in.URL, in.Username, password)
+// SaveSettings implements DNSFilter. The connection is tested before saving
+// so typos are reported immediately.
+func (uc *dnsFilter) SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error) {
+	p, err := domain.ParseProvider(in.Provider)
 	if err != nil {
 		return SettingsView{}, err
 	}
-	stats, err := uc.source.Stats(ctx, s)
+	password := in.Password
+	if password == "" {
+		if old, err := uc.repo.Load(ctx, p); err == nil {
+			password = old.Password
+		}
+	}
+	s, err := domain.NewSettings(p, in.URL, in.Username, password)
 	if err != nil {
-		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not connect to AdGuard Home: {detail}", "detail", err.Error())
+		return SettingsView{}, err
+	}
+	stats, err := uc.providers[p].Stats(ctx, s)
+	if err != nil {
+		return SettingsView{}, kernel.NewPublicErrorf(kernel.ErrInvalid, "Could not connect to the DNS filter: {detail}", "detail", err.Error())
 	}
 	if err := uc.repo.Save(ctx, s); err != nil {
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
 	}
-	uc.store(toView(stats, uc.clock.Now()))
-	return SettingsView{Configured: true, URL: s.URL, Username: s.Username, HasPassword: true}, nil
+	uc.store(p, toView(stats, uc.clock.Now()))
+	return settingsView(s), nil
 }
 
-// Stats implements AdGuard (cache-aside).
-func (uc *adguard) Stats(ctx context.Context) (StatsView, error) {
-	uc.mu.RLock()
-	cached := uc.cached
-	uc.mu.RUnlock()
-	if cached != nil {
-		return *cached, nil
-	}
-	if _, err := uc.repo.Load(ctx); err != nil {
+// Stats implements DNSFilter (cache-aside).
+func (uc *dnsFilter) Stats(ctx context.Context, provider string) (StatsView, error) {
+	p, err := domain.ParseProvider(provider)
+	if err != nil {
 		return StatsView{}, err
 	}
-	_ = uc.Refresh(ctx) // a failed refresh is reported through StatsView.Error
-	uc.mu.RLock()
-	defer uc.mu.RUnlock()
-	if uc.cached == nil {
-		return StatsView{}, kernel.NewPublicError(kernel.ErrUnavailable, "AdGuard Home is not reachable.")
+	if v, ok := uc.cachedView(p); ok {
+		return v, nil
 	}
-	return *uc.cached, nil
+	s, err := uc.repo.Load(ctx, p)
+	if err != nil {
+		return StatsView{}, err
+	}
+	_ = uc.refresh(ctx, s) // a failed refresh is reported through StatsView.Error
+	if v, ok := uc.cachedView(p); ok {
+		return v, nil
+	}
+	return StatsView{}, kernel.NewPublicError(kernel.ErrUnavailable, "The DNS filter is not reachable.")
 }
 
-// Refresh implements AdGuard; it is run by the background job.
-func (uc *adguard) Refresh(ctx context.Context) error {
-	s, err := uc.repo.Load(ctx)
-	if errors.Is(err, domain.ErrNotConfigured) {
-		return nil
+// Refresh implements DNSFilter.
+func (uc *dnsFilter) Refresh(ctx context.Context) error {
+	var errs []error
+	for _, p := range domain.Providers {
+		s, err := uc.repo.Load(ctx, p)
+		if errors.Is(err, domain.ErrNotConfigured) {
+			continue
+		}
+		if err != nil {
+			errs = append(errs, fmt.Errorf("load %s settings: %w", p, err))
+			continue
+		}
+		errs = append(errs, uc.refresh(ctx, s))
 	}
-	if err != nil {
-		return fmt.Errorf("load settings: %w", err)
-	}
-	stats, err := uc.source.Stats(ctx, s)
+	return errors.Join(errs...)
+}
+
+func (uc *dnsFilter) refresh(ctx context.Context, s domain.Settings) error {
+	stats, err := uc.providers[s.Provider].Stats(ctx, s)
 	if err != nil {
 		uc.mu.Lock()
-		view := StatsView{}
-		if uc.cached != nil {
-			view = *uc.cached
-		}
-		view.Error = "AdGuard Home is not reachable."
-		uc.cached = &view
+		view := uc.cached[s.Provider]
+		view.Error = "The DNS filter is not reachable."
+		uc.cached[s.Provider] = view
 		uc.mu.Unlock()
-		return fmt.Errorf("query adguard: %w", err)
+		return fmt.Errorf("query %s: %w", s.Provider, err)
 	}
-	uc.store(toView(stats, uc.clock.Now()))
+	uc.store(s.Provider, toView(stats, uc.clock.Now()))
 	return nil
 }
 
-func (uc *adguard) store(v StatsView) {
+func (uc *dnsFilter) cachedView(p domain.Provider) (StatsView, bool) {
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
+	v, ok := uc.cached[p]
+	return v, ok
+}
+
+func (uc *dnsFilter) store(p domain.Provider, v StatsView) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
-	uc.cached = &v
+	uc.cached[p] = v
+}
+
+func settingsView(s domain.Settings) SettingsView {
+	return SettingsView{Provider: string(s.Provider), Configured: true, URL: s.URL, Username: s.Username, HasPassword: s.Password != ""}
 }
 
 func toView(s domain.Stats, at time.Time) StatsView {
 	v := StatsView{
 		Queries: s.Queries, Blocked: s.Blocked, BlockedPercent: s.BlockedPercent(),
-		AvgProcessingMs: float64(s.AvgProcessingTime.Microseconds()) / 1000, ProtectionEnabled: s.ProtectionEnabled,
-		UpdatedAt: at, TopBlocked: make([]BlockedDomainView, 0, len(s.TopBlocked)),
+		AvgProcessingMs: float64(s.AvgProcessingTime.Microseconds()) / 1000, HasAvgProcessing: s.HasAvgProcessingTime,
+		ProtectionEnabled: s.ProtectionEnabled, UpdatedAt: at, TopBlocked: make([]BlockedDomainView, 0, len(s.TopBlocked)),
 	}
 	for _, d := range s.TopBlocked {
 		v.TopBlocked = append(v.TopBlocked, BlockedDomainView(d))

@@ -355,7 +355,7 @@ export const widgetDefinitions: WidgetDefinition[] = [
     type: {
       kind: 'adguard',
       category: 'network',
-      keywords: ['dns', 'ads', 'blocking', 'werbung'],
+      keywords: ['dns', 'ads', 'blocking', 'werbung', 'pihole', 'pi-hole'],
       get title() {
         return t('widget.adguard.title');
       },
@@ -367,7 +367,11 @@ export const widgetDefinitions: WidgetDefinition[] = [
     icon: 'shield',
     view: lazy(
       () => import('../features/adguard/ui/AdGuardWidget.svelte'),
-      (_config, c) => ({ adguard: c.adguard }),
+      (config, c) => ({ config, adguard: c.adguard }),
+    ),
+    settings: lazy(
+      () => import('../features/adguard/ui/AdGuardWidgetSettings.svelte'),
+      (config) => ({ config }),
     ),
   },
   {
@@ -604,6 +608,71 @@ export const widgetDefinitions: WidgetDefinition[] = [
     settings: lazy(
       () => import('../features/proxmox/ui/ProxmoxWidgetSettings.svelte'),
       (config) => ({ config }),
+    ),
+  },
+  {
+    type: {
+      kind: 'briefing',
+      category: 'information',
+      keywords: ['today', 'summary', 'morning', 'heute', 'tagesüberblick', 'zusammenfassung'],
+      get title() {
+        return t('widget.briefing.title');
+      },
+      get description() {
+        return t('widget.briefing.description');
+      },
+      defaultSize: { w: 4, h: 4 },
+    },
+    icon: 'sun',
+    view: lazy(
+      () => import('../features/briefing/ui/BriefingWidget.svelte'),
+      (_config, c) => ({ briefing: c.briefing }),
+    ),
+  },
+  {
+    type: {
+      kind: 'countdown',
+      category: 'everyday',
+      keywords: ['days', 'deadline', 'exam', 'holiday', 'countdown', 'tage', 'frist', 'prüfung', 'urlaub'],
+      get title() {
+        return t('widget.countdown.title');
+      },
+      get description() {
+        return t('widget.countdown.description');
+      },
+      defaultSize: { w: 4, h: 4 },
+    },
+    icon: 'hourglass',
+    view: lazy(
+      () => import('../features/countdown/ui/CountdownWidget.svelte'),
+      (config, c) => ({ config, countdown: c.countdown }),
+    ),
+    settings: lazy(
+      () => import('../features/countdown/ui/CountdownSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
+  {
+    type: {
+      kind: 'focus',
+      category: 'everyday',
+      keywords: ['pomodoro', 'timer', 'study', 'concentration', 'lernen', 'konzentration', 'pause'],
+      get title() {
+        return t('widget.focus.title');
+      },
+      get description() {
+        return t('widget.focus.description');
+      },
+      defaultSize: { w: 3, h: 4 },
+    },
+    icon: 'timer',
+    view: lazy(
+      () => import('../features/focus/ui/FocusWidget.svelte'),
+      (config, c) => ({ config, focus: c.focus }),
+    ),
+    settings: lazy(
+      () => import('../features/focus/ui/FocusSettings.svelte'),
+      (config, c) => ({ config, focus: c.focus }),
     ),
   },
   // scaffold:widgets - make new-module inserts new widgets above this line.

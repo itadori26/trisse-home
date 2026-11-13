@@ -14,6 +14,31 @@ export interface BookmarkDTO {
   description: string;
   tags: string[];
   createdAt: string /* RFC 3339 */;
+  /**
+   * Link is the result of the last link check (#72).
+   */
+  link: LinkDTO;
+  /**
+   * HasIcon reports whether a favicon is stored (GET /api/bookmarks/{id}/icon).
+   */
+  hasIcon: boolean;
+}
+/**
+ * LinkDTO is a link check result: state "" (not checked), "ok",
+ * "redirect" or "broken"; checkedAt is empty when never checked.
+ */
+export interface LinkDTO {
+  state: string;
+  code: number /* int */;
+  target: string;
+  checkedAt: string;
+}
+/**
+ * SettingsDTO switches the outbound features of the bookmarks module.
+ */
+export interface SettingsDTO {
+  enrich: boolean;
+  checkLinks: boolean;
 }
 /**
  * FolderDTO is a folder with its bookmark count.
