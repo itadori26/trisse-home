@@ -589,6 +589,29 @@ export const widgetDefinitions: WidgetDefinition[] = [
   },
   {
     type: {
+      kind: 'media',
+      category: 'network',
+      keywords: ['jellyfin', 'plex', 'movies', 'series', 'filme', 'serien'],
+      get title() {
+        return t('widget.media.title');
+      },
+      get description() {
+        return t('widget.media.description');
+      },
+      defaultSize: { w: 4, h: 5 },
+    },
+    icon: 'activity',
+    view: lazy(
+      () => import('../features/media/ui/MediaWidget.svelte'),
+      (config, c) => ({ config, media: c.media }),
+    ),
+    settings: lazy(
+      () => import('../features/media/ui/MediaWidgetSettings.svelte'),
+      (config) => ({ config }),
+    ),
+  },
+  {
+    type: {
       kind: 'smarthome',
       category: 'network',
       keywords: ['home assistant', 'switch', 'sensor', 'iot', 'smart home', 'hausautomation'],

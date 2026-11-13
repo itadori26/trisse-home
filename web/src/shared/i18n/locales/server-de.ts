@@ -552,6 +552,20 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_668a30f80af88b85: 'das ist kein gültiger RSS-, Atom- oder JSON-Feed',
   // token, public id and csrf token are required
   srv_1b3daa6bc9a9f8db: 'Token, öffentliche ID und CSRF-Token sind erforderlich',
+  // Choose Jellyfin or Plex.
+  srv_52395ea57eb8771f: 'Wähle Jellyfin oder Plex.',
+  // Could not connect to the media server: {detail}
+  srv_65d6b40b9e5a9159: 'Verbindung zum Medienserver fehlgeschlagen: {detail}',
+  // The API key or token is required.
+  srv_2aa10686fa162dde: 'Der API-Schlüssel oder das Token ist erforderlich.',
+  // The URL must look like http://192.168.1.2:8096.
+  srv_ec3846ce5d9b8caf: 'Die URL muss wie http://192.168.1.2:8096 aussehen.',
+  // The media server is not configured yet.
+  srv_7b276d2193d07bc8: 'Der Medienserver ist noch nicht eingerichtet.',
+  // The media server is not reachable.
+  srv_4c92147e0244306f: 'Der Medienserver ist nicht erreichbar.',
+  // The poster does not exist.
+  srv_2b05bbdb56e575c6: 'Das Cover existiert nicht.',
   // At most {max} calendar subscriptions are supported.
   srv_f74740ac20c25101: 'Höchstens {max} Kalender-Abos werden unterstützt.',
   // Could not load the ICS calendar: {detail}

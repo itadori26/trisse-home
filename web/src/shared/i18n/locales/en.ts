@@ -1166,6 +1166,21 @@ export const en = {
   'quick.prefix_todo': 'Prefix for to-dos',
   'quick.prefix_note': 'Prefix for notes',
   'quick.prefix_bookmark': 'Prefix for bookmarks',
+  'widget.media.title': 'Media server',
+  'widget.media.description': 'Now playing and recently added on Jellyfin or Plex.',
+  'settings.section.media': 'Media server',
+  'media.connect_under_settings': 'Connect Jellyfin or Plex under Settings → Media server.',
+  'media.now_playing': 'Now playing',
+  'media.nothing_playing': 'Nothing is playing.',
+  'media.recently_added': 'Recently added',
+  'media.server': 'Media server',
+  'media.url': '{name} URL',
+  'media.jellyfin_key': 'API key {value}',
+  'media.plex_token': 'Plex token {value}',
+  'media.jellyfin_hint':
+    'Create an API key in Jellyfin under Dashboard → API keys. It is stored encrypted; posters are loaded through trisse-home.',
+  'media.plex_hint':
+    'Use the X-Plex-Token of your account (Plex support article "Finding an authentication token"). It is stored encrypted; posters are loaded through trisse-home.',
   'calendar.subscriptions': 'ICS subscriptions',
   'calendar.subscriptions_hint':
     'Read-only calendars from an .ics or webcal:// link, e.g. a university timetable, sports fixtures or public holidays. The link is stored encrypted because it often contains a private token.',
