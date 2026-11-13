@@ -227,6 +227,14 @@ so the widget only appears in the picker when the module is enabled
 (`MODULES_DISABLED=quotes` hides it). Once the grouped picker (#104) is in
 place, also give the definition a category and an icon.
 
+**Optional: answer in the smart search (#161).** If the module has something worth
+asking for ("next waste collection", "speed test"), add
+`web/src/app/search/quotes.ts`: `defineSearch({ module: 'quotes', intents, source })`.
+Intents are data (weighted terms, optional prefixes and slots), the source wraps
+your use cases and returns a text, metric, list, status or action answer. It is
+collected by convention, the engine stays untouched. Copy `search/speedtest.ts`
+and add a few queries to the table in `search/search.test.ts`.
+
 ## 9. Pull request
 
 ```sh

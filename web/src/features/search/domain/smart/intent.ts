@@ -17,6 +17,12 @@ export interface SlotSpec {
   required?: boolean;
   /** Entity kind for entity slots, e.g. "container" or "service". */
   entityKind?: string;
+  /**
+   * Points when the filled slot (with the intent's terms) makes up the
+   * whole query, e.g. "morgen" alone asks for tomorrow's agenda while
+   * "wetter morgen" does not (#161).
+   */
+  alone?: number;
 }
 
 export interface IntentSpec {
@@ -227,6 +233,14 @@ function interpretIntent(
     }
     if (value) slots[slot.name] = value;
     else if (slot.required) missing.push(slot.name);
+  }
+  const alone = (intent.slots ?? []).reduce(
+    (sum, sl) => sum + (slots[sl.name] && sl.alone ? sl.alone : 0),
+    0,
+  );
+  if (alone > 0 && tokens.every((_, i) => used.has(i))) {
+    score += alone;
+    trigger += alone;
   }
   if (score <= 0 || (missing.length > 0 && trigger === 0)) return null;
   return { intent, score, slots, missing, suggestions: missing.length ? suggestions : [] };

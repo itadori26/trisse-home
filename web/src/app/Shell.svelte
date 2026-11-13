@@ -303,6 +303,7 @@
       {modules}
       initialQuery={searchStart}
       {weatherLocation}
+      widgetConfig={(kind) => firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, kind)}
       onclose={() => ((quickSearch = false), (searchStart = ''))}
     />
   {/await}
