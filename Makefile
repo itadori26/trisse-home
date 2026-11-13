@@ -85,7 +85,8 @@ smoke: build ## Run the Playwright smoke test against a fresh instance
 
 .PHONY: check-generated
 check-generated: generate ## Fail if generated files are out of date
-	git diff --exit-code -- $(WEB)/src/shared/api-client/generated
+	@test -z "$$(git status --porcelain -- $(WEB)/src/shared/api-client/generated)" || \
+		{ git status --short -- $(WEB)/src/shared/api-client/generated; echo "generated files are out of date: run make generate"; exit 1; }
 
 .PHONY: ci
 ci: lint test check-generated build ## Everything CI runs
