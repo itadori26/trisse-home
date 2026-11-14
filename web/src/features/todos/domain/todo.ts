@@ -10,6 +10,8 @@ export interface Todo {
   repeat: Repeat;
   /** Reminder (#68); at '' = none. */
   reminder: Reminder;
+  /** Stored version (#80); 0 = only on this device so far (offline). */
+  version: number;
 }
 
 /** How a to-do recurs: fixed schedule or N days after completion. */

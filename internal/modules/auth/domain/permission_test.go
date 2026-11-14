@@ -3,7 +3,8 @@ package domain
 import "testing"
 
 func TestGuestMayAccess(t *testing.T) {
-	modules := map[string]bool{"notes": true, "weather": true}
+	reach := GuestReach{Modules: map[string]bool{"notes": true, "weather": true, "fritzbox": true},
+		Closed: []string{"/api/fritzbox/calls"}}
 	cases := []struct {
 		method, path string
 		want         bool
@@ -28,6 +29,11 @@ func TestGuestMayAccess(t *testing.T) {
 		{"GET", "/api/backups", false},
 		{"GET", "/api/", false},
 		{"GET", "/healthz", false},
+		// A module's personal route stays closed without its widget (#168).
+		{"GET", "/api/fritzbox/status", true},
+		{"GET", "/api/fritzbox/calls", false},
+		{"GET", "/api/fritzbox/calls/x", false},
+		{"GET", "/api/fritzbox/callsign", true},
 		// The web search of the search field is part of every page (#221).
 		{"GET", "/api/search", true},
 		{"GET", "/api/search/settings", false},
@@ -35,7 +41,7 @@ func TestGuestMayAccess(t *testing.T) {
 		{"POST", "/api/search/shortcuts", false},
 	}
 	for _, c := range cases {
-		if got := GuestMayAccess(c.method, c.path, modules); got != c.want {
+		if got := GuestMayAccess(c.method, c.path, reach); got != c.want {
 			t.Errorf("%s %s: %v, want %v", c.method, c.path, got, c.want)
 		}
 	}
