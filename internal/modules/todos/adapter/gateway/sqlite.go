@@ -31,14 +31,14 @@ type Repository struct{ db *sql.DB }
 func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
 const columns = `id, title, due, position, created_at, completed_at,
-	repeat_kind, repeat_every, repeat_days, remind_at, remind_days_before, reminded_for`
+	repeat_kind, repeat_every, repeat_days, remind_at, remind_days_before, reminded_for, version`
 
 func scan(s interface{ Scan(...any) error }) (domain.Todo, error) {
 	var id, title, created string
 	var due, completed, reminded *string
-	var pos, every, daysBefore int
+	var pos, every, daysBefore, version int
 	var kind, days, remindAt string
-	if err := s.Scan(&id, &title, &due, &pos, &created, &completed, &kind, &every, &days, &remindAt, &daysBefore, &reminded); err != nil {
+	if err := s.Scan(&id, &title, &due, &pos, &created, &completed, &kind, &every, &days, &remindAt, &daysBefore, &reminded, &version); err != nil {
 		return domain.Todo{}, err
 	}
 	var times [3]time.Time
@@ -60,7 +60,7 @@ func scan(s interface{ Scan(...any) error }) (domain.Todo, error) {
 	// instead of hiding the to-do.
 	repeat, _ := domain.NewRecurrence(domain.RepeatKind(kind), every, parseDays(days))
 	reminder, _ := domain.NewReminder(remindAt, daysBefore)
-	return domain.RestoreTodo(id, title, times[0], pos, times[1], times[2]).WithState(repeat, reminder, remindedFor), nil
+	return domain.RestoreTodo(id, title, times[0], pos, times[1], times[2]).WithState(repeat, reminder, remindedFor).WithVersion(version), nil
 }
 
 func parseDays(s string) []int {
@@ -111,19 +111,27 @@ func (r *Repository) Get(ctx context.Context, id string) (domain.Todo, error) {
 	return t, nil
 }
 
-// Save inserts or updates a to-do.
+// Save inserts a new to-do or stores a changed one. A change is only
+// stored if the stored version is the one before t's (optimistic
+// concurrency, #80); otherwise ErrVersionConflict.
 func (r *Repository) Save(ctx context.Context, t domain.Todo) error {
 	rep, rem := t.Repeat(), t.Reminder()
-	_, err := r.db.ExecContext(ctx, `INSERT INTO todos (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	res, err := r.db.ExecContext(ctx, `INSERT INTO todos (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET title = excluded.title, due = excluded.due,
 			position = excluded.position, completed_at = excluded.completed_at,
 			repeat_kind = excluded.repeat_kind, repeat_every = excluded.repeat_every, repeat_days = excluded.repeat_days,
-			remind_at = excluded.remind_at, remind_days_before = excluded.remind_days_before, reminded_for = excluded.reminded_for`,
+			remind_at = excluded.remind_at, remind_days_before = excluded.remind_days_before, reminded_for = excluded.reminded_for,
+			version = excluded.version
+		WHERE todos.version = excluded.version - 1`,
 		t.ID(), t.Title(), sqlutil.FormatNullableTime(t.Due()), t.Position(),
 		sqlutil.FormatTime(t.CreatedAt()), sqlutil.FormatNullableTime(t.CompletedAt()),
-		string(rep.Kind()), rep.Every(), formatDays(rep.Days()), rem.At(), rem.DaysBefore(), sqlutil.FormatNullableTime(t.RemindedFor()))
+		string(rep.Kind()), rep.Every(), formatDays(rep.Days()), rem.At(), rem.DaysBefore(), sqlutil.FormatNullableTime(t.RemindedFor()),
+		t.Version())
 	if err != nil {
 		return fmt.Errorf("upsert todo: %w", err)
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return domain.ErrVersionConflict
 	}
 	return nil
 }

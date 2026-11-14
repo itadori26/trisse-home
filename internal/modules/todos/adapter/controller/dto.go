@@ -10,6 +10,12 @@ type TodoInputDTO struct {
 	// kept (#68).
 	Repeat   *RepeatDTO   `json:"repeat,omitempty"`
 	Reminder *ReminderDTO `json:"reminder,omitempty"`
+	// ID (create) is a client-generated ID; replaying the create returns the
+	// existing to-do (#80).
+	ID string `json:"id,omitempty"`
+	// Version (update) is the version the client edited; a different stored
+	// version answers 409 Conflict. 0/omitted = no check.
+	Version int `json:"version,omitempty"`
 }
 
 // RepeatDTO is a recurrence: kind "" (none), "daily", "weekly", "monthly"

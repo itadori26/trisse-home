@@ -139,3 +139,40 @@ func TestRecurringTodosAndReminders(t *testing.T) {
 		t.Fatal("no sink must send nothing")
 	}
 }
+
+// TestOfflineReplay: creates with a client ID are idempotent and updates
+// carry the version they were made from (#80).
+func TestOfflineReplay(t *testing.T) {
+	ctx := context.Background()
+	c := &clk{t: time.Date(2026, 11, 13, 9, 0, 0, 0, time.UTC)}
+	d := Deps{Repo: &memRepo{m: map[string]domain.Todo{}}, Clock: c, IDs: &ids{}}
+	create, update := NewCreateTodo(d), NewUpdateTodo(d)
+
+	first, err := create.Execute(ctx, TodoInput{Title: "Brot", ID: "client-0001"})
+	if err != nil || first.ID != "client-0001" || first.Version != 1 {
+		t.Fatalf("%+v %v", first, err)
+	}
+	again, err := create.Execute(ctx, TodoInput{Title: "Brot", ID: "client-0001"})
+	if err != nil || again.ID != first.ID {
+		t.Fatalf("replay: %+v %v", again, err)
+	}
+	if list, _ := NewListTodos(d).Execute(ctx, true); len(list) != 1 {
+		t.Fatalf("duplicate: %d", len(list))
+	}
+	if _, err := create.Execute(ctx, TodoInput{Title: "x", ID: "../x"}); !errors.Is(err, kernel.ErrInvalid) {
+		t.Fatalf("bad id: %v", err)
+	}
+
+	v2, err := update.Execute(ctx, first.ID, TodoInput{Title: "Brot kaufen", Version: 1}, false)
+	if err != nil || v2.Version != 2 {
+		t.Fatalf("%+v %v", v2, err)
+	}
+	// An offline change made on version 1 now conflicts.
+	if _, err := update.Execute(ctx, first.ID, TodoInput{Title: "Brötchen", Version: 1}, true); !errors.Is(err, kernel.ErrConflict) {
+		t.Fatalf("conflict: %v", err)
+	}
+	// Without a version (older clients) the change is applied.
+	if v3, err := update.Execute(ctx, first.ID, TodoInput{Title: "Brötchen"}, true); err != nil || !v3.Done || v3.Version != 3 {
+		t.Fatalf("%+v %v", v3, err)
+	}
+}

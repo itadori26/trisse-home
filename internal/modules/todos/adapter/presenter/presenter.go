@@ -15,6 +15,9 @@ type TodoDTO struct {
 	Repeat RepeatDTO `json:"repeat"`
 	// Reminder fires at "HH:MM" on the due date or days before ("" = none).
 	Reminder ReminderDTO `json:"reminder"`
+	// Version counts the stored changes; send it back with an update to
+	// detect concurrent changes (#80).
+	Version int `json:"version"`
 }
 
 // RepeatDTO describes a recurrence.
@@ -36,7 +39,7 @@ const dateLayout = "2006-01-02"
 func Todo(v usecase.TodoView) TodoDTO {
 	dto := TodoDTO{ID: v.ID, Title: v.Title, Done: v.Done, Overdue: v.Overdue, Position: v.Position,
 		Repeat:   RepeatDTO{Kind: v.Repeat.Kind, Every: v.Repeat.Every, Days: append([]int{}, v.Repeat.Days...)},
-		Reminder: ReminderDTO{At: v.Reminder.At, DaysBefore: v.Reminder.DaysBefore}}
+		Reminder: ReminderDTO{At: v.Reminder.At, DaysBefore: v.Reminder.DaysBefore}, Version: v.Version}
 	if !v.Due.IsZero() {
 		dto.Due = v.Due.Format(dateLayout)
 	}

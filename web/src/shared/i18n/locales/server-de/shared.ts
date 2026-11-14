@@ -63,4 +63,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_40623194d868a5f0: 'Wochentage sind 0 (Sonntag) bis 6.',
   // Use a single emoji.
   srv_61031ab185b65e33: 'Bitte nur ein einzelnes Emoji verwenden.',
+  // The ID must have 8 to 64 letters, digits, '-' or '_'.
+  srv_9cdf89c6055b9583: "Die ID muss aus 8 bis 64 Buchstaben, Ziffern, '-' oder '_' bestehen.",
 };

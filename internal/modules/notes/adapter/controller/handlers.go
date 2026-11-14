@@ -64,7 +64,7 @@ func (h *Handlers) save(w http.ResponseWriter, r *http.Request, id string, statu
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	res, err := h.uc.Save.Execute(r.Context(), id, usecase.NoteInput{Title: dto.Title, Body: dto.Body, Pinned: dto.Pinned})
+	res, err := h.uc.Save.Execute(r.Context(), id, usecase.NoteInput{Title: dto.Title, Body: dto.Body, Pinned: dto.Pinned, ID: dto.ID, Version: dto.Version})
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
