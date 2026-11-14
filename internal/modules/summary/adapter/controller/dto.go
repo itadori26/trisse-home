@@ -19,3 +19,11 @@ type SummarizeDTO struct {
 	URL      string `json:"url,omitempty"`
 	Language string `json:"language"`
 }
+
+// AskDTO is the body of POST /api/summary/ask (#162).
+type AskDTO struct {
+	Question string `json:"question"`
+	// Context is the compact status text the frontend built.
+	Context  string `json:"context"`
+	Language string `json:"language"`
+}

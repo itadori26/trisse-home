@@ -15,4 +15,9 @@ export interface Summarizer {
   available(): Promise<boolean>;
   text(text: string): Promise<SummaryOutput>;
   link(url: string): Promise<SummaryOutput>;
+  /**
+   * Answers a free question of the search (#162) from a compact status
+   * context; the answer arrives in chunks, aborting stops it.
+   */
+  ask(question: string, context: string, onChunk: (text: string) => void, signal: AbortSignal): Promise<void>;
 }

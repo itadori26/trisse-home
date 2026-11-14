@@ -146,3 +146,47 @@ func CleanSummary(s string) string {
 	}
 	return s
 }
+
+// Asking the model from the smart search (#162): only the question and a
+// compact status context that the frontend builds from what the user can
+// see anyway.
+
+// Limits of a question.
+const (
+	MaxQuestionChars = 300
+	MaxContextChars  = 6000
+)
+
+// Question is a free question with its context.
+type Question struct {
+	Text    string
+	Context string
+}
+
+// NewQuestion validates a question; the context is cut to its limit.
+func NewQuestion(text, context string) (Question, error) {
+	text = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(text), "?"))
+	if utf8.RuneCountInString(text) < 3 {
+		return Question{}, kernel.NewValidationError("question", "Ask a question after the question mark.")
+	}
+	if utf8.RuneCountInString(text) > MaxQuestionChars {
+		return Question{}, kernel.NewValidationError("question", "The question must be at most 300 characters long.")
+	}
+	context = strings.TrimSpace(context)
+	if utf8.RuneCountInString(context) > MaxContextChars {
+		context = string([]rune(context)[:MaxContextChars])
+	}
+	return Question{Text: text, Context: context}, nil
+}
+
+// AskPrompt asks for a short answer grounded in the context.
+func AskPrompt(lang Language, q Question) string {
+	if lang == LanguageDE {
+		return "Du bist der Assistent eines Heimserver-Dashboards. Beantworte die Frage kurz (höchstens 5 Sätze) auf Deutsch " +
+			"und nur anhand des Kontexts. Wenn der Kontext die Antwort nicht enthält, sag das ehrlich.\n\nKontext:\n" +
+			q.Context + "\n\nFrage: " + q.Text
+	}
+	return "You are the assistant of a home server dashboard. Answer the question briefly (at most 5 sentences) in English, " +
+		"using only the context. If the context does not contain the answer, say so honestly.\n\nContext:\n" +
+		q.Context + "\n\nQuestion: " + q.Text
+}

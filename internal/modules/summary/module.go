@@ -51,4 +51,5 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("DELETE /api/summary/settings", m.handlers.Disable)
 	r.Protected("POST /api/summary/models", m.handlers.Models)
 	r.Protected("POST /api/summary", m.handlers.Summarize)
+	r.Protected("POST /api/summary/ask", m.handlers.Ask)
 }

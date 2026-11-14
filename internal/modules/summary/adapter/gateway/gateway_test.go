@@ -103,3 +103,32 @@ func TestArticle(t *testing.T) {
 		t.Fatalf("%q", got)
 	}
 }
+
+func TestOllamaStream(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Stream bool `json:"stream"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if !body.Stream {
+			t.Error("stream must be requested")
+		}
+		for _, p := range []string{`{"response":"Jelly","done":false}`, `{"response":"fin","done":false}`, `{"response":"","done":true}`, `{"response":"ignored"}`} {
+			_, _ = w.Write([]byte(p + "\n"))
+			w.(http.Flusher).Flush()
+		}
+	}))
+	defer srv.Close()
+	var got strings.Builder
+	err := NewOllama(srv.Client()).Stream(context.Background(), domain.Settings{URL: srv.URL, Model: "m"}, "p", func(c string) error {
+		got.WriteString(c)
+		return nil
+	})
+	if err != nil || got.String() != "Jellyfin" {
+		t.Fatal(got.String(), err)
+	}
+	stop := errors.New("stop")
+	if err := NewOllama(srv.Client()).Stream(context.Background(), domain.Settings{URL: srv.URL, Model: "m"}, "p", func(string) error { return stop }); !errors.Is(err, stop) {
+		t.Fatal(err)
+	}
+}

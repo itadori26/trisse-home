@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,6 +42,56 @@ func (o *Ollama) Summarize(ctx context.Context, s domain.Settings, prompt string
 		return "", fmt.Errorf("%s", out.Error)
 	}
 	return out.Response, nil
+}
+
+// Stream implements usecase.Summarizer (POST /api/generate with streaming):
+// Ollama sends one JSON object per line.
+func (o *Ollama) Stream(ctx context.Context, s domain.Settings, prompt string, onChunk func(string) error) error {
+	body, err := json.Marshal(map[string]any{
+		"model": s.Model, "prompt": prompt, "stream": true,
+		"options": map[string]any{"temperature": 0.2, "num_predict": 300},
+	})
+	if err != nil {
+		return fmt.Errorf("encode request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.URL+"/api/generate", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	res, err := o.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("ollama answered %s", res.Status)
+	}
+	dec := json.NewDecoder(io.LimitReader(res.Body, maxOllamaResponse))
+	for {
+		var part struct {
+			Response string `json:"response"`
+			Done     bool   `json:"done"`
+			Error    string `json:"error"`
+		}
+		if err := dec.Decode(&part); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return fmt.Errorf("read answer: %w", err)
+		}
+		if part.Error != "" {
+			return fmt.Errorf("ollama: %s", part.Error)
+		}
+		if part.Response != "" {
+			if err := onChunk(part.Response); err != nil {
+				return err
+			}
+		}
+		if part.Done {
+			return nil
+		}
+	}
 }
 
 // Models implements usecase.Summarizer (GET /api/tags).

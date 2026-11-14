@@ -42,6 +42,15 @@ func (f *fakeModel) Summarize(_ context.Context, _ domain.Settings, prompt strin
 	f.prompts = append(f.prompts, prompt)
 	return "  - Punkt eins\n- Punkt zwei  ", f.err
 }
+func (f *fakeModel) Stream(_ context.Context, _ domain.Settings, prompt string, onChunk func(string) error) error {
+	f.prompts = append(f.prompts, prompt)
+	for _, c := range []string{"Jellyfin ", "war offline."} {
+		if err := onChunk(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 func (f *fakeModel) Models(context.Context, string) ([]string, error) {
 	return []string{"llama3.2:3b", "qwen2.5:7b"}, f.err
 }
@@ -110,5 +119,31 @@ func TestSummary(t *testing.T) {
 	_ = uc.Disable(ctx)
 	if v, _ := uc.Settings(ctx); v.Configured || len(repo.cache) != 0 {
 		t.Fatal("disable clears everything")
+	}
+}
+
+func TestAsk(t *testing.T) {
+	ctx := context.Background()
+	repo := &memRepo{cache: map[string]Cached{}}
+	model := &fakeModel{}
+	uc := NewSummary(Deps{Repo: repo, Model: model, Fetcher: &fakePages{}, Clock: clk{}})
+	var got strings.Builder
+	collect := func(c string) error { got.WriteString(c); return nil }
+	if err := uc.Ask(ctx, "? Warum war Jellyfin offline?", "service jellyfin: offline", "de", collect); !errors.Is(err, kernel.ErrNotFound) {
+		t.Fatal("hidden until configured", err)
+	}
+	_, _ = uc.SaveSettings(ctx, "http://ollama:11434", "llama3.2:3b", 0)
+	if err := uc.Ask(ctx, "?", "", "de", collect); !errors.Is(err, kernel.ErrInvalid) {
+		t.Fatal(err)
+	}
+	if err := uc.Ask(ctx, "? Warum war Jellyfin offline?", "service jellyfin: offline", "de", collect); err != nil || got.String() != "Jellyfin war offline." {
+		t.Fatal(got.String(), err)
+	}
+	if p := model.prompts[0]; !strings.Contains(p, "service jellyfin: offline") || !strings.HasSuffix(p, "Frage: Warum war Jellyfin offline?") {
+		t.Fatal(p)
+	}
+	stop := errors.New("client gone")
+	if err := uc.Ask(ctx, "? noch eine Frage", "", "en", func(string) error { return stop }); !errors.Is(err, stop) {
+		t.Fatal("a cancelled stream stops", err)
 	}
 }

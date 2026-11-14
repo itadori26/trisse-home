@@ -2,6 +2,13 @@ import type { FeatureMessages } from '../registry';
 
 /** English UI texts (source catalogue; keys are referenced by t()). */
 export const en = {
+  'ai_ask.title': 'Ask the AI',
+  'ai_ask.button': 'Ask the AI',
+  'ai_ask.hint': 'Your local Ollama answers from the status of your server.',
+  'ai_ask.generated': 'AI-generated answer – may be wrong',
+  'ai_ask.thinking': 'Thinking…',
+  'ai_ask.stop': 'Stop',
+  'ai_ask.again': 'Ask again',
   'ai_summary.button': 'Summarise',
   'ai_summary.working': 'Summarising…',
   'ai_summary.title': 'Summary',

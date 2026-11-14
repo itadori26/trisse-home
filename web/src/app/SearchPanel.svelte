@@ -17,6 +17,7 @@
   import { answerTarget, searchUsage } from './searchUsage';
   import { quickItemLoaders } from './quickItems';
   import { createSmartSearch } from './searchSources';
+  import { buildAiContext } from './aiContext';
   import { buildRows, keyIntent, move, type Row } from './searchRows';
   import AnswerCard from '../features/search/ui/answers/AnswerCard.svelte';
   import type { ActionItem, Answer } from '../features/search/domain/smart/answer';
@@ -187,9 +188,25 @@
   });
 
   const visible = $derived(query.trim() !== '' || status !== '' || note !== null);
+
+  // Ask the AI (#162): only for a query starting with "?", only when a local
+  // Ollama is set up, never for guests; the component is loaded on demand.
+  let aiReady = $state(false);
+  $effect(() => {
+    if (modules.has('summary') && !container.auth.guest)
+      void container.summary.available().then((ok) => (aiReady = ok));
+  });
+  const aiQuestion = $derived(
+    aiReady && query.trim().startsWith('?') && query.trim().length > 3 ? query.trim() : '',
+  );
+  const askAi = (onChunk: (text: string) => void, signal: AbortSignal) =>
+    buildAiContext(container, modules).then((context) =>
+      container.summary.ask(aiQuestion, context, onChunk, signal),
+    );
+
   $effect(() => {
     activeId = visible && flat.length ? optionId(Math.min(active, flat.length - 1)) : undefined;
-    expanded = visible && (flat.length > 0 || answers.length > 0);
+    expanded = visible && (flat.length > 0 || answers.length > 0 || aiQuestion !== '');
   });
 
   function searchWeb() {
@@ -388,6 +405,11 @@
             </div>
           {/each}
         </div>
+      {/if}
+      {#if aiQuestion}
+        {#await import('./AskAi.svelte') then m}
+          <m.default question={aiQuestion} ask={askAi} />
+        {/await}
       {/if}
       <p class="muted hint" role="status">
         {status}

@@ -26,4 +26,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_913837b8f399a5a1: 'Das Modell {model} ist auf diesem Ollama-Server nicht installiert.',
   // There is no text to summarise.
   srv_a71ddd931e1d1858: 'Es gibt keinen Text zum Zusammenfassen.',
+  // Ask a question after the question mark.
+  srv_086f1e1c1471afa7: 'Stell nach dem Fragezeichen eine Frage.',
+  // The question must be at most 300 characters long.
+  srv_e0be8094bf6d2de5: 'Die Frage darf höchstens 300 Zeichen lang sein.',
 };

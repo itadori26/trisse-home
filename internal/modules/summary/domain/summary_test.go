@@ -52,3 +52,19 @@ func TestInput(t *testing.T) {
 		t.Fatal(len(got))
 	}
 }
+
+func TestQuestion(t *testing.T) {
+	q, err := NewQuestion(" ? Warum war jellyfin offline? ", strings.Repeat("x", MaxContextChars+10))
+	if err != nil || q.Text != "Warum war jellyfin offline?" || len(q.Context) != MaxContextChars {
+		t.Fatalf("%+v %v", q.Text, err)
+	}
+	for _, bad := range []string{"?", "? a", "?" + strings.Repeat("a", MaxQuestionChars+1)} {
+		if _, err := NewQuestion(bad, ""); !errors.Is(err, kernel.ErrInvalid) {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+	p := AskPrompt(LanguageDE, Question{Text: "F?", Context: "service jellyfin: offline"})
+	if !strings.Contains(p, "Kontext:\nservice jellyfin: offline") || !strings.HasSuffix(p, "Frage: F?") {
+		t.Fatal(p)
+	}
+}

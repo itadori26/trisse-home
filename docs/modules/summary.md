@@ -16,6 +16,15 @@
 - The summary is written in the UI language (German or English).
 - Summaries are cached per content, model and language, so the same text never costs a second run. A changed note gets a new summary. At most 500 are kept, oldest first out.
 
+## Ask the AI in the search (#162)
+
+Type a question after a **question mark** in the search field, e.g. `? why was jellyfin offline last night`, then choose **Ask the AI**. Nothing runs while you type.
+
+- The model gets the question plus a compact status text built in your browser from what you can see anyway: host load, offline services, container states and the last timeline events.
+- No settings, credentials or other data are sent.
+- The answer streams in, is marked as AI-generated and can be stopped.
+- Guests and kiosk sessions cannot use it, and the code is only downloaded when you ask.
+
 ## Privacy and security
 
 - **Home network only.** The Ollama address must be a loopback or private IP, a single-label name (`ollama`), or a local name (`.lan`, `.local`, `.home.arpa`, `.internal`, `.fritz.box` …). Public addresses are refused.

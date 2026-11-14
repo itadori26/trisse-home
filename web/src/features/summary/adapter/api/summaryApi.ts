@@ -1,6 +1,7 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
 import type { ModelsDTO, ResultDTO, SettingsDTO } from '../../../../shared/api-client/generated/summary';
 import type {
+  AskDTO,
   ModelsInputDTO,
   SettingsInputDTO,
   SummarizeDTO,
@@ -31,5 +32,13 @@ export class SummaryApi implements SummaryGateway {
     const body: SummarizeDTO = input;
     const r = await this.http.post<ResultDTO>('/api/summary', body);
     return { summary: r.summary, truncated: r.truncated, cached: r.cached };
+  }
+  ask(
+    input: { question: string; context: string; language: string },
+    signal: AbortSignal,
+  ): Promise<AsyncIterable<string>> {
+    if (!this.http.postStream) return Promise.reject(new Error('streaming is not supported'));
+    const body: AskDTO = input;
+    return this.http.postStream('/api/summary/ask', body, signal);
   }
 }
