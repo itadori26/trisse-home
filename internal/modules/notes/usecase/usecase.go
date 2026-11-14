@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,6 +15,11 @@ type NoteInput struct {
 	Title  string
 	Body   string
 	Pinned bool
+	// ID is a client-generated ID for create (#80): replaying the create
+	// returns the existing note. Empty = the server picks one.
+	ID string
+	// Version is the version the client edited (update); 0 = no check.
+	Version int
 }
 
 // NoteView is a note at the use case boundary.
@@ -21,6 +27,7 @@ type NoteView struct {
 	ID, Title, Body      string
 	Pinned               bool
 	CreatedAt, UpdatedAt time.Time
+	Version              int
 }
 
 // ListNotes returns all notes, pinned first, then most recently edited (input port).
@@ -119,7 +126,8 @@ type Deps struct {
 }
 
 func toView(n domain.Note) NoteView {
-	return NoteView{ID: n.ID(), Title: n.Title(), Body: n.Body(), Pinned: n.Pinned(), CreatedAt: n.CreatedAt(), UpdatedAt: n.UpdatedAt()}
+	return NoteView{ID: n.ID(), Title: n.Title(), Body: n.Body(), Pinned: n.Pinned(), CreatedAt: n.CreatedAt(), UpdatedAt: n.UpdatedAt(),
+		Version: n.Version()}
 }
 
 type listNotes struct{ d Deps }
@@ -166,7 +174,20 @@ func (uc *saveNote) Execute(ctx context.Context, id string, in NoteInput) (NoteV
 	now := uc.d.Clock.Now()
 	var n domain.Note
 	if id == "" {
-		created, err := domain.NewNote(uc.d.IDs.NewID(), in.Title, in.Body, in.Pinned, now)
+		newID := uc.d.IDs.NewID()
+		if in.ID != "" {
+			if !kernel.ValidClientID(in.ID) {
+				return NoteView{}, kernel.ErrInvalidClientID
+			}
+			// A replayed create (offline outbox, #80) returns what it created.
+			if existing, err := uc.d.Repo.Get(ctx, in.ID); err == nil {
+				return toView(existing), nil
+			} else if !errors.Is(err, domain.ErrNoteNotFound) {
+				return NoteView{}, err
+			}
+			newID = in.ID
+		}
+		created, err := domain.NewNote(newID, in.Title, in.Body, in.Pinned, now)
 		if err != nil {
 			return NoteView{}, err
 		}
@@ -176,10 +197,14 @@ func (uc *saveNote) Execute(ctx context.Context, id string, in NoteInput) (NoteV
 		if err != nil {
 			return NoteView{}, err
 		}
+		if err := existing.CheckVersion(in.Version); err != nil {
+			return NoteView{}, err
+		}
 		before := existing
 		if err := existing.Edit(in.Title, in.Body, in.Pinned, now); err != nil {
 			return NoteView{}, err
 		}
+		existing.Bump()
 		if err := uc.d.keepRevision(ctx, before, existing.ContentChanged(before.Title(), before.Body()), false); err != nil {
 			return NoteView{}, err
 		}
