@@ -96,7 +96,7 @@ var ErrTooManyKiosks = kernel.NewPublicError(kernel.ErrConflict, "At most 10 kio
 // KioskMayAccess decides whether a kiosk display may call method on path:
 // what a guest may read, its own display options and logging out, but none
 // of the account self-service (password, two-factor, passkeys, sessions).
-func KioskMayAccess(method, path string, modules map[string]bool) bool {
+func KioskMayAccess(method, path string, reach GuestReach) bool {
 	switch path {
 	case "/api/auth/logout":
 		return method == "POST"
@@ -108,5 +108,5 @@ func KioskMayAccess(method, path string, modules map[string]bool) bool {
 			return false
 		}
 	}
-	return GuestMayAccess(method, path, modules)
+	return GuestMayAccess(method, path, reach)
 }

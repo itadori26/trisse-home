@@ -66,8 +66,8 @@ func TestGuestLifecycle(t *testing.T) {
 
 type fixedScope map[string]bool
 
-func (f fixedScope) ModulesForTabs(_ context.Context, _ []string) (map[string]bool, error) {
-	return f, nil
+func (f fixedScope) ReachForTabs(_ context.Context, _ []string) (domain.GuestReach, error) {
+	return domain.GuestReach{Modules: f}, nil
 }
 
 func TestAuthorizer(t *testing.T) {

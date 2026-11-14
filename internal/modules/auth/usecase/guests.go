@@ -178,10 +178,11 @@ func (uc *guests) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// GuestScope tells which modules serve the widgets on a set of dashboard
-// tabs (output port, implemented in the composition root).
+// GuestScope tells what a set of dashboard tabs opens up for a guest: the
+// modules serving their widgets and the routes that stay closed (output port,
+// implemented in the composition root).
 type GuestScope interface {
-	ModulesForTabs(ctx context.Context, tabs []string) (map[string]bool, error)
+	ReachForTabs(ctx context.Context, tabs []string) (domain.GuestReach, error)
 }
 
 // Authorizer decides whether the principal may call an endpoint (input
@@ -208,17 +209,17 @@ func (uc *authorizer) Authorize(ctx context.Context, p kernel.Principal, method,
 	if !p.TabScoped() {
 		return nil
 	}
-	modules := map[string]bool{}
+	reach := domain.GuestReach{Modules: map[string]bool{}}
 	if uc.scope != nil {
-		m, err := uc.scope.ModulesForTabs(ctx, p.Tabs)
+		r, err := uc.scope.ReachForTabs(ctx, p.Tabs)
 		if err != nil {
 			return fmt.Errorf("resolve guest scope: %w", err)
 		}
-		modules = m
+		reach = r
 	}
-	allowed := domain.GuestMayAccess(method, path, modules)
+	allowed := domain.GuestMayAccess(method, path, reach)
 	if p.IsKiosk() {
-		allowed = domain.KioskMayAccess(method, path, modules)
+		allowed = domain.KioskMayAccess(method, path, reach)
 	}
 	if !allowed {
 		return domain.ErrReadOnly
