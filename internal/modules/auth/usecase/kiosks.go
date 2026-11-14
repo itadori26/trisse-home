@@ -54,6 +54,12 @@ type Kiosks interface {
 	Login(ctx context.Context, token, clientKey, userAgent string) (SessionResponse, error)
 	// Options are the display options of the signed-in kiosk.
 	Options(ctx context.Context) (domain.KioskOptions, error)
+	// DeviceLink creates or renews the loopback-only kiosk of an appliance's
+	// own display with the given tabs and returns its token (#140). It is
+	// called by the system (composition root), not over HTTP.
+	DeviceLink(ctx context.Context, tabs []string) (string, error)
+	// RemoveDevice deletes that kiosk; no error when there is none.
+	RemoveDevice(ctx context.Context) error
 }
 
 type kiosks struct {
@@ -231,6 +237,9 @@ func (uc *kiosks) Login(ctx context.Context, token, clientKey, userAgent string)
 	if err == nil {
 		a, err = uc.deps.Accounts.Get(ctx, k.AccountID)
 	}
+	if err == nil && !k.AcceptsFrom(client.IP) {
+		err = domain.ErrKioskNotFound // the device's own link, used from elsewhere
+	}
 	if err != nil || a.Role() != domain.RoleKiosk || a.Disabled() {
 		if err != nil && !errors.Is(err, domain.ErrKioskNotFound) && !errors.Is(err, domain.ErrGuestNotFound) && !errors.Is(err, domain.ErrAccountNotFound) {
 			return SessionResponse{}, err
@@ -256,4 +265,69 @@ func (uc *kiosks) Options(ctx context.Context) (domain.KioskOptions, error) {
 		return domain.KioskOptions{}, err
 	}
 	return k.Options, nil
+}
+
+func (uc *kiosks) deviceAccount(ctx context.Context) (domain.Account, bool, error) {
+	a, err := uc.deps.Accounts.FindByName(ctx, domain.DeviceKioskName)
+	if errors.Is(err, domain.ErrGuestNotFound) || errors.Is(err, domain.ErrAccountNotFound) {
+		return domain.Account{}, false, nil
+	}
+	if err != nil {
+		return domain.Account{}, false, err
+	}
+	if a.Role() != domain.RoleKiosk {
+		return domain.Account{}, false, kernel.NewPublicError(kernel.ErrConflict, "The name this-device is taken by a guest.")
+	}
+	return a, true, nil
+}
+
+func (uc *kiosks) DeviceLink(ctx context.Context, tabs []string) (string, error) {
+	a, found, err := uc.deviceAccount(ctx)
+	if err != nil {
+		return "", err
+	}
+	raw, hash, err := uc.newLink()
+	if err != nil {
+		return "", err
+	}
+	k := domain.Kiosk{TokenHash: hash, LoopbackOnly: true}
+	if !found {
+		if a, err = domain.NewKiosk(uc.deps.IDs.NewID(), domain.DeviceKioskName, tabs, uc.deps.Clock.Now()); err != nil {
+			return "", err
+		}
+		if err := uc.deps.Accounts.Create(ctx, a); err != nil {
+			return "", err
+		}
+	} else {
+		if old, err := uc.repo.Get(ctx, a.ID()); err == nil {
+			k.Options, k.LastUsedAt, k.LastUsedIP = old.Options, old.LastUsedAt, old.LastUsedIP
+		}
+		if err := uc.deps.Sessions.DeleteAllFor(ctx, a.ID()); err != nil {
+			return "", fmt.Errorf("end kiosk sessions: %w", err)
+		}
+	}
+	k.AccountID = a.ID()
+	if err := uc.repo.Save(ctx, k); err != nil {
+		return "", fmt.Errorf("save kiosk: %w", err)
+	}
+	uc.deps.Events.record(ctx, domain.EventGuestChanged, a.ID(), domain.Client{}, "display of this device linked")
+	return raw, nil
+}
+
+func (uc *kiosks) RemoveDevice(ctx context.Context) error {
+	a, found, err := uc.deviceAccount(ctx)
+	if err != nil || !found {
+		return err
+	}
+	if err := uc.deps.Sessions.DeleteAllFor(ctx, a.ID()); err != nil {
+		return fmt.Errorf("end kiosk sessions: %w", err)
+	}
+	if err := uc.repo.Delete(ctx, a.ID()); err != nil {
+		return err
+	}
+	if err := uc.deps.Accounts.Delete(ctx, a.ID()); err != nil {
+		return err
+	}
+	uc.deps.Events.record(ctx, domain.EventGuestChanged, a.ID(), domain.Client{}, "display of this device removed")
+	return nil
 }

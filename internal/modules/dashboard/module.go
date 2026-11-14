@@ -80,3 +80,6 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 func (m *Module) WidgetKindsOnTabs(ctx context.Context, tabIDs []string) ([]string, error) {
 	return m.scope.WidgetKindsOnTabs(ctx, tabIDs)
 }
+
+// TabIDs returns all tab ids (used for the display of an appliance, #140).
+func (m *Module) TabIDs(ctx context.Context) ([]string, error) { return m.scope.TabIDs(ctx) }

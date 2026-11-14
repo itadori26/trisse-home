@@ -1,0 +1,32 @@
+# OpenAPI fragment of the device module (#140): display mode of the appliance.
+tags:
+  - name: device
+
+paths:
+  /api/device:
+    get:
+      tags: [device]
+      summary: Display state of the appliance (404 outside the appliance image)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/DeviceState" } } } }
+        "404": { description: Not the appliance image }
+  /api/device/display-mode:
+    put:
+      tags: [device]
+      summary: Request server only (headless) or server + display (kiosk); a root-owned path unit applies it
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [mode], properties: { mode: { type: string, enum: [headless, kiosk] } } } } } }
+      responses:
+        "200": { description: Requested, content: { application/json: { schema: { $ref: "#/components/schemas/DeviceState" } } } }
+        "404": { description: Not the appliance image }
+        "409": { description: A change is still in progress }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  DeviceState:
+    type: object
+    properties:
+      requested: { type: string, enum: ["", headless, kiosk], description: '"" = not chosen yet' }
+      phase: { type: string, enum: [idle, pending, installing, active, failed] }
+      error: { type: string }
+      display: { type: string, enum: [connected, disconnected, unknown] }

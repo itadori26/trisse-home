@@ -75,6 +75,9 @@ type Config struct {
 	// DemoResetInterval, no outbound requests and no stored credentials.
 	DemoMode          bool
 	DemoResetInterval time.Duration
+	// DeviceDir is where an appliance exchanges the display mode with its
+	// root-owned path unit (#140); only used with INSTALL_METHOD=appliance.
+	DeviceDir string
 	// InstallMethod is set by the Dockerfile, the native package and the
 	// Raspberry Pi image (docker, package, appliance); empty when unknown.
 	InstallMethod string
@@ -157,6 +160,7 @@ func Load(getenv func(string) string) (Config, error) {
 		DemoMode:                 l.boolean("DEMO_MODE", false),
 		DemoResetInterval:        l.duration("DEMO_RESET_INTERVAL", 3*time.Hour),
 		InstallMethod:            l.oneOf("INSTALL_METHOD", "", "", "docker", "package", "appliance"),
+		DeviceDir:                l.str("DEVICE_DIR", "/var/lib/trisse-home/device"),
 		OIDCIssuer:               l.str("OIDC_ISSUER", ""),
 		OIDCClientID:             l.str("OIDC_CLIENT_ID", ""),
 		OIDCClientSecret:         l.str("OIDC_CLIENT_SECRET", ""),
@@ -193,6 +197,10 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if cfg.DockerActions && len(cfg.DockerActionsContainers) == 0 {
 		l.fail("DOCKER_ACTIONS_CONTAINERS", "must list the containers that may be restarted when DOCKER_ACTIONS=true")
+	}
+	// The display mode only exists on the appliance image (#140).
+	if cfg.InstallMethod != "appliance" && !slices.Contains(cfg.DisabledModules, "device") {
+		cfg.DisabledModules = append(cfg.DisabledModules, "device")
 	}
 	if cfg.DemoMode {
 		cfg.SampleData = true

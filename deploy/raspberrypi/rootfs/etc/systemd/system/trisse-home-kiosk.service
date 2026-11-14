@@ -1,0 +1,24 @@
+# The dashboard full-screen on the connected display (#140): cage (Wayland
+# kiosk compositor) runs Chromium as the unprivileged trisse-kiosk user.
+[Unit]
+Description=trisse-home on the connected display
+After=trisse-home.service systemd-user-sessions.service
+Wants=trisse-home.service
+Conflicts=getty@tty1.service
+
+[Service]
+User=trisse-kiosk
+PAMName=login
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+# The address with the device's own kiosk link, written by display-mode.sh.
+EnvironmentFile=/etc/trisse-home/kiosk.env
+ExecStart=/usr/bin/cage -s -- /usr/bin/chromium --kiosk --noerrdialogs --disable-infobars --no-first-run --ozone-platform=wayland --password-store=basic ${KIOSK_URL}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

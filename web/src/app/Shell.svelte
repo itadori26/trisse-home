@@ -69,6 +69,15 @@
 
   const accountInitial = $derived(appearance.greetingName.trim().charAt(0).toUpperCase());
   let dashboardState = $state<{ tabs: Tab[]; activeId: string }>({ tabs: [], activeId: '' });
+  // Appliances ask once how the device is used (#140).
+  let deviceSetup = $state(false);
+  $effect(() => {
+    if (!modules?.has('device') || container.auth.guest) return;
+    container.device
+      .state()
+      .then((s) => (deviceSetup = s.requested === ''))
+      .catch(() => undefined);
+  });
   // Guests and kiosk displays cannot act; their action buttons are hidden (#50).
   $effect(() => {
     document.documentElement.classList.toggle('read-only', container.auth.guest);
@@ -291,6 +300,12 @@
   widgetConfig={(kind) => firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, kind)}
 />
 
+{#if deviceSetup}
+  <!-- The setup step of an appliance (#140): asked once, until a mode is chosen. -->
+  {#await import('../features/device/ui/DeviceSetup.svelte') then { default: DeviceSetup }}
+    <DeviceSetup device={container.device} onclose={() => (deviceSetup = false)} />
+  {/await}
+{/if}
 {#if container.auth.kiosk}
   {#await import('./kiosk/KioskMode.svelte') then { default: KioskMode }}
     <KioskMode

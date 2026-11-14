@@ -30,6 +30,7 @@ export const serverMessages = {
   srv_57c1f826d1469252: "The kiosk display does not exist.",
   srv_bd0d70cd47d150cb: "The name must be 2–32 lowercase letters, digits, dots, dashes or underscores.",
   srv_7a44bdf0298cc83f: "The name must be at most 60 characters long.",
+  srv_9737b26eae1b7ac5: "The name this-device is taken by a guest.",
   srv_a8aed831e812c028: "The owner account is not a guest.",
   srv_30c99e5e8d1ae003: "The passkey does not exist.",
   srv_754fe73fc055a801: "The passkey request expired. Please try again.",

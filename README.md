@@ -463,6 +463,7 @@ service tiles are configured in the web interface.
 | `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
 | `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
 | `SMARTHOME_ACTIONS_ENTITIES` | empty                     | Home Assistant entity IDs (e.g. `switch.coffee_machine`) that may be switched or pressed; empty = read-only. |
+| `DEVICE_DIR` | `/var/lib/trisse-home/device` | Appliance image only (#140): where the display mode is handed to the root-owned path unit. |
 | `PROXMOX_ACTIONS_GUESTS` | empty                         | Proxmox guest IDs (e.g. `100,105`) that may be started and shut down from the dashboard; empty = read-only. |
 | `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |

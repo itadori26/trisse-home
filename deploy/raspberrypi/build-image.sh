@@ -109,7 +109,10 @@ sed -i "s/\b$old_host\b/trisse-home/g" "$root/etc/hosts"
 # Root file system without access times (fewer writes on the SD card).
 sed -i -E '/[[:space:]]\/[[:space:]]/ { /noatime/! s/(ext4[[:space:]]+)([^[:space:]]+)/\1\2,noatime/ }' "$root/etc/fstab"
 grep -E '[[:space:]]/[[:space:]]' "$root/etc/fstab"
-chroot "$root" systemctl is-enabled trisse-home.service trisse-home-setup-info.timer avahi-daemon.service
+# Display mode (#140): the root-owned path unit applies what the app requests.
+chmod 0755 "$root/usr/lib/trisse-home/display-mode.sh"
+chroot "$root" systemctl enable trisse-home-display.path
+chroot "$root" systemctl is-enabled trisse-home.service trisse-home-setup-info.timer avahi-daemon.service trisse-home-display.path
 
 keyring="$here/../../packaging/apt/trisse-home-archive-keyring.asc"
 if [ -f "$keyring" ]; then

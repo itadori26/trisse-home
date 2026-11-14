@@ -120,6 +120,7 @@ type Module struct {
 	purge      usecase.PurgeExpiredSessions
 	reset      usecase.ResetAccount
 	security   usecase.SecurityLog
+	kiosks     usecase.Kiosks
 	confirm    usecase.ConfirmIdentity
 	setup      usecase.SetupAccount
 	tokens     usecase.TokenGenerator
@@ -152,6 +153,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 	}
 	securityLog := usecase.NewSecurityLog(events)
 	status := usecase.NewGetStatus(accounts, sessions, d.Clock)
+	kiosks := usecase.NewKiosks(deps, gateway.NewKioskRepository(d.DB))
 	uc := controller.UseCases{
 		Status:         status,
 		Setup:          usecase.NewSetupAccount(deps, gateway.NewSetupToken(token), observerFunc(cfg.OnAccountCreated)),
@@ -160,7 +162,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 		Authenticate:   usecase.NewAuthenticate(sessions, accounts, d.Clock, ttl),
 		Authorizer:     usecase.NewAuthorizer(d.GuestScope),
 		Guests:         usecase.NewGuests(deps),
-		Kiosks:         usecase.NewKiosks(deps, gateway.NewKioskRepository(d.DB)),
+		Kiosks:         kiosks,
 		APITokens:      usecase.NewAPITokens(deps, gateway.NewTokenRepository(d.DB)),
 		SSO:            newSSO(deps, cfg.SSO),
 		Passkeys:       usecase.NewPasskeys(deps),
@@ -179,6 +181,7 @@ func New(cfg Config, d Deps) (*Module, error) {
 		purge:      usecase.NewPurgeExpiredSessions(sessions, d.Clock),
 		reset:      usecase.NewResetAccount(accounts, sessions),
 		security:   securityLog,
+		kiosks:     kiosks,
 		confirm:    usecase.NewConfirmIdentity(deps),
 		setup:      uc.Setup,
 		tokens:     d.Tokens,
@@ -315,3 +318,12 @@ func newSSO(deps usecase.Deps, c SSOConfig) usecase.SSO {
 	}
 	return usecase.NewSSO(deps, cfg)
 }
+
+// DeviceKioskLink creates or renews the loopback-only kiosk of the
+// appliance's own display and returns its link token (#140).
+func (m *Module) DeviceKioskLink(ctx context.Context, tabs []string) (string, error) {
+	return m.kiosks.DeviceLink(ctx, tabs)
+}
+
+// RemoveDeviceKiosk deletes the kiosk of the appliance's own display.
+func (m *Module) RemoveDeviceKiosk(ctx context.Context) error { return m.kiosks.RemoveDevice(ctx) }

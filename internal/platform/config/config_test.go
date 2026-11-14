@@ -170,3 +170,14 @@ func TestSSOValidation(t *testing.T) {
 		t.Fatalf("%v %v", cfg.PasswordLogin, err)
 	}
 }
+
+func TestDeviceModuleOnlyOnAppliances(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey}))
+	if err != nil || cfg.ModuleEnabled("device") {
+		t.Fatal("device module outside the appliance", err)
+	}
+	cfg, err = Load(env(map[string]string{"SECRET_KEY": validKey, "INSTALL_METHOD": "appliance"}))
+	if err != nil || !cfg.ModuleEnabled("device") || cfg.DeviceDir != "/var/lib/trisse-home/device" {
+		t.Fatal(cfg.DeviceDir, err)
+	}
+}
