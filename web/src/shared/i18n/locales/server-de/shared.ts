@@ -65,4 +65,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_61031ab185b65e33: 'Bitte nur ein einzelnes Emoji verwenden.',
   // The server answered {status}.
   srv_63f60053f8b51722: 'Der Server antwortete mit {status}.',
+  // The ID must have 8 to 64 letters, digits, '-' or '_'.
+  srv_9cdf89c6055b9583: "Die ID muss aus 8 bis 64 Buchstaben, Ziffern, '-' oder '_' bestehen.",
 };

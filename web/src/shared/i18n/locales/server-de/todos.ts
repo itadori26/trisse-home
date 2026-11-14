@@ -20,4 +20,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_39e64da309876466: 'Das To-do existiert nicht.',
   // The to-do must have between 1 and 300 characters.
   srv_deed27849449d0b5: 'Das To-do muss zwischen 1 und 300 Zeichen haben.',
+  // The to-do was changed elsewhere in the meantime.
+  srv_b4f6dd576f1534c2: 'Die Aufgabe wurde inzwischen an anderer Stelle geändert.',
 };
