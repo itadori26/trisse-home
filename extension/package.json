@@ -1,0 +1,13 @@
+{
+  "name": "trisse-home-extension",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser extension: trisse-home as the new tab page (#65)",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/",
+    "check": "node scripts/check.mjs",
+    "build": "node scripts/build.mjs"
+  },
+  "engines": { "node": ">=22" }
+}
