@@ -126,6 +126,7 @@ trisse-home aims for **WCAG 2.2 AA**. It is fully keyboard-operable with visible
 | **waste**      | Waste collection dates from your municipality’s ICS calendar, subscribed by link or uploaded as an .ics file (with a reminder before the year’s file runs out); tomorrow’s bin is highlighted |
 | **holidays**   | Next public holidays of a German state (computed locally for all 16 states, no request) and optionally the school holidays from an ICS link; current holidays highlighted ([docs](docs/modules/holidays.md)) |
 | **study**      | Study progress: modules with ECTS, semester, status and grade; progress bar against the degree's credits, ECTS-weighted grade average and the modules in progress ([docs](docs/modules/study.md)) |
+| **space**      | Next rocket launches (Launch Library 2) with countdown and status, and NASA's Astronomy Picture of the Day (proxied, also usable as background); both off until switched on ([docs](docs/modules/space.md)) |
 | **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
 | **diskhealth** | S.M.A.R.T. disk health: overall verdict, temperature, reallocated/pending sectors, NVMe wear and power-on hours; notifies on degradation (from a host export, no device access) |
@@ -554,6 +555,58 @@ service tiles are configured in the web interface.
 | `INSTALL_METHOD`                                                           | set by the image, the package and the Pi image | `docker`, `package` or `appliance`; selects the update hint in the settings.                                                 |
 | `SAMPLE_WEATHER_LOCATION`                                                  | `Berlin,52.52,13.41`                           | `Name,lat,lon` of the example weather widget.                                                                                |
 | `SAMPLE_FEEDS`                                                             | Go Blog, Hacker News                           | Example feeds, comma separated.                                                                                              |
+| Variable            | Default                           | Description                                                                  |
+| ------------------- | --------------------------------- | ---------------------------------------------------------------------------- |
+| `SECRET_KEY`        | — (required)                      | 32 random bytes, base64. Encrypts stored credentials (AES-256-GCM).           |
+| `BIND_ADDRESS`      | `0.0.0.0`                         | Host address the port is published on (compose only).                        |
+| `HOST_PORT`         | `8090`                            | Host port (compose only).                                                     |
+| `LISTEN_ADDR`       | `:8090`                           | Listen address inside the container.                                          |
+| `ALLOWED_CIDRS`     | loopback + private ranges         | Client networks allowed to connect. Loopback is always allowed.               |
+| `TRUSTED_PROXIES`   | empty                             | Reverse proxies whose `X-Forwarded-For` header is trusted (needed for network-based tab rules behind a proxy). |
+| `COOKIE_SECURE`     | `false`                           | `true` once served via HTTPS: adds `Secure` and the `__Host-` cookie prefix.  |
+| `SESSION_TTL`       | `720h`                            | Sliding session lifetime.                                                     |
+| `SETUP_TOKEN`       | random, logged                    | Fixed setup token (≥ 16 characters) for automated setups.                     |
+| `MODULES_DISABLED`  | empty                             | Comma-separated modules to switch off, e.g. `docker,adguard`.                 |
+| `SYSTEM_DISK_PATHS` | `System=/host/rootfs` (compose)   | Disks for the system widget as `Label=path`, comma separated.                 |
+| `HOST_PROC`         | `/proc` (`/host/proc` in compose) | Host procfs for the system module.                                            |
+| `HOST_SYS`          | `/sys` (`/host/sys` in compose)   | Host sysfs (temperatures).                                                    |
+| `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
+| `TRANSIT_API_URL`   | `https://api.transitous.org`      | MOTIS API for departures; point it to your own MOTIS instance if you like.    |
+| `FUEL_API_URL`      | `https://creativecommons.tankerkoenig.de/json` | Tankerkönig API for fuel prices (change only for a mirror or tests). |
+| `SPACE_LAUNCH_API_URL` | `https://ll.thespacedevs.com/2.2.0/launch/upcoming/` | Launch Library 2 for the space widget (change only for a mirror or tests). |
+| `SPACE_APOD_API_URL` | `https://api.nasa.gov/planetary/apod` | NASA Astronomy Picture of the Day API (change only for a mirror or tests). |
+| `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
+| `METRICS_ENABLED`   | `false`                           | Expose `GET /metrics` for Prometheus ([docs/metrics.md](docs/metrics.md)).    |
+| `METRICS_TOKEN`     | –                                 | Bearer token for `/metrics`, at least 32 characters.                          |
+| `DISKHEALTH_DIR`    | `/smart` (compose)                | Directory with the export of `scripts/smart-export.sh`.                       |
+| `DISKHEALTH_STALE_AFTER` | `2h`                         | Older S.M.A.R.T. exports are shown as unknown.                                |
+| `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |
+| `WOL_BROADCAST`     | `255.255.255.255:9`               | Broadcast address the magic packet is sent to (by the relay or directly).     |
+| `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
+| `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
+| `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
+| `SMARTHOME_ACTIONS_ENTITIES` | empty                     | Home Assistant entity IDs (e.g. `switch.coffee_machine`) that may be switched or pressed; empty = read-only. |
+| `PROXMOX_ACTIONS_GUESTS` | empty                         | Proxmox guest IDs (e.g. `100,105`) that may be started and shut down from the dashboard; empty = read-only. |
+| `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
+| `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
+| `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
+| `DATABASE_PATH`     | `/data/trisse-home.db`            | SQLite file.                                                                  |
+| `BACKUP_DIR`        | `backups` next to the database    | Directory for automatic backups.                                              |
+| `BACKUP_INTERVAL`   | `24h`                             | How often a backup is created (≥ 1h).                                         |
+| `BACKUP_RETENTION`  | `7`                               | Number of backups kept.                                                       |
+| `SHUTDOWN_TIMEOUT`  | `15s`                             | Grace period for in-flight requests.                                          |
+| `SAMPLE_DATA`       | `true`                            | Fill a fresh installation with example widgets and data after setup.         |
+| `DEMO_MODE`         | `false`                           | Public demo: no login, fixtures instead of integrations, see [docs/demo.md](docs/demo.md). |
+| `DEMO_RESET_INTERVAL` | `3h`                            | How often a demo restores its sample data.                                    |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL` | empty | OpenID Connect single sign-on for the owner ([guide](docs/reverse-proxy.md#single-sign-on-optional)). |
+| `OIDC_ALLOWED_EMAILS` / `OIDC_ALLOWED_SUBJECTS` | empty | Who may sign in via OIDC (verified e-mail or subject). |
+| `AUTH_PROXY_HEADER`, `AUTH_PROXY_USERS` | empty | Trust a user header from `TRUSTED_PROXIES` (forward auth). |
+| `PASSWORD_LOGIN` | `true` | `false` disables the owner's password login once SSO is configured. |
+| `SSO_REQUIRE_2FA` | `false` | Also ask for the local TOTP code after SSO. |
+| `PUBLIC_URL` | empty | Public `https://` origin (e.g. `https://home.example.org`); enables passkeys. WebAuthn does not work on plain `http://<ip>`. |
+| `INSTALL_METHOD` | set by the image, the package and the Pi image | `docker`, `package` or `appliance`; selects the update hint in the settings. |
+| `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
+| `SAMPLE_FEEDS`      | Go Blog, Hacker News              | Example feeds, comma separated.                                              |
 
 ### Security model
 
@@ -581,6 +634,7 @@ Several modules fetch URLs that you configure yourself: service health checks,
 the endpoints of the JSON widget (only while a widget shows them, at most once per configured interval), RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, MusicBrainz (artist search when you use it; releases of followed artists every 6 hours, at most one request per second) and the Cover Art Archive, the Steam and Epic Games stores (game deals, every 12 hours once enabled), Sonarr/Radarr/Prowlarr (while an *arr widget is open, at most once a minute), Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Immich (while an Immich widget is open, at most every 5 minutes), Tankerkönig fuel prices (while a fuel widget is open, at most every 5 minutes), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 the ICS link of the school holidays (when saved, then at most weekly), RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, MusicBrainz (artist search when you use it; releases of followed artists every 6 hours, at most one request per second) and the Cover Art Archive, the Steam and Epic Games stores (game deals, every 12 hours once enabled), Sonarr/Radarr/Prowlarr (while an *arr widget is open, at most once a minute), Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Immich (while an Immich widget is open, at most every 5 minutes), Tankerkönig fuel prices (while a fuel widget is open, at most every 5 minutes), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 the DWD pollen and UV index files (only when a weather widget shows them, at most hourly), RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, MusicBrainz (artist search when you use it; releases of followed artists every 6 hours, at most one request per second) and the Cover Art Archive, the Steam and Epic Games stores (game deals, every 12 hours once enabled), Sonarr/Radarr/Prowlarr (while an *arr widget is open, at most once a minute), Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Immich (while an Immich widget is open, at most every 5 minutes), Tankerkönig fuel prices (while a fuel widget is open, at most every 5 minutes), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
+Launch Library 2 and NASA APOD (once switched on, only while a space widget shows them, at most hourly / every three hours), RSS feeds, CalDAV calendars, ICS subscriptions (at their refresh interval, default hourly, with `If-None-Match`/`If-Modified-Since`), AdGuard Home, MusicBrainz (artist search when you use it; releases of followed artists every 6 hours, at most one request per second) and the Cover Art Archive, the Steam and Epic Games stores (game deals, every 12 hours once enabled), Sonarr/Radarr/Prowlarr (while an *arr widget is open, at most once a minute), Jellyfin/Plex (while a media widget is open, at most every 15 seconds), Immich (while an Immich widget is open, at most every 5 minutes), Tankerkönig fuel prices (while a fuel widget is open, at most every 5 minutes), Home Assistant (`/api/states` while a smart home widget is open), Proxmox VE (`/api2/json/cluster/resources` every 30 seconds), Pi-hole (`/api/auth` once per session, then `/api/stats/*` and `/api/dns/blocking` every minute), Nextcloud, Speedtest Tracker (every 10 minutes), your WebDAV off-site backup folder, the registries of your running images
 (only with the Docker update check enabled, at most every 6 hours per image), the FRITZ!Box and your
 ntfy server, and the Gotify, webhook and SMTP channels you add. This is intended behaviour, so static analysis reports these as
 "server-side request forgery" — only the single, authenticated user can
