@@ -107,3 +107,9 @@ textarea {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Write actions in widgets (restart, wake, switch) are hidden for read-only
+   sessions: guests and kiosk displays (#50). */
+html.read-only [data-action] {
+  display: none !important;
+}

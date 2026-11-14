@@ -53,6 +53,64 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/Invalid" }
 
+  /api/auth/kiosk/login:
+    post:
+      tags: [auth]
+      summary: Sign a kiosk display in with the token of its link (public, rate limited like the login); the page reads the token from the URL fragment, so it never reaches server logs (#50)
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [token], properties: { token: { type: string } } } } } }
+      responses:
+        "200": { $ref: "#/components/responses/Session" }
+        "401": { description: Unknown, renewed or disabled link, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/auth/kiosk:
+    get:
+      tags: [auth]
+      summary: Display options of the signed-in kiosk (rotation, night dimming)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/KioskOptions" } } } }
+        "404": { description: Not a kiosk session }
+  /api/auth/kiosks:
+    get:
+      tags: [auth]
+      summary: Kiosk displays (owner only)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/KioskDisplay" } } } } }
+    post:
+      tags: [auth]
+      summary: Create a kiosk display; the link token is returned once and stored hashed
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KioskRequest" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { kiosk: { $ref: "#/components/schemas/KioskDisplay" }, token: { type: string } } } } } }
+        "409": { description: At most 10 displays }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/auth/kiosks/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    put:
+      tags: [auth]
+      summary: Change tabs, options or the disabled flag (disabling signs the device out)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KioskRequest" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/KioskDisplay" } } } }
+        "404": { description: Unknown display }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [auth]
+      summary: Delete a display and sign the device out
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { description: Unknown display } }
+  /api/auth/kiosks/{id}/link:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [auth]
+      summary: Replace the link; the old link and the device's session stop working
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { token: { type: string } } } } } }
+        "404": { description: Unknown display }
+
 schemas:
   AuthStatus:
     type: object
@@ -79,3 +137,28 @@ schemas:
     properties:
       currentPassword: { type: string }
       newPassword: { type: string, minLength: 12, maxLength: 256 }
+  KioskOptions:
+    type: object
+    properties:
+      rotateSeconds: { type: integer, description: "Seconds per tab, 10-3600; 0 = no rotation" }
+      nightFrom: { type: string, example: "22:00", description: "HH:MM, empty = never dimmed" }
+      nightTo: { type: string, example: "06:30" }
+  KioskRequest:
+    allOf:
+      - $ref: "#/components/schemas/KioskOptions"
+      - type: object
+        properties:
+          name: { type: string, description: 2-32 lowercase letters, digits, dots, dashes or underscores }
+          tabs: { type: array, items: { type: string }, minItems: 1 }
+          disabled: { type: boolean }
+  KioskDisplay:
+    allOf:
+      - $ref: "#/components/schemas/KioskOptions"
+      - type: object
+        properties:
+          id: { type: string }
+          name: { type: string }
+          tabs: { type: array, items: { type: string } }
+          disabled: { type: boolean }
+          createdAt: { type: string, format: date-time }
+          lastUsedAt: { type: string, format: date-time, nullable: true }

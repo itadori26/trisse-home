@@ -118,4 +118,18 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_705d19e8395a99a3: 'darf nicht leer sein',
   // token, public id and csrf token are required
   srv_1b3daa6bc9a9f8db: 'Token, öffentliche ID und CSRF-Token sind erforderlich',
+  // At most 10 kiosk displays are supported.
+  srv_d73d8c1a54199408: 'Es werden höchstens 10 Kiosk-Anzeigen unterstützt.',
+  // Choose at least one tab for the display.
+  srv_5ea683077504d129: 'Wähle mindestens einen Tab für die Anzeige.',
+  // Night dimming needs a start and an end such as 22:00 and 06:30.
+  srv_7b34c09128db40de: 'Das Nachtdimmen braucht einen Beginn und ein Ende, z. B. 22:00 und 06:30.',
+  // Rotate every 10 seconds to 1 hour, or never.
+  srv_11e7a84aac8d61b2: 'Wechsle alle 10 Sekunden bis 1 Stunde oder nie.',
+  // The kiosk display does not exist.
+  srv_57c1f826d1469252: 'Die Kiosk-Anzeige gibt es nicht.',
+  // This kiosk link is not valid (any more). Ask for a new one.
+  srv_d5825321d90da76c: 'Dieser Kiosk-Link ist (nicht mehr) gültig. Lass dir einen neuen geben.',
+  // id is required
+  srv_272f687c666a4c51: 'Die ID ist erforderlich',
 };

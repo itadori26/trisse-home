@@ -110,6 +110,7 @@
           >
           {#if action}
             <button
+              data-action
               class="btn btn-icon"
               type="button"
               disabled={busy !== null}

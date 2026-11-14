@@ -75,7 +75,7 @@ func NewRestorer(d RestoreDeps) Restorer { return &restorer{d: d} }
 // Restore implements Restorer: confirm identity, stage, validate, schedule
 // the swap and restart. Nothing changes when any step fails.
 func (uc *restorer) Restore(ctx context.Context, req RestoreRequest) error {
-	if p := kernel.PrincipalFrom(ctx); p.IsGuest() || p.IsToken() {
+	if p := kernel.PrincipalFrom(ctx); p.TabScoped() || p.IsToken() {
 		return domain.ErrRestoreNotAllowed
 	}
 	if err := uc.d.Reauth.ConfirmIdentity(ctx, req.Password, req.Code, req.ClientKey); err != nil {

@@ -11,6 +11,10 @@ import type {
   TwoFactorStatusDTO,
   CreatedTokenDTO,
   GuestDTO,
+  KioskCreatedDTO,
+  KioskDTO,
+  KioskLinkDTO,
+  KioskOptionsDTO,
   PasskeysDTO,
   RegisteredPasskeyDTO,
   RegistrationOptionsDTO,
@@ -28,6 +32,8 @@ import type {
   SSOSecondFactorDTO,
   TokenRequestDTO,
   TwoFactorCodeDTO,
+  KioskLoginDTO,
+  KioskRequestDTO,
 } from '../../../../shared/api-client/generated/auth-requests';
 import type { ApiToken } from '../../domain/apiToken';
 import type {
@@ -37,7 +43,7 @@ import type {
   PasskeyRegistrationOptions,
   SecondFactorChallenge,
 } from '../../domain/passkey';
-import type { AuthStatus, Guest, Session } from '../../domain/auth';
+import type { AuthStatus, Guest, KioskDisplay, KioskInput, KioskOptions, Session } from '../../domain/auth';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../../domain/twoFactor';
 import type { SecurityEvent } from '../../domain/securityEvent';
 import type { SessionInfo } from '../../domain/session';
@@ -46,6 +52,18 @@ import type { AuthGateway } from '../../usecase/ports';
 const toSession = (dto: SessionDTO): Session => ({
   csrfToken: dto.csrfToken,
   expiresAt: new Date(dto.expiresAt),
+});
+
+const toKiosk = (d: KioskDTO): KioskDisplay => ({
+  id: d.id,
+  name: d.name,
+  tabs: d.tabs,
+  disabled: d.disabled,
+  rotateSeconds: d.rotateSeconds,
+  nightFrom: d.nightFrom,
+  nightTo: d.nightTo,
+  createdAt: new Date(d.createdAt),
+  lastUsedAt: d.lastUsedAt ? new Date(d.lastUsedAt) : null,
 });
 
 /** AuthGateway implementation backed by the REST API. */
@@ -59,7 +77,8 @@ export class AuthApi implements AuthGateway {
       authenticated: dto.authenticated,
       csrfToken: dto.csrfToken ?? null,
       demo: dto.demo,
-      guest: dto.role === 'guest',
+      guest: dto.role === 'guest' || dto.role === 'kiosk',
+      kiosk: dto.role === 'kiosk',
       sso: dto.sso ?? { oidc: false, header: false, localLogin: true },
     };
   }
@@ -140,6 +159,32 @@ export class AuthApi implements AuthGateway {
 
   deleteGuest(id: string): Promise<void> {
     return this.http.delete(`/api/auth/guests/${encodeURIComponent(id)}`);
+  }
+
+  async kiosks(): Promise<KioskDisplay[]> {
+    return (await this.http.get<KioskDTO[]>('/api/auth/kiosks')).map(toKiosk);
+  }
+  async createKiosk(input: KioskInput): Promise<{ kiosk: KioskDisplay; token: string }> {
+    const body: KioskRequestDTO = { ...input };
+    const r = await this.http.post<KioskCreatedDTO>('/api/auth/kiosks', body);
+    return { kiosk: toKiosk(r.kiosk), token: r.token };
+  }
+  async updateKiosk(id: string, input: KioskInput): Promise<KioskDisplay> {
+    const body: KioskRequestDTO = { ...input };
+    return toKiosk(await this.http.put<KioskDTO>(`/api/auth/kiosks/${encodeURIComponent(id)}`, body));
+  }
+  async renewKioskLink(id: string): Promise<string> {
+    return (await this.http.post<KioskLinkDTO>(`/api/auth/kiosks/${encodeURIComponent(id)}/link`)).token;
+  }
+  deleteKiosk(id: string): Promise<void> {
+    return this.http.delete(`/api/auth/kiosks/${encodeURIComponent(id)}`);
+  }
+  async kioskLogin(token: string): Promise<Session> {
+    const body: KioskLoginDTO = { token };
+    return toSession(await this.http.post<SessionDTO>('/api/auth/kiosk/login', body));
+  }
+  async kioskOptions(): Promise<KioskOptions> {
+    return { ...(await this.http.get<KioskOptionsDTO>('/api/auth/kiosk')) };
   }
 
   async apiTokens(): Promise<ApiToken[]> {
