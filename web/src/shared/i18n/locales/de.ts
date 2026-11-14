@@ -282,6 +282,12 @@ export const de: Record<BaseMessageKey, string> = {
   'adguard.blocked': 'blockiert',
   'adguard.ms': '{value} ms',
   'adguard.avg': 'Ø',
+  'adguard.pause': 'Blockieren pausieren:',
+  'adguard.pause_for': 'Blockieren für {minutes} Minuten pausieren',
+  'adguard.minutes_short': '{minutes} Min.',
+  'adguard.pause_confirm':
+    'Blockieren von {name} für {minutes} Minuten pausieren? Werbung und Tracker werden in dieser Zeit im ganzen Netz nicht blockiert.',
+  'adguard.paused_left': 'Blockieren pausiert, noch {minutes} Min.',
   'adguard.loading': 'Wird geladen …',
   'bookmarks.title_optional': 'Titel (optional)',
   'bookmarks.folder': 'Ordner',

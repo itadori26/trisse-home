@@ -633,6 +633,8 @@ func TestAPIEndToEnd(t *testing.T) {
 	}
 	c.do(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusNotFound)
 	c.do(http.MethodGet, "/api/adguard/stats?provider=bind", nil, http.StatusUnprocessableEntity)
+	// Pausing is opt-in (DNS_PAUSE_PROVIDERS, #177); the test server allows none.
+	c.do(http.MethodPost, "/api/adguard/pause", obj{"minutes": 5}, http.StatusForbidden)
 	c.json(http.MethodPut, "/api/adguard/settings?provider=pihole", obj{"url": up.URL + "/pihole"}, http.StatusOK, nil)
 	c.json(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusOK, &stats)
 	if stats["blockedPercent"] != float64(10) || stats["avgProcessingMs"] != nil {

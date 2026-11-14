@@ -146,7 +146,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 			return system.New(system.Config{ProcPath: cfg.HostProcPath, SysPath: cfg.HostSysPath, DiskPaths: cfg.DiskPaths, Version: version, Client: client, InstallMethod: cfg.InstallMethod}, db, sink, clk)
 		}},
 		{"docker", func() modules.Module { return dockerModule }},
-		{"adguard", func() modules.Module { return adguard.New(db, secrets, out.integration, clk) }},
+		{"adguard", func() modules.Module {
+			return adguard.New(adguard.Config{DB: db, Cipher: secrets, Client: out.integration, Pausable: cfg.DNSPauseProviders, Audit: authModule, Clock: clk})
+		}},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, out.integration, clk) }},
 		{"parcels", func() modules.Module { return parcels.New(db, secrets, client, clk, ids) }},
 		{"transfer", func() modules.Module { return transfer.New(registry.Portables, clk, authModule) }},

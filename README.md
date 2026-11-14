@@ -56,7 +56,7 @@ Not sure whether trisse-home is the right fit? See the
 | **calendar**   | Agenda, month or split view (month grid and events side by side, keyboard navigation, event details) of CalDAV calendars, e.g. Nextcloud (recurring events supported), and read-only ICS/webcal subscriptions (timetables, fixtures, holidays) with colour and refresh interval; quick-add of events |
 | **system**     | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check |
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view; opt-in image update hints (digest compared with the registry at most every 6 h, optional newer version tags, release notes link, notification) |
-| **adguard**    | DNS filter statistics of AdGuard Home or Pi-hole 6+ (queries, blocked share, top blocked domains, protection status); provider chosen per widget |
+| **adguard**    | DNS filter statistics of AdGuard Home or Pi-hole 6+ (queries, blocked share, top blocked domains, protection status); provider chosen per widget; opt-in pause for 5/30/60 minutes (`DNS_PAUSE_PROVIDERS`) |
 | **proxmox**    | Proxmox VE node load (CPU, memory, root disk) and the status and uptime of VMs and LXC containers via a read-only API token; optional [start/shutdown](#proxmox-ve-optional) for allow-listed guests |
 | **smarthome**  | Home Assistant entities as tiles (state with unit, last change), picked per widget; optional [switches and buttons](#home-assistant-optional) for allow-listed entities |
 | **arr**        | Sonarr, Radarr and Prowlarr (several instances): upcoming episodes and movies for two weeks, download queue with progress and stuck downloads, health warnings, number of missing items |
@@ -463,6 +463,7 @@ service tiles are configured in the web interface.
 | `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
 | `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
 | `SMARTHOME_ACTIONS_ENTITIES` | empty                     | Home Assistant entity IDs (e.g. `switch.coffee_machine`) that may be switched or pressed; empty = read-only. |
+| `DNS_PAUSE_PROVIDERS` | empty | DNS filters (`adguard`, `pihole`) whose blocking may be paused for 5/30/60 minutes from the widget; empty = read-only. |
 | `PROXMOX_ACTIONS_GUESTS` | empty                         | Proxmox guest IDs (e.g. `100,105`) that may be started and shut down from the dashboard; empty = read-only. |
 | `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |

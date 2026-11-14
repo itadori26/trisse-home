@@ -46,6 +46,9 @@ type Config struct {
 	MetricsToken            string
 	DockerActionsContainers []string
 	DockerActionsProxyURL   string
+	// DNSPauseProviders are the DNS filters (adguard, pihole) whose blocking
+	// may be paused from the widget (#177); empty = read-only.
+	DNSPauseProviders []string
 	// SmartHomeActionsEntities are the Home Assistant entities that may be
 	// switched or pressed from the dashboard (#49); empty disables actions.
 	SmartHomeActionsEntities []string
@@ -139,6 +142,7 @@ func Load(getenv func(string) string) (Config, error) {
 		DockerActionsProxyURL:    l.str("DOCKER_ACTIONS_PROXY_URL", "http://docker-actions-proxy:2375"),
 		ProxmoxActionsGuests:     l.ids("PROXMOX_ACTIONS_GUESTS"),
 		SmartHomeActionsEntities: l.list("SMARTHOME_ACTIONS_ENTITIES", ""),
+		DNSPauseProviders:        l.list("DNS_PAUSE_PROVIDERS", ""),
 		WolRelay:                 l.str("WOL_RELAY", ""),
 		WireGuardDir:             l.str("WIREGUARD_DIR", ""),
 		DiskHealthDir:            l.str("DISKHEALTH_DIR", ""),
@@ -191,12 +195,18 @@ func Load(getenv func(string) string) (Config, error) {
 			break
 		}
 	}
+	for _, p := range cfg.DNSPauseProviders {
+		if p != "adguard" && p != "pihole" {
+			l.fail("DNS_PAUSE_PROVIDERS", "must list adguard and/or pihole")
+			break
+		}
+	}
 	if cfg.DockerActions && len(cfg.DockerActionsContainers) == 0 {
 		l.fail("DOCKER_ACTIONS_CONTAINERS", "must list the containers that may be restarted when DOCKER_ACTIONS=true")
 	}
 	if cfg.DemoMode {
 		cfg.SampleData = true
-		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "SMARTHOME_ACTIONS_ENTITIES": len(cfg.SmartHomeActionsEntities) > 0, "PROXMOX_ACTIONS_GUESTS": len(cfg.ProxmoxActionsGuests) > 0, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != "", "DISKHEALTH_DIR": cfg.DiskHealthDir != ""} {
+		for key, set := range map[string]bool{"DOCKER_ACTIONS": cfg.DockerActions, "SMARTHOME_ACTIONS_ENTITIES": len(cfg.SmartHomeActionsEntities) > 0, "PROXMOX_ACTIONS_GUESTS": len(cfg.ProxmoxActionsGuests) > 0, "DNS_PAUSE_PROVIDERS": len(cfg.DNSPauseProviders) > 0, "WOL_RELAY": cfg.WolRelay != "", "WIREGUARD_DIR": cfg.WireGuardDir != "", "DISKHEALTH_DIR": cfg.DiskHealthDir != ""} {
 			if set {
 				l.fail(key, "must not be set together with DEMO_MODE=true (a demo must not reach real systems)")
 			}

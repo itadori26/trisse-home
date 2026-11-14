@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"trisse-home/internal/modules/adguard/domain"
 	"trisse-home/internal/platform/database/dbtest"
@@ -126,7 +128,7 @@ func TestPiHole(t *testing.T) {
 	pi := NewPiHole(srv.Client())
 	s := domain.Settings{Provider: domain.ProviderPiHole, URL: srv.URL, Password: "app-pw"}
 	st, err := pi.Stats(context.Background(), s)
-	if err != nil || st.Queries != 2000 || st.Blocked != 500 || st.ProtectionEnabled || st.HasAvgProcessingTime ||
+	if err != nil || st.Queries != 2000 || st.Blocked != 500 || st.ProtectionEnabled || st.HasAvgProcessingTime || st.PauseRemaining != 30*time.Second ||
 		len(st.TopBlocked) != 2 || st.TopBlocked[0].Domain != "ads.example" {
 		t.Fatalf("unexpected %+v %v", st, err)
 	}
@@ -160,5 +162,38 @@ func TestPiHoleWithoutPassword(t *testing.T) {
 	st, err := NewPiHole(srv.Client()).Stats(context.Background(), domain.Settings{Provider: domain.ProviderPiHole, URL: srv.URL})
 	if err != nil || !st.ProtectionEnabled || st.Queries != 10 {
 		t.Fatalf("unexpected %+v %v", st, err)
+	}
+}
+
+func TestPause(t *testing.T) {
+	var got []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		got = append(got, r.Method+" "+r.URL.Path+" "+string(body))
+		switch r.URL.Path {
+		case "/control/protection":
+			if u, p, _ := r.BasicAuth(); u != "admin" || p != "pw" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			_, _ = w.Write([]byte("OK"))
+		case "/api/dns/blocking":
+			_, _ = w.Write([]byte(`{"blocking":"disabled","timer":300}`))
+		}
+	}))
+	defer srv.Close()
+	ag := NewAPI(srv.Client())
+	if err := ag.Pause(context.Background(), domain.Settings{URL: srv.URL, Username: "admin", Password: "pw"}, 5*time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if err := ag.Pause(context.Background(), domain.Settings{URL: srv.URL, Username: "admin", Password: "no"}, time.Minute); err == nil {
+		t.Fatal("expected an auth error")
+	}
+	pi := NewPiHole(srv.Client())
+	if err := pi.Pause(context.Background(), domain.Settings{URL: srv.URL}, 5*time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if got[0] != `POST /control/protection {"duration":300000,"enabled":false}` || got[2] != `POST /api/dns/blocking {"blocking":false,"timer":300}` {
+		t.Fatalf("%q", got)
 	}
 }

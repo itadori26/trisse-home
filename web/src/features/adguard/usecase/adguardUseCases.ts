@@ -1,4 +1,4 @@
-import type { AdGuardSettings, AdGuardStats, DnsProvider } from '../domain/adguard';
+import type { AdGuardSettings, AdGuardStats, DnsProvider, PauseMinutes } from '../domain/adguard';
 
 /** Output port: DNS filter backend. */
 export interface AdGuardGateway {
@@ -10,6 +10,7 @@ export interface AdGuardGateway {
     password: string,
   ): Promise<AdGuardSettings>;
   stats(provider: DnsProvider): Promise<AdGuardStats>;
+  pause(provider: DnsProvider, minutes: PauseMinutes): Promise<AdGuardStats>;
 }
 
 /** Application logic of the DNS filter feature (AdGuard Home and Pi-hole). */
@@ -32,5 +33,10 @@ export class AdGuardUseCases {
 
   stats(provider: DnsProvider = 'adguard'): Promise<AdGuardStats> {
     return this.gateway.stats(provider);
+  }
+
+  /** Pauses blocking (#177); only allowed when the server enables it. */
+  pause(provider: DnsProvider, minutes: PauseMinutes): Promise<AdGuardStats> {
+    return this.gateway.pause(provider, minutes);
   }
 }

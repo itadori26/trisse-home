@@ -134,6 +134,15 @@ the node and catch the token. Start and shutdown need two independent steps:
 and the `VM.PowerMgmt` permission for exactly these guests in Proxmox. A hard
 stop is never offered, and every action lands in the security event log.
 
+### DNS filter pause
+
+Pausing AdGuard Home or Pi-hole switches ad and tracker blocking off for
+the whole network, so it is off by default. Only the providers listed in
+`DNS_PAUSE_PROVIDERS` in the environment can be paused, and a browser session
+cannot change that list. A pause always has a timer (5, 30 or 60 minutes), and
+the DNS filter switches itself back on. Every pause lands in the security
+event log, and the setting is refused together with `DEMO_MODE=true`.
+
 ### WireGuard export
 
 `wg` needs `CAP_NET_ADMIN` in the network namespace of the VPN, and its
