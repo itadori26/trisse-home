@@ -14,4 +14,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_4afce48c7ea72d13: 'Die Notiz darf höchstens 100 KiB lang sein.',
   // The version does not exist.
   srv_192c651a50b6f91f: 'Die Version existiert nicht.',
+  // The note was changed elsewhere in the meantime.
+  srv_4fc5f1e95d5f8139: 'Die Notiz wurde inzwischen an anderer Stelle geändert.',
 };

@@ -11,8 +11,8 @@ import (
 	"trisse-home/internal/shared/kernel"
 )
 
-// callsRefresh is how often the (slower) call list is fetched.
-const callsRefresh = 2 * time.Minute
+// callsTTL is how long a fetched call list is reused (cache-aside, ADR 0006).
+const callsTTL = 2 * time.Minute
 
 // SettingsView never contains the password.
 type SettingsView struct {
@@ -35,11 +35,23 @@ type StatusView struct {
 	Error     string
 }
 
+// CallsView is the call list of a calls widget (#168).
+type CallsView struct {
+	Calls     []domain.Call
+	UpdatedAt time.Time
+	// Hint explains an empty list (no login configured).
+	Hint string
+	// Error is set when the box did not answer; Calls are the last known ones.
+	Error string
+}
+
 // FritzBox is the input port of the module.
 type FritzBox interface {
 	Settings(ctx context.Context) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
 	Status(ctx context.Context) (StatusView, error)
+	// Calls returns the call list, fetched only when asked for (#168).
+	Calls(ctx context.Context, f domain.CallFilter) (CallsView, error)
 	Refresh(ctx context.Context) error
 }
 
@@ -62,11 +74,10 @@ type fritzbox struct {
 	box   Box
 	clock kernel.Clock
 
-	mu        sync.RWMutex
-	cached    *StatusView
-	calls     []domain.Call
-	callsHint string
-	callsAt   time.Time
+	mu      sync.RWMutex
+	cached  *StatusView
+	calls   []domain.Call
+	callsAt time.Time
 }
 
 // NewFritzBox returns the FRITZ!Box use cases.
@@ -115,7 +126,7 @@ func (uc *fritzbox) SaveSettings(ctx context.Context, in SettingsInput) (Setting
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
 	}
 	uc.mu.Lock()
-	uc.cached, uc.callsAt = nil, time.Time{}
+	uc.cached, uc.calls, uc.callsAt = nil, nil, time.Time{}
 	uc.mu.Unlock()
 	_ = uc.Refresh(ctx)
 	return SettingsView{Configured: true, URL: s.URL, Username: s.Username, HasPassword: s.HasLogin()}, nil
@@ -149,7 +160,6 @@ func (uc *fritzbox) Refresh(ctx context.Context) error {
 	}
 	now := uc.clock.Now()
 	wan, model, wanErr := uc.box.WAN(ctx, s)
-	uc.refreshCalls(ctx, s, now)
 
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
@@ -162,38 +172,40 @@ func (uc *fritzbox) Refresh(ctx context.Context) error {
 		uc.cached = &view
 		return fmt.Errorf("query fritzbox: %w", wanErr)
 	}
-	st := domain.Status{Model: model, WAN: wan, Calls: uc.calls, Hint: uc.callsHint}
+	st := domain.Status{Model: model, WAN: wan}
 	if !wan.Known {
-		st.Hint = joinHints(st.Hint, "Enable “Transmit status information over UPnP” on the FRITZ!Box (Home Network → Network → Network Settings) to see the throughput.")
+		st.Hint = "Enable “Transmit status information over UPnP” on the FRITZ!Box (Home Network → Network → Network Settings) to see the throughput."
 	}
 	uc.cached = &StatusView{Status: st, UpdatedAt: now}
 	return nil
 }
 
-func (uc *fritzbox) refreshCalls(ctx context.Context, s domain.Settings, now time.Time) {
-	uc.mu.RLock()
-	fresh := !uc.callsAt.IsZero() && now.Sub(uc.callsAt) < callsRefresh
-	uc.mu.RUnlock()
-	if fresh {
-		return
+// Calls implements FritzBox: the list is fetched when a calls widget asks
+// and reused for two minutes; the background job never fetches it (#168).
+func (uc *fritzbox) Calls(ctx context.Context, f domain.CallFilter) (CallsView, error) {
+	s, err := uc.repo.Load(ctx)
+	if err != nil {
+		return CallsView{}, err
 	}
-	var calls []domain.Call
-	hint := ""
 	if !s.HasLogin() {
-		hint = "Add a FRITZ!Box user in the settings to see the call list."
-	} else if c, err := uc.box.Calls(ctx, s, domain.MaxCalls); err != nil {
-		hint = "The call list is not available."
-	} else {
-		calls = c
+		return CallsView{Calls: []domain.Call{}, Hint: "Add a FRITZ!Box user in the settings to see the call list."}, nil
 	}
-	uc.mu.Lock()
-	uc.calls, uc.callsHint, uc.callsAt = calls, hint, now
-	uc.mu.Unlock()
-}
-
-func joinHints(a, b string) string {
-	if a == "" {
-		return b
+	now := uc.clock.Now()
+	uc.mu.RLock()
+	calls, at := uc.calls, uc.callsAt
+	uc.mu.RUnlock()
+	view := CallsView{}
+	if at.IsZero() || now.Sub(at) >= callsTTL {
+		fetched, err := uc.box.Calls(ctx, s, domain.MaxCalls)
+		if err != nil {
+			view.Error = "The call list is not available."
+		} else {
+			calls, at = fetched, now
+			uc.mu.Lock()
+			uc.calls, uc.callsAt = fetched, now
+			uc.mu.Unlock()
+		}
 	}
-	return a + " " + b
+	view.Calls, view.UpdatedAt = f.Apply(calls), at
+	return view, nil
 }
