@@ -40,14 +40,14 @@ type Repository struct {
 func NewRepository(db *sql.DB, cipher Cipher) *Repository { return &Repository{db: db, cipher: cipher} }
 
 const columns = `id, tracking_number, carrier, label, status_code, status_description, status_location, status_at,
-	estimated_delivery, checked_at, error, created_at`
+	estimated_delivery, checked_at, error, created_at, discovered`
 
 func scan(sc interface{ Scan(...any) error }) (domain.Parcel, error) {
 	var p domain.Parcel
 	var carrier, code, created string
 	var statusAt, eta, checked *string
 	if err := sc.Scan(&p.ID, &p.TrackingNumber, &carrier, &p.Label, &code, &p.Status.Description, &p.Status.Location,
-		&statusAt, &eta, &checked, &p.Error, &created); err != nil {
+		&statusAt, &eta, &checked, &p.Error, &created, &p.Discovered); err != nil {
 		return p, err
 	}
 	p.Carrier, p.Status.Code = domain.Carrier(carrier), domain.StatusCode(code)
@@ -97,14 +97,14 @@ func (r *Repository) Get(ctx context.Context, id string) (domain.Parcel, error) 
 
 // Save implements usecase.Repository (upsert).
 func (r *Repository) Save(ctx context.Context, p domain.Parcel) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO parcels (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	_, err := r.db.ExecContext(ctx, `INSERT INTO parcels (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET label = excluded.label, status_code = excluded.status_code,
 			status_description = excluded.status_description, status_location = excluded.status_location,
 			status_at = excluded.status_at, estimated_delivery = excluded.estimated_delivery,
 			checked_at = excluded.checked_at, error = excluded.error`,
 		p.ID, p.TrackingNumber, string(p.Carrier), p.Label, string(p.Status.Code), p.Status.Description, p.Status.Location,
 		sqlutil.FormatNullableTime(p.Status.At), sqlutil.FormatNullableTime(p.EstimatedDelivery), sqlutil.FormatNullableTime(p.CheckedAt),
-		p.Error, sqlutil.FormatTime(p.CreatedAt))
+		p.Error, sqlutil.FormatTime(p.CreatedAt), p.Discovered)
 	if err != nil {
 		return fmt.Errorf("upsert parcel: %w", err)
 	}

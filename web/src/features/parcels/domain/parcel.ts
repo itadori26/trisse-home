@@ -3,11 +3,20 @@ import type { MessageKey } from '../../../shared/i18n';
 /** Normalised shipment state. */
 export type ParcelStatus = 'unknown' | 'pre-transit' | 'transit' | 'delivered' | 'failure';
 
+/** Carriers; only DHL has live tracking, the others link to their page (#166). */
+export type Carrier = 'dhl' | 'hermes' | 'dpd' | 'gls' | 'ups';
+export const CARRIERS: readonly Carrier[] = ['dhl', 'hermes', 'dpd', 'gls', 'ups'];
+
+/** Display name of a carrier. */
+export function carrierName(c: Carrier): string {
+  return { dhl: 'DHL', hermes: 'Hermes', dpd: 'DPD', gls: 'GLS', ups: 'UPS' }[c];
+}
+
 /** A tracked parcel. */
 export interface Parcel {
   id: string;
   trackingNumber: string;
-  carrier: 'dhl';
+  carrier: Carrier;
   label: string;
   status: ParcelStatus;
   description: string;
@@ -15,6 +24,37 @@ export interface Parcel {
   statusAt: Date | null;
   estimatedDelivery: Date | null;
   error: string;
+  /** Found in a shipping e-mail (#166). */
+  discovered: boolean;
+  /** The carrier's public tracking page. */
+  trackingUrl: string;
+  /** False for carriers without live tracking: only the link. */
+  trackable: boolean;
+}
+
+/** The read-only mailbox parcels are found in (#166); never the password. */
+export interface MailSettings {
+  enabled: boolean;
+  host: string;
+  port: number;
+  username: string;
+  hasPassword: boolean;
+  folder: string;
+  intervalMinutes: number;
+  lastRun: Date | null;
+  lastError: string;
+  found: number;
+}
+
+/** Input of saving the mailbox; an empty password keeps the stored one. */
+export interface MailSettingsInput {
+  enabled: boolean;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  folder: string;
+  intervalMinutes: number;
 }
 
 /** Settings as shown in the UI (the key is never returned). */

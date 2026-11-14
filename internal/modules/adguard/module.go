@@ -25,13 +25,32 @@ type Module struct {
 	handlers *controller.Handlers
 }
 
-// New builds the module; cipher encrypts the stored passwords.
-func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock) *Module {
+// Config are the dependencies of the module.
+type Config struct {
+	DB *sql.DB
+	// Cipher encrypts the stored passwords.
+	Cipher gateway.Cipher
+	Client *http.Client
+	// Pausable lists the providers that may be paused (DNS_PAUSE_PROVIDERS, #177).
+	Pausable []string
+	Audit    kernel.AuditSink
+	Clock    kernel.Clock
+}
+
+// New builds the module.
+func New(c Config) *Module {
 	providers := map[domain.Provider]usecase.DNSFilterProvider{
-		domain.ProviderAdGuard: gateway.NewAPI(client),
-		domain.ProviderPiHole:  gateway.NewPiHole(client),
+		domain.ProviderAdGuard: gateway.NewAPI(c.Client),
+		domain.ProviderPiHole:  gateway.NewPiHole(c.Client),
 	}
-	uc := usecase.NewDNSFilter(gateway.NewSettingsRepository(db, cipher), providers, clock)
+	var pausable []domain.Provider
+	for _, raw := range c.Pausable {
+		if p, err := domain.ParseProvider(raw); err == nil && raw != "" {
+			pausable = append(pausable, p)
+		}
+	}
+	uc := usecase.NewDNSFilter(usecase.Deps{Repo: gateway.NewSettingsRepository(c.DB, c.Cipher), Providers: providers,
+		Pausable: pausable, Audit: c.Audit, Clock: c.Clock})
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc)}
 }
 
@@ -49,6 +68,7 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/adguard/settings", m.handlers.Settings)
 	r.Protected("PUT /api/adguard/settings", m.handlers.SaveSettings)
 	r.Protected("GET /api/adguard/stats", m.handlers.Stats)
+	r.Protected("POST /api/adguard/pause", m.handlers.Pause)
 }
 
 // Jobs implements modules.Module.

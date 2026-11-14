@@ -21,7 +21,7 @@ export interface SettingsDTO {
 export interface ParcelDTO {
   id: string;
   trackingNumber: string;
-  carrier: 'dhl';
+  carrier: 'dhl' | 'hermes' | 'dpd' | 'gls' | 'ups';
   label: string;
   status: 'unknown' | 'pre-transit' | 'transit' | 'delivered' | 'failure';
   description: string;
@@ -29,4 +29,31 @@ export interface ParcelDTO {
   statusAt?: string /* RFC 3339 */;
   estimatedDelivery?: string /* RFC 3339 */;
   error: string;
+  /**
+   * Discovered parcels were found in a shipping e-mail (#166).
+   */
+  discovered: boolean;
+  /**
+   * TrackingURL is the carrier's public tracking page.
+   */
+  trackingUrl: string;
+  /**
+   * Trackable is false for carriers without a tracking API: only the link.
+   */
+  trackable: boolean;
+}
+/**
+ * MailSettingsDTO is returned by the mail endpoints (#166); never the password.
+ */
+export interface MailSettingsDTO {
+  enabled: boolean;
+  host: string;
+  port: number /* int */;
+  username: string;
+  hasPassword: boolean;
+  folder: string;
+  intervalMinutes: number /* int */;
+  lastRun?: string /* RFC 3339 */;
+  lastError: string;
+  found: number /* int */;
 }

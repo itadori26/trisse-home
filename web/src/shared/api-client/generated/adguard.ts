@@ -13,6 +13,10 @@ export interface SettingsDTO {
   url: string;
   username: string;
   hasPassword: boolean;
+  /**
+   * CanPause is true when the server allows pausing (DNS_PAUSE_PROVIDERS, #177).
+   */
+  canPause: boolean;
 }
 /**
  * BlockedDomainDTO is a blocked domain with its count.
@@ -33,6 +37,10 @@ export interface StatsDTO {
    */
   avgProcessingMs?: number /* float64 */;
   protectionEnabled: boolean;
+  /**
+   * PausedUntil is set while a timed pause runs (#177).
+   */
+  pausedUntil?: string /* RFC 3339 */;
   topBlocked: BlockedDomainDTO[];
   updatedAt: string /* RFC 3339 */;
   error: string;

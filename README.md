@@ -114,6 +114,7 @@ trisse-home aims for **WCAG 2.2 AA**. It is fully keyboard-operable with visible
 | **docker**     | Container status and health via a read-only Docker socket proxy; optional restart and log view; opt-in image update hints (digest compared with the registry at most every 6 h, optional newer version tags, release notes link, notification) |
 | **apiwidget**  | Generic JSON widget: values from any JSON endpoint picked with JSONPath, with unit and warning/critical thresholds; API key header stored encrypted, private addresses only unless allowed per endpoint ([docs](docs/modules/apiwidget.md)) |
 | **adguard**    | DNS filter statistics of AdGuard Home or Pi-hole 6+ (queries, blocked share, top blocked domains, protection status); provider chosen per widget |
+| **adguard**    | DNS filter statistics of AdGuard Home or Pi-hole 6+ (queries, blocked share, top blocked domains, protection status); provider chosen per widget; opt-in pause for 5/30/60 minutes (`DNS_PAUSE_PROVIDERS`) |
 | **proxmox**    | Proxmox VE node load (CPU, memory, root disk) and the status and uptime of VMs and LXC containers via a read-only API token; optional [start/shutdown](#proxmox-ve-optional) for allow-listed guests |
 | **smarthome**  | Home Assistant entities as tiles (state with unit, last change), picked per widget; optional [switches and buttons](#home-assistant-optional) for allow-listed entities |
 | **arr**        | Sonarr, Radarr and Prowlarr (several instances): upcoming episodes and movies for two weeks, download queue with progress and stuck downloads, health warnings, number of missing items |
@@ -124,7 +125,7 @@ trisse-home aims for **WCAG 2.2 AA**. It is fully keyboard-operable with visible
 | **gamedeals**  | Discounts on your public Steam wishlist (price, discount, end date, minimum discount) and current/upcoming free games on the Epic Games Store |
 | **speedtest**  | Internet speed from an existing [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker): latest download/upload/ping, 24 h and 7 day sparklines, optional notification below a threshold (runs no tests itself) |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
-| **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
+| **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate; Hermes, DPD, GLS and UPS with a link to the carrier; opt-in: parcels found automatically in shipping e-mails of a read-only IMAP folder ([guide](docs/parcels-mail.md)) |
 | **transit**    | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org)) |
 | **waste**      | Waste collection dates from your municipality’s ICS calendar, subscribed by link or uploaded as an .ics file (with a reminder before the year’s file runs out); tomorrow’s bin is highlighted |
 | **holidays**   | Next public holidays of a German state (computed locally for all 16 states, no request) and optionally the school holidays from an ICS link; current holidays highlighted ([docs](docs/modules/holidays.md)) |
@@ -589,6 +590,7 @@ service tiles are configured in the web interface.
 | `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
 | `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
 | `SMARTHOME_ACTIONS_ENTITIES` | empty                     | Home Assistant entity IDs (e.g. `switch.coffee_machine`) that may be switched or pressed; empty = read-only. |
+| `DNS_PAUSE_PROVIDERS` | empty | DNS filters (`adguard`, `pihole`) whose blocking may be paused for 5/30/60 minutes from the widget; empty = read-only. |
 | `PROXMOX_ACTIONS_GUESTS` | empty                         | Proxmox guest IDs (e.g. `100,105`) that may be started and shut down from the dashboard; empty = read-only. |
 | `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
 | `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
@@ -649,6 +651,8 @@ radar image is proxied, so the browser never contacts DWD) and departures
 from the community-run [Transitous](https://transitous.org) API (cached one
 minute per stop; please respect its fair-use policy or run your own MOTIS)
 and, with your API key, the DHL tracking API (hourly, undelivered parcels only).
+If you set up parcel discovery (off by default), the server reads one folder of
+your mailbox over IMAP with TLS, read-only, at the interval you choose.
 If you enable it in the bookmark settings (off by default), the server also
 requests your bookmarked pages themselves: once when a bookmark is added (title
 and favicon, at most 512 KB per page and 64 KB per icon) and once a week for the

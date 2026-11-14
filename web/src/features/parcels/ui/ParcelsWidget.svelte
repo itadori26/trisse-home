@@ -2,7 +2,7 @@
   import { usePolling } from '../../../shared/refresh';
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
-  import { type Parcel, parcelName, statusInfo } from '../domain/parcel';
+  import { type Parcel, parcelName, statusInfo, CARRIERS, type Carrier, carrierName } from '../domain/parcel';
   import type { ParcelsUseCases } from '../usecase/parcelsUseCases';
 
   /** Props of the parcels widget. */
@@ -18,6 +18,7 @@
   let adding = $state(false);
   let number = $state('');
   let label = $state('');
+  let carrier = $state<Carrier>('dhl');
   let error = $state('');
 
   const load = () =>
@@ -36,8 +37,9 @@
   async function add(e: SubmitEvent) {
     e.preventDefault();
     try {
-      await parcels.add(number, label);
+      await parcels.add(number, label, carrier);
       number = label = '';
+      carrier = 'dhl';
       adding = false;
       await load();
     } catch (err) {
@@ -73,6 +75,9 @@
       aria-label={t('parcels.tracking_number')}
       required
     />
+    <select class="input" bind:value={carrier} aria-label={t('parcels.carrier')}>
+      {#each CARRIERS as c (c)}<option value={c}>{carrierName(c)}</option>{/each}
+    </select>
     <input
       class="input"
       bind:value={label}
@@ -89,8 +94,23 @@
     {@const info = statusInfo[p.status]}
     <li>
       <div class="row">
-        <span class="name" title={p.trackingNumber}>{parcelName(p)}</span>
-        <span class="badge" style="color: {info.color}">{t(info.label)}</span>
+        <span class="name" title={p.trackingNumber}
+          >{#if p.discovered}<span title={t('parcels.discovered')} aria-label={t('parcels.discovered')}
+              >✉
+            </span>{/if}{parcelName(p)}</span
+        >
+        {#if p.trackable}
+          <span class="badge" style="color: {info.color}">{t(info.label)}</span>
+        {/if}
+        {#if p.trackingUrl}
+          <a
+            class="btn btn-icon"
+            href={p.trackingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t('parcels.track_at', { carrier: carrierName(p.carrier), name: parcelName(p) })}>↗</a
+          >
+        {/if}
         <button
           class="btn btn-icon rm"
           type="button"
@@ -98,7 +118,9 @@
           onclick={() => remove(p)}>✕</button
         >
       </div>
-      {#if p.error}
+      {#if !p.trackable}
+        <div class="muted small">{t('parcels.link_only', { carrier: carrierName(p.carrier) })}</div>
+      {:else if p.error}
         <div class="muted small">{p.error}</div>
       {:else}
         <div class="muted small">

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -18,6 +19,8 @@ type SettingsView struct {
 	URL         string
 	Username    string
 	HasPassword bool
+	// CanPause is true when DNS_PAUSE_PROVIDERS allows pausing (#177).
+	CanPause bool
 }
 
 // SettingsInput is the input of SaveSettings. An empty password keeps the
@@ -41,9 +44,11 @@ type StatsView struct {
 	// HasAvgProcessing is false for providers that do not report it.
 	HasAvgProcessing  bool
 	ProtectionEnabled bool
-	TopBlocked        []BlockedDomainView
-	UpdatedAt         time.Time
-	Error             string
+	// PausedUntil is set while a timed pause runs (#177).
+	PausedUntil *time.Time
+	TopBlocked  []BlockedDomainView
+	UpdatedAt   time.Time
+	Error       string
 }
 
 // DNSFilter is the input port of the module; provider is "adguard",
@@ -54,6 +59,9 @@ type DNSFilter interface {
 	Stats(ctx context.Context, provider string) (StatsView, error)
 	// Refresh updates every configured provider; it is run by the job.
 	Refresh(ctx context.Context) error
+	// Pause switches blocking off for a few minutes, if the server allows it
+	// for the provider (#177); it returns the new statistics.
+	Pause(ctx context.Context, provider string, minutes int) (StatsView, error)
 }
 
 // SettingsRepository persists the settings per provider (output port).
@@ -67,20 +75,37 @@ type SettingsRepository interface {
 // Pi-hole are adapters implementing it.
 type DNSFilterProvider interface {
 	Stats(ctx context.Context, s domain.Settings) (domain.Stats, error)
+	// Pause switches blocking off for d; the filter turns itself back on.
+	Pause(ctx context.Context, s domain.Settings, d time.Duration) error
+}
+
+// Deps are the dependencies of the use cases.
+type Deps struct {
+	Repo SettingsRepository
+	// Providers maps each supported provider to its adapter.
+	Providers map[domain.Provider]DNSFilterProvider
+	// Pausable lists the providers that may be paused (DNS_PAUSE_PROVIDERS).
+	Pausable []domain.Provider
+	Audit    kernel.AuditSink
+	Clock    kernel.Clock
 }
 
 type dnsFilter struct {
 	repo      SettingsRepository
 	providers map[domain.Provider]DNSFilterProvider
+	pausable  []domain.Provider
+	audit     kernel.AuditSink
 	clock     kernel.Clock
 	mu        sync.RWMutex
 	cached    map[domain.Provider]StatsView
 }
 
-// NewDNSFilter returns the use cases; providers maps each supported
-// provider to its adapter.
-func NewDNSFilter(repo SettingsRepository, providers map[domain.Provider]DNSFilterProvider, clock kernel.Clock) DNSFilter {
-	return &dnsFilter{repo: repo, providers: providers, clock: clock, cached: map[domain.Provider]StatsView{}}
+// NewDNSFilter returns the use cases.
+func NewDNSFilter(d Deps) DNSFilter {
+	if d.Audit == nil {
+		d.Audit = kernel.DiscardAudit{}
+	}
+	return &dnsFilter{repo: d.Repo, providers: d.Providers, pausable: d.Pausable, audit: d.Audit, clock: d.Clock, cached: map[domain.Provider]StatsView{}}
 }
 
 // Settings implements DNSFilter.
@@ -91,12 +116,46 @@ func (uc *dnsFilter) Settings(ctx context.Context, provider string) (SettingsVie
 	}
 	s, err := uc.repo.Load(ctx, p)
 	if errors.Is(err, domain.ErrNotConfigured) {
-		return SettingsView{Provider: string(p)}, nil
+		return SettingsView{Provider: string(p), CanPause: uc.canPause(p)}, nil
 	}
 	if err != nil {
 		return SettingsView{}, fmt.Errorf("load settings: %w", err)
 	}
-	return settingsView(s), nil
+	return uc.settingsView(s), nil
+}
+
+func (uc *dnsFilter) canPause(p domain.Provider) bool { return slices.Contains(uc.pausable, p) }
+
+// Pause implements DNSFilter.
+func (uc *dnsFilter) Pause(ctx context.Context, provider string, minutes int) (StatsView, error) {
+	p, err := domain.ParseProvider(provider)
+	if err != nil {
+		return StatsView{}, err
+	}
+	if !uc.canPause(p) {
+		return StatsView{}, domain.ErrPauseNotAllowed
+	}
+	d, err := domain.ParsePause(minutes)
+	if err != nil {
+		return StatsView{}, err
+	}
+	s, err := uc.repo.Load(ctx, p)
+	if err != nil {
+		return StatsView{}, err
+	}
+	if err := uc.providers[p].Pause(ctx, s, d); err != nil {
+		return StatsView{}, kernel.TargetFailure(kernel.ErrUnavailable, err)
+	}
+	uc.audit.Audit(ctx, kernel.AuditEvent{Type: "dns_filter_paused", Detail: fmt.Sprintf("%s for %d min", p, minutes)})
+	if err := uc.refresh(ctx, s); err != nil {
+		// Paused, but the statistics could not be read back: report the pause.
+		until := uc.clock.Now().Add(d)
+		v, _ := uc.cachedView(p)
+		v.ProtectionEnabled, v.PausedUntil = false, &until
+		uc.store(p, v)
+	}
+	v, _ := uc.cachedView(p)
+	return v, nil
 }
 
 // SaveSettings implements DNSFilter. The connection is tested before saving
@@ -128,7 +187,7 @@ func (uc *dnsFilter) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
 	}
 	uc.store(p, toView(stats, uc.clock.Now()))
-	return settingsView(s), nil
+	return uc.settingsView(s), nil
 }
 
 // Stats implements DNSFilter (cache-aside).
@@ -195,8 +254,9 @@ func (uc *dnsFilter) store(p domain.Provider, v StatsView) {
 	uc.cached[p] = v
 }
 
-func settingsView(s domain.Settings) SettingsView {
-	return SettingsView{Provider: string(s.Provider), Configured: true, URL: s.URL, Username: s.Username, HasPassword: s.Password != ""}
+func (uc *dnsFilter) settingsView(s domain.Settings) SettingsView {
+	return SettingsView{Provider: string(s.Provider), Configured: true, URL: s.URL, Username: s.Username, HasPassword: s.Password != "",
+		CanPause: uc.canPause(s.Provider)}
 }
 
 func toView(s domain.Stats, at time.Time) StatsView {
@@ -207,6 +267,10 @@ func toView(s domain.Stats, at time.Time) StatsView {
 	}
 	for _, d := range s.TopBlocked {
 		v.TopBlocked = append(v.TopBlocked, BlockedDomainView(d))
+	}
+	if !s.ProtectionEnabled && s.PauseRemaining > 0 {
+		until := at.Add(s.PauseRemaining)
+		v.PausedUntil = &until
 	}
 	return v
 }

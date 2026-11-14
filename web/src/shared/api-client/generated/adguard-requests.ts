@@ -12,3 +12,12 @@ export interface SettingsInputDTO {
   username: string;
   password: string;
 }
+/**
+ * PauseDTO is the body of POST /api/adguard/pause?provider=… (#177).
+ */
+export interface PauseDTO {
+  /**
+   * Minutes is 5, 30 or 60.
+   */
+  minutes: number /* int */;
+}

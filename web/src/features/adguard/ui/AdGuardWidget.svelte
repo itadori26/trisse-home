@@ -4,7 +4,14 @@
   import { ApiError, errorMessage } from '../../../shared/api-client/http';
   import { formatCount } from '../../../shared/ui/format';
   import Meter from '../../../shared/ui/Meter.svelte';
-  import { type AdGuardStats, parseWidgetConfig, providerName } from '../domain/adguard';
+  import {
+    type AdGuardStats,
+    PAUSE_MINUTES,
+    type PauseMinutes,
+    parseWidgetConfig,
+    pauseMinutesLeft,
+    providerName,
+  } from '../domain/adguard';
   import type { AdGuardUseCases } from '../usecase/adguardUseCases';
 
   /** Props of the AdGuard widget. */
@@ -20,12 +27,44 @@
   let stats = $state<AdGuardStats | null>(null);
   let error = $state('');
   let unconfigured = $state(false);
+  // Pausing (#177) is offered only when the server allows it for the provider.
+  let canPause = $state(false);
+  let pausing = $state(false);
+  let now = $state(new Date());
+  const minutesLeft = $derived(stats ? pauseMinutesLeft(stats.pausedUntil, now) : 0);
+
+  $effect(() => {
+    void adguard
+      .settings(provider)
+      .then((s) => (canPause = s.configured && s.canPause))
+      .catch(() => (canPause = false));
+  });
+  // The remaining pause time counts down between polls.
+  $effect(() => {
+    if (!stats?.pausedUntil) return;
+    const id = setInterval(() => (now = new Date()), 15_000);
+    return () => clearInterval(id);
+  });
+
+  async function pause(minutes: PauseMinutes) {
+    if (!confirm(t('adguard.pause_confirm', { name: providerName(provider), minutes }))) return;
+    pausing = true;
+    try {
+      stats = await adguard.pause(provider, minutes);
+      now = new Date();
+      error = '';
+    } catch (err) {
+      error = errorMessage(err);
+    } finally {
+      pausing = false;
+    }
+  }
 
   $effect(() => {
     const load = () =>
       adguard
         .stats(provider)
-        .then((s) => ((stats = s), (error = ''), (unconfigured = false)))
+        .then((s) => ((stats = s), (now = new Date()), (error = ''), (unconfigured = false)))
         .catch((err) => {
           unconfigured = err instanceof ApiError && err.status === 404;
           error = errorMessage(err);
@@ -63,7 +102,24 @@
       {/each}
     </ol>
   {/if}
+  {#if minutesLeft > 0}
+    <p class="paused" role="status">⏸ {t('adguard.paused_left', { minutes: minutesLeft })}</p>
+  {:else if canPause && stats.protectionEnabled}
+    <div class="pause" role="group" aria-label={t('adguard.pause')}>
+      <span class="muted small">{t('adguard.pause')}</span>
+      {#each PAUSE_MINUTES as m (m)}
+        <button
+          class="btn"
+          type="button"
+          disabled={pausing}
+          aria-label={t('adguard.pause_for', { minutes: m })}
+          onclick={() => pause(m)}>{t('adguard.minutes_short', { minutes: m })}</button
+        >
+      {/each}
+    </div>
+  {/if}
   {#if stats.error}<p class="error small">{stats.error}</p>{/if}
+  {#if error}<p class="error small" role="alert">{error}</p>{/if}
 {:else}
   <p class="muted">{t('adguard.loading')}</p>
 {/if}
@@ -88,6 +144,22 @@
   .numbers span,
   .small {
     font-size: 0.75em;
+  }
+  .pause {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+    margin: var(--space-2) 0;
+  }
+  .pause .btn {
+    padding: 2px var(--space-2);
+    font-size: 0.85em;
+  }
+  .paused {
+    margin: var(--space-2) 0;
+    color: var(--color-warning);
+    font-weight: 600;
   }
   .top {
     margin: 0;

@@ -592,8 +592,24 @@ func TestAPIEndToEnd(t *testing.T) {
 	if parcel["trackingNumber"] != "0034043412345678" || parcel["error"] == "" {
 		t.Fatalf("parcel: %v", parcel)
 	}
-	c.do(http.MethodPost, "/api/parcels", obj{"trackingNumber": "0034043412345678", "carrier": "hermes"}, http.StatusUnprocessableEntity)
+	c.do(http.MethodPost, "/api/parcels", obj{"trackingNumber": "0034043412345678", "carrier": "fedex"}, http.StatusUnprocessableEntity)
+	// Carriers without a tracking API link to their page (#166).
+	var gls obj
+	c.json(http.MethodPost, "/api/parcels", obj{"trackingNumber": "12345678901", "carrier": "gls"}, http.StatusCreated, &gls)
+	if gls["error"] != "" || gls["trackable"] != false || gls["trackingUrl"] != "https://www.gls-pakete.de/sendungsverfolgung?match=12345678901" {
+		t.Fatalf("gls: %v", gls)
+	}
+	c.do(http.MethodDelete, "/api/parcels/"+gls["id"].(string), nil, http.StatusNoContent)
 	c.do(http.MethodDelete, "/api/parcels/"+parcel["id"].(string), nil, http.StatusNoContent)
+	// Mail discovery (#166): off by default, the connection is tested before saving, the password never returned.
+	var mailCfg obj
+	c.json(http.MethodGet, "/api/parcels/mail", nil, http.StatusOK, &mailCfg)
+	if mailCfg["enabled"] != false || mailCfg["port"] != float64(993) || mailCfg["hasPassword"] != false {
+		t.Fatalf("mail defaults: %v", mailCfg)
+	}
+	c.do(http.MethodPut, "/api/parcels/mail", obj{"enabled": true, "host": "localhost", "port": 1, "username": "me", "password": "pw", "folder": "Pakete"}, http.StatusUnprocessableEntity)
+	c.do(http.MethodPut, "/api/parcels/mail", obj{"enabled": true, "host": "169.254.169.254", "username": "me", "password": "pw"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/parcels/mail", obj{"enabled": false}, http.StatusOK, &mailCfg)
 
 	// --- transit departures ---
 	var stops []obj
@@ -657,6 +673,8 @@ func TestAPIEndToEnd(t *testing.T) {
 	}
 	c.do(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusNotFound)
 	c.do(http.MethodGet, "/api/adguard/stats?provider=bind", nil, http.StatusUnprocessableEntity)
+	// Pausing is opt-in (DNS_PAUSE_PROVIDERS, #177); the test server allows none.
+	c.do(http.MethodPost, "/api/adguard/pause", obj{"minutes": 5}, http.StatusForbidden)
 	c.json(http.MethodPut, "/api/adguard/settings?provider=pihole", obj{"url": up.URL + "/pihole"}, http.StatusOK, nil)
 	c.json(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusOK, &stats)
 	if stats["blockedPercent"] != float64(10) || stats["avgProcessingMs"] != nil {
