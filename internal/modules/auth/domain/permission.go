@@ -12,11 +12,20 @@ var guestSelfService = []string{"/api/auth/logout", "/api/auth/password", "/api/
 // search engine, the search settings stay closed.
 var guestReadable = []string{"/api/dashboard", "/api/modules", "/api/appearance", "/api/auth/status", "/api/search"}
 
-// GuestMayAccess decides whether a guest may call method on path. modules
-// are the modules whose widgets are on the guest's tabs: their read
-// endpoints are allowed, except settings. Everything else is denied — the
-// rule is an allow-list, so new endpoints are closed for guests by default.
-func GuestMayAccess(method, path string, modules map[string]bool) bool {
+// GuestReach is what a guest's tabs open up: the modules whose widgets are on
+// them, minus the routes a module reserves for a widget kind that is not
+// there (#168), e.g. the call list without a calls widget.
+type GuestReach struct {
+	Modules map[string]bool
+	// Closed are path prefixes the guest may not read despite its modules.
+	Closed []string
+}
+
+// GuestMayAccess decides whether a guest may call method on path. The
+// modules of reach have their read endpoints allowed, except settings and the
+// closed prefixes. Everything else is denied — the rule is an allow-list, so
+// new endpoints are closed for guests by default.
+func GuestMayAccess(method, path string, reach GuestReach) bool {
 	for _, p := range guestSelfService {
 		if path == p || strings.HasPrefix(path, p+"/") {
 			return true
@@ -33,6 +42,11 @@ func GuestMayAccess(method, path string, modules map[string]bool) bool {
 	if strings.Contains(path, "/settings") {
 		return false
 	}
+	for _, p := range reach.Closed {
+		if path == p || strings.HasPrefix(path, p+"/") {
+			return false
+		}
+	}
 	parts := strings.SplitN(strings.TrimPrefix(path, "/api/"), "/", 2)
 	if !strings.HasPrefix(path, "/api/") || parts[0] == "" {
 		return false
@@ -41,5 +55,5 @@ func GuestMayAccess(method, path string, modules map[string]bool) bool {
 	case "auth", "dashboard", "transfer", "backups", "notifications", "backupmonitor":
 		return false
 	}
-	return modules[parts[0]]
+	return reach.Modules[parts[0]]
 }

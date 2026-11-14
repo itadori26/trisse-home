@@ -27,12 +27,12 @@ type Repository struct{ db *sql.DB }
 // NewRepository returns a repository backed by db.
 func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
-const columns = `id, title, body, pinned, created_at, updated_at`
+const columns = `id, title, body, pinned, created_at, updated_at, version`
 
 func scan(s interface{ Scan(...any) error }) (domain.Note, error) {
 	var id, title, body, created, updated string
-	var pinned int
-	if err := s.Scan(&id, &title, &body, &pinned, &created, &updated); err != nil {
+	var pinned, version int
+	if err := s.Scan(&id, &title, &body, &pinned, &created, &updated, &version); err != nil {
 		return domain.Note{}, err
 	}
 	c, err := sqlutil.ParseTime(created)
@@ -43,7 +43,7 @@ func scan(s interface{ Scan(...any) error }) (domain.Note, error) {
 	if err != nil {
 		return domain.Note{}, err
 	}
-	return domain.RestoreNote(id, title, body, pinned == 1, c, u), nil
+	return domain.RestoreNote(id, title, body, pinned == 1, c, u).WithVersion(version), nil
 }
 
 // List returns all notes, pinned first, then by last edit.
@@ -78,12 +78,17 @@ func (r *Repository) Get(ctx context.Context, id string) (domain.Note, error) {
 
 // Save inserts or updates a note.
 func (r *Repository) Save(ctx context.Context, n domain.Note) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO notes (`+columns+`) VALUES (?, ?, ?, ?, ?, ?)
+	// A change is only stored on top of the version it was made from (#80).
+	res, err := r.db.ExecContext(ctx, `INSERT INTO notes (`+columns+`) VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT (id) DO UPDATE SET title = excluded.title, body = excluded.body,
-			pinned = excluded.pinned, updated_at = excluded.updated_at`,
-		n.ID(), n.Title(), n.Body(), sqlutil.BoolToInt(n.Pinned()), sqlutil.FormatTime(n.CreatedAt()), sqlutil.FormatTime(n.UpdatedAt()))
+			pinned = excluded.pinned, updated_at = excluded.updated_at, version = excluded.version
+		WHERE notes.version = excluded.version - 1`,
+		n.ID(), n.Title(), n.Body(), sqlutil.BoolToInt(n.Pinned()), sqlutil.FormatTime(n.CreatedAt()), sqlutil.FormatTime(n.UpdatedAt()), n.Version())
 	if err != nil {
 		return fmt.Errorf("upsert note: %w", err)
+	}
+	if count, err := res.RowsAffected(); err == nil && count == 0 {
+		return domain.ErrVersionConflict
 	}
 	return nil
 }

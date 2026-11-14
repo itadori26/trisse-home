@@ -11,6 +11,10 @@ import (
 // MaxTitleLength limits the to-do text.
 const MaxTitleLength = 300
 
+// ErrVersionConflict is returned when the to-do was changed since the
+// version the client edited (#80).
+var ErrVersionConflict = kernel.NewPublicError(kernel.ErrConflict, "The to-do was changed elsewhere in the meantime.")
+
 // ErrTodoNotFound is returned for unknown to-do IDs.
 var ErrTodoNotFound = kernel.NewPublicError(kernel.ErrNotFound, "The to-do does not exist.")
 
@@ -25,6 +29,8 @@ type Todo struct {
 	repeat      Recurrence
 	reminder    Reminder
 	remindedFor time.Time // due date the reminder was sent for
+	// version counts the stored changes, starting at 1 (#80).
+	version int
 }
 
 // errReminderNeedsDue rejects reminders on to-dos without a due date.
@@ -80,17 +86,39 @@ func (t Todo) NextOccurrence(id string, position int, doneOn, now time.Time) (To
 
 // NewTodo validates and creates an open to-do.
 func NewTodo(id, title string, due time.Time, position int, now time.Time) (Todo, error) {
-	t := Todo{id: id, position: position, createdAt: now}
+	t := Todo{id: id, position: position, createdAt: now, version: 1}
 	if err := t.Edit(title, due); err != nil {
 		return Todo{}, err
 	}
 	return t, nil
 }
 
-// RestoreTodo rebuilds a to-do from persisted state.
+// RestoreTodo rebuilds a to-do from persisted state (version 1; see WithVersion).
 func RestoreTodo(id, title string, due time.Time, position int, createdAt, completedAt time.Time) Todo {
-	return Todo{id: id, title: title, due: due, position: position, createdAt: createdAt, completedAt: completedAt}
+	return Todo{id: id, title: title, due: due, position: position, createdAt: createdAt, completedAt: completedAt, version: 1}
 }
+
+// WithVersion returns the to-do with its stored version.
+func (t Todo) WithVersion(v int) Todo {
+	t.version = v
+	return t
+}
+
+// Version is the number of stored changes (#80).
+func (t Todo) Version() int { return t.version }
+
+// CheckVersion fails with ErrVersionConflict when the client edited another
+// version than the stored one; 0 means the client did not say (no check).
+func (t Todo) CheckVersion(expected int) error {
+	if expected != 0 && expected != t.version {
+		return ErrVersionConflict
+	}
+	return nil
+}
+
+// Bump counts a change before an existing to-do is stored again; the
+// repository only stores it if the stored version is still the one before.
+func (t *Todo) Bump() { t.version++ }
 
 // Edit changes text and due date.
 func (t *Todo) Edit(title string, due time.Time) error {

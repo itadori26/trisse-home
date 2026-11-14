@@ -13,8 +13,8 @@ import (
 	"trisse-home/internal/shared/kernel"
 )
 
-// refreshInterval keeps the throughput reasonably current; the call list is
-// refreshed less often by the use case.
+// refreshInterval keeps the throughput reasonably current. The call list is
+// not part of the background refresh; a calls widget asks for it (#168).
 const refreshInterval = 15 * time.Second
 
 // Module wires the FRITZ!Box rings and implements modules.Module.
@@ -37,14 +37,22 @@ func (m *Module) Name() string { return "fritzbox" }
 // Migrations implements modules.Module.
 func (m *Module) Migrations() fs.FS { return gateway.Migrations() }
 
-// WidgetKinds implements modules.Module.
-func (m *Module) WidgetKinds() []string { return []string{"fritzbox"} }
+// WidgetKinds implements modules.Module: the internet connection and,
+// separately, the call list (#168).
+func (m *Module) WidgetKinds() []string { return []string{"fritzbox", "fritzbox-calls"} }
+
+// GuestGatedRoutes implements modules.GuestGated: call data is personal, so
+// a guest reads it only when a calls widget is on one of its tabs (#168).
+func (m *Module) GuestGatedRoutes() map[string]string {
+	return map[string]string{"/api/fritzbox/calls": "fritzbox-calls"}
+}
 
 // RegisterRoutes implements modules.Module.
 func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/fritzbox/settings", m.handlers.Settings)
 	r.Protected("PUT /api/fritzbox/settings", m.handlers.SaveSettings)
 	r.Protected("GET /api/fritzbox/status", m.handlers.Status)
+	r.Protected("GET /api/fritzbox/calls", m.handlers.Calls)
 }
 
 // Jobs implements modules.Module.

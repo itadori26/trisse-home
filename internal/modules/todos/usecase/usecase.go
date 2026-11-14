@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -17,6 +18,12 @@ type TodoInput struct {
 	Due      time.Time
 	Repeat   *RepeatInput
 	Reminder *ReminderInput
+	// ID is a client-generated ID for create (#80): replaying the same
+	// create returns the existing to-do instead of a duplicate. Empty = the
+	// server picks one.
+	ID string
+	// Version is the version the client edited (update); 0 = no check.
+	Version int
 }
 
 // RepeatInput describes a recurrence (#68); an empty Kind means none.
@@ -57,6 +64,7 @@ type TodoView struct {
 	CompletedAt time.Time
 	Repeat      RepeatView
 	Reminder    ReminderView
+	Version     int
 }
 
 // ListTodos returns open to-dos first (by position), then done ones (input port).
@@ -149,6 +157,7 @@ func (d Deps) view(t domain.Todo) TodoView {
 		Position: t.Position(), CreatedAt: t.CreatedAt(), CompletedAt: t.CompletedAt(),
 		Repeat:   RepeatView{Kind: string(t.Repeat().Kind()), Every: t.Repeat().Every(), Days: t.Repeat().Days()},
 		Reminder: ReminderView{At: t.Reminder().At(), DaysBefore: t.Reminder().DaysBefore()},
+		Version:  t.Version(),
 	}
 }
 
@@ -192,11 +201,24 @@ func NewCreateTodo(d Deps) CreateTodo { return &createTodo{d: d} }
 
 // Execute implements CreateTodo.
 func (uc *createTodo) Execute(ctx context.Context, in TodoInput) (TodoView, error) {
+	id := uc.d.IDs.NewID()
+	if in.ID != "" {
+		if !kernel.ValidClientID(in.ID) {
+			return TodoView{}, kernel.ErrInvalidClientID
+		}
+		// A replayed create (offline outbox, #80) returns what it created.
+		if existing, err := uc.d.Repo.Get(ctx, in.ID); err == nil {
+			return uc.d.view(existing), nil
+		} else if !errors.Is(err, domain.ErrTodoNotFound) {
+			return TodoView{}, err
+		}
+		id = in.ID
+	}
 	todos, err := uc.d.Repo.List(ctx)
 	if err != nil {
 		return TodoView{}, fmt.Errorf("list todos: %w", err)
 	}
-	t, err := domain.NewTodo(uc.d.IDs.NewID(), in.Title, in.Due, nextPosition(todos), uc.d.Clock.Now())
+	t, err := domain.NewTodo(id, in.Title, in.Due, nextPosition(todos), uc.d.Clock.Now())
 	if err != nil {
 		return TodoView{}, err
 	}
@@ -220,6 +242,9 @@ func (uc *updateTodo) Execute(ctx context.Context, id string, in TodoInput, done
 	if err != nil {
 		return TodoView{}, err
 	}
+	if err := t.CheckVersion(in.Version); err != nil {
+		return TodoView{}, err
+	}
 	if err := t.Edit(in.Title, in.Due); err != nil {
 		return TodoView{}, err
 	}
@@ -229,6 +254,7 @@ func (uc *updateTodo) Execute(ctx context.Context, id string, in TodoInput, done
 	now := uc.d.Clock.Now()
 	completing := done && !t.Done()
 	t.SetDone(done, now)
+	t.Bump()
 	if completing {
 		// Completing a recurring to-do creates its next occurrence (#68).
 		if err := uc.createNext(ctx, t, now); err != nil {
@@ -278,6 +304,7 @@ func (uc *sendDueReminders) Execute(ctx context.Context) (int, error) {
 		}
 		// Mark first: a failed save must not lead to a push every minute.
 		t.MarkReminded()
+		t.Bump()
 		if err := uc.d.Repo.Save(ctx, t); err != nil {
 			return sent, fmt.Errorf("save todo: %w", err)
 		}

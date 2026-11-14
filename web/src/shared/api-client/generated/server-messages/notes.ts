@@ -5,6 +5,7 @@ export const serverMessages = {
   srv_cf47637ff80f03dc: "A note needs a title or some text.",
   srv_f901e92a895881b7: "The note does not exist.",
   srv_4afce48c7ea72d13: "The note must be at most 100 KiB long.",
+  srv_4fc5f1e95d5f8139: "The note was changed elsewhere in the meantime.",
   srv_192c651a50b6f91f: "The version does not exist.",
 } as const;
 
