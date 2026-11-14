@@ -48,6 +48,14 @@ type Seeder interface {
 	SeedSampleData(ctx context.Context) error
 }
 
+// GuestGated is implemented by modules with read endpoints that are too
+// personal for every guest of the module (#168): such a route is readable by
+// a guest only when the named widget kind is on one of the guest's tabs.
+// Keys are path prefixes ("/api/fritzbox/calls"), values widget kinds.
+type GuestGated interface {
+	GuestGatedRoutes() map[string]string
+}
+
 // Base provides no-op defaults so modules only implement what they need.
 type Base struct{}
 
