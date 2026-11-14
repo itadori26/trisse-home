@@ -183,7 +183,7 @@ func (c *conn) close() {
 
 // examine opens the folder read-only and returns UIDVALIDITY and UIDNEXT.
 func (c *conn) examine(folder string) (uint32, uint32, error) {
-	lines, err := c.cmd("EXAMINE " + quote(folder))
+	lines, err := c.cmd("EXAMINE " + quote(encodeMailbox(folder)))
 	if err != nil {
 		return 0, 0, fmt.Errorf("folder %q: %w", folder, err)
 	}
