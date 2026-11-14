@@ -62,6 +62,10 @@ import { ServicesApi } from '../features/services/adapter/api/servicesApi';
 import { ServicesUseCases } from '../features/services/usecase/servicesUseCases';
 import { SystemApi } from '../features/system/adapter/api/systemApi';
 import { SystemUseCases } from '../features/system/usecase/systemUseCases';
+import { OfflineNotesGateway } from './offline/offlineNotes';
+import { OfflineTodosGateway } from './offline/offlineTodos';
+import { OfflineSync } from './offline/sync.svelte';
+import { IndexedDbOutboxStore } from '../shared/offline/adapter/outboxStore';
 import { TodosApi } from '../features/todos/adapter/api/todosApi';
 import { TodosUseCases } from '../features/todos/usecase/todosUseCases';
 import { WeatherApi } from '../features/weather/adapter/api/weatherApi';
@@ -77,6 +81,8 @@ import type { ServiceFactory, Services } from './serviceKit';
  */
 export interface Container extends Services {
   http: FetchHttpClient;
+  /** Outbox of to-do and note changes made offline (#80). */
+  offline: OfflineSync;
   auth: AuthUseCases;
   dashboard: DashboardUseCases;
   appearance: AppearanceUseCases;
@@ -128,6 +134,9 @@ function createRegisteredServices(http: FetchHttpClient): Services {
 /** Builds the container. `onUnauthorized` fires when the session expired. */
 export function createContainer(onUnauthorized: () => void): Container {
   const http = new FetchHttpClient(onUnauthorized);
+  // Offline editing of to-dos and notes (#80): their gateways record changes
+  // made without a connection; the sync replays them when it is back.
+  const offline = new OfflineSync(new IndexedDbOutboxStore());
   const c: Omit<Container, 'quickActions'> = {
     ...createRegisteredServices(http),
     http,
@@ -138,8 +147,9 @@ export function createContainer(onUnauthorized: () => void): Container {
     weather: new WeatherUseCases(new WeatherApi(http)),
     services: new ServicesUseCases(new ServicesApi(http)),
     bookmarks: new BookmarksUseCases(new BookmarksApi(http)),
-    notes: new NotesUseCases(new NotesApi(http)),
-    todos: new TodosUseCases(new TodosApi(http)),
+    notes: new NotesUseCases(new OfflineNotesGateway(new NotesApi(http), offline)),
+    todos: new TodosUseCases(new OfflineTodosGateway(new TodosApi(http), offline)),
+    offline,
     rss: new RssUseCases(new RssApi(http)),
     system: new SystemUseCases(new SystemApi(http)),
     docker: new DockerUseCases(new DockerApi(http)),
