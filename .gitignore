@@ -17,7 +17,7 @@ internal/platform/webui/dist/*
 coverage.out
 
 # Frontend tooling
-web/node_modules/
+/web/node_modules
 web/test-results/
 web/playwright-report/
 

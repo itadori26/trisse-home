@@ -162,6 +162,8 @@ jobs:
     needs: [image, release]
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     uses: ./.github/workflows/pi-image.yml
     with:
       version: ${{ needs.image.outputs.version }}

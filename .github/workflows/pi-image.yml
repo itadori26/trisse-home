@@ -32,6 +32,8 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: write # release upload, only with publish
+      id-token: write # build provenance attestation, only with publish (#138)
+      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -96,6 +98,13 @@ jobs:
           path: dist/image/
           retention-days: 7
           compression-level: 0
+      # Signed build provenance of the published image (#138), like the
+      # container image: `gh attestation verify <img.xz> -R itadori26/trisse-home`.
+      - name: Attest the build provenance
+        if: inputs.publish
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/image/*.img.xz
       - name: Attach the image to the release
         if: inputs.publish
         env:
