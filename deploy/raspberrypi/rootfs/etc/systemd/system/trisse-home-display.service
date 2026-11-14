@@ -1,0 +1,9 @@
+# Installs or removes the kiosk display (#140); started by the .path unit.
+[Unit]
+Description=Apply the trisse-home display mode
+After=network-online.target trisse-home.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/trisse-home/display-mode.sh
+TimeoutStartSec=20min

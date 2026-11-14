@@ -109,3 +109,39 @@ func TestKioskLifecycle(t *testing.T) {
 		t.Fatal("the owner is not a kiosk", err)
 	}
 }
+
+func TestDeviceKiosk(t *testing.T) {
+	e := newEnv().withAccount()
+	repo := &memKiosks{m: map[string]domain.Kiosk{}}
+	kiosks := NewKiosks(e.deps, repo)
+	token, err := kiosks.DeviceLink(ctx, []string{"home", "server"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := kiosks.Login(ctx, token, "192.168.1.20", "Phone"); !errors.Is(err, domain.ErrInvalidKioskLink) {
+		t.Fatal("the device's link must not work from the network", err)
+	}
+	if _, err := kiosks.Login(ctx, token, "127.0.0.1", "cage"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := kiosks.Login(ctx, token, "::1", "cage"); err != nil {
+		t.Fatal(err)
+	}
+	// Renewing keeps one account and ends the old link.
+	again, err := kiosks.DeviceLink(ctx, []string{"home"})
+	if err != nil || again == token || len(repo.m) != 1 {
+		t.Fatal(err, len(repo.m))
+	}
+	if _, err := kiosks.Login(ctx, token, "127.0.0.1", "cage"); !errors.Is(err, domain.ErrInvalidKioskLink) {
+		t.Fatal("old device link still works")
+	}
+	if list, _ := kiosks.List(ctx); len(list) != 1 || list[0].Name != domain.DeviceKioskName {
+		t.Fatalf("%+v", list)
+	}
+	if err := kiosks.RemoveDevice(ctx); err != nil || len(repo.m) != 0 {
+		t.Fatal(err)
+	}
+	if err := kiosks.RemoveDevice(ctx); err != nil {
+		t.Fatal("removing twice is fine", err)
+	}
+}

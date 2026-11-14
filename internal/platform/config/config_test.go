@@ -171,6 +171,17 @@ func TestSSOValidation(t *testing.T) {
 	}
 }
 
+func TestDeviceModuleOnlyOnAppliances(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey}))
+	if err != nil || cfg.ModuleEnabled("device") {
+		t.Fatal("device module outside the appliance", err)
+	}
+	cfg, err = Load(env(map[string]string{"SECRET_KEY": validKey, "INSTALL_METHOD": "appliance"}))
+	if err != nil || !cfg.ModuleEnabled("device") || cfg.DeviceDir != "/var/lib/trisse-home/device" {
+		t.Fatal(cfg.DeviceDir, err)
+	}
+}
+
 func TestDNSPauseProviders(t *testing.T) {
 	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "DNS_PAUSE_PROVIDERS": "AdGuard, pihole"}))
 	if err != nil || len(cfg.DNSPauseProviders) != 2 || cfg.DNSPauseProviders[0] != "adguard" {

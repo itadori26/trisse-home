@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"net/netip"
 	"regexp"
 	"strings"
 	"time"
@@ -66,6 +67,21 @@ type Kiosk struct {
 	Options    KioskOptions
 	LastUsedAt time.Time
 	LastUsedIP string
+	// LoopbackOnly links are accepted only from the device itself: the
+	// display of an appliance (#140).
+	LoopbackOnly bool
+}
+
+// DeviceKioskName is the kiosk account of an appliance's own display (#140).
+const DeviceKioskName = "this-device"
+
+// AcceptsFrom reports whether the link may sign in from the client IP.
+func (k Kiosk) AcceptsFrom(ip string) bool {
+	if !k.LoopbackOnly {
+		return true
+	}
+	addr, err := netip.ParseAddr(strings.Trim(ip, "[]"))
+	return err == nil && addr.Unmap().IsLoopback()
 }
 
 // ErrKioskNotFound is returned for unknown kiosk displays.

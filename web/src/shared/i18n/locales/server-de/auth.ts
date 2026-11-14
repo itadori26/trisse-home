@@ -132,4 +132,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_d5825321d90da76c: 'Dieser Kiosk-Link ist (nicht mehr) gültig. Lass dir einen neuen geben.',
   // id is required
   srv_272f687c666a4c51: 'Die ID ist erforderlich',
+  // The name this-device is taken by a guest.
+  srv_9737b26eae1b7ac5: 'Der Name this-device ist von einem Gast belegt.',
 };

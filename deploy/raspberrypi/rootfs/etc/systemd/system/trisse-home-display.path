@@ -1,0 +1,11 @@
+# Applies the display mode the app requests (#140). The app can only write
+# /var/lib/trisse-home/device/display-mode; this root-owned unit reacts.
+[Unit]
+Description=Display mode requests of trisse-home
+
+[Path]
+PathChanged=/var/lib/trisse-home/device/display-mode
+Unit=trisse-home-display.service
+
+[Install]
+WantedBy=multi-user.target
