@@ -1,0 +1,58 @@
+import type { en } from './en';
+
+/** German UI texts of the JSON widget feature; the type makes every key mandatory. */
+export const de: Record<keyof typeof en, string> = {
+  'widget.apiwidget.title': 'JSON-API',
+  'widget.apiwidget.description':
+    'Werte aus einem beliebigen JSON-Endpunkt, per JSONPath ausgewählt, mit Einheit und Warnschwellen.',
+  'settings.section.apiwidget': 'JSON-APIs',
+  'apiwidget.intro':
+    'Zeige Werte aus der JSON-API eines beliebigen Dienstes: Das Widget holt sie per JSONPath aus der Antwort, z. B. $.data.temperature oder $.items[0].name.',
+  'apiwidget.no_endpoints': 'Noch keine Endpunkte.',
+  'apiwidget.add': 'Endpunkt hinzufügen',
+  'apiwidget.edit': '{name} bearbeiten',
+  'apiwidget.delete': '{name} löschen',
+  'apiwidget.delete_confirm': 'Den Endpunkt „{name}“ löschen? Widgets, die ihn zeigen, bleiben dann leer.',
+  'apiwidget.name': 'Name',
+  'apiwidget.url': 'URL',
+  'apiwidget.header_name': 'Header (optional)',
+  'apiwidget.header_value': 'Header-Wert',
+  'apiwidget.header_stored': 'gespeichert – leer lassen, um ihn zu behalten',
+  'apiwidget.header_hint':
+    'Z. B. X-Api-Key oder Authorization. Der Wert wird verschlüsselt gespeichert und nie wieder angezeigt.',
+  'apiwidget.interval': 'Intervall',
+  'apiwidget.allow_public': 'Öffentliche Adressen erlauben',
+  'apiwidget.allow_public_hint':
+    'Standardmäßig werden nur Adressen in deinem Netz abgefragt (Loopback, 10.x, 172.16–31.x, 192.168.x, fd00::/8, 100.64.x).',
+  'apiwidget.values': 'Werte',
+  'apiwidget.label': 'Bezeichnung',
+  'apiwidget.path': 'JSONPath',
+  'apiwidget.unit': 'Einheit',
+  'apiwidget.warn': 'Warnung ab',
+  'apiwidget.crit': 'Kritisch ab',
+  'apiwidget.below': 'niedriger ist schlechter',
+  'apiwidget.add_value': 'Wert hinzufügen',
+  'apiwidget.remove_value': 'Wert entfernen',
+  'apiwidget.path_hint':
+    "Unterstützt: $.a.b, $['Name mit Leerzeichen'], $.liste[0], $.liste[-1], $.liste.length()",
+  'apiwidget.test': 'Testen',
+  'apiwidget.testing': 'Teste …',
+  'apiwidget.response': 'Antwort (Anfang)',
+  'apiwidget.saved': 'Gespeichert.',
+  'apiwidget.cancel': 'Abbrechen',
+  'apiwidget.save': 'Speichern',
+  'apiwidget.name_required': 'Gib einen Namen ein.',
+  'apiwidget.url_invalid': 'Gib eine http(s)-URL ein.',
+  'apiwidget.header_value_required': 'Gib den Wert des Headers ein.',
+  'apiwidget.values_required': 'Lege mindestens einen Wert an.',
+  'apiwidget.value_incomplete': 'Jeder Wert braucht eine Bezeichnung und einen JSONPath.',
+  'apiwidget.seconds': '{n} s',
+  'apiwidget.minutes': '{n} min',
+  'apiwidget.hours': '{n} h',
+  'apiwidget.choose_endpoint': 'Endpunkt',
+  'apiwidget.set_up': 'Lege unter Einstellungen → JSON-APIs einen Endpunkt an.',
+  'apiwidget.choose_in_settings': 'Wähle in den Widget-Einstellungen einen Endpunkt.',
+  'apiwidget.gone': 'Der Endpunkt dieses Widgets wurde gelöscht.',
+  'apiwidget.status_warning': 'Warnung',
+  'apiwidget.status_critical': 'kritisch',
+};

@@ -87,3 +87,20 @@ export interface PasskeyLoginDTO {
   authenticatorData: string;
   signature: string;
 }
+/**
+ * KioskRequestDTO creates or changes a kiosk display (#50).
+ */
+export interface KioskRequestDTO {
+  name: string;
+  tabs: string[];
+  disabled: boolean;
+  rotateSeconds: number /* int */;
+  nightFrom: string;
+  nightTo: string;
+}
+/**
+ * KioskLoginDTO is the body of POST /api/auth/kiosk/login.
+ */
+export interface KioskLoginDTO {
+  token: string;
+}

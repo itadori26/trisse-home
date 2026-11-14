@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"time"
 
+	"trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/auth/usecase"
 )
 
@@ -259,4 +260,57 @@ func RegistrationOptions(o usecase.RegistrationOptions) RegistrationOptionsDTO {
 		dto.Exclude = append(dto.Exclude, b64(c))
 	}
 	return dto
+}
+
+// KioskOptionsDTO are the display options of a kiosk (#50).
+type KioskOptionsDTO struct {
+	// RotateSeconds switches tabs; 0 = no rotation.
+	RotateSeconds int `json:"rotateSeconds"`
+	// NightFrom and NightTo ("HH:MM", display time) dim the screen.
+	NightFrom string `json:"nightFrom"`
+	NightTo   string `json:"nightTo"`
+}
+
+// KioskDTO is a kiosk display in GET /api/auth/kiosks.
+type KioskDTO struct {
+	ID              string     `json:"id"`
+	Name            string     `json:"name"`
+	Tabs            []string   `json:"tabs"`
+	Disabled        bool       `json:"disabled"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	LastUsedAt      *time.Time `json:"lastUsedAt"`
+	KioskOptionsDTO `tstype:",extends"`
+}
+
+// KioskCreatedDTO answers POST /api/auth/kiosks; the token is shown once.
+type KioskCreatedDTO struct {
+	Kiosk KioskDTO `json:"kiosk"`
+	Token string   `json:"token"`
+}
+
+// KioskLinkDTO answers a renewed link.
+type KioskLinkDTO struct {
+	Token string `json:"token"`
+}
+
+// KioskOptions maps the options.
+func KioskOptions(o domain.KioskOptions) KioskOptionsDTO { return KioskOptionsDTO(o) }
+
+// Kiosk maps a display.
+func Kiosk(k usecase.KioskView) KioskDTO {
+	d := KioskDTO{ID: k.ID, Name: k.Name, Tabs: k.Tabs, Disabled: k.Disabled, CreatedAt: k.CreatedAt, KioskOptionsDTO: KioskOptions(k.Options)}
+	if !k.LastUsedAt.IsZero() {
+		t := k.LastUsedAt
+		d.LastUsedAt = &t
+	}
+	return d
+}
+
+// Kiosks maps a list.
+func Kiosks(list []usecase.KioskView) []KioskDTO {
+	out := make([]KioskDTO, 0, len(list))
+	for _, k := range list {
+		out = append(out, Kiosk(k))
+	}
+	return out
 }

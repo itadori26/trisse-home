@@ -3,6 +3,7 @@
   import { errorMessage } from '../../../shared/api-client/http';
   import type { Appearance } from '../domain/appearance';
   import type { AppearanceUseCases } from '../usecase/appearanceUseCases';
+  import ThemeGallery from './ThemeGallery.svelte';
 
   /** Props of the appearance settings section. */
   interface Props {
@@ -66,7 +67,7 @@
     <span class="color">
       <input
         type="color"
-        value={form.accentColor || '#3b6ef5'}
+        value={form.accentColor || '#3365e8'}
         oninput={(e) => (form.accentColor = e.currentTarget.value)}
       />
       <input class="input" bind:value={form.accentColor} placeholder={t('appearance.default')} />
@@ -84,6 +85,15 @@
   {#if saved}<p class="muted">Saved.</p>{/if}
   <button class="btn btn-primary" type="submit">{t('appearance.save_appearance')}</button>
 </form>
+
+<ThemeGallery
+  {appearance}
+  onapply={(a) => {
+    form = { ...a };
+    saved = false;
+    onchange(a);
+  }}
+/>
 
 <style>
   .color {

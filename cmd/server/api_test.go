@@ -392,6 +392,30 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.do(http.MethodPut, "/api/appearance", obj{"theme": "neon", "accentColor": "", "backgroundImage": "", "customCss": ""}, http.StatusUnprocessableEntity)
 	c.json(http.MethodPut, "/api/appearance", obj{"theme": "dark", "accentColor": "#112233", "backgroundImage": "", "customCss": ""}, http.StatusOK, nil)
 	c.json(http.MethodGet, "/api/appearance", nil, http.StatusOK, nil)
+	// Theme gallery (#111): apply keeps own CSS, import validates, export round-trips.
+	c.json(http.MethodPut, "/api/appearance", obj{"theme": "light", "accentColor": "", "backgroundImage": "", "customCss": "body{zoom:1.1}"}, http.StatusOK, nil)
+	var applied obj
+	c.json(http.MethodPost, "/api/appearance/themes/nord/apply", nil, http.StatusOK, &applied)
+	if applied["theme"] != "dark" || !strings.Contains(applied["customCss"].(string), "--color-bg") {
+		t.Fatalf("apply: %v", applied)
+	}
+	var gallery obj
+	c.json(http.MethodGet, "/api/appearance/themes", nil, http.StatusOK, &gallery)
+	if gallery["applied"] != "nord" || gallery["canRestore"] != true || len(gallery["themes"].([]any)) < 6 {
+		t.Fatalf("gallery: %v", gallery)
+	}
+	c.json(http.MethodPost, "/api/appearance/themes/restore", nil, http.StatusOK, &applied)
+	if applied["customCss"] != "body{zoom:1.1}" || applied["theme"] != "light" {
+		t.Fatalf("restore: %v", applied)
+	}
+	mine := obj{"id": "mine", "name": "Mine", "scheme": "dark", "tokens": obj{"--color-bg": "#000", "--color-surface": "#111", "--color-text": "#fff", "--color-accent": "#f0f"}}
+	c.json(http.MethodPost, "/api/appearance/themes", mine, http.StatusCreated, nil)
+	c.do(http.MethodPost, "/api/appearance/themes", obj{"id": "evil", "name": "E", "scheme": "dark", "css": "body{display:none}"}, http.StatusUnprocessableEntity)
+	if out := c.do(http.MethodGet, "/api/appearance/themes/mine", nil, http.StatusOK); !strings.Contains(string(out), `"--color-accent": "#f0f"`) {
+		t.Fatalf("export: %s", out)
+	}
+	c.do(http.MethodDelete, "/api/appearance/themes/nord", nil, http.StatusUnprocessableEntity)
+	c.do(http.MethodDelete, "/api/appearance/themes/mine", nil, http.StatusNoContent)
 
 	// --- search ---
 	c.do(http.MethodGet, "/api/search?q=hello", nil, http.StatusFound)
@@ -568,8 +592,24 @@ func TestAPIEndToEnd(t *testing.T) {
 	if parcel["trackingNumber"] != "0034043412345678" || parcel["error"] == "" {
 		t.Fatalf("parcel: %v", parcel)
 	}
-	c.do(http.MethodPost, "/api/parcels", obj{"trackingNumber": "0034043412345678", "carrier": "hermes"}, http.StatusUnprocessableEntity)
+	c.do(http.MethodPost, "/api/parcels", obj{"trackingNumber": "0034043412345678", "carrier": "fedex"}, http.StatusUnprocessableEntity)
+	// Carriers without a tracking API link to their page (#166).
+	var gls obj
+	c.json(http.MethodPost, "/api/parcels", obj{"trackingNumber": "12345678901", "carrier": "gls"}, http.StatusCreated, &gls)
+	if gls["error"] != "" || gls["trackable"] != false || gls["trackingUrl"] != "https://www.gls-pakete.de/sendungsverfolgung?match=12345678901" {
+		t.Fatalf("gls: %v", gls)
+	}
+	c.do(http.MethodDelete, "/api/parcels/"+gls["id"].(string), nil, http.StatusNoContent)
 	c.do(http.MethodDelete, "/api/parcels/"+parcel["id"].(string), nil, http.StatusNoContent)
+	// Mail discovery (#166): off by default, the connection is tested before saving, the password never returned.
+	var mailCfg obj
+	c.json(http.MethodGet, "/api/parcels/mail", nil, http.StatusOK, &mailCfg)
+	if mailCfg["enabled"] != false || mailCfg["port"] != float64(993) || mailCfg["hasPassword"] != false {
+		t.Fatalf("mail defaults: %v", mailCfg)
+	}
+	c.do(http.MethodPut, "/api/parcels/mail", obj{"enabled": true, "host": "localhost", "port": 1, "username": "me", "password": "pw", "folder": "Pakete"}, http.StatusUnprocessableEntity)
+	c.do(http.MethodPut, "/api/parcels/mail", obj{"enabled": true, "host": "169.254.169.254", "username": "me", "password": "pw"}, http.StatusUnprocessableEntity)
+	c.json(http.MethodPut, "/api/parcels/mail", obj{"enabled": false}, http.StatusOK, &mailCfg)
 
 	// --- transit departures ---
 	var stops []obj
@@ -633,6 +673,8 @@ func TestAPIEndToEnd(t *testing.T) {
 	}
 	c.do(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusNotFound)
 	c.do(http.MethodGet, "/api/adguard/stats?provider=bind", nil, http.StatusUnprocessableEntity)
+	// Pausing is opt-in (DNS_PAUSE_PROVIDERS, #177); the test server allows none.
+	c.do(http.MethodPost, "/api/adguard/pause", obj{"minutes": 5}, http.StatusForbidden)
 	c.json(http.MethodPut, "/api/adguard/settings?provider=pihole", obj{"url": up.URL + "/pihole"}, http.StatusOK, nil)
 	c.json(http.MethodGet, "/api/adguard/stats?provider=pihole", nil, http.StatusOK, &stats)
 	if stats["blockedPercent"] != float64(10) || stats["avgProcessingMs"] != nil {

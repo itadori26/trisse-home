@@ -1,0 +1,52 @@
+tags:
+  - name: holidays
+
+paths:
+  /api/holidays:
+    get:
+      tags: [holidays]
+      summary: Next public holidays of a state (computed) and school holidays (from the configured ICS link), current ones first
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [BW, BY, BE, BB, HB, HH, HE, MV, NI, NW, RP, SL, SN, ST, SH, TH], default: NI } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 20, default: 8 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HolidaysOverview" } } } }
+  /api/holidays/settings:
+    get:
+      tags: [holidays]
+      summary: The ICS link of the school holidays (empty = none)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HolidaysSettings" } } } }
+    put:
+      tags: [holidays]
+      summary: Test and save the ICS link of the school holidays; an empty link removes them
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/HolidaysSettings" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/HolidaysSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  HolidaysSettings:
+    type: object
+    properties:
+      schoolUrl: { type: string }
+  HolidaysOverview:
+    type: object
+    properties:
+      state: { type: string }
+      school: { type: boolean, description: An ICS link for school holidays is configured }
+      schoolUpdatedAt: { type: string, format: date-time, nullable: true }
+      schoolError: { type: string }
+      entries:
+        type: array
+        items:
+          type: object
+          properties:
+            kind: { type: string, enum: [public, school] }
+            key: { type: string, description: "Public holiday key, e.g. good_friday (translated by the client)" }
+            name: { type: string, description: Name of a school holiday period }
+            start: { type: string, format: date }
+            end: { type: string, format: date, description: Inclusive }
+            current: { type: boolean }
+            daysUntil: { type: integer }

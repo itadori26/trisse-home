@@ -20,6 +20,8 @@ const (
 	RoleOwner Role = "owner"
 	// RoleGuest may only read the tabs shared with it.
 	RoleGuest Role = "guest"
+	// RoleKiosk is a wall display: reads its tabs, signs in with a link (#50).
+	RoleKiosk Role = "kiosk"
 )
 
 // MaxGuests bounds the number of guest accounts.

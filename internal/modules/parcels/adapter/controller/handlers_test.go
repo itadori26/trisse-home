@@ -19,8 +19,8 @@ func (fakeUC) Add(_ context.Context, tn string, c domain.Carrier, l string) (dom
 
 func TestAdd(t *testing.T) {
 	for body, want := range map[string]int{
-		`{"trackingNumber":"00340434123456","carrier":"dhl"}`: http.StatusCreated,
-		`{"trackingNumber":"00340434123456","carrier":"ups"}`: http.StatusUnprocessableEntity,
+		`{"trackingNumber":"00340434123456","carrier":"dhl"}`:   http.StatusCreated,
+		`{"trackingNumber":"00340434123456","carrier":"fedex"}`: http.StatusUnprocessableEntity,
 	} {
 		rec := httptest.NewRecorder()
 		NewHandlers(fakeUC{}).Add(rec, httptest.NewRequest(http.MethodPost, "/api/parcels", strings.NewReader(body)))

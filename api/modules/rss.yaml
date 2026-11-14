@@ -62,6 +62,30 @@ paths:
       security: [{ session: [], csrf: [] }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Feed" } } } } }
+  /api/rss/opml:
+    get:
+      tags: [rss]
+      summary: Export all subscriptions as OPML 2.0 (one folder per category)
+      responses:
+        "200": { description: OPML file (download), content: { text/x-opml: { schema: { type: string } } } }
+    post:
+      tags: [rss]
+      summary: Import an OPML file (at most 2 MB, 500 feeds); keeps categories, skips duplicates, reports invalid entries; feeds are loaded with the next refresh (#97)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { text/x-opml: { schema: { type: string } }, application/xml: { schema: { type: string } } } }
+      responses:
+        "200":
+          description: What was imported
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  added: { type: integer }
+                  duplicates: { type: integer }
+                  invalid: { type: array, items: { type: object, properties: { title: { type: string }, url: { type: string }, reason: { type: string } } } }
+        "413": { description: Larger than 2 MB }
+        "422": { description: Not an OPML file }
 
 schemas:
   Feed:
@@ -74,6 +98,7 @@ schemas:
       lastError: { type: string }
       lastFetchedAt: { type: [string, "null"], format: date-time }
       unread: { type: integer }
+      category: { type: string, description: "Folder from OPML (#97); empty = none" }
   FeedItem:
     type: object
     properties:

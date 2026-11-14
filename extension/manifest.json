@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "trisse-home",
+  "version": "0.1.0",
+  "description": "Opens your self-hosted trisse-home dashboard on every new tab and saves pages to it.",
+  "icons": { "128": "icons/icon-192.png" },
+  "chrome_url_overrides": { "newtab": "newtab.html" },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "action": { "default_title": "Save page to trisse-home", "default_icon": { "128": "icons/icon-192.png" } },
+  "background": { "service_worker": "src/background.js", "scripts": ["src/background.js"], "type": "module" },
+  "permissions": ["storage", "contextMenus", "activeTab"],
+  "browser_specific_settings": { "gecko": { "id": "trisse-home@extension", "strict_min_version": "128.0" } }
+}

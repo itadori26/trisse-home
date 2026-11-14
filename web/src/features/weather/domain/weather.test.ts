@@ -34,6 +34,9 @@ group('weather domain', () => {
       label: 'Home',
       days: 5,
       warnings: true,
+      pollenRegion: 0,
+      pollenTypes: [],
+      uvCity: '',
     });
   });
   it('returns null without coordinates', () => {
@@ -62,5 +65,23 @@ group('weather domain', () => {
   it('enables warnings by default', () => {
     expect(parseWeatherConfig({ lat: 1, lon: 2 })?.warnings).toBe(true);
     expect(parseWeatherConfig({ lat: 1, lon: 2, warnings: false })?.warnings).toBe(false);
+  });
+});
+
+group('pollen and UV config (#56)', () => {
+  it('reads region, types and city, ignoring unknown types', () => {
+    const c = parseWeatherConfig({
+      lat: 1,
+      lon: 2,
+      pollenRegion: 32,
+      pollenTypes: ['birch', 'cats', 'hazel'],
+      uvCity: 'Hannover',
+    });
+    expect(c).toMatchObject({ pollenRegion: 32, pollenTypes: ['hazel', 'birch'], uvCity: 'Hannover' });
+    expect(parseWeatherConfig({ lat: 1, lon: 2 })).toMatchObject({
+      pollenRegion: 0,
+      pollenTypes: [],
+      uvCity: '',
+    });
   });
 });

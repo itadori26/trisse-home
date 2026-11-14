@@ -1,0 +1,85 @@
+tags:
+  - name: study
+
+paths:
+  /api/study/modules:
+    get:
+      tags: [study]
+      summary: Study modules, by semester (unplanned last) and name
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StudyModule" } } } } }
+    post:
+      tags: [study]
+      summary: Add a module (at most 200)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/StudyModuleInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/StudyModule" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/study/modules/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    put:
+      tags: [study]
+      summary: Change a module
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/StudyModuleInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/StudyModule" } } } }
+        "404": { description: Unknown module }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [study]
+      summary: Delete a module
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { description: Unknown module } }
+  /api/study/progress:
+    get:
+      tags: [study]
+      summary: Passed, in-progress and open ECTS, percent of the total, ECTS-weighted grade average and the modules in progress
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalEcts: { type: number }
+                  passedEcts: { type: number }
+                  inProgressEcts: { type: number }
+                  openEcts: { type: number }
+                  passedModules: { type: integer }
+                  modules: { type: integer }
+                  percent: { type: number }
+                  average: { type: number, nullable: true, description: ECTS-weighted average of the graded passed modules }
+                  gradedEcts: { type: number }
+                  inProgress: { type: array, items: { $ref: "#/components/schemas/StudyModule" } }
+  /api/study/settings:
+    get:
+      tags: [study]
+      summary: Total ECTS of the degree (default 180)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { totalEcts: { type: number } } } } } }
+    put:
+      tags: [study]
+      summary: Set the total ECTS (1–600)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [totalEcts], properties: { totalEcts: { type: number, minimum: 1, maximum: 600 } } } } } }
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  StudyModuleInput:
+    type: object
+    required: [name, ects, status]
+    properties:
+      name: { type: string, maxLength: 80 }
+      ects: { type: number, minimum: 0.5, maximum: 60, multipleOf: 0.5 }
+      semester: { type: integer, minimum: 0, maximum: 20, description: 0 = not planned }
+      status: { type: string, enum: [open, in_progress, passed] }
+      grade: { type: number, nullable: true, minimum: 1.0, maximum: 4.0, description: Only for passed modules; null = ungraded }
+  StudyModule:
+    allOf:
+      - $ref: "#/components/schemas/StudyModuleInput"
+      - { type: object, properties: { id: { type: string } } }

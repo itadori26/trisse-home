@@ -1,0 +1,121 @@
+tags:
+  - name: apiwidget
+
+paths:
+  /api/apiwidget/endpoints:
+    get:
+      tags: [apiwidget]
+      summary: Configured JSON endpoints (header values are never returned)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ApiWidgetEndpoint" } } } } }
+    post:
+      tags: [apiwidget]
+      summary: Add an endpoint (at most 50)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ApiWidgetEndpointInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ApiWidgetEndpoint" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/apiwidget/endpoints/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    put:
+      tags: [apiwidget]
+      summary: Change an endpoint; an empty headerValue with keepHeader keeps the stored value
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ApiWidgetEndpointInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ApiWidgetEndpoint" } } } }
+        "404": { description: Unknown endpoint }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [apiwidget]
+      summary: Delete an endpoint
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { description: Unknown endpoint } }
+  /api/apiwidget/endpoints/{id}/values:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [apiwidget]
+      summary: Extracted values; the endpoint is requested at most once per interval (a failed request is retried after a minute)
+      responses:
+        "200": { description: OK (a failed request is reported in error), content: { application/json: { schema: { $ref: "#/components/schemas/ApiWidgetValues" } } } }
+        "404": { description: Unknown endpoint }
+  /api/apiwidget/preview:
+    post:
+      tags: [apiwidget]
+      summary: Run the request of a draft without saving it; id keeps the stored header value of an endpoint being edited
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint]
+              properties:
+                id: { type: string }
+                endpoint: { $ref: "#/components/schemas/ApiWidgetEndpointInput" }
+      responses:
+        "200":
+          description: Values and the first 4 KB of the response
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiWidgetValues"
+                  - { type: object, properties: { body: { type: string } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+
+schemas:
+  ApiWidgetExtraction:
+    type: object
+    required: [label, path]
+    properties:
+      label: { type: string, maxLength: 40 }
+      path: { type: string, maxLength: 200, description: "JSONPath subset: $.a.b, $['x y'], $.list[0], $.list[-1], $.list.length()" }
+      unit: { type: string, maxLength: 12 }
+      warn: { type: number, nullable: true }
+      crit: { type: number, nullable: true }
+      below: { type: boolean, description: Thresholds are reached at or below instead of at or above }
+  ApiWidgetEndpointInput:
+    type: object
+    required: [name, url, extractions]
+    properties:
+      name: { type: string, maxLength: 60 }
+      url: { type: string, description: "http(s); private addresses unless allowPublic; never link-local" }
+      headerName: { type: string }
+      headerValue: { type: string, description: Secret, stored encrypted }
+      keepHeader: { type: boolean }
+      intervalSeconds: { type: integer, minimum: 30, maximum: 86400, description: "0 = 300" }
+      allowPublic: { type: boolean }
+      extractions: { type: array, minItems: 1, maxItems: 10, items: { $ref: "#/components/schemas/ApiWidgetExtraction" } }
+  ApiWidgetEndpoint:
+    type: object
+    properties:
+      id: { type: string }
+      name: { type: string }
+      url: { type: string }
+      headerName: { type: string }
+      hasHeader: { type: boolean }
+      intervalSeconds: { type: integer }
+      allowPublic: { type: boolean }
+      extractions: { type: array, items: { $ref: "#/components/schemas/ApiWidgetExtraction" } }
+  ApiWidgetValues:
+    type: object
+    properties:
+      name: { type: string, description: Name of the endpoint }
+      values:
+        type: array
+        items:
+          type: object
+          properties:
+            label: { type: string }
+            unit: { type: string }
+            text: { type: string }
+            number: { type: number, nullable: true }
+            status: { type: string, enum: [ok, warning, critical, unknown] }
+            error: { type: string, description: Why the path matched nothing }
+      fetchedAt: { type: string, format: date-time }
+      error: { type: string, description: Message of a failed request (English) }
+      errorKey: { type: string, description: Key of the message for translation }
+      errorParams: { type: object, additionalProperties: { type: string } }

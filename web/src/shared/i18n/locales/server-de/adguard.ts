@@ -14,4 +14,9 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_fcbb5bbe636e4559: 'Dieser DNS-Filter ist noch nicht eingerichtet.',
   // Unknown DNS filter, use adguard or pihole.
   srv_1a87cc7977ed4993: 'Unbekannter DNS-Filter, verwende adguard oder pihole.',
+  // Pause for 5, 30 or 60 minutes.
+  srv_0c0b1a4d7e09267c: 'Pausiere für 5, 30 oder 60 Minuten.',
+  // Pausing is switched off for this DNS filter. Allow it with DNS_PAUSE_PROVIDERS on the server.
+  srv_6af65a6080fe6b52:
+    'Pausieren ist für diesen DNS-Filter ausgeschaltet. Erlaube es mit DNS_PAUSE_PROVIDERS auf dem Server.',
 };

@@ -84,3 +84,39 @@ func TestMaxResponseBytes(t *testing.T) {
 		t.Fatalf("streamed body above the limit: %v", err)
 	}
 }
+
+func TestPrivateOnlyControl(t *testing.T) {
+	for addr, blocked := range map[string]bool{
+		"169.254.169.254:80":  true, // still refused like any integration
+		"93.184.215.14:443":   true, // public
+		"[2606:4700::1]:443":  true,
+		"8.8.8.8:53":          true,
+		"127.0.0.1:8080":      false,
+		"[::1]:8080":          false,
+		"10.0.0.5:80":         false,
+		"172.16.3.4:80":       false,
+		"192.168.178.20:443":  false,
+		"100.100.1.2:80":      false, // CGNAT, e.g. Tailscale
+		"[fd00::5]:8006":      false,
+		"[::ffff:10.1.1.1]:1": false,
+	} {
+		err := privateControl("tcp", addr, nil)
+		if blocked != errors.Is(err, ErrBlockedAddress) {
+			t.Errorf("%s: blocked=%v, err=%v", addr, blocked, err)
+		}
+	}
+}
+
+func TestPrivateOnlyRefusesPublicBeforeConnecting(t *testing.T) {
+	_, err := New(WithPrivateOnly()).Get("http://93.184.215.14/")
+	if !errors.Is(err, ErrBlockedAddress) {
+		t.Fatalf("public address reached: %v", err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") }))
+	defer srv.Close()
+	res, err := New(WithPrivateOnly()).Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = res.Body.Close()
+}

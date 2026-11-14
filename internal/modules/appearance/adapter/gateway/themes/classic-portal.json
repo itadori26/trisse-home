@@ -1,0 +1,21 @@
+{
+  "id": "classic-portal",
+  "name": "Classic Portal",
+  "author": "trisse-home",
+  "scheme": "light",
+  "tokens": {
+    "--color-bg": "#e8eef7",
+    "--color-surface": "#ffffff",
+    "--color-surface-2": "#f2f6fc",
+    "--color-border": "#a7bcd9",
+    "--color-text": "#222222",
+    "--color-text-muted": "#555555",
+    "--color-accent": "#3366cc",
+    "--color-accent-contrast": "#ffffff",
+    "--color-danger": "#cc3333",
+    "--color-success": "#339933",
+    "--color-warning": "#ff9900",
+    "--radius": "4px",
+    "--radius-small": "2px"
+  }
+}

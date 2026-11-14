@@ -9,11 +9,12 @@
   --color-border: #dde2ec;
   --color-text: #1b2130;
   --color-text-muted: #5d6679;
-  --color-accent: #3b6ef5;
+  --color-accent: #3365e8; /* white text on it: 5.0:1 (WCAG AA) */
   --color-accent-contrast: #ffffff;
-  --color-danger: #d33a3a;
-  --color-success: #23a26d;
-  --color-warning: #d99a1e;
+  /* Status colors are also used as text: 4.5:1 on the surfaces (#113). */
+  --color-danger: #c93434;
+  --color-success: #18794e;
+  --color-warning: #9a6200;
   --radius: 12px;
   --radius-small: 8px;
   --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 4px 12px rgb(16 24 40 / 6%);

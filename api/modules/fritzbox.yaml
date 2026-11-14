@@ -15,5 +15,27 @@ paths:
   /api/fritzbox/status:
     get:
       tags: [fritzbox]
-      summary: WAN state, external IP, throughput (bytes/s via UPnP), link speed and recent calls (via TR-064); refreshed every 15 s, calls every 2 min
+      summary: WAN state, external IP, throughput (bytes/s via UPnP) and link speed; refreshed every 15 s. The call list is a separate endpoint (#168)
       responses: { "200": { description: OK }, "404": { description: Not configured } }
+  /api/fritzbox/calls:
+    get:
+      tags: [fritzbox]
+      summary: Recent calls (TR-064, needs a login), fetched only when asked for and reused for 2 minutes. Guests need a calls widget on their tab
+      parameters:
+        - { name: filter, in: query, schema: { type: string, enum: [all, missed, incoming, outgoing], default: all } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 5, maximum: 50, default: 10 } }
+      responses:
+        "200":
+          description: OK; hint explains an empty list (no login), error is set when the box did not answer (the list is then the last known one)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  calls: { type: array, items: { type: object, properties: { type: { type: string, enum: [incoming, missed, outgoing, rejected, active] }, number: { type: string }, name: { type: string }, at: { type: string, format: date-time }, durationMinutes: { type: integer } } } }
+                  updatedAt: { type: string, format: date-time }
+                  hint: { type: string }
+                  error: { type: string }
+        "403": { description: Guest without a calls widget on its tabs }
+        "404": { description: Not configured }
+        "422": { $ref: "#/components/responses/Invalid" }

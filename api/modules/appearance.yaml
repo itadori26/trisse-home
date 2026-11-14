@@ -17,6 +17,52 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Appearance" } } } }
         "422": { $ref: "#/components/responses/Invalid" }
 
+  /api/appearance/themes:
+    get:
+      tags: [appearance]
+      summary: Theme gallery (#111) - built-in and imported themes, the applied one
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ThemeGallery" } } } }
+    post:
+      tags: [appearance]
+      summary: Import a theme file (JSON, at most 16 KB; tokens only, unknown fields refused)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ThemeFile" } } } }
+      responses:
+        "201": { description: Imported (a taken id gets a suffix), content: { application/json: { schema: { $ref: "#/components/schemas/Theme" } } } }
+        "413": { description: Larger than 16 KB }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/appearance/themes/restore:
+    post:
+      tags: [appearance]
+      summary: Put back the custom CSS that applying a theme replaced
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Appearance" } } } }
+        "409": { description: Nothing to restore }
+  /api/appearance/themes/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [appearance]
+      summary: Export a theme as a shareable file
+      responses:
+        "200": { description: The theme file, content: { application/json: { schema: { $ref: "#/components/schemas/ThemeFile" } } } }
+        "404": { description: Unknown theme }
+    delete:
+      tags: [appearance]
+      summary: Delete an imported theme (built-in themes cannot be deleted)
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { description: Unknown theme }, "422": { $ref: "#/components/responses/Invalid" } }
+  /api/appearance/themes/{id}/apply:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    post:
+      tags: [appearance]
+      summary: Apply a theme - writes its tokens as custom CSS and sets its scheme; own custom CSS is kept as a backup
+      security: [{ session: [], csrf: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Appearance" } } } }
+        "404": { description: Unknown theme }
+
 schemas:
   Appearance:
     type: object
@@ -29,3 +75,28 @@ schemas:
       language: { type: string, enum: ["", en, de], description: '"" follows the browser' }
       greeting: { type: boolean, description: Greeting line below the top bar (#167), off by default }
       greetingName: { type: string, maxLength: 40, description: Name used in the greeting; may be empty }
+  ThemeFile:
+    type: object
+    additionalProperties: false
+    required: [id, name, scheme, tokens]
+    properties:
+      id: { type: string, pattern: '^[a-z0-9][a-z0-9-]{1,39}$' }
+      name: { type: string, maxLength: 40 }
+      author: { type: string, maxLength: 60 }
+      scheme: { type: string, enum: [light, dark] }
+      tokens:
+        type: object
+        description: Design tokens (--color-bg, --color-surface, --color-surface-2, --color-border, --color-text, --color-text-muted, --color-accent, --color-accent-contrast, --color-danger, --color-success, --color-warning as #rgb/#rrggbb; --radius, --radius-small as 0-32px). bg, surface, text and accent are required.
+        additionalProperties: { type: string }
+  Theme:
+    allOf:
+      - $ref: "#/components/schemas/ThemeFile"
+      - type: object
+        properties:
+          builtIn: { type: boolean }
+  ThemeGallery:
+    type: object
+    properties:
+      themes: { type: array, items: { $ref: "#/components/schemas/Theme" } }
+      applied: { type: string, description: Id of the applied theme, "" for own or no custom CSS }
+      canRestore: { type: boolean }

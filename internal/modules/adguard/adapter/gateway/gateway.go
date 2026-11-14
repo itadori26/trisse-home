@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"embed"
@@ -92,6 +93,8 @@ type statsPayload struct {
 
 type statusPayload struct {
 	ProtectionEnabled bool `json:"protection_enabled"`
+	// ProtectionDisabledDuration is the rest of a timed pause in ms.
+	ProtectionDisabledDuration int64 `json:"protection_disabled_duration"`
 }
 
 // Stats implements usecase.DNSFilterProvider.
@@ -106,6 +109,7 @@ func (a *API) Stats(ctx context.Context, s domain.Settings) (domain.Stats, error
 	}
 	out := domain.Stats{
 		Queries: st.Queries, Blocked: st.Blocked, ProtectionEnabled: status.ProtectionEnabled,
+		PauseRemaining:    time.Duration(max(status.ProtectionDisabledDuration, 0)) * time.Millisecond,
 		AvgProcessingTime: time.Duration(st.AvgProcessingTime * float64(time.Second)), HasAvgProcessingTime: true,
 	}
 	for _, entry := range st.TopBlocked {
@@ -118,6 +122,30 @@ func (a *API) Stats(ctx context.Context, s domain.Settings) (domain.Stats, error
 		out.TopBlocked = out.TopBlocked[:domain.TopBlockedLimit]
 	}
 	return out, nil
+}
+
+// Pause implements usecase.DNSFilterProvider (POST /control/protection, #177).
+func (a *API) Pause(ctx context.Context, s domain.Settings, d time.Duration) error {
+	body, err := json.Marshal(map[string]any{"enabled": false, "duration": d.Milliseconds()})
+	if err != nil {
+		return fmt.Errorf("encode pause: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.URL+"/control/protection", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth(s.Username, s.Password)
+	res, err := a.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer res.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, maxResponseBytes))
+	if res.StatusCode != http.StatusOK {
+		return fmt.Errorf("AdGuard Home answered %s", res.Status)
+	}
+	return nil
 }
 
 func (a *API) get(ctx context.Context, s domain.Settings, path string, dst any) error {

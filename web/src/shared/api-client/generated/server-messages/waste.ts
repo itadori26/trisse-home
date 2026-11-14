@@ -5,10 +5,15 @@ export const serverMessages = {
   srv_741879779a784a6e: "At most 20 rules are supported.",
   srv_100561a937e88349: "Colors must look like #1a2b3c.",
   srv_57ceb20ccebc67bb: "Could not load the waste calendar: {detail}",
+  srv_5706fcf249ae0e34: "Enter an ICS URL or upload an ICS file.",
   srv_8e50b118b5e6b205: "Every rule needs a match text of at most 40 characters.",
   srv_72f2ef28f00d9995: "Icons must be at most 8 characters long.",
   srv_4cd4b235493d7de0: "Labels must be at most 40 characters long.",
   srv_d1f1feb231209e5a: "No waste calendar is configured yet.",
+  srv_41f13c454504aa2f: "The file contains no collection dates.",
+  srv_51217fe163428890: "The file is larger than 1 MB.",
+  srv_f99233086a1b64de: "The file is not a valid ICS calendar: {detail}",
+  srv_cd2e73645a4c1388: "The file is not an ICS calendar (text/calendar).",
 } as const;
 
 /** Key of a backend message. */

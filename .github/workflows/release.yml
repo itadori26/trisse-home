@@ -88,6 +88,16 @@ jobs:
           printf '\n### Container image\n\n```\n%s:%s\n```\n' "$IMAGE" "${{ needs.image.outputs.version }}" >> notes.md
           gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md \
             "trisse-home-${{ needs.image.outputs.version }}.spdx.json"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Attach the browser extension (#65)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: extension
+        run: |
+          npm test && npm run check && npm run build
+          gh release upload "$GITHUB_REF_NAME" dist/*.zip --clobber
 
   # Native .deb packages for amd64 and arm64 (ADR 0015), attached to the release.
   packages:

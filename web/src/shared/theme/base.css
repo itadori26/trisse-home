@@ -107,3 +107,27 @@ textarea {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Write actions in widgets (restart, wake, switch) are hidden for read-only
+   sessions: guests and kiosk displays (#50). */
+html.read-only [data-action] {
+  display: none !important;
+}
+
+/* Visible keyboard focus everywhere (WCAG 2.4.7, #113); components may style it further. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Respect the system setting: no animations or smooth scrolling (#113). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

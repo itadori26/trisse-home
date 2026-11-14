@@ -18,6 +18,13 @@
     try {
       // The browser language's catalogue first, so the page never flashes English.
       await loadLanguage().catch(() => undefined);
+      // A kiosk link (#50): the token is in the fragment, so it never reaches
+      // the server log; it signs this browser in as the display.
+      if (location.pathname === '/kiosk' && location.hash.length > 1) {
+        const token = decodeURIComponent(location.hash.slice(1));
+        history.replaceState(null, '', '/');
+        await container.auth.kioskLogin(token);
+      }
       view = await container.auth.currentView();
       loadError = '';
       rememberSignedIn(view === 'app');
@@ -42,6 +49,11 @@
   {#await import('../features/auth/ui/LoginPage.svelte') then { default: LoginPage }}
     <LoginPage auth={container.auth} ondone={refresh} />
   {/await}
+{:else if view === 'app' && location.pathname === '/capture'}
+  <!-- Quick capture (#66): a page of its own, without the dashboard. -->
+  {#await import('./CapturePage.svelte') then { default: CapturePage }}
+    <CapturePage {container} />
+  {/await}
 {:else if view === 'app'}
   {#if container.auth.demo}
     <p class="demo-banner" role="note">{t('app.demo_banner')}</p>
@@ -60,6 +72,6 @@
     text-align: center;
     font-size: 0.9em;
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-accent-contrast);
   }
 </style>

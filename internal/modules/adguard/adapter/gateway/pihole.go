@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"trisse-home/internal/modules/adguard/domain"
 	"trisse-home/internal/shared/kernel"
@@ -47,6 +48,8 @@ type piholeSummary struct {
 
 type piholeBlocking struct {
 	Blocking string `json:"blocking"` // enabled, disabled, failed, unknown
+	// Timer is the rest of a timed pause in seconds (null without one).
+	Timer *float64 `json:"timer"`
 }
 
 type piholeTopDomains struct {
@@ -71,6 +74,9 @@ func (p *PiHole) Stats(ctx context.Context, s domain.Settings) (domain.Stats, er
 		return domain.Stats{}, err
 	}
 	out := domain.Stats{Queries: summary.Queries.Total, Blocked: summary.Queries.Blocked, ProtectionEnabled: blocking.Blocking == "enabled"}
+	if blocking.Timer != nil && *blocking.Timer > 0 {
+		out.PauseRemaining = time.Duration(*blocking.Timer * float64(time.Second))
+	}
 	for _, d := range top.Domains {
 		if len(out.TopBlocked) == domain.TopBlockedLimit {
 			break
@@ -80,24 +86,52 @@ func (p *PiHole) Stats(ctx context.Context, s domain.Settings) (domain.Stats, er
 	return out, nil
 }
 
+// Pause implements usecase.DNSFilterProvider (POST /api/dns/blocking, #177).
+func (p *PiHole) Pause(ctx context.Context, s domain.Settings, d time.Duration) error {
+	body, err := json.Marshal(map[string]any{"blocking": false, "timer": int(d.Seconds())})
+	if err != nil {
+		return fmt.Errorf("encode pause: %w", err)
+	}
+	var answer piholeBlocking
+	if err := p.call(ctx, s, http.MethodPost, "/api/dns/blocking", body, &answer); err != nil {
+		return err
+	}
+	if answer.Blocking == "enabled" {
+		return errors.New("blocking is still on in Pi-hole")
+	}
+	return nil
+}
+
 // get reads one endpoint, renewing the session once on 401.
 func (p *PiHole) get(ctx context.Context, s domain.Settings, path string, dst any) error {
-	err := p.request(ctx, s, path, dst)
+	return p.call(ctx, s, http.MethodGet, path, nil, dst)
+}
+
+// call sends one request, renewing the session once on 401.
+func (p *PiHole) call(ctx context.Context, s domain.Settings, method, path string, body []byte, dst any) error {
+	err := p.request(ctx, s, method, path, body, dst)
 	if !errors.Is(err, errUnauthorized) || s.Password == "" {
 		return err
 	}
 	p.forget(s)
-	return p.request(ctx, s, path, dst)
+	return p.request(ctx, s, method, path, body, dst)
 }
 
-func (p *PiHole) request(ctx context.Context, s domain.Settings, path string, dst any) error {
+func (p *PiHole) request(ctx context.Context, s domain.Settings, method, path string, body []byte, dst any) error {
 	sid, err := p.session(ctx, s)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.URL+path, nil)
+	var rd io.Reader
+	if body != nil {
+		rd = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, s.URL+path, rd)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
 	if sid != "" {
 		req.Header.Set("X-FTL-SID", sid)

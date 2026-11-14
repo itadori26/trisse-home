@@ -134,6 +134,38 @@ the node and catch the token. Start and shutdown need two independent steps:
 and the `VM.PowerMgmt` permission for exactly these guests in Proxmox. A hard
 stop is never offered, and every action lands in the security event log.
 
+### Kiosk displays
+
+A kiosk display (#50) is an account of its own role: it reads the tabs it is
+given, exactly like a guest, but it has no password and none of the account
+self-service (password, two-factor, passkeys, session list). It signs in with
+a secret link whose token is stored as a SHA-256 hash and shown to the owner
+once. The token sits in the URL fragment (`/kiosk#…`), so it never reaches the
+server log, a proxy log or a referrer; the page posts it to
+`/api/auth/kiosk/login`, which is rate limited like the login and subject to
+`ALLOWED_CIDRS`. A new link, disabling or deleting the display signs the
+device out at once. Action buttons of widgets are hidden on displays, and the
+server refuses every write anyway.
+### DNS filter pause
+
+Pausing AdGuard Home or Pi-hole switches ad and tracker blocking off for
+the whole network, so it is off by default. Only the providers listed in
+`DNS_PAUSE_PROVIDERS` in the environment can be paused, and a browser session
+cannot change that list. A pause always has a timer (5, 30 or 60 minutes), and
+the DNS filter switches itself back on. Every pause lands in the security
+event log, and the setting is refused together with `DEMO_MODE=true`.
+### Parcels from e-mails
+
+Mail is personal, so the IMAP discovery (#166) is off by default and reads
+one folder only. trisse-home opens it with `EXAMINE` and fetches with
+`BODY.PEEK`, so the server itself refuses changes and not even the read flag
+moves; a test against a scripted IMAP server fails on any writing command.
+Only IMAP over TLS is supported, and the connection goes through the same
+address check as the HTTP integrations (no link-local or metadata
+addresses). The app password is encrypted with `SECRET_KEY`, never returned,
+and sent again only to the same server and user. Message contents are never
+stored, only the extracted tracking number, carrier and label.
+
 ### WireGuard export
 
 `wg` needs `CAP_NET_ADMIN` in the network namespace of the VPN, and its

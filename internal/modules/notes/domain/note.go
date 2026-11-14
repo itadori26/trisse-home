@@ -25,21 +25,48 @@ type Note struct {
 	pinned    bool
 	createdAt time.Time
 	updatedAt time.Time
+	// version counts the stored changes, starting at 1 (#80).
+	version int
 }
+
+// ErrVersionConflict is returned when the note was changed since the
+// version the client edited (#80).
+var ErrVersionConflict = kernel.NewPublicError(kernel.ErrConflict, "The note was changed elsewhere in the meantime.")
 
 // NewNote validates and creates a note.
 func NewNote(id, title, body string, pinned bool, now time.Time) (Note, error) {
-	n := Note{id: id, createdAt: now}
+	n := Note{id: id, createdAt: now, version: 1}
 	if err := n.Edit(title, body, pinned, now); err != nil {
 		return Note{}, err
 	}
 	return n, nil
 }
 
-// RestoreNote rebuilds a note from persisted state.
+// RestoreNote rebuilds a note from persisted state (version 1; see WithVersion).
 func RestoreNote(id, title, body string, pinned bool, createdAt, updatedAt time.Time) Note {
-	return Note{id: id, title: title, body: body, pinned: pinned, createdAt: createdAt, updatedAt: updatedAt}
+	return Note{id: id, title: title, body: body, pinned: pinned, createdAt: createdAt, updatedAt: updatedAt, version: 1}
 }
+
+// WithVersion returns the note with its stored version.
+func (n Note) WithVersion(v int) Note {
+	n.version = v
+	return n
+}
+
+// Version is the number of stored changes (#80).
+func (n Note) Version() int { return n.version }
+
+// CheckVersion fails with ErrVersionConflict when the client edited another
+// version than the stored one; 0 means no check.
+func (n Note) CheckVersion(expected int) error {
+	if expected != 0 && expected != n.version {
+		return ErrVersionConflict
+	}
+	return nil
+}
+
+// Bump counts a change before an existing note is stored again.
+func (n *Note) Bump() { n.version++ }
 
 // Edit replaces title, body and pin state. A note needs a title or a body;
 // an empty title is derived from the first line of the body.

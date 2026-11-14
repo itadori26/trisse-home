@@ -129,7 +129,7 @@
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--color-muted, #888);
+    color: var(--color-text-muted);
   }
   ul {
     list-style: none;
@@ -176,7 +176,7 @@
   .desc {
     grid-column: 2;
     font-size: 0.8rem;
-    color: var(--color-muted, #888);
+    color: var(--color-text-muted);
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;

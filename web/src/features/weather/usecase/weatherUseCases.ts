@@ -1,4 +1,12 @@
-import type { Forecast, Place, WeatherConfig, WeatherWarning } from '../domain/weather';
+import {
+  type Forecast,
+  type HealthOptions,
+  type HealthReport,
+  type Place,
+  wantsHealth,
+  type WeatherConfig,
+  type WeatherWarning,
+} from '../domain/weather';
 
 /** Output port: weather backend. */
 export interface WeatherGateway {
@@ -6,6 +14,8 @@ export interface WeatherGateway {
   searchPlaces(query: string): Promise<Place[]>;
   warnings(lat: number, lon: number): Promise<WeatherWarning[]>;
   radarUrl(lat: number, lon: number, key: number): string;
+  health(region: number, city: string, types: string[]): Promise<HealthReport>;
+  healthOptions(): Promise<HealthOptions>;
 }
 
 /** How long a loaded forecast is shared between callers. */
@@ -47,6 +57,17 @@ export class WeatherUseCases {
   /** Official warnings for a configured widget (empty when disabled). */
   warnings(cfg: WeatherConfig): Promise<WeatherWarning[]> {
     return cfg.warnings ? this.gateway.warnings(cfg.lat, cfg.lon) : Promise.resolve([]);
+  }
+
+  /** Pollen and UV index of a widget (#56); null without a region or city, so nothing is requested. */
+  health(cfg: WeatherConfig): Promise<HealthReport | null> {
+    if (!wantsHealth(cfg)) return Promise.resolve(null);
+    return this.gateway.health(cfg.pollenRegion, cfg.uvCity, cfg.pollenTypes);
+  }
+
+  /** Selectable pollen regions and UV cities for the widget settings. */
+  healthOptions(): Promise<HealthOptions> {
+    return this.gateway.healthOptions();
   }
 
   /** URL of the radar image; key changes every five minutes. */

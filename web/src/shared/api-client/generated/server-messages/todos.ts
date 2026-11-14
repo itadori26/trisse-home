@@ -8,6 +8,7 @@ export const serverMessages = {
   srv_8fd5a1f81a5668ce: "The due date must look like 2026-12-24.",
   srv_39e64da309876466: "The to-do does not exist.",
   srv_deed27849449d0b5: "The to-do must have between 1 and 300 characters.",
+  srv_b4f6dd576f1534c2: "The to-do was changed elsewhere in the meantime.",
 } as const;
 
 /** Key of a backend message. */

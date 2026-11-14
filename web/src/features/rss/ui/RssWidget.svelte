@@ -3,13 +3,37 @@
   import { errorMessage } from '../../../shared/api-client/http';
   import { type FeedItem, itemMeta, parseRssConfig } from '../domain/feed';
   import type { RssUseCases } from '../usecase/rssUseCases';
+  import type { Summarizer } from '../../../shared/ui/summarizer';
+  import SummaryBox from '../../../shared/ui/SummaryBox.svelte';
 
   /** Props of the RSS widget. */
   interface Props {
     rss: RssUseCases;
     config: Record<string, unknown>;
+    /** Read later (#99); the button shows only when saving is possible. */
+    readLater?: { available(): Promise<boolean>; save(url: string): Promise<unknown> };
+    /** Local AI summaries (#75); the button shows only when Ollama is set up. */
+    summarizer?: Summarizer;
   }
-  let { rss, config }: Props = $props();
+  let { rss, config, readLater, summarizer }: Props = $props();
+  let canReadLater = $state(false);
+  let savedLater = $state<string[]>([]);
+  $effect(() => {
+    void readLater?.available().then((ok) => (canReadLater = ok));
+  });
+  async function saveForLater(item: FeedItem) {
+    if (!readLater || !item.link) return;
+    try {
+      await readLater.save(item.link);
+      savedLater = [...savedLater, item.id];
+    } catch (err) {
+      error = errorMessage(err);
+    }
+  }
+  let canSummarise = $state(false);
+  $effect(() => {
+    void summarizer?.available().then((ok) => (canSummarise = ok));
+  });
 
   const POLL_MS = 5 * 60 * 1000;
   /** Poll faster while the list is empty, e.g. right after feeds were added. */
@@ -75,6 +99,26 @@
         >
       {/if}
       {#if !cfg.compact}<span class="meta muted">{itemMeta(item, !!cfg.feedId, now)}</span>{/if}
+      {#if canReadLater && item.link}
+        <button
+          class="btn btn-icon later"
+          type="button"
+          disabled={savedLater.includes(item.id)}
+          title={savedLater.includes(item.id) ? t('readlater.saved_for_later') : t('readlater.read_later')}
+          aria-label={t('readlater.read_later_item', { title: item.title })}
+          onclick={() => saveForLater(item)}>{savedLater.includes(item.id) ? '✓' : '🔖'}</button
+        >
+      {/if}
+      {#if canSummarise && summarizer && item.link}
+        {@const link = item.link}
+        <span class="summarise"
+          ><SummaryBox
+            compact
+            label={t('ai_summary.summarise_item', { title: item.title })}
+            run={() => summarizer.link(link)}
+          /></span
+        >
+      {/if}
     </li>
   {:else}
     <li class="muted">{cfg.unreadOnly ? t('rss.all_caught_up') : t('rss.no_items')}</li>
@@ -85,6 +129,13 @@
 {/if}
 
 <style>
+  .summarise {
+    display: block;
+  }
+  .summarise :global(.btn-icon) {
+    padding: 0 var(--space-1);
+    font-size: 0.8em;
+  }
   .list {
     list-style: none;
     margin: 0;
@@ -119,5 +170,9 @@
   }
   .meta {
     font-size: 0.75em;
+  }
+  .later {
+    padding: 0 var(--space-1);
+    font-size: 0.8em;
   }
 </style>

@@ -3,13 +3,16 @@ import { type Reminder, type Repeat, type Todo, validateSchedule } from '../doma
 /** Output port: to-do backend. */
 export interface TodosGateway {
   list(includeDone: boolean): Promise<Todo[]>;
-  create(title: string, due: string): Promise<Todo>;
+  /** id: client-generated, for idempotent replays (#80). */
+  create(title: string, due: string, id?: string): Promise<Todo>;
   update(
     id: string,
     title: string,
     due: string,
     done: boolean,
     schedule?: { repeat: Repeat; reminder: Reminder },
+    /** The version the change was made from; 0/undefined = no check (#80). */
+    version?: number,
   ): Promise<Todo>;
   delete(id: string): Promise<void>;
   clearCompleted(): Promise<number>;

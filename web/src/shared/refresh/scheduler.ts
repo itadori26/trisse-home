@@ -171,6 +171,17 @@ export class RefreshScheduler {
     }
   }
 
+  /**
+   * Runs every visible job now, e.g. after offline changes were synced
+   * (#80) or the connection came back; jobs already running are skipped.
+   */
+  refreshAll(): void {
+    if (!this.visibility.visible()) return;
+    for (const job of this.jobs) {
+      if (!job.running && job.inViewport) this.start(job);
+    }
+  }
+
   /** Number of registered jobs (for tests and diagnostics). */
   get size(): number {
     return this.jobs.size;

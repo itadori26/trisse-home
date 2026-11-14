@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CaptureBookmarklet from '../features/capture/ui/CaptureBookmarklet.svelte';
   import { TimelineSettings } from '../features/timeline';
   import { BriefingSettings } from '../features/briefing';
   import { AboutSettings, ForecastSettings } from '../features/system';
@@ -74,6 +75,7 @@
     { id: 'account', label: 'settings.section.account' },
     { id: 'security-log', label: 'settings.section.security_log' },
     { id: 'guests', label: 'settings.section.guests' },
+    { id: 'kiosks', label: 'settings.section.kiosks' },
     { id: 'tokens', label: 'settings.section.tokens' },
     { id: 'forecast', label: 'settings.section.forecast', module: 'system' },
     { id: 'about', label: 'settings.section.about', module: 'system' },
@@ -113,6 +115,7 @@
     <AppearanceSettings appearance={container.appearance} current={appearance} onchange={onappearance} />
   {:else if current === 'search'}
     <SearchSettings search={container.search} />
+    <CaptureBookmarklet />
     <SearchHistorySettings usage={searchUsage} />
   {:else if current === 'services'}
     <ServicesManager services={container.services} />
@@ -132,6 +135,10 @@
     <ApiTokensSettings auth={container.auth} {modules} />
   {:else if current === 'guests'}
     <GuestsSettings auth={container.auth} tabs={guestTabs} />
+  {:else if current === 'kiosks'}
+    {#await import('../features/auth/ui/KiosksSettings.svelte') then { default: KiosksSettings }}
+      <KiosksSettings auth={container.auth} tabs={guestTabs} />
+    {/await}
   {:else if current === 'timeline'}
     <TimelineSettings timeline={container.timeline} />
   {:else if current === 'briefing'}

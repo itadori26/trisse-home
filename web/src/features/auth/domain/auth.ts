@@ -9,8 +9,10 @@ export interface AuthStatus {
   csrfToken: string | null;
   /** Public demo instance: signs in without a password. */
   demo: boolean;
-  /** Read-only guest account (ADR 0012). */
+  /** Read-only guest account (ADR 0012); also true for kiosk displays. */
   guest: boolean;
+  /** Kiosk display (#50): no controls, rotation, night dimming. */
+  kiosk: boolean;
   /** Available sign-in methods (ADR 0013). */
   sso: { oidc: boolean; header: boolean; localLogin: boolean };
 }
@@ -66,4 +68,45 @@ export function validateNewPassword(password: string, confirmation: string): str
   if (password.trim() === '') return t('auth.password_whitespace');
   if (password !== confirmation) return t('auth.passwords_differ');
   return null;
+}
+
+/** How a kiosk display shows its tabs (#50). */
+export interface KioskOptions {
+  /** Seconds per tab; 0 = no rotation. */
+  rotateSeconds: number;
+  /** "HH:MM" local time; both empty = never dimmed. */
+  nightFrom: string;
+  nightTo: string;
+}
+
+/** A kiosk display as managed by the owner. */
+export interface KioskDisplay extends KioskOptions {
+  id: string;
+  name: string;
+  tabs: string[];
+  disabled: boolean;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+}
+
+/** Input of creating or changing a display. */
+export interface KioskInput extends KioskOptions {
+  name: string;
+  tabs: string[];
+  disabled: boolean;
+}
+
+/** The link that signs a display in; the token travels in the fragment, never to the server log. */
+export function kioskLink(origin: string, token: string): string {
+  return `${origin}/kiosk#${encodeURIComponent(token)}`;
+}
+
+/** Whether a "HH:MM" time window (possibly over midnight) contains now. */
+export function inNightWindow(now: Date, from: string, to: string): boolean {
+  if (!from || !to) return false;
+  const minutes = (s: string) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
+  const m = now.getHours() * 60 + now.getMinutes();
+  const a = minutes(from);
+  const b = minutes(to);
+  return a < b ? m >= a && m < b : m >= a || m < b;
 }

@@ -5,11 +5,11 @@ paths:
   /api/waste/settings:
     get:
       tags: [waste]
-      summary: ICS subscription and custom rules
+      summary: Source (ICS URL or uploaded file with name, upload time, number of dates and covered range) and custom rules
       responses: { "200": { description: OK } }
     put:
       tags: [waste]
-      summary: Load (test) and save the ICS subscription (https, http or webcal) and rules
+      summary: Save the rules and, if url is not empty, load (test) and switch to that ICS subscription (https, http or webcal); an empty url keeps the current source
       requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { url: { type: string }, rules: { type: array, maxItems: 20, items: { type: object, properties: { match: { type: string }, label: { type: string }, color: { type: string, pattern: "^#[0-9a-fA-F]{6}$" }, icon: { type: string } } } } } } } } }
       responses: { "200": { description: OK }, "422": { description: Validation error or calendar not loadable } }
   /api/waste/upcoming:
@@ -17,3 +17,26 @@ paths:
       tags: [waste]
       summary: Next three dates per waste type, ordered by the next collection (refreshed every 6 hours)
       responses: { "200": { description: OK }, "404": { description: Not configured } }
+  /api/waste/calendar:
+    post:
+      tags: [waste]
+      summary: Upload an ICS file (.ics or text/calendar, at most 1 MB) as the source; it is validated before it replaces the previous source, rules are kept (#153)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "200": { description: The new settings }
+        "400": { description: Invalid form data or no file }
+        "413": { description: Larger than 1 MB }
+        "415": { description: Not multipart/form-data or not an ICS file }
+        "422": { description: Not a valid ICS calendar or no dates in it }
+    delete:
+      tags: [waste]
+      summary: Remove the uploaded file; the source is reset, the rules are kept
+      responses: { "200": { description: The new settings } }

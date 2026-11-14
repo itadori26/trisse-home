@@ -8,6 +8,27 @@ export interface Feed {
   lastError: string;
   lastFetchedAt: Date | null;
   unread: number;
+  /** Folder from OPML (#97); '' = none. */
+  category: string;
+}
+
+/** What an OPML import did (#97). */
+export interface ImportReport {
+  added: number;
+  duplicates: number;
+  invalid: { title: string; url: string; reason: string }[];
+}
+
+/** Largest OPML file the server accepts (2 MB). */
+export const MAX_OPML_BYTES = 2 << 20;
+
+/** Feeds grouped by category, uncategorised first, groups and feeds by name. */
+export function groupByCategory(feeds: Feed[]): { category: string; feeds: Feed[] }[] {
+  const groups = new Map<string, Feed[]>();
+  for (const f of feeds) groups.set(f.category, [...(groups.get(f.category) ?? []), f]);
+  return [...groups.entries()]
+    .sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)))
+    .map(([category, list]) => ({ category, feeds: list }));
 }
 
 /** A feed entry. */

@@ -84,6 +84,7 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Note" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Changed elsewhere since the given version (#80) }
         "422": { $ref: "#/components/responses/Invalid" }
     delete:
       tags: [notes]
@@ -102,8 +103,10 @@ schemas:
       title: { type: string, maxLength: 200 }
       body: { type: string, description: Markdown, maxLength: 102400 }
       pinned: { type: boolean }
+      id: { type: string, pattern: "^[A-Za-z0-9_-]{8,64}$", description: "Create only: client-generated ID; replaying the create returns the existing note (#80)" }
+      version: { type: integer, description: "Update only: the version the change was made from; another stored version answers 409 (#80). Omit for no check" }
   Note:
     allOf:
       - $ref: "#/components/schemas/NoteInput"
       - type: object
-        properties: { id: { type: string }, createdAt: { type: string, format: date-time }, updatedAt: { type: string, format: date-time } }
+        properties: { id: { type: string }, createdAt: { type: string, format: date-time }, updatedAt: { type: string, format: date-time }, version: { type: integer, description: Number of stored changes (#80) } }

@@ -89,7 +89,7 @@
     font-size: 0.8em;
     font-weight: 600;
     text-transform: uppercase;
-    color: var(--color-muted, #888);
+    color: var(--color-text-muted);
   }
   .event {
     display: flex;
@@ -108,6 +108,6 @@
   }
   time {
     font-variant-numeric: tabular-nums;
-    color: var(--color-muted, #888);
+    color: var(--color-text-muted);
   }
 </style>

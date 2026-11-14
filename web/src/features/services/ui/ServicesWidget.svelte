@@ -90,6 +90,7 @@
       </a>
       {#if canWake(s)}
         <button
+          data-action
           class="btn btn-icon wake"
           type="button"
           title={t('services.wake_up_wake_on_lan')}

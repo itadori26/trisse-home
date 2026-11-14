@@ -1,4 +1,6 @@
 <script lang="ts">
+  import LiveRegion from '../shared/a11y/LiveRegion.svelte';
+  import SyncStatus from './offline/SyncStatus.svelte';
   import MaintenanceBanner from '../features/notifications/ui/MaintenanceBanner.svelte';
   import { setLanguage, t } from '../shared/i18n';
   import { type Appearance, cssVariables, defaultAppearance } from '../features/appearance';
@@ -43,6 +45,18 @@
   let shortcutHelp = $state(false);
   let dashboard = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
   let hero = $state<{ focus: () => void }>();
+
+  // ?focus=search (the browser extension's new tab, #65): put the cursor into
+  // the search field once it exists, then drop the parameter from the address.
+  let focusRequested = new URLSearchParams(location.search).get('focus') === 'search';
+  $effect(() => {
+    if (!focusRequested || !hero) return;
+    focusRequested = false;
+    hero.focus();
+    const url = new URL(location.href);
+    url.searchParams.delete('focus');
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+  });
   let launcherOpen = $state<Segment | null>(null);
   let launcherTrigger = $state<HTMLButtonElement>();
   let serviceStatus = $state<ReturnType<typeof statusSummary>>({ kind: 'none', offline: 0 });
@@ -69,6 +83,11 @@
 
   const accountInitial = $derived(appearance.greetingName.trim().charAt(0).toUpperCase());
   let dashboardState = $state<{ tabs: Tab[]; activeId: string }>({ tabs: [], activeId: '' });
+  // Guests and kiosk displays cannot act; their action buttons are hidden (#50).
+  $effect(() => {
+    document.documentElement.classList.toggle('read-only', container.auth.guest);
+    return () => document.documentElement.classList.remove('read-only');
+  });
 
   // The top bar shows the weather of the first weather widget (#167, #189).
   const weatherLocation = $derived.by(() => {
@@ -202,13 +221,33 @@
   }
 
   async function logout() {
+    // Waiting offline changes are only on this device (#80).
+    if (
+      container.offline.pending > 0 &&
+      !confirm(t('offline.logout_pending', { n: container.offline.pending }))
+    )
+      return;
     try {
       await container.auth.logout();
+      await container.offline.clear();
       onlogout();
     } catch (err) {
       error = errorMessage(err);
     }
   }
+
+  // After offline changes reached the server, widgets show the server's state (#80).
+  // svelte-ignore state_referenced_locally
+  let seenSync = container.offline.revision; // the container never changes
+  $effect(() => {
+    const r = container.offline.revision;
+    if (r === seenSync) return;
+    seenSync = r;
+    container.refresh.refreshAll();
+  });
+  // Replay what was changed offline in an earlier session.
+  // svelte-ignore state_referenced_locally
+  void container.offline.replay();
 
   init();
 </script>
@@ -217,9 +256,7 @@
 
 <!-- Top bar and hero (#189): brand · date, weather, to-dos · status, launcher, account. -->
 <header class="topbar">
-  <a class="brand" href="/" aria-label="trisse-home"
-    ><span class="logo" aria-hidden="true">t</span>trisse-home</a
-  >
+  <a class="brand" href="/"><span class="logo" aria-hidden="true">t</span>trisse-home</a>
   <div class="center">
     <TopInfo
       weather={modules?.has('weather') ? container.weather : null}
@@ -286,10 +323,25 @@
   widgetConfig={(kind) => firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, kind)}
 />
 
+{#if container.auth.kiosk}
+  {#await import('./kiosk/KioskMode.svelte') then { default: KioskMode }}
+    <KioskMode
+      loadOptions={() => container.auth.kioskOptions()}
+      tabCount={dashboardState.tabs.length}
+      activeIndex={Math.max(
+        0,
+        dashboardState.tabs.findIndex((tab) => tab.id === dashboardState.activeId),
+      )}
+      selectTabAt={(i) => dashboard?.selectTabAt(i)}
+    />
+  {/await}
+{/if}
+<LiveRegion />
 <main class="content">
   {#if offline}<p class="offline" role="status">
       {t('app.you_are_offline_showing_the_last')}
     </p>{/if}
+  <SyncStatus sync={container.offline} />
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if modules}
     {#if modules.has('notifications') && !container.auth.guest}<MaintenanceBanner
@@ -366,7 +418,7 @@
     display: grid;
     place-items: center;
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-accent-contrast);
     font-size: 0.95rem;
   }
   .center {
