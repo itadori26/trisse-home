@@ -4,6 +4,7 @@
 package controller
 
 import (
+	"io"
 	"net/http"
 	"strconv"
 
@@ -106,4 +107,44 @@ func (h *Handlers) Image(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; sandbox")
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
 	_, _ = w.Write(img.Bytes)
+}
+
+// Settings handles GET /api/readlater/settings.
+func (h *Handlers) Settings(w http.ResponseWriter, r *http.Request) {
+	s, err := h.uc.Settings(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.SettingsDTO{ArchiveDays: s.ArchiveDays})
+}
+
+// SaveSettings handles PUT /api/readlater/settings.
+func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
+	var dto SettingsInputDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	s, err := h.uc.SaveSettings(r.Context(), dto.ArchiveDays)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.SettingsDTO{ArchiveDays: s.ArchiveDays})
+}
+
+// ImportPocket handles POST /api/readlater/import/pocket with the CSV file as body.
+func (h *Handlers) ImportPocket(w http.ResponseWriter, r *http.Request) {
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, usecase.MaxImportBytes))
+	if err != nil {
+		httpapi.WriteError(w, http.StatusRequestEntityTooLarge, "too_large", "The export file must be at most 5 MB.")
+		return
+	}
+	rep, err := h.uc.ImportPocket(r.Context(), data)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.ImportReportDTO(rep))
 }

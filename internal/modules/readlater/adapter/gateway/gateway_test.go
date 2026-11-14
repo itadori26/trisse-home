@@ -37,7 +37,7 @@ func TestRepository(t *testing.T) {
 	if n, _ := repo.TotalBytes(ctx); n != 100 {
 		t.Fatal(n)
 	}
-	_ = repo.SetStatus(ctx, "a", domain.StatusRead)
+	_ = repo.SetStatus(ctx, "a", domain.StatusRead, time.Now())
 	if got, _ := repo.Get(ctx, "a"); got.Status != domain.StatusRead {
 		t.Fatal(got.Status)
 	}
@@ -86,5 +86,49 @@ func TestFetcher(t *testing.T) {
 	}
 	if _, err := f.Fetch(ctx, srv.URL+"/missing"); err == nil {
 		t.Fatal("404")
+	}
+}
+
+func TestPocketCSV(t *testing.T) {
+	data := "\xef\xbb\xbftitle,url,time_added,tags,status\n" +
+		"\"Ein, Titel\",https://a.example/1,1700000000,go|news,unread\n" +
+		"Zwei,https://a.example/2,1700000100,,archive\n" +
+		",,,,\n"
+	got, err := Codec{}.Pocket([]byte(data))
+	if err != nil || len(got) != 2 || got[0].Title != "Ein, Titel" || got[0].Archived || !got[1].Archived ||
+		!got[0].Added.Equal(time.Unix(1700000000, 0).UTC()) {
+		t.Fatalf("%+v %v", got, err)
+	}
+	if _, err := (Codec{}).Pocket([]byte("name,link\nx,y\n")); err == nil {
+		t.Fatal("no url column")
+	}
+}
+
+func TestRepositoryPendingAndSettings(t *testing.T) {
+	ctx := context.Background()
+	repo := NewRepository(dbtest.Open(t, "readlater", Migrations()))
+	now := time.Date(2026, 11, 14, 8, 0, 0, 0, time.UTC)
+	a, _ := domain.NewImported("p1", domain.ImportEntry{URL: "https://a.example/x", Title: "X"}, now)
+	_ = repo.Save(ctx, a, nil)
+	if p, _ := repo.Pending(ctx, 10); len(p) != 1 || !p[0].Pending {
+		t.Fatalf("%+v", p)
+	}
+	a.Pending, a.Content, a.Bytes = false, "<p>x</p>", 8
+	if err := repo.Save(ctx, a, map[int]usecase.Image{0: {Bytes: []byte("img"), ContentType: "image/png"}}); err != nil {
+		t.Fatal("save again (upsert)", err)
+	}
+	if p, _ := repo.Pending(ctx, 10); len(p) != 0 {
+		t.Fatal("no longer pending")
+	}
+	_ = repo.SetStatus(ctx, "p1", domain.StatusArchived, now)
+	if got, _ := repo.Get(ctx, "p1"); !got.StatusAt.Equal(now) || got.Content != "<p>x</p>" {
+		t.Fatalf("%+v", got)
+	}
+	if s, _ := repo.Settings(ctx); s.ArchiveDays != 0 {
+		t.Fatal(s)
+	}
+	_ = repo.SaveSettings(ctx, domain.Settings{ArchiveDays: 30})
+	if s, _ := repo.Settings(ctx); s.ArchiveDays != 30 {
+		t.Fatal(s)
 	}
 }

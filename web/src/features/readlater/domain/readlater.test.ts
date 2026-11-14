@@ -22,11 +22,21 @@ describe('read later (#99)', () => {
       get: vi.fn().mockResolvedValue(article),
       setStatus: vi.fn().mockResolvedValue(undefined),
       remove: vi.fn(),
+      archiveDays: vi.fn().mockRejectedValue(new Error('404')),
+      saveArchiveDays: vi.fn(),
+      importPocket: vi.fn().mockResolvedValue({ added: 1, duplicates: 0, invalid: 0 }),
     } satisfies ReadLaterGateway;
     const uc = new ReadLaterUseCases(g);
     expect((await uc.open('a')).status).toBe('read');
     expect(g.setStatus).toHaveBeenCalledWith('a', 'read');
     await expect(uc.save('no link')).rejects.toThrow();
     expect(g.save).not.toHaveBeenCalled();
+    // Not available when the backend refuses (module off or a guest), asked once.
+    expect(await uc.available()).toBe(false);
+    await uc.available();
+    expect(g.archiveDays).toHaveBeenCalledTimes(1);
+    await expect(uc.importPocket({ size: (5 << 20) + 1, text: () => Promise.resolve('') })).rejects.toThrow();
+    await uc.importPocket({ size: 3, text: () => Promise.resolve('csv') });
+    expect(g.importPocket).toHaveBeenCalledWith('csv');
   });
 });

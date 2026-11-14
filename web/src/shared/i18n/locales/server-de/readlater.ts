@@ -17,4 +17,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
     'Der Speicher für „Später lesen“ ist voll (200 MB). Lösche zuerst archivierte Artikel.',
   // The status must be unread, read or archived.
   srv_d802b8593fbbdf54: 'Der Status muss ungelesen, gelesen oder archiviert sein.',
+  // Archived articles can be kept for 1 to 365 days, or forever (0).
+  srv_cc69e38143dedd78: 'Archivierte Artikel können 1 bis 365 Tage oder für immer (0) behalten werden.',
+  // At most 2000 links can be imported at once.
+  srv_03b5b5f039e06831: 'Es können höchstens 2000 Links auf einmal importiert werden.',
+  // The export file must be at most 5 MB.
+  srv_22fa6fd55903ce2e: 'Die Exportdatei darf höchstens 5 MB groß sein.',
+  // The file is not a Pocket export (CSV with title, url, time_added, status).
+  srv_8680771d11b72ed2: 'Die Datei ist kein Pocket-Export (CSV mit title, url, time_added, status).',
 };

@@ -49,6 +49,30 @@ paths:
       responses:
         "200": { description: The image, content: { image/png: { schema: { type: string, format: binary } } } }
         "404": { description: Unknown image }
+  /api/readlater/settings:
+    get:
+      tags: [readlater]
+      summary: Read-later settings (cleanup of archived articles)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { archiveDays: { type: integer, description: "0 = keep archived articles" } } } } } }
+    put:
+      tags: [readlater]
+      summary: Delete archived articles after N days (1-365, 0 = keep)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { archiveDays: { type: integer, minimum: 0, maximum: 365 } } } } } }
+      responses:
+        "200": { description: OK }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/readlater/import/pocket:
+    post:
+      tags: [readlater]
+      summary: Import a Pocket CSV export (at most 5 MB, 2000 links); reader copies are made in the background, 5 every 5 minutes
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { text/csv: { schema: { type: string } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { added: { type: integer }, duplicates: { type: integer }, invalid: { type: integer } } } } } }
+        "413": { description: Larger than 5 MB }
+        "422": { $ref: "#/components/responses/Invalid" }
 
 schemas:
   ReadLaterArticle:

@@ -27,4 +27,25 @@ export interface ArticleDTO {
    * Error says why there is no reader copy (the link is kept).
    */
   error: string;
+  /**
+   * Pending: imported, the reader copy is made in the background.
+   */
+  pending: boolean;
+}
+/**
+ * SettingsDTO are the read-later settings.
+ */
+export interface SettingsDTO {
+  /**
+   * ArchiveDays deletes archived articles after so many days; 0 = keep.
+   */
+  archiveDays: number /* int */;
+}
+/**
+ * ImportReportDTO says what an import did.
+ */
+export interface ImportReportDTO {
+  added: number /* int */;
+  duplicates: number /* int */;
+  invalid: number /* int */;
 }

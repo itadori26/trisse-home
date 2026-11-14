@@ -25,3 +25,19 @@ Only the page you save and its images, once, when you save it.
 ## API
 
 `GET/POST /api/readlater`, `GET/DELETE /api/readlater/{id}`, `PUT /api/readlater/{id}/status`, `GET /api/readlater/{id}/images/{n}` – see `api/modules/readlater.yaml`.
+
+## Import from Pocket
+
+Pocket shut down in 2025, but its export file still works. Under **Settings → Read later → Import Pocket export…**, choose the CSV file (`title,url,time_added,tags,status`; at most 5 MB, 2000 links).
+- The links are added at once with their title and the date they were saved. Archived ones stay archived.
+- The reader copies follow in the background, five every five minutes, so a large import doesn't flood your network or the sites.
+- Links that are already saved are skipped.
+
+## Cleanup
+
+**Delete archived articles** after 7, 30, 90 or 365 days, or never (the default). The cleanup runs every six hours and counts from when an article was archived.
+
+## From the feed reader
+
+Feed items have a 🔖 button that saves the article for later, when the read-later module is on and you are not a guest.
+

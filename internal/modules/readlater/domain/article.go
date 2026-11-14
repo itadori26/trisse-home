@@ -70,6 +70,64 @@ type Article struct {
 	Bytes int64
 	// Error says why no reader copy could be made.
 	Error string
+	// Pending articles were imported; the reader copy is fetched in the
+	// background (#99).
+	Pending bool
+	// StatusAt is when the status last changed (zero: when saved).
+	StatusAt time.Time
+}
+
+// Changed returns when the status last changed.
+func (a Article) Changed() time.Time {
+	if a.StatusAt.IsZero() {
+		return a.SavedAt
+	}
+	return a.StatusAt
+}
+
+// Settings of the read-later list.
+type Settings struct {
+	// ArchiveDays deletes archived articles after so many days; 0 = keep.
+	ArchiveDays int
+}
+
+// NewSettings validates the settings.
+func NewSettings(archiveDays int) (Settings, error) {
+	if archiveDays < 0 || archiveDays > 365 {
+		return Settings{}, kernel.NewValidationError("archiveDays", "Archived articles can be kept for 1 to 365 days, or forever (0).")
+	}
+	return Settings{ArchiveDays: archiveDays}, nil
+}
+
+// ImportEntry is one link of an export file (Pocket CSV).
+type ImportEntry struct {
+	URL      string
+	Title    string
+	Added    time.Time
+	Archived bool
+}
+
+// MaxImportEntries bounds one import.
+const MaxImportEntries = 2000
+
+// NewImported creates a pending article from an export entry; its reader
+// copy is fetched later.
+func NewImported(id string, e ImportEntry, now time.Time) (Article, error) {
+	a, err := NewArticle(id, e.URL, now)
+	if err != nil {
+		return Article{}, err
+	}
+	if t := truncate(strings.Join(strings.Fields(e.Title), " "), maxTitleRunes); t != "" {
+		a.Title = t
+	}
+	if !e.Added.IsZero() && e.Added.Before(now) {
+		a.SavedAt = e.Added
+	}
+	if e.Archived {
+		a.Status, a.StatusAt = StatusArchived, now
+	}
+	a.Pending = true
+	return a, nil
 }
 
 // NewArticle validates the address of a page to save.

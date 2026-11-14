@@ -207,7 +207,7 @@ const legacyDefinitions: WidgetDefinition[] = [
     icon: 'rss',
     view: lazy(
       () => import('../features/rss/ui/RssWidget.svelte'),
-      (config, c) => ({ config, rss: c.rss }),
+      (config, c) => ({ config, rss: c.rss, readLater: c.readlater }),
     ),
     settings: lazy(
       () => import('../features/rss/ui/RssWidgetSettings.svelte'),

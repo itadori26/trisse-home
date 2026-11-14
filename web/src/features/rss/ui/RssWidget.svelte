@@ -8,8 +8,24 @@
   interface Props {
     rss: RssUseCases;
     config: Record<string, unknown>;
+    /** Read later (#99); the button shows only when saving is possible. */
+    readLater?: { available(): Promise<boolean>; save(url: string): Promise<unknown> };
   }
-  let { rss, config }: Props = $props();
+  let { rss, config, readLater }: Props = $props();
+  let canReadLater = $state(false);
+  let savedLater = $state<string[]>([]);
+  $effect(() => {
+    void readLater?.available().then((ok) => (canReadLater = ok));
+  });
+  async function saveForLater(item: FeedItem) {
+    if (!readLater || !item.link) return;
+    try {
+      await readLater.save(item.link);
+      savedLater = [...savedLater, item.id];
+    } catch (err) {
+      error = errorMessage(err);
+    }
+  }
 
   const POLL_MS = 5 * 60 * 1000;
   /** Poll faster while the list is empty, e.g. right after feeds were added. */
@@ -75,6 +91,16 @@
         >
       {/if}
       {#if !cfg.compact}<span class="meta muted">{itemMeta(item, !!cfg.feedId, now)}</span>{/if}
+      {#if canReadLater && item.link}
+        <button
+          class="btn btn-icon later"
+          type="button"
+          disabled={savedLater.includes(item.id)}
+          title={savedLater.includes(item.id) ? t('readlater.saved_for_later') : t('readlater.read_later')}
+          aria-label={t('readlater.read_later_item', { title: item.title })}
+          onclick={() => saveForLater(item)}>{savedLater.includes(item.id) ? '✓' : '🔖'}</button
+        >
+      {/if}
     </li>
   {:else}
     <li class="muted">{cfg.unreadOnly ? t('rss.all_caught_up') : t('rss.no_items')}</li>
@@ -119,5 +145,9 @@
   }
   .meta {
     font-size: 0.75em;
+  }
+  .later {
+    padding: 0 var(--space-1);
+    font-size: 0.8em;
   }
 </style>

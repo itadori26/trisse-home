@@ -1,7 +1,7 @@
 <script lang="ts">
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
-  import { type Article, type ArticleStatus, formatBytes, STATUSES } from '../domain/readlater';
+  import { ARCHIVE_DAYS, type Article, type ArticleStatus, formatBytes, STATUSES } from '../domain/readlater';
   import type { ReadLaterUseCases } from '../usecase/readLaterUseCases';
   import ArticleReader from './ArticleReader.svelte';
 
@@ -37,6 +37,27 @@
     }
   }
   const total = $derived(articles.reduce((s, a) => s + a.bytes, 0));
+
+  // Cleanup of archived articles and the Pocket import (#99).
+  let archiveDays = $state(0);
+  let report = $state('');
+  let picker = $state<HTMLInputElement>();
+  $effect(() => {
+    readlater
+      .archiveDays()
+      .then((d) => (archiveDays = d))
+      .catch(() => undefined);
+  });
+  async function importFile() {
+    const file = picker?.files?.[0];
+    if (!file) return;
+    report = '';
+    await run(async () => {
+      const r = await readlater.importPocket(file);
+      report = t('readlater.import_report', { added: r.added, duplicates: r.duplicates, invalid: r.invalid });
+    });
+    if (picker) picker.value = '';
+  }
 </script>
 
 <p class="muted">{t('readlater.intro')}</p>
@@ -76,7 +97,8 @@
             intlLocale(),
           )}</span
         >
-        {#if a.error}<span class="error small">{a.error}</span>{/if}
+        {#if a.pending}<span class="muted small">{t('readlater.pending')}</span>
+        {:else if a.error}<span class="error small">{a.error}</span>{/if}
       </button>
       {#if a.status !== 'archived'}
         <button
@@ -109,6 +131,30 @@
 {#if articles.length}<p class="muted small">
     {t('readlater.storage', { size: formatBytes(total, intlLocale()) })}
   </p>{/if}
+<h3>{t('readlater.more')}</h3>
+<label class="field"
+  ><span>{t('readlater.archive_days')}</span>
+  <select
+    class="input"
+    bind:value={archiveDays}
+    onchange={() => run(async () => (archiveDays = await readlater.saveArchiveDays(archiveDays)))}
+  >
+    {#each ARCHIVE_DAYS as d (d)}<option value={d}
+        >{d ? t('readlater.after_days', { n: d }) : t('readlater.keep')}</option
+      >{/each}
+  </select>
+</label>
+<label class="btn import"
+  >{t('readlater.import_pocket')}<input
+    class="file"
+    bind:this={picker}
+    type="file"
+    accept=".csv,text/csv"
+    onchange={importFile}
+  /></label
+>
+<p class="muted small">{t('readlater.import_hint')}</p>
+{#if report}<p class="muted" role="status">{report}</p>{/if}
 {#if open}
   <ArticleReader
     article={open}
@@ -183,5 +229,18 @@
   }
   .small {
     font-size: 0.8em;
+  }
+  h3 {
+    font-size: 1rem;
+    margin: var(--space-4) 0 var(--space-2);
+  }
+  .file {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+  .import:has(:focus-visible) {
+    outline: 2px solid var(--color-accent);
   }
 </style>

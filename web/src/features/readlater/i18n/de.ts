@@ -6,6 +6,20 @@ export const de: Record<keyof typeof en, string> = {
   'widget.readlater.description':
     'Gespeicherte Artikel mit einer sauberen Lesefassung, die lesbar bleibt, wenn die Seite weg ist.',
   'settings.section.readlater': 'Später lesen',
+  'readlater.pending': 'Lesekopie folgt im Hintergrund',
+  'readlater.more': 'Aufräumen und Import',
+  'readlater.archive_days': 'Archivierte Artikel löschen',
+  'readlater.after_days': 'nach {n} Tagen',
+  'readlater.keep': 'nie',
+  'readlater.import_pocket': 'Pocket-Export importieren …',
+  'readlater.import_hint':
+    'Die CSV-Datei aus dem Pocket-Export. Die Links werden sofort übernommen; Lesekopien folgen im Hintergrund, einige alle fünf Minuten.',
+  'readlater.import_report':
+    '{added} hinzugefügt, {duplicates} schon gespeichert, {invalid} nicht importierbar.',
+  'readlater.import_too_large': 'Die Exportdatei darf höchstens 5 MB groß sein.',
+  'readlater.read_later': 'Später lesen',
+  'readlater.read_later_item': '{title} später lesen',
+  'readlater.saved_for_later': 'Für später gespeichert',
   'readlater.intro':
     'Gespeicherte Seiten bekommen eine saubere Lesefassung mit ihren Bildern, gespeichert auf diesem Server. Angefragt wird nur die Seite, die du speicherst, und zwar einmal.',
   'readlater.save': 'Speichern',

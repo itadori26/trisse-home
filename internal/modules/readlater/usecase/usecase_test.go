@@ -13,9 +13,25 @@ import (
 )
 
 type memRepo struct {
-	m      map[string]domain.Article
-	images map[string]map[int]Image
-	extra  int64
+	m        map[string]domain.Article
+	images   map[string]map[int]Image
+	extra    int64
+	settings domain.Settings
+}
+
+func (r *memRepo) Pending(_ context.Context, limit int) ([]domain.Article, error) {
+	var out []domain.Article
+	for _, a := range r.m {
+		if a.Pending && len(out) < limit {
+			out = append(out, a)
+		}
+	}
+	return out, nil
+}
+func (r *memRepo) Settings(context.Context) (domain.Settings, error) { return r.settings, nil }
+func (r *memRepo) SaveSettings(_ context.Context, s domain.Settings) error {
+	r.settings = s
+	return nil
 }
 
 func newRepo() *memRepo {
@@ -39,9 +55,9 @@ func (r *memRepo) Save(_ context.Context, a domain.Article, images map[int]Image
 	r.m[a.ID], r.images[a.ID] = a, images
 	return nil
 }
-func (r *memRepo) SetStatus(_ context.Context, id string, s domain.Status) error {
+func (r *memRepo) SetStatus(_ context.Context, id string, s domain.Status, at time.Time) error {
 	a := r.m[id]
-	a.Status = s
+	a.Status, a.StatusAt = s, at
 	r.m[id] = a
 	return nil
 }
@@ -100,7 +116,7 @@ func TestSave(t *testing.T) {
 	pages := &fakePages{page: Page{Title: "Post", Site: "Blog", Content: `<p>x</p><img src="cid:0" alt="a"><img src="cid:1" alt="b">`,
 		Images: []string{"https://b.example/0.png", "https://b.example/1.png"}, Words: 500}}
 	imgs := &fakeImages{size: 1000, fails: map[string]bool{"https://b.example/1.png": true}}
-	uc := New(repo, pages, imgs, &clk{t: time.Unix(0, 0)}, &ids{})
+	uc := New(repo, pages, imgs, codec{}, &clk{t: time.Unix(0, 0)}, &ids{})
 
 	a, err := uc.Save(ctx, "https://b.example/post#top")
 	if err != nil || a.Title != "Post" || a.ReadingMinutes() != 3 || a.Error != "" {
@@ -135,7 +151,7 @@ func TestLimits(t *testing.T) {
 		srcs = append(srcs, "https://b.example/"+strconv.Itoa(i))
 	}
 	imgs := &fakeImages{size: domain.MaxImageBytes}
-	uc := New(repo, &fakePages{page: Page{Content: content.String(), Images: srcs}}, imgs, &clk{}, &ids{})
+	uc := New(repo, &fakePages{page: Page{Content: content.String(), Images: srcs}}, imgs, codec{}, &clk{}, &ids{})
 	a, err := uc.Save(ctx, "https://b.example/many")
 	if err != nil {
 		t.Fatal(err)
@@ -153,7 +169,7 @@ func TestLimits(t *testing.T) {
 func TestStatesAndList(t *testing.T) {
 	ctx := context.Background()
 	repo := newRepo()
-	uc := New(repo, &fakePages{page: Page{Content: "<p>x</p>"}}, &fakeImages{}, &clk{t: time.Unix(0, 0)}, &ids{})
+	uc := New(repo, &fakePages{page: Page{Content: "<p>x</p>"}}, &fakeImages{}, codec{}, &clk{t: time.Unix(0, 0)}, &ids{})
 	a, _ := uc.Save(ctx, "https://x.example/1")
 	b, _ := uc.Save(ctx, "https://x.example/2")
 	if err := uc.SetStatus(ctx, a.ID, domain.StatusArchived); err != nil {
@@ -173,5 +189,78 @@ func TestStatesAndList(t *testing.T) {
 	}
 	if err := uc.Delete(ctx, a.ID); !errors.Is(err, kernel.ErrNotFound) {
 		t.Fatal(err)
+	}
+}
+
+type codec struct{ entries []domain.ImportEntry }
+
+func (c codec) Pocket([]byte) ([]domain.ImportEntry, error) {
+	if c.entries == nil {
+		return nil, errors.New("not csv")
+	}
+	return c.entries, nil
+}
+
+func TestImportFetchAndCleanup(t *testing.T) {
+	ctx := context.Background()
+	repo := newRepo()
+	pages := &fakePages{page: Page{Title: "Echt", Content: "<p>Text</p>", Words: 400}}
+	now := time.Date(2026, 11, 14, 8, 0, 0, 0, time.UTC)
+	c := &clk{t: now}
+	existing, _ := domain.NewArticle("x", "https://a.example/known", now)
+	repo.m["x"] = existing
+	entries := []domain.ImportEntry{
+		{URL: "https://a.example/1", Title: "Eins", Added: now.AddDate(-1, 0, 0)},
+		{URL: "https://a.example/2", Title: "Zwei", Archived: true},
+		{URL: "https://a.example/known"},
+		{URL: "javascript:alert(1)"},
+	}
+	for i := range 6 {
+		entries = append(entries, domain.ImportEntry{URL: "https://b.example/" + strconv.Itoa(i)})
+	}
+	uc := New(repo, pages, &fakeImages{}, codec{entries: entries}, c, &ids{})
+	r, err := uc.ImportPocket(ctx, []byte("csv"))
+	if err != nil || r.Added != 8 || r.Duplicates != 1 || r.Invalid != 1 {
+		t.Fatalf("%+v %v", r, err)
+	}
+	var one domain.Article
+	for _, a := range repo.m {
+		if a.URL == "https://a.example/1" {
+			one = a
+		}
+	}
+	if !one.Pending || one.Title != "Eins" || !one.SavedAt.Equal(now.AddDate(-1, 0, 0)) || one.Content != "" {
+		t.Fatalf("imported: %+v", one)
+	}
+	if _, err := New(repo, pages, &fakeImages{}, codec{}, c, &ids{}).ImportPocket(ctx, []byte("x")); err == nil {
+		t.Fatal("not an export")
+	}
+	// The job makes a few reader copies per run.
+	_ = uc.FetchPending(ctx)
+	left, _ := repo.Pending(ctx, 100)
+	if len(left) != 8-PendingPerRun {
+		t.Fatalf("pending after one run: %d", len(left))
+	}
+	for range 3 {
+		_ = uc.FetchPending(ctx)
+	}
+	if left, _ := repo.Pending(ctx, 100); len(left) != 0 {
+		t.Fatal("all copies made")
+	}
+	if got := repo.m[one.ID]; got.Content == "" || got.Pending || got.Title != "Echt" {
+		t.Fatalf("filled: %+v", got)
+	}
+	// Cleanup: off by default, then archived articles older than the setting go.
+	if _, err := uc.SaveSettings(ctx, 400); err == nil {
+		t.Fatal("days bounded")
+	}
+	_ = uc.Cleanup(ctx)
+	n := len(repo.m)
+	_, _ = uc.SaveSettings(ctx, 30)
+	_ = uc.SetStatus(ctx, one.ID, domain.StatusArchived)
+	c.t = now.AddDate(0, 0, 31)
+	_ = uc.Cleanup(ctx)
+	if _, ok := repo.m[one.ID]; ok || len(repo.m) != n-2 {
+		t.Fatalf("cleanup: %d of %d left", len(repo.m), n)
 	}
 }
