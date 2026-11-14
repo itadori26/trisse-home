@@ -18,4 +18,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_d5d2cea1e1d1fa8d: 'Das Regenradar ist nur für Deutschland verfügbar.',
   // The weather warnings are not available right now.
   srv_314a73e152936a17: 'Die Wetterwarnungen sind gerade nicht verfügbar.',
+  // The pollen and UV forecasts are not available right now.
+  srv_cb30f7793468eebc: 'Pollenflug und UV-Index sind gerade nicht verfügbar.',
 };

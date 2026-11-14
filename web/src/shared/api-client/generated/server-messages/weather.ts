@@ -6,6 +6,7 @@ export const serverMessages = {
   srv_990b607e23145ec7: "Please enter between 2 and 100 characters.",
   srv_3f60e80ed2350494: "The latitude must be between -90 and 90.",
   srv_39566e8cbb1ec35d: "The longitude must be between -180 and 180.",
+  srv_cb30f7793468eebc: "The pollen and UV forecasts are not available right now.",
   srv_d5d2cea1e1d1fa8d: "The rain radar is only available for Germany.",
   srv_314a73e152936a17: "The weather warnings are not available right now.",
 } as const;

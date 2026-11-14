@@ -6,11 +6,13 @@
     compass,
     describe,
     type Forecast,
+    type HealthReport,
     parseWeatherConfig,
     severityColors,
     validity,
     type WeatherWarning,
   } from '../domain/weather';
+  import { pollenColors, uvColors } from '../domain/healthColors';
   import type { WeatherUseCases } from '../usecase/weatherUseCases';
 
   /** Props of the weather widget. */
@@ -27,6 +29,7 @@
   let forecast = $state<Forecast | null>(null);
   let error = $state('');
   let warnings = $state<WeatherWarning[]>([]);
+  let health = $state<HealthReport | null>(null);
   let open = $state('');
 
   $effect(() => {
@@ -37,6 +40,10 @@
         .warnings(c)
         .then((w) => (warnings = w))
         .catch(() => {}); // warnings are optional; the forecast stays usable
+      weather
+        .health(c)
+        .then((h) => (health = h))
+        .catch(() => (health = null)); // pollen and UV are optional as well
       return weather
         .forecast(c)
         .then((f) => ((forecast = f), (error = '')))
@@ -111,6 +118,36 @@
           </li>
         {/each}
       </ul>
+    {/if}
+    {#if health && (health.pollen || health.uv)}
+      <section class="health" aria-label={t('weather.pollen_uv_dwd')}>
+        <div class="health-head muted small">
+          <span></span><span>{t('weather.today')}</span><span>{t('weather.tomorrow')}</span>
+        </div>
+        {#if health.uv}
+          <div class="health-row">
+            <span>{t('weather.uv_index')}</span>
+            {#each [[health.uv.today, health.uv.todayLevel], [health.uv.tomorrow, health.uv.tomorrowLevel]] as const as [v, level], i (i)}
+              <span class="chip" style:--chip={uvColors[level]} title={t(`weather.uv_${level}`)}
+                >{v < 0 ? '–' : v}<span class="sr-only"> ({t(`weather.uv_${level}`)})</span></span
+              >
+            {/each}
+          </div>
+        {/if}
+        {#each health.pollen?.days ?? [] as d (d.type)}
+          <div class="health-row">
+            <span>{t(`weather.pollen_${d.type}`)}</span>
+            {#each [[d.today, d.todayBurden], [d.tomorrow, d.tomorrowBurden]] as const as [v, burden], i (i)}
+              <span
+                class="chip pollen"
+                style:--chip={pollenColors[burden]}
+                title={t(`weather.burden_${burden}`)}
+                >{v || '–'}<span class="sr-only"> ({t(`weather.burden_${burden}`)})</span></span
+              >
+            {/each}
+          </div>
+        {/each}
+      </section>
     {/if}
   </div>
 {:else}
@@ -194,6 +231,28 @@
   .rain {
     color: var(--color-accent);
   }
+  .health {
+    display: grid;
+    gap: 2px;
+    font-size: 0.85em;
+  }
+  .health-head,
+  .health-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 4.5em 4.5em;
+    gap: var(--space-1);
+    align-items: center;
+  }
+  .health-head span:not(:first-child) {
+    text-align: center;
+  }
+  .chip {
+    text-align: center;
+    border-radius: var(--radius-small);
+    border-left: 4px solid var(--chip);
+    background: color-mix(in srgb, var(--chip) 18%, transparent);
+    font-variant-numeric: tabular-nums;
+  }
   /* Wide widgets: forecast next to the current conditions. */
   @container widget (min-aspect-ratio: 2.2 / 1) and (min-width: 520px) {
     .weather {
@@ -206,7 +265,8 @@
   }
   /* Low widgets drop the forecast, very low ones the details as well. */
   @container widget (max-height: 150px) and (max-width: 519px) {
-    .days {
+    .days,
+    .health {
       display: none;
     }
   }

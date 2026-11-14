@@ -27,6 +27,64 @@ paths:
       responses:
         "200": { description: OK, content: { image/png: { schema: { type: string, format: binary } } } }
         "422": { description: Outside Germany or invalid coordinates }
+  /api/weather/health/options:
+    get:
+      tags: [weather]
+      summary: Pollen regions and UV index cities of the DWD health forecasts (#56)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  regions: { type: array, items: { type: object, properties: { id: { type: integer }, name: { type: string } } } }
+                  cities: { type: array, items: { type: string } }
+        "503": { description: DWD not reachable and nothing cached }
+  /api/weather/health:
+    get:
+      tags: [weather]
+      summary: DWD pollen forecast of a region and UV index of a city for today and tomorrow (cached one hour, loaded only when asked for)
+      parameters:
+        - { name: region, in: query, schema: { type: integer }, description: "Pollen region id (part region where the DWD splits a region); 0 or missing = no pollen" }
+        - { name: city, in: query, schema: { type: string }, description: "UV index city; missing = no UV index" }
+        - { name: types, in: query, schema: { type: string }, description: "Comma-separated pollen types (hazel, alder, ash, birch, grasses, rye, mugwort, ambrosia); missing = all" }
+      responses:
+        "200":
+          description: "OK; pollen or uv is null when not asked for or unknown"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pollen:
+                    type: object
+                    nullable: true
+                    properties:
+                      region: { type: object, properties: { id: { type: integer }, name: { type: string } } }
+                      updatedAt: { type: string, format: date-time, nullable: true }
+                      days:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            type: { type: string }
+                            today: { type: string, description: "DWD notation 0, 0-1, 1, 1-2, 2, 2-3, 3; empty = no data" }
+                            tomorrow: { type: string }
+                            todayBurden: { type: string, enum: [none, low, moderate, high, unknown] }
+                            tomorrowBurden: { type: string, enum: [none, low, moderate, high, unknown] }
+                  uv:
+                    type: object
+                    nullable: true
+                    properties:
+                      city: { type: string }
+                      today: { type: integer, description: "-1 = no data" }
+                      tomorrow: { type: integer }
+                      todayLevel: { type: string, enum: [low, moderate, high, very_high, extreme, unknown] }
+                      tomorrowLevel: { type: string, enum: [low, moderate, high, very_high, extreme, unknown] }
+                      updatedAt: { type: string, format: date-time, nullable: true }
+        "503": { description: DWD not reachable and nothing cached }
   /api/weather/places:
     get:
       tags: [weather]

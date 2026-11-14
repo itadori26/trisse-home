@@ -1,6 +1,20 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { ForecastDTO, PlaceDTO, WarningDTO } from '../../../../shared/api-client/generated/weather';
-import type { Forecast, Place, WeatherWarning } from '../../domain/weather';
+import type {
+  ForecastDTO,
+  HealthDTO,
+  HealthOptionsDTO,
+  PlaceDTO,
+  WarningDTO,
+} from '../../../../shared/api-client/generated/weather';
+import type {
+  Forecast,
+  HealthOptions,
+  HealthReport,
+  PollenDay,
+  Place,
+  UVLevel,
+  WeatherWarning,
+} from '../../domain/weather';
 import type { WeatherGateway } from '../../usecase/weatherUseCases';
 
 /** WeatherGateway backed by the REST API. */
@@ -40,6 +54,33 @@ export class WeatherApi implements WeatherGateway {
       onset: w.onset ? new Date(w.onset) : null,
       expires: w.expires ? new Date(w.expires) : null,
     }));
+  }
+
+  async health(region: number, city: string, types: string[]): Promise<HealthReport> {
+    const q = new URLSearchParams();
+    if (region > 0) q.set('region', String(region));
+    if (city) q.set('city', city);
+    if (types.length) q.set('types', types.join(','));
+    const d = await this.http.get<HealthDTO>(`/api/weather/health?${q}`);
+    return {
+      pollen: d.pollen
+        ? { regionName: d.pollen.region.name, days: d.pollen.days.map((x) => ({ ...x }) as PollenDay) }
+        : null,
+      uv: d.uv
+        ? {
+            city: d.uv.city,
+            today: d.uv.today,
+            tomorrow: d.uv.tomorrow,
+            todayLevel: d.uv.todayLevel as UVLevel,
+            tomorrowLevel: d.uv.tomorrowLevel as UVLevel,
+          }
+        : null,
+    };
+  }
+
+  async healthOptions(): Promise<HealthOptions> {
+    const d = await this.http.get<HealthOptionsDTO>('/api/weather/health/options');
+    return { regions: d.regions.map((r) => ({ ...r })), cities: [...d.cities] };
   }
 
   radarUrl(lat: number, lon: number, key: number): string {
