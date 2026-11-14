@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AdGuardUseCases, type AdGuardGateway } from './adguardUseCases';
 
-const gateway = () => ({ settings: vi.fn(), saveSettings: vi.fn(), stats: vi.fn() }) satisfies AdGuardGateway;
+const gateway = () =>
+  ({ settings: vi.fn(), saveSettings: vi.fn(), stats: vi.fn(), pause: vi.fn() }) satisfies AdGuardGateway;
 
 describe('AdGuardUseCases', () => {
   it('trims url and username but not the password', async () => {

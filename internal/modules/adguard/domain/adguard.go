@@ -82,7 +82,10 @@ type Stats struct {
 	AvgProcessingTime    time.Duration
 	HasAvgProcessingTime bool
 	ProtectionEnabled    bool
-	TopBlocked           []BlockedDomain
+	// PauseRemaining is the time left of a timed pause; zero when the
+	// filter is on, or off without a timer.
+	PauseRemaining time.Duration
+	TopBlocked     []BlockedDomain
 }
 
 // BlockedPercent returns the share of blocked queries.
@@ -95,3 +98,23 @@ func (s Stats) BlockedPercent() float64 {
 
 // TopBlockedLimit is the number of top blocked domains shown.
 const TopBlockedLimit = 5
+
+// Pausing the filter (#177) is an opt-in write action: the providers that
+// may be paused come from the server environment, never from a session.
+
+// PauseMinutes are the offered pause durations.
+var PauseMinutes = []int{5, 30, 60}
+
+// ParsePause validates a pause duration in minutes.
+func ParsePause(minutes int) (time.Duration, error) {
+	for _, m := range PauseMinutes {
+		if m == minutes {
+			return time.Duration(m) * time.Minute, nil
+		}
+	}
+	return 0, kernel.NewValidationError("minutes", "Pause for 5, 30 or 60 minutes.")
+}
+
+// ErrPauseNotAllowed is returned when pausing is not enabled for a provider.
+var ErrPauseNotAllowed = kernel.NewPublicError(kernel.ErrForbidden,
+	"Pausing is switched off for this DNS filter. Allow it with DNS_PAUSE_PROVIDERS on the server.")

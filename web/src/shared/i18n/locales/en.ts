@@ -338,6 +338,12 @@ export const en = {
   'adguard.blocked': 'blocked',
   'adguard.ms': '{value} ms',
   'adguard.avg': 'avg',
+  'adguard.pause': 'Pause blocking:',
+  'adguard.pause_for': 'Pause blocking for {minutes} minutes',
+  'adguard.minutes_short': '{minutes} min',
+  'adguard.pause_confirm':
+    'Pause blocking of {name} for {minutes} minutes? Ads and trackers are not blocked in the whole network during that time.',
+  'adguard.paused_left': 'Blocking paused, {minutes} min left',
   'adguard.loading': 'Loading…',
   'bookmarks.title_optional': 'Title (optional)',
   'bookmarks.folder': 'Folder',

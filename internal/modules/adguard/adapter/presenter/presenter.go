@@ -15,6 +15,8 @@ type SettingsDTO struct {
 	URL         string `json:"url"`
 	Username    string `json:"username"`
 	HasPassword bool   `json:"hasPassword"`
+	// CanPause is true when the server allows pausing (DNS_PAUSE_PROVIDERS, #177).
+	CanPause bool `json:"canPause"`
 }
 
 // BlockedDomainDTO is a blocked domain with its count.
@@ -29,11 +31,13 @@ type StatsDTO struct {
 	Blocked        int     `json:"blocked"`
 	BlockedPercent float64 `json:"blockedPercent"`
 	// AvgProcessingMs is null for providers that do not report it (Pi-hole).
-	AvgProcessingMs   *float64           `json:"avgProcessingMs"`
-	ProtectionEnabled bool               `json:"protectionEnabled"`
-	TopBlocked        []BlockedDomainDTO `json:"topBlocked"`
-	UpdatedAt         time.Time          `json:"updatedAt"`
-	Error             string             `json:"error"`
+	AvgProcessingMs   *float64 `json:"avgProcessingMs"`
+	ProtectionEnabled bool     `json:"protectionEnabled"`
+	// PausedUntil is set while a timed pause runs (#177).
+	PausedUntil *time.Time         `json:"pausedUntil"`
+	TopBlocked  []BlockedDomainDTO `json:"topBlocked"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
+	Error       string             `json:"error"`
 }
 
 // Settings maps a SettingsView.
@@ -43,8 +47,8 @@ func Settings(v usecase.SettingsView) SettingsDTO { return SettingsDTO(v) }
 func Stats(v usecase.StatsView) StatsDTO {
 	dto := StatsDTO{
 		Queries: v.Queries, Blocked: v.Blocked, BlockedPercent: math.Round(v.BlockedPercent*10) / 10,
-		ProtectionEnabled: v.ProtectionEnabled,
-		UpdatedAt:         v.UpdatedAt, Error: v.Error, TopBlocked: make([]BlockedDomainDTO, 0, len(v.TopBlocked)),
+		ProtectionEnabled: v.ProtectionEnabled, PausedUntil: v.PausedUntil,
+		UpdatedAt: v.UpdatedAt, Error: v.Error, TopBlocked: make([]BlockedDomainDTO, 0, len(v.TopBlocked)),
 	}
 	if v.HasAvgProcessing {
 		avg := math.Round(v.AvgProcessingMs*100) / 100

@@ -146,6 +146,14 @@ server log, a proxy log or a referrer; the page posts it to
 `ALLOWED_CIDRS`. A new link, disabling or deleting the display signs the
 device out at once. Action buttons of widgets are hidden on displays, and the
 server refuses every write anyway.
+### DNS filter pause
+
+Pausing AdGuard Home or Pi-hole switches ad and tracker blocking off for
+the whole network, so it is off by default. Only the providers listed in
+`DNS_PAUSE_PROVIDERS` in the environment can be paused, and a browser session
+cannot change that list. A pause always has a timer (5, 30 or 60 minutes), and
+the DNS filter switches itself back on. Every pause lands in the security
+event log, and the setting is refused together with `DEMO_MODE=true`.
 
 ### WireGuard export
 
