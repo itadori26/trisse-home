@@ -70,3 +70,27 @@ func TestNotes(t *testing.T) {
 		t.Fatalf("expected not found after delete, got %v", err)
 	}
 }
+
+// TestOfflineReplay: creates with a client ID are idempotent and updates
+// carry the version they were made from (#80).
+func TestOfflineReplay(t *testing.T) {
+	ctx := context.Background()
+	d := Deps{Repo: &memRepo{m: map[string]domain.Note{}}, Clock: &clk{t: time.Unix(100, 0)}, IDs: &ids{}}
+	save := NewSaveNote(d)
+	first, err := save.Execute(ctx, "", NoteInput{Body: "Idee", ID: "client-note-1"})
+	if err != nil || first.ID != "client-note-1" || first.Version != 1 {
+		t.Fatalf("%+v %v", first, err)
+	}
+	if again, _ := save.Execute(ctx, "", NoteInput{Body: "Idee", ID: "client-note-1"}); again.ID != first.ID || len(d.Repo.(*memRepo).m) != 1 {
+		t.Fatalf("replay created a duplicate: %+v", again)
+	}
+	if _, err := save.Execute(ctx, "", NoteInput{Body: "x", ID: "no"}); err == nil {
+		t.Fatal("short client id must be refused")
+	}
+	if v2, err := save.Execute(ctx, first.ID, NoteInput{Body: "Idee 2", Version: 1}); err != nil || v2.Version != 2 {
+		t.Fatalf("%+v %v", v2, err)
+	}
+	if _, err := save.Execute(ctx, first.ID, NoteInput{Body: "offline", Version: 1}); !errors.Is(err, domain.ErrVersionConflict) {
+		t.Fatalf("conflict: %v", err)
+	}
+}

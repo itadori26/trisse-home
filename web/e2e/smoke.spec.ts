@@ -718,6 +718,24 @@ test('habits are checked off with streaks and a heatmap (#106)', async ({ page }
   await expect(page.getByRole('listitem').filter({ hasText: 'Read' })).toContainText('🔥 1');
 });
 
+test('the FRITZ!Box has separate internet and calls widgets (#168)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await account(page, 'Edit');
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('fritz');
+  await expect(page.getByRole('button', { name: /^FRITZ!Box internet/ })).toBeVisible();
+  await page.getByRole('button', { name: /^FRITZ!Box calls/ }).click();
+  const settings = page.getByRole('dialog', { name: 'FRITZ!Box calls settings' });
+  await settings.getByRole('combobox', { name: 'Calls' }).selectOption('missed');
+  await settings.getByRole('button', { name: 'Save', exact: true }).click();
+  await account(page, 'Done');
+  // No box configured in the smoke test: the widget says where to connect it.
+  await expect(page.getByText('Connect your FRITZ!Box under Settings → FRITZ!Box.')).toBeVisible();
+});
+
 test('widgets poll at their interval, not in a loop (#219)', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
@@ -880,6 +898,95 @@ test.describe('calendar split view', () => {
     expect(overflow).toBeLessThanOrEqual(0);
     const right = (await boxOf(dayList)).x + (await boxOf(dayList)).width;
     expect(right).toBeLessThanOrEqual(390);
+  });
+});
+
+test('quick capture saves a shared page only after confirming (#66)', async ({ page }) => {
+  const shared = new URLSearchParams({ url: 'https://example.org/article', title: 'An article', text: '' });
+  // Not signed in yet: the capture page waits behind the login.
+  await page.goto(`/capture?${shared}`);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByRole('heading', { name: 'Save to trisse-home' })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Bookmark' })).toBeChecked();
+  await expect(page.getByLabel('Title')).toHaveValue('An article');
+  await expect(page.getByLabel('Link')).toHaveValue('https://example.org/article');
+  // Opening the page saved nothing.
+  const before = await (await page.request.get('/api/bookmarks')).text();
+  expect(before).not.toContain('example.org/article');
+
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Bookmark saved.')).toBeVisible();
+  expect(await (await page.request.get('/api/bookmarks')).text()).toContain('example.org/article');
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText('Removed again.')).toBeVisible();
+  expect(await (await page.request.get('/api/bookmarks')).text()).not.toContain('example.org/article');
+
+  // Shared text becomes a note; the bookmarklet is offered in the settings.
+  await page.goto(`/capture?${new URLSearchParams({ text: 'Idee: Fahrradtour' })}`);
+  await expect(page.getByRole('radio', { name: 'Note' })).toBeChecked();
+  await expect(page.getByLabel('Text')).toHaveValue('Idee: Fahrradtour');
+  await page.goto('/');
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.getByRole('link', { name: '＋ trisse-home' })).toHaveAttribute(
+    'href',
+    /^javascript:.*\/capture\?url=/,
+  );
+});
+
+test('to-dos can be added and edited offline and are synced afterwards (#80)', async ({ page, context }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  const input = page.getByRole('textbox', { name: 'New to-do' }).first();
+  await expect(input).toBeVisible();
+
+  await context.setOffline(true);
+  await input.fill('Offline gekauft');
+  await input.press('Enter');
+  // The new to-do shows up at once and the change waits.
+  await expect(page.getByText('Offline gekauft')).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'not synced yet' })).toContainText('1 change');
+  let onServer = await (await page.request.get('/api/todos')).text();
+  expect(onServer).not.toContain('Offline gekauft');
+
+  await context.setOffline(false);
+  await expect(page.getByRole('status').filter({ hasText: 'not synced yet' })).toHaveCount(0, {
+    timeout: 10_000,
+  });
+  onServer = await (await page.request.get('/api/todos')).text();
+  expect(onServer).toContain('Offline gekauft');
+
+  // A change made elsewhere while offline becomes a conflict the user decides.
+  const todo = (JSON.parse(onServer) as { id: string; title: string; version: number }[]).find(
+    (t) => t.title === 'Offline gekauft',
+  );
+  expect(todo?.version).toBe(1);
+  await context.setOffline(true);
+  await page.locator('li', { hasText: 'Offline gekauft' }).getByRole('checkbox').check();
+  const status = await (await page.request.get('/api/auth/status')).json();
+  const res = await page.request.put(`/api/todos/${todo?.id}`, {
+    headers: { 'X-CSRF-Token': status.csrfToken as string },
+    data: { title: 'Offline gekauft (geändert)', due: '', done: false },
+  });
+  expect(res.ok()).toBeTruthy();
+  await context.setOffline(false);
+  await page.getByRole('button', { name: 'Resolve' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Changes that could not be synced' });
+  await expect(dialog).toContainText('Changed elsewhere while you were offline.');
+  await dialog.getByRole('button', { name: 'Keep mine' }).click();
+  await expect(page.getByRole('button', { name: 'Resolve' })).toHaveCount(0, { timeout: 10_000 });
+  const after = (await (await page.request.get('/api/todos?done=true')).json()) as {
+    id: string;
+    done: boolean;
+    version: number;
+  }[];
+  expect(after.find((t) => t.id === todo?.id)).toMatchObject({ done: true, version: 3 });
+  await page.request.delete(`/api/todos/${todo?.id}`, {
+    headers: { 'X-CSRF-Token': status.csrfToken as string },
   });
 });
 

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -62,10 +63,42 @@ func TestRepositoryKeepsScheduleAndReminder(t *testing.T) {
 	}
 	// Clearing works through the upsert as well.
 	_ = got.Schedule(domain.Recurrence{}, domain.Reminder{})
+	got.Bump()
 	if err := repo.Save(ctx, got); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ := repo.Get(ctx, "a"); got.Repeat().Repeats() || got.Reminder().Set() {
 		t.Fatalf("not cleared: %+v", got)
+	}
+}
+
+// TestRepositoryVersions: a change is stored only on top of the version it
+// was made from (#80).
+func TestRepositoryVersions(t *testing.T) {
+	ctx := context.Background()
+	repo := NewRepository(dbtest.Open(t, "todos", Migrations()))
+	now := time.Date(2026, 11, 13, 9, 0, 0, 0, time.UTC)
+	td, _ := domain.NewTodo("v", "Milch", time.Time{}, 0, now)
+	if err := repo.Save(ctx, td); err != nil {
+		t.Fatal(err)
+	}
+	a, _ := repo.Get(ctx, "v")
+	b, _ := repo.Get(ctx, "v")
+	if a.Version() != 1 {
+		t.Fatalf("new: %d", a.Version())
+	}
+	_ = a.Edit("Milch kaufen", time.Time{})
+	a.Bump()
+	if err := repo.Save(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	// b was loaded before a was stored: its change is refused.
+	_ = b.Edit("Hafermilch", time.Time{})
+	b.Bump()
+	if err := repo.Save(ctx, b); !errors.Is(err, domain.ErrVersionConflict) {
+		t.Fatalf("lost update: %v", err)
+	}
+	if got, _ := repo.Get(ctx, "v"); got.Title() != "Milch kaufen" || got.Version() != 2 {
+		t.Fatalf("%q v%d", got.Title(), got.Version())
 	}
 }

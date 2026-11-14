@@ -27,6 +27,7 @@ describe('TodosUseCases', () => {
       due: '',
       done: false,
       overdue: false,
+      version: 1,
       repeat: NO_REPEAT,
       reminder: NO_REMINDER,
     });
@@ -39,6 +40,7 @@ describe('TodosUseCases', () => {
       due: '2026-11-12',
       done: false,
       overdue: false,
+      version: 1,
       repeat: NO_REPEAT,
       reminder: NO_REMINDER,
     };

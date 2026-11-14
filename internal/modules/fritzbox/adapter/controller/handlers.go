@@ -5,10 +5,13 @@ package controller
 
 import (
 	"net/http"
+	"strconv"
 
 	"trisse-home/internal/modules/fritzbox/adapter/presenter"
+	"trisse-home/internal/modules/fritzbox/domain"
 	"trisse-home/internal/modules/fritzbox/usecase"
 	"trisse-home/internal/shared/httpapi"
+	"trisse-home/internal/shared/kernel"
 )
 
 // Handlers serves the FRITZ!Box endpoints.
@@ -50,4 +53,29 @@ func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Status(res))
+}
+
+// Calls handles GET /api/fritzbox/calls?filter=missed&limit=10 (#168).
+func (h *Handlers) Calls(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	limit := 0
+	if raw := q.Get("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			httpapi.WriteDomainError(w, r, kernel.NewValidationErrorf("limit", "Show between {min} and {max} calls.", "min", 5, "max", domain.MaxCalls))
+			return
+		}
+		limit = n
+	}
+	f, err := domain.NewCallFilter(q.Get("filter"), limit)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.uc.Calls(r.Context(), f)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Calls(res))
 }
