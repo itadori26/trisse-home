@@ -151,7 +151,7 @@
        greeting and the search, past the screen (#226). */
     grid-template-columns: minmax(0, 1fr);
     justify-items: center;
-    /* Half the former gaps: search, tabs and widgets sit closer together. */
+    /* Tight spacing so the widgets start right below the search and the tabs. */
     gap: 6px;
     padding: var(--space-3) var(--space-4) var(--space-2);
     max-width: 1600px;
