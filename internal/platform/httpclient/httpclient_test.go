@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -74,5 +75,11 @@ func TestGuardRefusesLoopback(t *testing.T) {
 	_, err := New(WithInternalAddressGuard()).Get(srv.URL)
 	if !errors.Is(err, ErrBlockedAddress) {
 		t.Fatalf("guarded client reached loopback: %v", err)
+	}
+}
+
+func TestIntegrationDialContextRefusesMetadata(t *testing.T) {
+	if _, err := IntegrationDialContext(context.Background(), "tcp", "169.254.169.254:993"); !errors.Is(err, ErrBlockedAddress) {
+		t.Fatalf("expected the metadata address to be refused, got %v", err)
 	}
 }

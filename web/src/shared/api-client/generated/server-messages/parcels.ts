@@ -3,15 +3,20 @@
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
   srv_5343c52cdf9d2afd: "At most 30 parcels can be tracked.",
+  srv_cee130f3904d48b7: "Check the mailbox every 5 minutes to 24 hours.",
   srv_24f489be60f9182b: "DHL does not know this tracking number (yet).",
   srv_099fe605093d8b87: "DHL rejected the API key.",
   srv_7cb71b2e113119ec: "Delivered parcels can be kept for 0 to 30 days.",
+  srv_91809f90e8dfc4fb: "Enter the IMAP server name, e.g. imap.example.com.",
   srv_7d0f681f466f8e83: "Please add your DHL API key in the settings first.",
   srv_2d07f911dc00e3dc: "The daily DHL limit is reached; it will be retried later.",
   srv_64e5ff21727bf802: "The label must be at most 60 characters long.",
   srv_f35b41c22f1a21c2: "The parcel does not exist.",
+  srv_92285ba58a255b47: "The port must be between 1 and 65535 (IMAP over TLS: 993).",
   srv_06ef324c0db01986: "This carrier is not supported.",
   srv_e4cd1895823b2401: "Tracking numbers consist of 8 to 35 letters and digits.",
+  srv_970344b28687ee67: "User name and app password are required.",
+  srv_b08dda17b8ef851b: "User name, password and folder must not contain line breaks.",
 } as const;
 
 /** Key of a backend message. */

@@ -76,3 +76,29 @@ func (h *Handlers) Remove(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// MailSettings handles GET /api/parcels/mail (#166).
+func (h *Handlers) MailSettings(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.MailSettings(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.MailSettings(res))
+}
+
+// SaveMailSettings handles PUT /api/parcels/mail; an enabled mailbox is
+// tested before it is saved.
+func (h *Handlers) SaveMailSettings(w http.ResponseWriter, r *http.Request) {
+	var dto MailSettingsInputDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.uc.SaveMailSettings(r.Context(), usecase.MailSettingsInput(dto))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.MailSettings(res))
+}

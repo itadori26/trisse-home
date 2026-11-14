@@ -25,6 +25,12 @@ type Parcels interface {
 	Remove(ctx context.Context, id string) error
 	// RefreshAll updates every undelivered parcel (background job).
 	RefreshAll(ctx context.Context) error
+	// MailSettings and SaveMailSettings configure the mail discovery (#166).
+	MailSettings(ctx context.Context) (MailSettingsView, error)
+	SaveMailSettings(ctx context.Context, in MailSettingsInput) (MailSettingsView, error)
+	// DiscoverParcels reads new shipping mails and adds their parcels
+	// (background job; does nothing while disabled or before the interval).
+	DiscoverParcels(ctx context.Context) error
 }
 
 // Repository persists parcels and settings (output port).
@@ -43,6 +49,9 @@ type Deps struct {
 	Providers map[domain.Carrier]Provider
 	Clock     kernel.Clock
 	IDs       kernel.IDGenerator
+	// Mail and MailStore are the mail discovery (#166).
+	Mail      MailSource
+	MailStore MailStore
 }
 
 // Provider asks one carrier for the latest status (output port; one
@@ -113,6 +122,10 @@ func (uc *parcels) List(ctx context.Context) ([]domain.Parcel, error) {
 
 // Add implements Parcels; the parcel is tracked immediately.
 func (uc *parcels) Add(ctx context.Context, trackingNumber string, carrier domain.Carrier, label string) (domain.Parcel, error) {
+	return uc.add(ctx, trackingNumber, carrier, label, false)
+}
+
+func (uc *parcels) add(ctx context.Context, trackingNumber string, carrier domain.Carrier, label string, discovered bool) (domain.Parcel, error) {
 	all, err := uc.d.Repo.List(ctx)
 	if err != nil {
 		return domain.Parcel{}, fmt.Errorf("list parcels: %w", err)
@@ -124,6 +137,7 @@ func (uc *parcels) Add(ctx context.Context, trackingNumber string, carrier domai
 	if err != nil {
 		return domain.Parcel{}, err
 	}
+	p.Discovered = discovered
 	s, err := uc.d.Repo.LoadSettings(ctx)
 	if err != nil {
 		return domain.Parcel{}, fmt.Errorf("load settings: %w", err)
@@ -135,10 +149,17 @@ func (uc *parcels) Add(ctx context.Context, trackingNumber string, carrier domai
 	return p, nil
 }
 
-// Remove implements Parcels.
+// Remove implements Parcels. A removed discovered parcel is not found
+// again in the next run.
 func (uc *parcels) Remove(ctx context.Context, id string) error {
-	if _, err := uc.d.Repo.Get(ctx, id); err != nil {
+	p, err := uc.d.Repo.Get(ctx, id)
+	if err != nil {
 		return err
+	}
+	if p.Discovered && uc.d.MailStore != nil {
+		if err := uc.d.MailStore.Dismiss(ctx, p.TrackingNumber); err != nil {
+			return fmt.Errorf("dismiss number: %w", err)
+		}
 	}
 	return uc.d.Repo.Delete(ctx, id)
 }
@@ -155,7 +176,7 @@ func (uc *parcels) RefreshAll(ctx context.Context) error {
 	}
 	var failed int
 	for _, p := range all {
-		if p.Delivered() {
+		if _, trackable := uc.d.Providers[p.Carrier]; p.Delivered() || !trackable {
 			continue
 		}
 		p = uc.track(ctx, s, p)
@@ -180,7 +201,7 @@ func (uc *parcels) track(ctx context.Context, s domain.Settings, p domain.Parcel
 	provider, ok := uc.d.Providers[p.Carrier]
 	switch {
 	case !ok:
-		p.Error = "This carrier is not supported."
+		// No tracking API (yet): the UI links to the carrier's page (#166).
 		return p
 	case p.Carrier == domain.CarrierDHL && s.DHLAPIKey == "":
 		p.Error = domain.ErrNoAPIKey.Error()

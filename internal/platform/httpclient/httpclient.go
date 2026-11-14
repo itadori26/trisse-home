@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/tls"
@@ -234,3 +235,12 @@ func (b *limitedBody) Read(p []byte) (int, error) {
 }
 
 func (b *limitedBody) Close() error { return b.rc.Close() }
+
+// IntegrationDialContext dials TCP connections to owner-configured
+// integrations that do not speak HTTP, such as IMAP (#166), with the same
+// address check as WithIntegrationGuard: link-local, metadata, multicast and
+// unspecified addresses are refused on the resolved address.
+func IntegrationDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	d := &net.Dialer{Timeout: 10 * time.Second, Control: integrationControl}
+	return d.DialContext(ctx, network, address)
+}

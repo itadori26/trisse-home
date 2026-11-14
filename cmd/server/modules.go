@@ -148,7 +148,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"docker", func() modules.Module { return dockerModule }},
 		{"adguard", func() modules.Module { return adguard.New(db, secrets, out.integration, clk) }},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, out.integration, clk) }},
-		{"parcels", func() modules.Module { return parcels.New(db, secrets, client, clk, ids) }},
+		{"parcels", func() modules.Module {
+			return parcels.New(db, secrets, client, httpclient.IntegrationDialContext, clk, ids)
+		}},
 		{"transfer", func() modules.Module { return transfer.New(registry.Portables, clk, authModule) }},
 		{"transit", func() modules.Module { return transit.New(client, cfg.TransitAPIURL, clk) }},
 		{"shopping", func() modules.Module { return shopping.New(db, secrets, out.integration, ids) }},

@@ -12,6 +12,32 @@ paths:
       summary: Save the DHL API key (encrypted; empty keeps the stored one) and how long delivered parcels stay visible
       requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { dhlApiKey: { type: string }, hideDeliveredDays: { type: integer, minimum: 0, maximum: 30 } } } } } }
       responses: { "200": { description: OK }, "422": { description: Validation error } }
+  /api/parcels/mail:
+    get:
+      tags: [parcels]
+      summary: Mail discovery settings and status (#166); the password is never returned
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ParcelMailSettings" } } } } }
+    put:
+      tags: [parcels]
+      summary: Configure the read-only IMAP mailbox (TLS only); an enabled mailbox is tested first, an empty password keeps the stored one for the same server and user
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled: { type: boolean }
+                host: { type: string }
+                port: { type: integer, default: 993 }
+                username: { type: string }
+                password: { type: string, description: App password; empty keeps the stored one }
+                folder: { type: string, default: INBOX }
+                intervalMinutes: { type: integer, minimum: 5, maximum: 1440, default: 15 }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ParcelMailSettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
   /api/parcels:
     get:
       tags: [parcels]
@@ -19,8 +45,8 @@ paths:
       responses: { "200": { description: OK } }
     post:
       tags: [parcels]
-      summary: Track a parcel (carrier dhl); it is queried immediately when a key is configured
-      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { trackingNumber: { type: string }, carrier: { type: string, enum: [dhl] }, label: { type: string, maxLength: 60 } } } } } }
+      summary: Track a parcel; DHL is queried immediately when a key is configured, the other carriers link to their tracking page (#166)
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { trackingNumber: { type: string }, carrier: { type: string, enum: [dhl, hermes, dpd, gls, ups] }, label: { type: string, maxLength: 60 } } } } } }
       responses: { "201": { description: Created }, "409": { description: Too many parcels }, "422": { description: Validation error } }
   /api/parcels/{id}:
     delete:
@@ -28,3 +54,18 @@ paths:
       summary: Stop tracking a parcel
       parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses: { "204": { description: Deleted }, "404": { description: Not found } }
+
+schemas:
+  ParcelMailSettings:
+    type: object
+    properties:
+      enabled: { type: boolean }
+      host: { type: string }
+      port: { type: integer }
+      username: { type: string }
+      hasPassword: { type: boolean }
+      folder: { type: string }
+      intervalMinutes: { type: integer }
+      lastRun: { type: string, format: date-time, nullable: true }
+      lastError: { type: string }
+      found: { type: integer, description: Parcels discovered so far }

@@ -134,6 +134,18 @@ the node and catch the token. Start and shutdown need two independent steps:
 and the `VM.PowerMgmt` permission for exactly these guests in Proxmox. A hard
 stop is never offered, and every action lands in the security event log.
 
+### Parcels from e-mails
+
+Mail is personal, so the IMAP discovery (#166) is off by default and reads
+one folder only. trisse-home opens it with `EXAMINE` and fetches with
+`BODY.PEEK`, so the server itself refuses changes and not even the read flag
+moves; a test against a scripted IMAP server fails on any writing command.
+Only IMAP over TLS is supported, and the connection goes through the same
+address check as the HTTP integrations (no link-local or metadata
+addresses). The app password is encrypted with `SECRET_KEY`, never returned,
+and sent again only to the same server and user. Message contents are never
+stored, only the extracted tracking number, carrier and label.
+
 ### WireGuard export
 
 `wg` needs `CAP_NET_ADMIN` in the network namespace of the VPN, and its

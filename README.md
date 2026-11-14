@@ -67,7 +67,7 @@ Not sure whether trisse-home is the right fit? See the
 | **gamedeals**  | Discounts on your public Steam wishlist (price, discount, end date, minimum discount) and current/upcoming free games on the Epic Games Store |
 | **speedtest**  | Internet speed from an existing [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker): latest download/upload/ping, 24 h and 7 day sparklines, optional notification below a threshold (runs no tests itself) |
 | **shopping**   | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps |
-| **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate             |
+| **parcels**    | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate; Hermes, DPD, GLS and UPS with a link to the carrier; opt-in: parcels found automatically in shipping e-mails of a read-only IMAP folder ([guide](docs/parcels-mail.md)) |
 | **transit**    | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org)) |
 | **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
@@ -519,6 +519,8 @@ radar image is proxied, so the browser never contacts DWD) and departures
 from the community-run [Transitous](https://transitous.org) API (cached one
 minute per stop; please respect its fair-use policy or run your own MOTIS)
 and, with your API key, the DHL tracking API (hourly, undelivered parcels only).
+If you set up parcel discovery (off by default), the server reads one folder of
+your mailbox over IMAP with TLS, read-only, at the interval you choose.
 If you enable it in the bookmark settings (off by default), the server also
 requests your bookmarked pages themselves: once when a bookmark is added (title
 and favicon, at most 512 KB per page and 64 KB per icon) and once a week for the
