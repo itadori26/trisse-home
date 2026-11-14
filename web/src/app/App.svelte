@@ -72,6 +72,6 @@
     text-align: center;
     font-size: 0.9em;
     background: var(--color-accent);
-    color: var(--color-on-accent, #fff);
+    color: var(--color-accent-contrast);
   }
 </style>

@@ -139,7 +139,7 @@
     width: 0.6rem;
     height: 0.6rem;
     border-radius: 50%;
-    background: var(--color-muted, #888);
+    background: var(--color-text-muted);
   }
   .dot.online {
     background: var(--color-success);

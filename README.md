@@ -20,12 +20,12 @@ Architecture.
 <details>
 <summary>More screenshots (dark mode, server tab, mobile)</summary>
 
-| Dark mode | Server tab |
-| --- | --- |
+| Dark mode                                                        | Server tab                                                                                       |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | ![Home tab in dark mode](docs/screenshots/home-desktop-dark.png) | ![Server tab with services, system metrics and Docker](docs/screenshots/server-desktop-dark.png) |
 
-| Mobile (light) | Mobile (dark) |
-| --- | --- |
+| Mobile (light)                                                  | Mobile (dark)                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------- |
 | ![Mobile layout, light](docs/screenshots/home-mobile-light.png) | ![Mobile layout, dark](docs/screenshots/home-mobile-dark.png) |
 
 The screenshots are generated from a demo instance (`npm run screenshots`,
@@ -37,6 +37,55 @@ Not sure whether trisse-home is the right fit? See the
 
 ## Features
 
+| Module            | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **dashboard**     | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates, per-tab backgrounds, a separate phone layout per tab (order, height, hide on phones) and rules that open a tab by default (weekdays, time of day, client network)                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **search**        | Search field next to the greeting (opens the quick search, Ctrl+K or `/`) with DuckDuckGo as default (all `!bangs` work), other engines, custom shortcuts, OpenSearch, quick capture (`t Milch kaufen`, prefixes and "open in a new tab" under Settings → Search); **smart answers** in the quick search: CPU, memory, disks, load, uptime, containers (status, update hint, confirmed restart), services and weather – typo-tolerant, German and English, prefixes like `/cpu`, `/docker <name>`, `/wetter <place>`; **calculator and unit conversion** in the browser (`2+3*4`, `19 % von 240`, `5 km in mi`, `30 °C in F`, `2 GiB in MB`), Enter copies the result |
+| **weather**       | Weather and forecast via [Open-Meteo](https://open-meteo.com) (no API key), official DWD warnings and a rain radar widget (Germany)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **clock**         | Time and date, optionally in another time zone                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **services**      | Tiles for your services with online status, response time history, TLS certificate expiry warning and Wake-on-LAN; status overview with uptime over 24 h/7/30/90 days, daily bars and an incident log (maintenance windows excluded); optional [Docker autodiscovery](#docker-autodiscovery-optional) from container labels                                                                                                                                                                                                                                                                                                                                           |
+| **bookmarks**     | Links in folders with tags, filterable; opt-in: title and favicon fetched on add (icons stored locally) and a weekly link check with a "broken links" filter                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **notes**         | Markdown notes, pinnable to the dashboard (sanitised rendering); full-text search with highlighting (also in the quick search), `[[wiki links]]` with backlinks, version history with diff and restore                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **todos**         | To-do list with due dates and overdue highlighting, recurring to-dos (daily, weekly on weekdays, monthly, N days after completion) and reminders via the notification channels                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **countdown**     | Countdowns to exams, holidays and deadlines: days left (hours and minutes on the last day), highlighted when fewer than N days remain, past ones hidden after a grace period                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **focus**         | Pomodoro focus timer (focus, short and long break; durations per widget) that keeps running in background tabs, optional browser notification at the end of a phase, finished sessions per day for the last week                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **habits**        | Habit tracker: daily habits or chosen weekdays, one tap to check off today (or yesterday), current and best streak (days off never break it), 4-week heatmap                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **timeline**      | What happened when: outages and recoveries of services, containers, backups and checks, certificates, disks and security alerts; filters, day separators, configurable retention (default 30 days)                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **briefing**      | Daily briefing widget: weather warnings, failures since yesterday evening, offline services, due to-dos, appointments and waste collection at a glance (sections orderable, each optional); optional daily push at a set time ([ADR 0016](docs/adr/0016-cross-module-read-models.md))                                                                                                                                                                                                                                                                                                                                                                                 |
+| **rss**           | Feed reader (RSS, Atom, JSON Feed) with read state                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **calendar**      | Agenda, month or split view (month grid and events side by side, keyboard navigation, event details) of CalDAV calendars, e.g. Nextcloud (recurring events supported), and read-only ICS/webcal subscriptions (timetables, fixtures, holidays) with colour and refresh interval; quick-add of events                                                                                                                                                                                                                                                                                                                                                                  |
+| **system**        | CPU, memory, swap, disks, load, uptime and temperature of the host with a 24 h history; disk forecast ("full in ~23 days") from 90 days of daily usage with a notification threshold; running version and an opt-in update check                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **docker**        | Container status and health via a read-only Docker socket proxy; optional restart and log view; opt-in image update hints (digest compared with the registry at most every 6 h, optional newer version tags, release notes link, notification)                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **adguard**       | DNS filter statistics of AdGuard Home or Pi-hole 6+ (queries, blocked share, top blocked domains, protection status); provider chosen per widget                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **proxmox**       | Proxmox VE node load (CPU, memory, root disk) and the status and uptime of VMs and LXC containers via a read-only API token; optional [start/shutdown](#proxmox-ve-optional) for allow-listed guests                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **smarthome**     | Home Assistant entities as tiles (state with unit, last change), picked per widget; optional [switches and buttons](#home-assistant-optional) for allow-listed entities                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **arr**           | Sonarr, Radarr and Prowlarr (several instances): upcoming episodes and movies for two weeks, download queue with progress and stuck downloads, health warnings, number of missing items                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **media**         | Jellyfin or Plex: what is playing right now (user, device, progress) and recently added movies, episodes and albums with posters (proxied by trisse-home, token stays on the server)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **immich**        | Immich photo library: number of photos and videos, storage, and today's "on this day" memories (thumbnails proxied by trisse-home; API key with minimal permissions)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **fuel**          | Fuel prices in Germany ([Tankerkönig](https://creativecommons.tankerkoenig.de), free API key): cheapest open stations around a place for E5/E10/Diesel, or your favourite stations                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **releases**      | New albums, singles and EPs of the artists you follow, from [MusicBrainz](https://musicbrainz.org) with covers from the Cover Art Archive (proxied)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **gamedeals**     | Discounts on your public Steam wishlist (price, discount, end date, minimum discount) and current/upcoming free games on the Epic Games Store                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **speedtest**     | Internet speed from an existing [Speedtest Tracker](https://github.com/alexjustesen/speedtest-tracker): latest download/upload/ping, 24 h and 7 day sparklines, optional notification below a threshold (runs no tests itself)                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **shopping**      | Shopping list stored as tasks in a CalDAV task list, usable by the whole household in their task apps                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **parcels**       | Parcel tracking (DHL, with your free API key) with status, location and delivery estimate                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **transit**       | Next public transport departures of a stop with real-time delays (via [Transitous](https://transitous.org))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **waste**         | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **wireguard**     | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **diskhealth**    | S.M.A.R.T. disk health: overall verdict, temperature, reallocated/pending sectors, NVMe wear and power-on hours; notifies on degradation (from a host export, no device access)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **fritzbox**      | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **nextcloud**     | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **transfer**      | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **quick search**  | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web; learns from your choices (frecency, kept in the browser, can be switched off and cleared under Settings → Search)                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **appearance**    | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS; optional greeting line below the compact top bar (name, date, weather of the first weather widget)                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **backup**        | Automatic, consistent database backups with retention; download in the settings; optional off-site copies to WebDAV/Nextcloud with their own retention; guided restore (password + 2FA, validated before the swap)                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **notifications** | Push messages via [ntfy](https://ntfy.sh), Gotify, webhooks (HMAC-signed) or e-mail for offline services, containers, full disks, expiring certificates, failed backups and security events; importance per type, quiet hours with a morning summary and maintenance windows                                                                                                                                                                                                                                                                                                                                                                                          |
+| **onboarding**    | Guided tour after the first login, can be restarted from the settings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **auth**          | First-run setup, login with two-factor authentication, session overview with sign-out per device, password change, security log with ntfy alerts on new devices and lockouts (exponential backoff), read-only guest accounts with shared tabs ([ADR 0012](docs/adr/0012-owner-and-guest-roles.md)), scoped [API tokens](docs/api-tokens.md) for automations, optional single sign-on via OIDC or forward auth ([ADR 0013](docs/adr/0013-single-sign-on.md)), passkeys as second factor behind HTTPS ([ADR 0014](docs/adr/0014-passkeys.md)) — always enabled                                                                                                          |
+
+### Accessibility
+
+trisse-home aims for **WCAG 2.2 AA**. It is fully keyboard-operable with visible focus, works with screen readers, respects _reduce motion_, and every built-in theme is contrast-checked. axe-core checks run in CI. See [docs/accessibility.md](docs/accessibility.md) for shortcuts and known limitations.
 | Module         | What it does                                                                                          |
 | -------------- | ----------------------------------------------------------------------------------------------------- |
 | **dashboard**  | Tabs with a 12-column drag & drop grid (also keyboard-operable), duplicate widgets, tab templates, per-tab backgrounds, a separate phone layout per tab (order, height, hide on phones) and rules that open a tab by default (weekdays, time of day, client network); **kiosk displays** for wall tablets: a secret link (QR code) shows chosen tabs read-only without controls, with tab rotation, night dimming, full screen and the screen kept awake |
@@ -78,7 +127,7 @@ Not sure whether trisse-home is the right fit? See the
 | **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
 | **transfer**   | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)     |
 | **quick search** | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web; learns from your choices (frecency, kept in the browser, can be switched off and cleared under Settings → Search) |
-| **appearance** | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS; optional greeting line below the compact top bar (name, date, weather of the first weather widget) |
+| **appearance** | Language (English/German, default: browser), light/dark/system theme, accent color, background image, custom CSS; theme gallery with 8 ready-made themes (Nord, Catppuccin, Gruvbox, Solarized, high contrast, classic portal), import/export as JSON ([themes](themes/README.md)); optional greeting line below the compact top bar (name, date, weather of the first weather widget) |
 | **backup**     | Automatic, consistent database backups with retention; download in the settings; optional off-site copies to WebDAV/Nextcloud with their own retention; guided restore (password + 2FA, validated before the swap) |
 | **backupmonitor** | Status of your own backup jobs (restic, borg, rsync …) reported via a secret ping URL             |
 | **notifications** | Push messages via [ntfy](https://ntfy.sh), Gotify, webhooks (HMAC-signed) or e-mail for offline services, containers, full disks, expiring certificates, failed backups and security events; importance per type, quiet hours with a morning summary and maintenance windows |
@@ -117,7 +166,7 @@ api/modules/<name>.yaml  API description of one module (merged by make openapi)
 
 No server, no Docker? Flash the ready-made image: in
 [Raspberry Pi Imager](https://www.raspberrypi.com/software/) open
-*App Options → Content Repository → Use custom URL* and enter
+_App Options → Content Repository → Use custom URL_ and enter
 
 ```
 https://github.com/itadori26/trisse-home/releases/latest/download/os_list.json
@@ -149,9 +198,9 @@ Open `http://<server-ip>:8090`, enter the setup token from the log and choose
 a password (at least 12 characters). The token is only valid until the
 account exists.
 
-After the setup the start page is filled with **sample data**: a *Home* tab
+After the setup the start page is filled with **sample data**: a _Home_ tab
 with search, clock, weather, to-dos, a welcome note, bookmarks, news and
-calendar, and a *Server* tab with service tiles, host metrics, Docker and
+calendar, and a _Server_ tab with service tiles, host metrics, Docker and
 AdGuard Home. Delete or change whatever you like; set `SAMPLE_DATA=false` to
 start with an almost empty page instead.
 
@@ -166,7 +215,7 @@ release; see the [releases and changelog](https://github.com/itadori26/trisse-ho
 **Pinning and rollback:** set `TRISSE_HOME_VERSION=1.2.3` in `.env` and run
 `sudo docker compose up -d`. To roll back, set the previous version and run the
 same command — database migrations only ever add columns and tables, and a
-backup is created automatically every day (see *Backups*). Each release also
+backup is created automatically every day (see _Backups_). Each release also
 has an SBOM attached and a build provenance attestation.
 
 **Building from source** (e.g. for development or an unreleased commit):
@@ -186,7 +235,7 @@ sudo docker run --rm -v trisse-home-data:/data -v "$PWD":/backup alpine \
   cp -r /data/backups /backup/
 ```
 
-**Restore:** Settings → Backups → *Restore a backup*: pick a local or off-site
+**Restore:** Settings → Backups → _Restore a backup_: pick a local or off-site
 backup or upload a file, re-enter your password (and 2FA code). trisse-home
 checks the file (SQLite integrity, a trisse-home schema not newer than the running
 version), keeps the current database as `trisse-home.db.before-restore` and
@@ -250,12 +299,12 @@ CRON
 The script writes `smartctl --json -a` per disk found by `smartctl --scan-open` and removes exports of disks that
 are gone. trisse-home rates each disk:
 
-| Rule                                                                          | Status   |
-| ----------------------------------------------------------------------------- | -------- |
+| Rule                                                                                                              | Status   |
+| ----------------------------------------------------------------------------------------------------------------- | -------- |
 | Self-assessment failed, attribute below its threshold, NVMe critical warning, spare below threshold, ≥ 100 % wear | critical |
 | Reallocated, pending, offline-uncorrectable or reported-uncorrectable sectors > 0, NVMe media errors, ≥ 90 % wear | warning  |
-| Temperature ≥ 60 °C (HDD/SATA) or ≥ 70 °C (NVMe); critical from 70/80 °C       | warning  |
-| Export older than `DISKHEALTH_STALE_AFTER` (default 2 h)                       | unknown  |
+| Temperature ≥ 60 °C (HDD/SATA) or ≥ 70 °C (NVMe); critical from 70/80 °C                                          | warning  |
+| Export older than `DISKHEALTH_STALE_AFTER` (default 2 h)                                                          | unknown  |
 
 State changes are sent through the notifications module (rule "Disk", type `diskhealth`) and recorded on the
 timeline. The export contains model and serial numbers, but no data from the disks.
@@ -264,7 +313,7 @@ timeline. The export contains model and serial numbers, but no data from the dis
 
 trisse-home can be installed as an app (Android, iOS, desktop) and shows the
 last loaded data when you are offline. Browsers only allow this in a **secure
-context**, so run it behind HTTPS (see *Behind a reverse proxy*) or open it
+context**, so run it behind HTTPS (see _Behind a reverse proxy_) or open it
 via `localhost`; on plain `http://<lan-ip>` the app still works, just without
 installation and offline mode.
 
@@ -272,6 +321,17 @@ The service worker caches the app shell and a fixed allow-list of read-only
 widget data (network first, cache only as fallback). Login, settings,
 exports, backups, logs and every non-GET request are never cached, and the
 cached data is deleted on logout.
+
+## Browser extension: trisse-home as the new tab page (optional)
+
+The extension in `extension/` (Manifest V3, Chrome/Edge and Firefox) opens your dashboard on every new tab, with the cursor in the search field, and adds **Save page to trisse-home** to the toolbar and the context menu (opens the quick capture page with the page, link or selected text).
+
+1. Download `trisse-home-extension-<version>.zip` from the [release](https://github.com/itadori26/trisse-home/releases) (or build it: `cd extension && npm run build`) and unzip it.
+2. **Chrome/Edge:** `chrome://extensions` → *Developer mode* → *Load unpacked* → the unzipped folder.
+   **Firefox:** `about:debugging#/runtime/this-firefox` → *Load Temporary Add-on* → `manifest.json` (temporary until restart; for a permanent install the add-on has to be signed via addons.mozilla.org).
+3. In the extension's options enter the address of your dashboard, e.g. `http://homeserver:8090`.
+
+Permissions: only `storage` (the address), `contextMenus` and `activeTab` (URL and title of the tab you save, only when you click). No host permissions, no content scripts, no tracking; the extension makes no request besides a reachability check of your dashboard. If the address is not set or the server is not reachable, the new tab says so and links to the options. Chrome keeps the cursor in the address bar for new tabs; click into the page or press `/` to search.
 
 ## Wake-on-LAN (optional)
 
@@ -293,11 +353,11 @@ without capabilities, has no access to data, Docker or secrets, accepts nothing 
 port 9009 and is rate-limited. The port is reachable from your LAN, which only allows what every LAN device can
 do anyway: wake devices.
 
-| Setup | What to do |
-|---|---|
-| Docker Compose (default) | `COMPOSE_PROFILES=wol` |
-| Binary / container in host network | `WOL_RELAY=` (empty) — trisse-home broadcasts itself |
-| No extra container wanted | Enable directed broadcast forwarding on the host (`sysctl net.ipv4.conf.all.bc_forwarding=1` and `net.ipv4.conf.<lan-if>.bc_forwarding=1`), set `WOL_RELAY=` and `WOL_BROADCAST=<lan>.255:9` |
+| Setup                              | What to do                                                                                                                                                                                   |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Docker Compose (default)           | `COMPOSE_PROFILES=wol`                                                                                                                                                                       |
+| Binary / container in host network | `WOL_RELAY=` (empty) — trisse-home broadcasts itself                                                                                                                                         |
+| No extra container wanted          | Enable directed broadcast forwarding on the host (`sysctl net.ipv4.conf.all.bc_forwarding=1` and `net.ipv4.conf.<lan-if>.bc_forwarding=1`), set `WOL_RELAY=` and `WOL_BROADCAST=<lan>.255:9` |
 
 The target device must have Wake-on-LAN enabled in its BIOS/UEFI and network driver.
 
@@ -318,14 +378,14 @@ DOCKER_ACTIONS_CONTAINERS=homarr,dashdot   # exact container names
 
 The read-only proxy stays unchanged. The additional `docker-actions-proxy` only accepts
 `POST /containers/<name>/stop|restart|kill` and denies everything else (no reads, no create, no exec), and
-trisse-home only calls *restart* for containers on the allow-list. Logs are read through the read-only proxy and
+trisse-home only calls _restart_ for containers on the allow-list. Logs are read through the read-only proxy and
 may contain secrets — only list containers whose logs you are fine seeing on the dashboard.
 
 ## Home Assistant (optional)
 
 The smart home widget shows the entities you pick (switches, lights, sensors with unit, …) with their state and
-last change. Create a **long-lived access token** in Home Assistant (*profile → Security*), then enter the URL and
-the token under *Settings → Home Assistant*. The token is stored encrypted and never shown again. States are
+last change. Create a **long-lived access token** in Home Assistant (_profile → Security_), then enter the URL and
+the token under _Settings → Home Assistant_. The token is stored encrypted and never shown again. States are
 read on demand, at most every 10 seconds, and only while a widget is open. Nothing is polled in the background.
 
 **Switches and buttons (off by default).** A Home Assistant token can do everything its user can, so trisse-home
@@ -337,6 +397,7 @@ SMARTHOME_ACTIONS_ENTITIES=switch.coffee_machine,button.garage_door
 
 Switches, lights, fans and `input_boolean` toggle; buttons, `input_button`, scripts and scenes are pressed. Every
 action is written to the security event log. MQTT is not supported yet; it can come later as a second provider.
+
 ## Proxmox VE (optional)
 
 The Proxmox widget shows each node's CPU, memory and root disk, plus every VM and LXC container with its status
@@ -349,8 +410,8 @@ pveum user token add monitor@pve trisse-home --privsep 0   # prints the secret o
 ```
 
 Enter the URL (`https://<node>:8006`), the token ID (`monitor@pve!trisse-home`) and the secret under
-*Settings → Proxmox*. The secret is stored encrypted and never shown again. Proxmox uses a self-signed
-certificate, so also paste its **SHA-256 fingerprint** (*node → System → Certificates*, or
+_Settings → Proxmox_. The secret is stored encrypted and never shown again. Proxmox uses a self-signed
+certificate, so also paste its **SHA-256 fingerprint** (_node → System → Certificates_, or
 `openssl x509 -in /etc/pve/local/pve-ssl.pem -noout -fingerprint -sha256`). trisse-home then trusts exactly this
 certificate and rejects any other. TLS verification is never switched off.
 
@@ -365,39 +426,40 @@ PROXMOX_ACTIONS_GUESTS=100,105
 pveum aclmod /vms/100 -user monitor@pve -role PVEVMUser   # repeat per guest; includes VM.PowerMgmt
 ```
 
-The widget then offers *start* for stopped and *shutdown* (clean ACPI/LXC shutdown, never a hard stop) for running
+The widget then offers _start_ for stopped and _shutdown_ (clean ACPI/LXC shutdown, never a hard stop) for running
 guests, each after a confirmation. Every action is written to the security event log. Only the environment can
 widen the allow-list, a browser session cannot.
+
 ## Docker autodiscovery (optional)
 
 Containers can bring their own service tile: add labels to a service in your compose file, then enable
-*Settings → Services → Docker autodiscovery* (off by default) or press *Sync now*. Labels are read through
+_Settings → Services → Docker autodiscovery_ (off by default) or press _Sync now_. Labels are read through
 the existing read-only socket proxy; no new Docker permission is needed.
 
 ```yaml
 services:
   jellyfin:
     labels:
-      trisse-home.name: Jellyfin                      # defaults to the container name
-      trisse-home.url: https://jellyfin.example.com   # required
-      trisse-home.icon: 🎬                              # emoji or image URL
+      trisse-home.name: Jellyfin # defaults to the container name
+      trisse-home.url: https://jellyfin.example.com # required
+      trisse-home.icon: 🎬 # emoji or image URL
       trisse-home.description: Films and series
 ```
 
-| Label | Homepage fallback | Meaning |
-| --- | --- | --- |
-| `trisse-home.url` | `homepage.href` | Link and health check URL of the tile (required) |
-| `trisse-home.name` | `homepage.name` | Tile name; defaults to the container name |
-| `trisse-home.icon` | `homepage.icon` | Emoji or image URL |
-| `trisse-home.description` | `homepage.description` | Short description |
-| `trisse-home.enable` | – | `false` skips the container |
+| Label                     | Homepage fallback      | Meaning                                          |
+| ------------------------- | ---------------------- | ------------------------------------------------ |
+| `trisse-home.url`         | `homepage.href`        | Link and health check URL of the tile (required) |
+| `trisse-home.name`        | `homepage.name`        | Tile name; defaults to the container name        |
+| `trisse-home.icon`        | `homepage.icon`        | Emoji or image URL                               |
+| `trisse-home.description` | `homepage.description` | Short description                                |
+| `trisse-home.enable`      | –                      | `false` skips the container                      |
 
 Stacks prepared for [Homepage](https://gethomepage.dev/configs/docker/) work unchanged; `homepage.group` and
 `homepage.widget.*` are ignored because tiles have no groups. Tiles are matched by **container name**, so
 re-creating a container keeps its tile, position and history.
 
-- **Edits:** discovered tiles can be edited. With *Labels win on the next sync* (default) the label values
-  replace your changes on the next sync; with *Keep my changes* an edited tile is left alone.
+- **Edits:** discovered tiles can be edited. With _Labels win on the next sync_ (default) the label values
+  replace your changes on the next sync; with _Keep my changes_ an edited tile is left alone.
 - **Removed containers:** the tile is hidden from the dashboard (not deleted) and marked in the settings; it
   comes back with the container. Hidden tiles are not health-checked, so a removed container triggers no
   offline notification. Delete the tile in the settings if you no longer need it.
@@ -425,7 +487,7 @@ restic backup /data && curl -fsS -X POST "$PING_URL" || curl -fsS -X POST --data
 ```
 
 The schedule is either "at least every N hours" or a cron expression (`0 3 * * *`, `*/15 * * * *`, `@daily`),
-plus a grace period. A check is *overdue* when its expected run plus the grace period passes without a success.
+plus a grace period. A check is _overdue_ when its expected run plus the grace period passes without a success.
 `/api/checks/...` and the older `/api/backup-status/...` URLs (including `?status=fail`) both keep working. The ping endpoint needs no login but
 is still subject to `ALLOWED_CIDRS`; only a SHA-256 hash of the token is stored, and a new URL can be generated at
 any time.
@@ -436,56 +498,56 @@ All settings are environment variables (see the fully commented
 [.env.example](.env.example)). Integrations such as AdGuard Home, CalDAV and
 service tiles are configured in the web interface.
 
-| Variable            | Default                           | Description                                                                  |
-| ------------------- | --------------------------------- | ---------------------------------------------------------------------------- |
-| `SECRET_KEY`        | — (required)                      | 32 random bytes, base64. Encrypts stored credentials (AES-256-GCM).           |
-| `BIND_ADDRESS`      | `0.0.0.0`                         | Host address the port is published on (compose only).                        |
-| `HOST_PORT`         | `8090`                            | Host port (compose only).                                                     |
-| `LISTEN_ADDR`       | `:8090`                           | Listen address inside the container.                                          |
-| `ALLOWED_CIDRS`     | loopback + private ranges         | Client networks allowed to connect. Loopback is always allowed.               |
-| `TRUSTED_PROXIES`   | empty                             | Reverse proxies whose `X-Forwarded-For` header is trusted (needed for network-based tab rules behind a proxy). |
-| `COOKIE_SECURE`     | `false`                           | `true` once served via HTTPS: adds `Secure` and the `__Host-` cookie prefix.  |
-| `SESSION_TTL`       | `720h`                            | Sliding session lifetime.                                                     |
-| `SETUP_TOKEN`       | random, logged                    | Fixed setup token (≥ 16 characters) for automated setups.                     |
-| `MODULES_DISABLED`  | empty                             | Comma-separated modules to switch off, e.g. `docker,adguard`.                 |
-| `SYSTEM_DISK_PATHS` | `System=/host/rootfs` (compose)   | Disks for the system widget as `Label=path`, comma separated.                 |
-| `HOST_PROC`         | `/proc` (`/host/proc` in compose) | Host procfs for the system module.                                            |
-| `HOST_SYS`          | `/sys` (`/host/sys` in compose)   | Host sysfs (temperatures).                                                    |
-| `DOCKER_PROXY_URL`  | `http://docker-socket-proxy:2375` | Docker API endpoint (the bundled read-only proxy).                            |
-| `TRANSIT_API_URL`   | `https://api.transitous.org`      | MOTIS API for departures; point it to your own MOTIS instance if you like.    |
-| `FUEL_API_URL`      | `https://creativecommons.tankerkoenig.de/json` | Tankerkönig API for fuel prices (change only for a mirror or tests). |
-| `WIREGUARD_DIR`     | `/wireguard` (compose)            | Directory with the export of `scripts/wireguard-export.sh`.                   |
-| `METRICS_ENABLED`   | `false`                           | Expose `GET /metrics` for Prometheus ([docs/metrics.md](docs/metrics.md)).    |
-| `METRICS_TOKEN`     | –                                 | Bearer token for `/metrics`, at least 32 characters.                          |
-| `DISKHEALTH_DIR`    | `/smart` (compose)                | Directory with the export of `scripts/smart-export.sh`.                       |
-| `DISKHEALTH_STALE_AFTER` | `2h`                         | Older S.M.A.R.T. exports are shown as unknown.                                |
-| `WOL_RELAY`         | `host.docker.internal:9009` (compose) | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network). |
-| `WOL_BROADCAST`     | `255.255.255.255:9`               | Broadcast address the magic packet is sent to (by the relay or directly).     |
-| `DOCKER_ACTIONS`    | `false`                           | Enables restart and log view in the Docker widget (see below).                |
-| `DOCKER_ACTIONS_CONTAINERS` | empty                     | Containers (exact names) that may be restarted and have their logs shown.     |
-| `DOCKER_ACTIONS_PROXY_URL` | `http://docker-actions-proxy:2375` | Restart-only socket proxy.                                         |
-| `SMARTHOME_ACTIONS_ENTITIES` | empty                     | Home Assistant entity IDs (e.g. `switch.coffee_machine`) that may be switched or pressed; empty = read-only. |
-| `PROXMOX_ACTIONS_GUESTS` | empty                         | Proxmox guest IDs (e.g. `100,105`) that may be started and shut down from the dashboard; empty = read-only. |
-| `TZ`                | `UTC`                             | Time zone for logs, floating calendar times and time-based tab rules.         |
-| `LOG_LEVEL`         | `info`                            | `debug`, `info`, `warn` or `error`.                                           |
-| `LOG_FORMAT`        | `json`                            | `json` or `text`.                                                             |
-| `DATABASE_PATH`     | `/data/trisse-home.db`            | SQLite file.                                                                  |
-| `BACKUP_DIR`        | `backups` next to the database    | Directory for automatic backups.                                              |
-| `BACKUP_INTERVAL`   | `24h`                             | How often a backup is created (≥ 1h).                                         |
-| `BACKUP_RETENTION`  | `7`                               | Number of backups kept.                                                       |
-| `SHUTDOWN_TIMEOUT`  | `15s`                             | Grace period for in-flight requests.                                          |
-| `SAMPLE_DATA`       | `true`                            | Fill a fresh installation with example widgets and data after setup.         |
-| `DEMO_MODE`         | `false`                           | Public demo: no login, fixtures instead of integrations, see [docs/demo.md](docs/demo.md). |
-| `DEMO_RESET_INTERVAL` | `3h`                            | How often a demo restores its sample data.                                    |
-| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL` | empty | OpenID Connect single sign-on for the owner ([guide](docs/reverse-proxy.md#single-sign-on-optional)). |
-| `OIDC_ALLOWED_EMAILS` / `OIDC_ALLOWED_SUBJECTS` | empty | Who may sign in via OIDC (verified e-mail or subject). |
-| `AUTH_PROXY_HEADER`, `AUTH_PROXY_USERS` | empty | Trust a user header from `TRUSTED_PROXIES` (forward auth). |
-| `PASSWORD_LOGIN` | `true` | `false` disables the owner's password login once SSO is configured. |
-| `SSO_REQUIRE_2FA` | `false` | Also ask for the local TOTP code after SSO. |
-| `PUBLIC_URL` | empty | Public `https://` origin (e.g. `https://home.example.org`); enables passkeys. WebAuthn does not work on plain `http://<ip>`. |
-| `INSTALL_METHOD` | set by the image, the package and the Pi image | `docker`, `package` or `appliance`; selects the update hint in the settings. |
-| `SAMPLE_WEATHER_LOCATION` | `Berlin,52.52,13.41`        | `Name,lat,lon` of the example weather widget.                                 |
-| `SAMPLE_FEEDS`      | Go Blog, Hacker News              | Example feeds, comma separated.                                              |
+| Variable                                                                   | Default                                        | Description                                                                                                                  |
+| -------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `SECRET_KEY`                                                               | — (required)                                   | 32 random bytes, base64. Encrypts stored credentials (AES-256-GCM).                                                          |
+| `BIND_ADDRESS`                                                             | `0.0.0.0`                                      | Host address the port is published on (compose only).                                                                        |
+| `HOST_PORT`                                                                | `8090`                                         | Host port (compose only).                                                                                                    |
+| `LISTEN_ADDR`                                                              | `:8090`                                        | Listen address inside the container.                                                                                         |
+| `ALLOWED_CIDRS`                                                            | loopback + private ranges                      | Client networks allowed to connect. Loopback is always allowed.                                                              |
+| `TRUSTED_PROXIES`                                                          | empty                                          | Reverse proxies whose `X-Forwarded-For` header is trusted (needed for network-based tab rules behind a proxy).               |
+| `COOKIE_SECURE`                                                            | `false`                                        | `true` once served via HTTPS: adds `Secure` and the `__Host-` cookie prefix.                                                 |
+| `SESSION_TTL`                                                              | `720h`                                         | Sliding session lifetime.                                                                                                    |
+| `SETUP_TOKEN`                                                              | random, logged                                 | Fixed setup token (≥ 16 characters) for automated setups.                                                                    |
+| `MODULES_DISABLED`                                                         | empty                                          | Comma-separated modules to switch off, e.g. `docker,adguard`.                                                                |
+| `SYSTEM_DISK_PATHS`                                                        | `System=/host/rootfs` (compose)                | Disks for the system widget as `Label=path`, comma separated.                                                                |
+| `HOST_PROC`                                                                | `/proc` (`/host/proc` in compose)              | Host procfs for the system module.                                                                                           |
+| `HOST_SYS`                                                                 | `/sys` (`/host/sys` in compose)                | Host sysfs (temperatures).                                                                                                   |
+| `DOCKER_PROXY_URL`                                                         | `http://docker-socket-proxy:2375`              | Docker API endpoint (the bundled read-only proxy).                                                                           |
+| `TRANSIT_API_URL`                                                          | `https://api.transitous.org`                   | MOTIS API for departures; point it to your own MOTIS instance if you like.                                                   |
+| `FUEL_API_URL`                                                             | `https://creativecommons.tankerkoenig.de/json` | Tankerkönig API for fuel prices (change only for a mirror or tests).                                                         |
+| `WIREGUARD_DIR`                                                            | `/wireguard` (compose)                         | Directory with the export of `scripts/wireguard-export.sh`.                                                                  |
+| `METRICS_ENABLED`                                                          | `false`                                        | Expose `GET /metrics` for Prometheus ([docs/metrics.md](docs/metrics.md)).                                                   |
+| `METRICS_TOKEN`                                                            | –                                              | Bearer token for `/metrics`, at least 32 characters.                                                                         |
+| `DISKHEALTH_DIR`                                                           | `/smart` (compose)                             | Directory with the export of `scripts/smart-export.sh`.                                                                      |
+| `DISKHEALTH_STALE_AFTER`                                                   | `2h`                                           | Older S.M.A.R.T. exports are shown as unknown.                                                                               |
+| `WOL_RELAY`                                                                | `host.docker.internal:9009` (compose)          | Wake-on-LAN relay; empty sends the broadcast directly (no Docker / host network).                                            |
+| `WOL_BROADCAST`                                                            | `255.255.255.255:9`                            | Broadcast address the magic packet is sent to (by the relay or directly).                                                    |
+| `DOCKER_ACTIONS`                                                           | `false`                                        | Enables restart and log view in the Docker widget (see below).                                                               |
+| `DOCKER_ACTIONS_CONTAINERS`                                                | empty                                          | Containers (exact names) that may be restarted and have their logs shown.                                                    |
+| `DOCKER_ACTIONS_PROXY_URL`                                                 | `http://docker-actions-proxy:2375`             | Restart-only socket proxy.                                                                                                   |
+| `SMARTHOME_ACTIONS_ENTITIES`                                               | empty                                          | Home Assistant entity IDs (e.g. `switch.coffee_machine`) that may be switched or pressed; empty = read-only.                 |
+| `PROXMOX_ACTIONS_GUESTS`                                                   | empty                                          | Proxmox guest IDs (e.g. `100,105`) that may be started and shut down from the dashboard; empty = read-only.                  |
+| `TZ`                                                                       | `UTC`                                          | Time zone for logs, floating calendar times and time-based tab rules.                                                        |
+| `LOG_LEVEL`                                                                | `info`                                         | `debug`, `info`, `warn` or `error`.                                                                                          |
+| `LOG_FORMAT`                                                               | `json`                                         | `json` or `text`.                                                                                                            |
+| `DATABASE_PATH`                                                            | `/data/trisse-home.db`                         | SQLite file.                                                                                                                 |
+| `BACKUP_DIR`                                                               | `backups` next to the database                 | Directory for automatic backups.                                                                                             |
+| `BACKUP_INTERVAL`                                                          | `24h`                                          | How often a backup is created (≥ 1h).                                                                                        |
+| `BACKUP_RETENTION`                                                         | `7`                                            | Number of backups kept.                                                                                                      |
+| `SHUTDOWN_TIMEOUT`                                                         | `15s`                                          | Grace period for in-flight requests.                                                                                         |
+| `SAMPLE_DATA`                                                              | `true`                                         | Fill a fresh installation with example widgets and data after setup.                                                         |
+| `DEMO_MODE`                                                                | `false`                                        | Public demo: no login, fixtures instead of integrations, see [docs/demo.md](docs/demo.md).                                   |
+| `DEMO_RESET_INTERVAL`                                                      | `3h`                                           | How often a demo restores its sample data.                                                                                   |
+| `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL` | empty                                          | OpenID Connect single sign-on for the owner ([guide](docs/reverse-proxy.md#single-sign-on-optional)).                        |
+| `OIDC_ALLOWED_EMAILS` / `OIDC_ALLOWED_SUBJECTS`                            | empty                                          | Who may sign in via OIDC (verified e-mail or subject).                                                                       |
+| `AUTH_PROXY_HEADER`, `AUTH_PROXY_USERS`                                    | empty                                          | Trust a user header from `TRUSTED_PROXIES` (forward auth).                                                                   |
+| `PASSWORD_LOGIN`                                                           | `true`                                         | `false` disables the owner's password login once SSO is configured.                                                          |
+| `SSO_REQUIRE_2FA`                                                          | `false`                                        | Also ask for the local TOTP code after SSO.                                                                                  |
+| `PUBLIC_URL`                                                               | empty                                          | Public `https://` origin (e.g. `https://home.example.org`); enables passkeys. WebAuthn does not work on plain `http://<ip>`. |
+| `INSTALL_METHOD`                                                           | set by the image, the package and the Pi image | `docker`, `package` or `appliance`; selects the update hint in the settings.                                                 |
+| `SAMPLE_WEATHER_LOCATION`                                                  | `Berlin,52.52,13.41`                           | `Name,lat,lon` of the example weather widget.                                                                                |
+| `SAMPLE_FEEDS`                                                             | Go Blog, Hacker News                           | Example feeds, comma separated.                                                                                              |
 
 ### Security model
 
@@ -572,16 +634,16 @@ Frontend development with hot reload: run the backend (`make run`), then
 
 ### Tests
 
-| Layer          | How                                                                     |
-| -------------- | ----------------------------------------------------------------------- |
-| Domain         | Table-driven unit tests, no dependencies                                |
-| Use cases      | Fakes for all output ports — no database, no HTTP                       |
-| Gateways       | Integration tests against a temporary SQLite / `httptest` servers       |
-| Controllers    | `httptest` with fake use cases                                          |
-| API end to end | `cmd/server/api_test.go`: all modules wired, fake upstream services     |
-| Architecture   | `internal/archtest` and depguard                                        |
-| Frontend       | Vitest for domain and use cases of every feature                        |
-| Smoke          | Playwright: setup → dashboard → logout → login → edit mode              |
+| Layer          | How                                                                 |
+| -------------- | ------------------------------------------------------------------- |
+| Domain         | Table-driven unit tests, no dependencies                            |
+| Use cases      | Fakes for all output ports — no database, no HTTP                   |
+| Gateways       | Integration tests against a temporary SQLite / `httptest` servers   |
+| Controllers    | `httptest` with fake use cases                                      |
+| API end to end | `cmd/server/api_test.go`: all modules wired, fake upstream services |
+| Architecture   | `internal/archtest` and depguard                                    |
+| Frontend       | Vitest for domain and use cases of every feature                    |
+| Smoke          | Playwright: setup → dashboard → logout → login → edit mode          |
 
 ## How to add a new module
 
@@ -634,7 +696,7 @@ step, using a `quotes` module that shows a random quote as the example:
    them.
 10. **Docs** – describe the module in `docs/modules/quotes.md`, add the
     endpoints to `api/modules/quotes.yaml` (`make new-module` creates it; `make
-    openapi` merges and checks the fragments) and write an ADR if the module introduces a notable decision. Run
+openapi` merges and checks the fragments) and write an ADR if the module introduces a notable decision. Run
     `make ci` before committing. See [docs/modules](docs/modules/README.md) for
     why modules avoid shared files.
 

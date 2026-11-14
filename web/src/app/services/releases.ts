@@ -1,4 +1,5 @@
-import { ReleasesApi, ReleasesUseCases } from '../../features/releases';
+import { ReleasesApi } from '../../features/releases/adapter/api/releasesApi';
+import { ReleasesUseCases } from '../../features/releases/usecase/releasesUseCases';
 import { defineService } from '../serviceKit';
 
 declare module '../serviceKit' {
@@ -7,4 +8,5 @@ declare module '../serviceKit' {
   }
 }
 
+// Direct imports keep the settings UI out of the initial bundle (#230).
 export const service = defineService('releases', (http) => new ReleasesUseCases(new ReleasesApi(http)));

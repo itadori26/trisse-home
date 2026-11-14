@@ -43,7 +43,7 @@
     width: 1%;
   }
   .or {
-    color: var(--color-muted, #888);
+    color: var(--color-text-muted);
     font-size: 0.85em;
   }
 </style>

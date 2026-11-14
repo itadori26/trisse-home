@@ -24,7 +24,9 @@
 
 <p class="muted">{t('auth.security_log_hint')}</p>
 {#if error}<p class="error" role="alert">{error}</p>{/if}
-<ul class="events">
+<!-- Scrollable, so it must be reachable with the keyboard (WCAG 2.1.1, #113). -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<ul class="events" tabindex="0" aria-label={t('settings.section.security_log')}>
   {#each events as e (e.id)}
     <li class:warning={isWarning(e.type)}>
       <span class="what"

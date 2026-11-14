@@ -22,3 +22,25 @@ export interface AppearanceDTO {
    */
   launcher: 'both' | 'services' | 'bookmarks';
 }
+/**
+ * ThemeDTO is a gallery theme.
+ */
+export interface ThemeDTO {
+  id: string;
+  name: string;
+  author: string;
+  scheme: 'light' | 'dark';
+  tokens: { [key: string]: string};
+  builtIn: boolean;
+}
+/**
+ * GalleryDTO is the theme gallery (#111).
+ */
+export interface GalleryDTO {
+  themes: ThemeDTO[];
+  /**
+   * Applied is the id of the theme in use ("" = own or no custom CSS).
+   */
+  applied: string;
+  canRestore: boolean;
+}

@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { setupToken } from '../playwright.config';
+import { expectAccessible } from './a11y';
 
 const password = 'smoke-test-password-123';
 
@@ -1021,6 +1022,134 @@ test('a kiosk link shows the chosen tab read-only without controls (#50)', async
   await dialog.getByRole('button', { name: 'Delete' }).first().click();
   await expect(dialog.getByText('No kiosk displays yet.')).toBeVisible();
   await page.getByRole('button', { name: 'Close' }).click();
+});
+
+test('the header never scrolls the page sideways on a phone, even with many tabs (#226)', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  const status = await (await page.request.get('/api/auth/status')).json();
+  const headers = { 'X-CSRF-Token': status.csrfToken as string };
+  for (const name of [
+    'Einkaufen',
+    'Familie',
+    'Server-Raum',
+    'Studium',
+    'Garten',
+    'Urlaubsplanung',
+    'Fotos',
+  ]) {
+    await page.request.post('/api/dashboard/tabs', { data: { name }, headers });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  // The tab bar scrolls inside itself; the last tab can be reached.
+  await expect(page.getByRole('button', { name: 'Fotos', exact: true })).toBeAttached();
+});
+
+test('the main views pass automated WCAG 2.2 AA checks (#113)', async ({ page, browser }) => {
+  const context = await browser.newContext();
+  const anonymous = await context.newPage();
+  await anonymous.goto('/');
+  await expect(anonymous.getByLabel('Password')).toBeVisible();
+  await expectAccessible(anonymous, 'login');
+  await context.close();
+
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await expectAccessible(page, 'dashboard');
+
+  await account(page, 'Edit');
+  await expectAccessible(page, 'edit mode');
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await expectAccessible(page, 'widget picker', 'dialog[open]');
+  await page.keyboard.press('Escape');
+  await account(page, 'Done');
+
+  await account(page, 'Settings');
+  const settings = page.getByRole('dialog');
+  await expectAccessible(page, 'settings', 'dialog[open]');
+  // Every settings section, including the ones of self-registering features.
+  const sections = settings.getByRole('navigation').getByRole('button');
+  for (const section of await sections.allTextContents()) {
+    await sections.filter({ hasText: section }).first().click();
+    await page.waitForLoadState('networkidle');
+    await expectAccessible(page, `settings ${section.trim()}`, 'dialog[open]');
+  }
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await page.keyboard.press('?');
+  await expectAccessible(page, 'shortcuts', 'dialog[open]');
+  await page.keyboard.press('Escape');
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expectAccessible(page, 'dashboard dark');
+});
+
+test('the theme gallery applies, restores, imports and exports themes (#111)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  const bg = () =>
+    page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim());
+  const before = await bg();
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
+
+  await page.getByRole('button', { name: 'Apply theme Nord' }).click();
+  await expect(page.getByRole('button', { name: 'Apply theme Nord' })).toHaveText('Applied');
+  await expect.poll(bg).toBe('#2e3440');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  const theme = {
+    id: 'e2e-mint',
+    name: 'E2E Mint',
+    scheme: 'light',
+    tokens: {
+      '--color-bg': '#e6fff4',
+      '--color-surface': '#ffffff',
+      '--color-text': '#123',
+      '--color-accent': '#0a7',
+    },
+  };
+  await page.getByLabel('Import theme…').setInputFiles({
+    name: 'mint.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(theme)),
+  });
+  const exported = page.getByRole('link', { name: 'Download theme E2E Mint' });
+  await expect(exported).toBeVisible();
+  const res = await page.request.get((await exported.getAttribute('href')) ?? '');
+  expect((await res.json()).tokens['--color-accent']).toBe('#0a7');
+  await page.getByRole('button', { name: 'Delete theme E2E Mint' }).click();
+  await expect(exported).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Restore my own style' }).click();
+  await expect.poll(bg).toBe(before);
+  await expect(page.getByRole('button', { name: 'Restore my own style' })).toHaveCount(0);
+});
+
+test('?focus=search puts the cursor into the search field (browser extension, #65)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.goto('/?focus=search');
+  await expect(page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' })).toBeFocused();
+  // The parameter is dropped, so a reload does not grab the focus again.
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {

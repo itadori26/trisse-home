@@ -1,5 +1,6 @@
 <script lang="ts">
   import { combine, type Freshness } from '../shared/freshness/status';
+  import { announce } from '../shared/a11y/live.svelte';
   import { t } from '../shared/i18n';
   import WidgetStatusBadge from '../shared/ui/WidgetStatusBadge.svelte';
   import {
@@ -18,8 +19,10 @@
     scheduler: RefreshScheduler;
     /** Shows the data freshness badge for polling widgets (#94). */
     showStatus?: boolean;
+    /** Name of the widget, used to announce failed updates (#113). */
+    label?: string;
   }
-  let { renderer, props, scheduler, showStatus = true }: Props = $props();
+  let { renderer, props, scheduler, showStatus = true, label = '' }: Props = $props();
 
   // Polling jobs of the widget learn whether its card is on screen.
   const handles: RefreshHandle[] = []; // not reactive on purpose
@@ -49,12 +52,17 @@
   );
   function updateStatus() {
     now = Date.now();
+    const before = status?.freshness;
     status = handles.length
       ? combine(
           handles.map((h) => h.status()),
           now,
         )
       : null;
+    // Only the change to "failed" is announced, not every failed poll (#113).
+    if (showStatus && label && status?.freshness === 'error' && before !== 'error') {
+      announce(t('a11y.widget_failed', { name: label }));
+    }
   }
   $effect(() => {
     if (!showStatus) return;

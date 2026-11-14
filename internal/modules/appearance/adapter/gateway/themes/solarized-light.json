@@ -1,0 +1,19 @@
+{
+  "id": "solarized-light",
+  "name": "Solarized Light",
+  "author": "Ethan Schoonover (MIT)",
+  "scheme": "light",
+  "tokens": {
+    "--color-bg": "#eee8d5",
+    "--color-surface": "#fdf6e3",
+    "--color-surface-2": "#eee8d5",
+    "--color-border": "#93a1a1",
+    "--color-text": "#566c73",
+    "--color-text-muted": "#576a71",
+    "--color-accent": "#2075b0",
+    "--color-accent-contrast": "#fdf6e3",
+    "--color-danger": "#d3302d",
+    "--color-success": "#859900",
+    "--color-warning": "#b58900"
+  }
+}

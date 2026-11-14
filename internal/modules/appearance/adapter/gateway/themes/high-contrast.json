@@ -1,0 +1,21 @@
+{
+  "id": "high-contrast",
+  "name": "High contrast",
+  "author": "trisse-home",
+  "scheme": "dark",
+  "tokens": {
+    "--color-bg": "#000000",
+    "--color-surface": "#000000",
+    "--color-surface-2": "#1a1a1a",
+    "--color-border": "#ffffff",
+    "--color-text": "#ffffff",
+    "--color-text-muted": "#e6e6e6",
+    "--color-accent": "#ffd400",
+    "--color-accent-contrast": "#000000",
+    "--color-danger": "#ff6b6b",
+    "--color-success": "#5cff8d",
+    "--color-warning": "#ffd400",
+    "--radius": "4px",
+    "--radius-small": "2px"
+  }
+}
