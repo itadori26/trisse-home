@@ -3,13 +3,21 @@
   import { errorMessage } from '../../../shared/api-client/http';
   import { type FeedItem, itemMeta, parseRssConfig } from '../domain/feed';
   import type { RssUseCases } from '../usecase/rssUseCases';
+  import type { Summarizer } from '../../../shared/ui/summarizer';
+  import SummaryBox from '../../../shared/ui/SummaryBox.svelte';
 
   /** Props of the RSS widget. */
   interface Props {
     rss: RssUseCases;
     config: Record<string, unknown>;
+    /** Local AI summaries (#75); the button shows only when Ollama is set up. */
+    summarizer?: Summarizer;
   }
-  let { rss, config }: Props = $props();
+  let { rss, config, summarizer }: Props = $props();
+  let canSummarise = $state(false);
+  $effect(() => {
+    void summarizer?.available().then((ok) => (canSummarise = ok));
+  });
 
   const POLL_MS = 5 * 60 * 1000;
   /** Poll faster while the list is empty, e.g. right after feeds were added. */
@@ -75,6 +83,16 @@
         >
       {/if}
       {#if !cfg.compact}<span class="meta muted">{itemMeta(item, !!cfg.feedId, now)}</span>{/if}
+      {#if canSummarise && summarizer && item.link}
+        {@const link = item.link}
+        <span class="summarise"
+          ><SummaryBox
+            compact
+            label={t('ai_summary.summarise_item', { title: item.title })}
+            run={() => summarizer.link(link)}
+          /></span
+        >
+      {/if}
     </li>
   {:else}
     <li class="muted">{cfg.unreadOnly ? t('rss.all_caught_up') : t('rss.no_items')}</li>
@@ -85,6 +103,13 @@
 {/if}
 
 <style>
+  .summarise {
+    display: block;
+  }
+  .summarise :global(.btn-icon) {
+    padding: 0 var(--space-1);
+    font-size: 0.8em;
+  }
   .list {
     list-style: none;
     margin: 0;

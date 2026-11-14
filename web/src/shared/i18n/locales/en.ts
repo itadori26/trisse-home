@@ -2,6 +2,11 @@ import type { FeatureMessages } from '../registry';
 
 /** English UI texts (source catalogue; keys are referenced by t()). */
 export const en = {
+  'ai_summary.button': 'Summarise',
+  'ai_summary.working': 'Summarising…',
+  'ai_summary.title': 'Summary',
+  'ai_summary.truncated': 'Only the beginning of the text was summarised.',
+  'ai_summary.summarise_item': 'Summarise {title}',
   'app.could_not_reach_the_server': 'Could not reach the server: {loadError}',
   'app.back': '‹ Back',
   'app.results': 'Results',
