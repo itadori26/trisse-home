@@ -1,0 +1,79 @@
+# OpenAPI fragment of the AI summaries module (#75, #194).
+tags:
+  - name: summary
+
+paths:
+  /api/summary/settings:
+    get:
+      tags: [summary]
+      summary: The local Ollama setup; configured=false hides the feature
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SummarySettings" } } } }
+    put:
+      tags: [summary]
+      summary: Set up Ollama (home network only); the connection and the model are tested first
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, model]
+              properties:
+                url: { type: string, example: "http://192.168.1.10:11434" }
+                model: { type: string, example: "llama3.2:3b" }
+                maxInputChars: { type: integer, minimum: 1000, maximum: 50000, default: 12000 }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SummarySettings" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [summary]
+      summary: Switch summaries off and delete the cached summaries
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Disabled } }
+  /api/summary/models:
+    post:
+      tags: [summary]
+      summary: List the models of an Ollama server (connection test)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string } } } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { models: { type: array, items: { type: string } } } } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/summary:
+    post:
+      tags: [summary]
+      summary: Summarise a text (notes) or the page behind a link (feed items); cached per content, model and language
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text: { type: string }
+                url: { type: string, description: "Loaded on the server (no internal addresses) when text is empty" }
+                language: { type: string, enum: [en, de] }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SummaryResult" } } } }
+        "404": { description: Not set up }
+        "422": { $ref: "#/components/responses/Invalid" }
+        "503": { description: Ollama or the article was not reachable }
+
+schemas:
+  SummarySettings:
+    type: object
+    properties:
+      configured: { type: boolean }
+      url: { type: string }
+      model: { type: string }
+      maxInputChars: { type: integer }
+  SummaryResult:
+    type: object
+    properties:
+      summary: { type: string }
+      model: { type: string }
+      cached: { type: boolean }
+      truncated: { type: boolean, description: Only the first part of the text was summarised }

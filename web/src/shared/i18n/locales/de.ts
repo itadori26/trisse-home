@@ -2,6 +2,11 @@ import type { BaseMessageKey } from './en';
 
 /** German UI texts. The type makes every key mandatory. */
 export const de: Record<BaseMessageKey, string> = {
+  'ai_summary.button': 'Zusammenfassen',
+  'ai_summary.working': 'Fasse zusammen …',
+  'ai_summary.title': 'Zusammenfassung',
+  'ai_summary.truncated': 'Nur der Anfang des Textes wurde zusammengefasst.',
+  'ai_summary.summarise_item': '{title} zusammenfassen',
   'kiosk.fullscreen': 'Vollbild',
   'settings.section.kiosks': 'Kiosk-Anzeigen',
   'auth.kiosk_hint':
