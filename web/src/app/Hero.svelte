@@ -146,6 +146,10 @@
 <style>
   .hero {
     display: grid;
+    /* One column that may shrink below its content's width: otherwise the
+       tab bar's min-content width stretches the column, and with it the
+       greeting and the search, past the screen (#226). */
+    grid-template-columns: minmax(0, 1fr);
     justify-items: center;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4) var(--space-4);
@@ -157,6 +161,7 @@
     font-size: clamp(1.6rem, 3vw, 2.2rem);
     font-weight: 700;
     text-align: center;
+    overflow-wrap: anywhere; /* a long name wraps instead of widening the page */
   }
   .search {
     position: relative;

@@ -1023,6 +1023,37 @@ test('a kiosk link shows the chosen tab read-only without controls (#50)', async
   await page.getByRole('button', { name: 'Close' }).click();
 });
 
+test('the header never scrolls the page sideways on a phone, even with many tabs (#226)', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  const status = await (await page.request.get('/api/auth/status')).json();
+  const headers = { 'X-CSRF-Token': status.csrfToken as string };
+  for (const name of [
+    'Einkaufen',
+    'Familie',
+    'Server-Raum',
+    'Studium',
+    'Garten',
+    'Urlaubsplanung',
+    'Fotos',
+  ]) {
+    await page.request.post('/api/dashboard/tabs', { data: { name }, headers });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  // The tab bar scrolls inside itself; the last tab can be reached.
+  await expect(page.getByRole('button', { name: 'Fotos', exact: true })).toBeAttached();
+});
+
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Password').fill(password);
