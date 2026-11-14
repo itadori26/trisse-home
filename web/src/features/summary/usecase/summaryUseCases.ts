@@ -9,6 +9,10 @@ export interface SummaryGateway {
   disable(): Promise<void>;
   models(url: string): Promise<string[]>;
   summarize(input: { text?: string; url?: string; language: string }): Promise<SummaryOutput>;
+  ask(
+    input: { question: string; context: string; language: string },
+    signal: AbortSignal,
+  ): Promise<AsyncIterable<string>>;
 }
 
 /** Application logic of the summaries (#75); also the Summarizer of notes and feeds. */
@@ -30,6 +34,15 @@ export class SummaryUseCases implements Summarizer {
   }
   link(url: string): Promise<SummaryOutput> {
     return this.gateway.summarize({ url, language: locale() });
+  }
+  async ask(
+    question: string,
+    context: string,
+    onChunk: (text: string) => void,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const stream = await this.gateway.ask({ question, context, language: locale() }, signal);
+    for await (const chunk of stream) onChunk(chunk);
   }
   settings(): Promise<SummarySettings> {
     return this.gateway.settings();

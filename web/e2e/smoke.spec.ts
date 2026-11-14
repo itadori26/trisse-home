@@ -896,7 +896,13 @@ test('notes are summarised by a local Ollama once it is set up (#75)', async ({ 
     req.on('end', () => {
       res.setHeader('Content-Type', 'application/json');
       if (req.url === '/api/tags') return res.end(JSON.stringify({ models: [{ name: 'tiny:1b' }] }));
-      prompts.push(JSON.parse(body).prompt);
+      const request = JSON.parse(body);
+      prompts.push(request.prompt);
+      if (request.stream) {
+        // Streamed answer of the search question (#162), one JSON object per line.
+        res.write(JSON.stringify({ response: 'Jellyfin war ', done: false }) + '\n');
+        return res.end(JSON.stringify({ response: 'nicht erreichbar.', done: true }) + '\n');
+      }
       res.end(JSON.stringify({ response: '- Radtour an den See am Samstag', done: true }));
     });
   });
@@ -948,6 +954,16 @@ test('notes are summarised by a local Ollama once it is set up (#75)', async ({ 
   await page.getByRole('dialog').getByRole('button', { name: 'Summarise' }).click();
   await expect(page.getByRole('note', { name: 'Summary' })).toContainText('Radtour an den See');
   expect(prompts[0]).toContain('Ausflug mit dem Fahrrad an den See');
+  await page.keyboard.press('Escape');
+
+  // Ask the AI in the search (#162): only after "?", only on request, marked as AI-generated.
+  await field.fill('? Warum war Jellyfin offline');
+  await page.getByRole('button', { name: 'Ask the AI' }).click();
+  await expect(page.getByText('Jellyfin war nicht erreichbar.')).toBeVisible();
+  await expect(page.getByText('AI-generated answer')).toBeVisible();
+  expect(prompts[1]).toContain('Question: Warum war Jellyfin offline');
+  expect(prompts[1]).toMatch(/now: \d{4}-\d\d-\d\d/);
+  await field.fill('');
   ollama.close();
 
   // Switched off again so later tests see the default.

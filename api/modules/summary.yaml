@@ -61,6 +61,27 @@ paths:
         "404": { description: Not set up }
         "422": { $ref: "#/components/responses/Invalid" }
         "503": { description: Ollama or the article was not reachable }
+  /api/summary/ask:
+    post:
+      tags: [summary]
+      summary: Ask a free question from the smart search (#162); the answer is streamed as plain text and marked as AI-generated in the UI
+      description: Only the question and a compact status context built in the browser from what the user can see are sent to the local Ollama. Closing the connection cancels the request.
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: { type: string, maxLength: 301 }
+                context: { type: string, maxLength: 6000 }
+                language: { type: string, enum: [en, de] }
+      responses:
+        "200": { description: The answer, streamed, content: { text/plain: { schema: { type: string } } } }
+        "404": { description: Not set up }
+        "422": { $ref: "#/components/responses/Invalid" }
 
 schemas:
   SummarySettings:

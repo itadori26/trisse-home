@@ -2,6 +2,13 @@ import type { BaseMessageKey } from './en';
 
 /** German UI texts. The type makes every key mandatory. */
 export const de: Record<BaseMessageKey, string> = {
+  'ai_ask.title': 'KI fragen',
+  'ai_ask.button': 'KI fragen',
+  'ai_ask.hint': 'Dein lokales Ollama antwortet anhand des Server-Status.',
+  'ai_ask.generated': 'KI-generierte Antwort – kann falsch sein',
+  'ai_ask.thinking': 'Denkt nach …',
+  'ai_ask.stop': 'Stopp',
+  'ai_ask.again': 'Erneut fragen',
   'ai_summary.button': 'Zusammenfassen',
   'ai_summary.working': 'Fasse zusammen …',
   'ai_summary.title': 'Zusammenfassung',

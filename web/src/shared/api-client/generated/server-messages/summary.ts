@@ -2,6 +2,7 @@
 
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
+  srv_086f1e1c1471afa7: "Ask a question after the question mark.",
   srv_8934ba71a8244963: "Choose a model of your Ollama server.",
   srv_49d6ef3b7320de2a: "Ollama could not summarise the text: {detail}",
   srv_d3de1918e0e0bf92: "Ollama returned an empty summary.",
@@ -10,6 +11,7 @@ export const serverMessages = {
   srv_d741b64ac0a7b38d: "The article could not be loaded: {detail}",
   srv_d000a1cffb2b61b2: "The input limit must be between 1,000 and 50,000 characters.",
   srv_913837b8f399a5a1: "The model {model} is not installed on this Ollama server.",
+  srv_e0be8094bf6d2de5: "The question must be at most 300 characters long.",
   srv_a71ddd931e1d1858: "There is no text to summarise.",
 } as const;
 

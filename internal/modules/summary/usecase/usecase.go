@@ -16,6 +16,9 @@ type Summarizer interface {
 	Summarize(ctx context.Context, s domain.Settings, prompt string) (string, error)
 	// Models lists the installed models; it doubles as the connection test.
 	Models(ctx context.Context, url string) ([]string, error)
+	// Stream asks the model and hands the answer over piece by piece; it
+	// stops when ctx is cancelled or onChunk fails.
+	Stream(ctx context.Context, s domain.Settings, prompt string, onChunk func(string) error) error
 }
 
 // ArticleFetcher loads the readable text of a web page (output port), for
@@ -74,6 +77,10 @@ type Summary interface {
 	Models(ctx context.Context, url string) ([]string, error)
 	// Summarize returns the cached summary or asks the model (cache-aside).
 	Summarize(ctx context.Context, r Request) (Result, error)
+	// Ask answers a free question of the smart search (#162), streamed. The
+	// question is validated before the first chunk, so errors before that
+	// are ordinary errors.
+	Ask(ctx context.Context, question, context, language string, onChunk func(string) error) error
 }
 
 // Deps bundles the output ports.
@@ -170,6 +177,18 @@ func (uc *summary) Summarize(ctx context.Context, r Request) (Result, error) {
 		return Result{}, fmt.Errorf("store summary: %w", err)
 	}
 	return Result{Text: out, Model: s.Model, Truncated: in.Truncated}, nil
+}
+
+func (uc *summary) Ask(ctx context.Context, question, context, language string, onChunk func(string) error) error {
+	s, err := uc.d.Repo.Load(ctx)
+	if err != nil {
+		return err
+	}
+	q, err := domain.NewQuestion(question, context)
+	if err != nil {
+		return err
+	}
+	return uc.d.Model.Stream(ctx, s, domain.AskPrompt(domain.ParseLanguage(language), q), onChunk)
 }
 
 func view(s domain.Settings) SettingsView {

@@ -26,3 +26,14 @@ export interface SummarizeDTO {
   url?: string;
   language: string;
 }
+/**
+ * AskDTO is the body of POST /api/summary/ask (#162).
+ */
+export interface AskDTO {
+  question: string;
+  /**
+   * Context is the compact status text the frontend built.
+   */
+  context: string;
+  language: string;
+}

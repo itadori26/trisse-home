@@ -11,6 +11,12 @@ describe('SummaryUseCases (#75)', () => {
       disable: vi.fn(),
       models: vi.fn(),
       summarize: vi.fn().mockResolvedValue({ summary: '- a', truncated: false, cached: false }),
+      ask: vi.fn().mockResolvedValue(
+        (async function* () {
+          yield 'Jelly';
+          yield 'fin';
+        })(),
+      ),
     } satisfies SummaryGateway;
     const uc = new SummaryUseCases(g);
     expect(await uc.available()).toBe(false);
@@ -21,6 +27,13 @@ describe('SummaryUseCases (#75)', () => {
     expect(await uc.available()).toBe(true);
     await uc.link('https://news.example/a');
     expect(g.summarize).toHaveBeenCalledWith({ url: 'https://news.example/a', language: 'en' });
+    let answer = '';
+    await uc.ask('? warum', 'ctx', (c) => (answer += c), new AbortController().signal);
+    expect(answer).toBe('Jellyfin');
+    expect(g.ask).toHaveBeenCalledWith(
+      { question: '? warum', context: 'ctx', language: 'en' },
+      expect.any(AbortSignal),
+    );
     await uc.disable();
     expect(await uc.available()).toBe(false);
 
