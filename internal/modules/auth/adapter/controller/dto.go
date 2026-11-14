@@ -69,3 +69,18 @@ type PasskeyLoginDTO struct {
 	AuthenticatorData string `json:"authenticatorData"`
 	Signature         string `json:"signature"`
 }
+
+// KioskRequestDTO creates or changes a kiosk display (#50).
+type KioskRequestDTO struct {
+	Name          string   `json:"name"`
+	Tabs          []string `json:"tabs"`
+	Disabled      bool     `json:"disabled"`
+	RotateSeconds int      `json:"rotateSeconds"`
+	NightFrom     string   `json:"nightFrom"`
+	NightTo       string   `json:"nightTo"`
+}
+
+// KioskLoginDTO is the body of POST /api/auth/kiosk/login.
+type KioskLoginDTO struct {
+	Token string `json:"token"`
+}

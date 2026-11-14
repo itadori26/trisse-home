@@ -69,6 +69,11 @@
 
   const accountInitial = $derived(appearance.greetingName.trim().charAt(0).toUpperCase());
   let dashboardState = $state<{ tabs: Tab[]; activeId: string }>({ tabs: [], activeId: '' });
+  // Guests and kiosk displays cannot act; their action buttons are hidden (#50).
+  $effect(() => {
+    document.documentElement.classList.toggle('read-only', container.auth.guest);
+    return () => document.documentElement.classList.remove('read-only');
+  });
 
   // The top bar shows the weather of the first weather widget (#167, #189).
   const weatherLocation = $derived.by(() => {
@@ -286,6 +291,19 @@
   widgetConfig={(kind) => firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, kind)}
 />
 
+{#if container.auth.kiosk}
+  {#await import('./kiosk/KioskMode.svelte') then { default: KioskMode }}
+    <KioskMode
+      loadOptions={() => container.auth.kioskOptions()}
+      tabCount={dashboardState.tabs.length}
+      activeIndex={Math.max(
+        0,
+        dashboardState.tabs.findIndex((tab) => tab.id === dashboardState.activeId),
+      )}
+      selectTabAt={(i) => dashboard?.selectTabAt(i)}
+    />
+  {/await}
+{/if}
 <main class="content">
   {#if offline}<p class="offline" role="status">
       {t('app.you_are_offline_showing_the_last')}

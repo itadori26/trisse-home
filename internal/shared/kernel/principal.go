@@ -10,7 +10,7 @@ import (
 // only the tabs shared with it.
 type Principal struct {
 	AccountID string
-	// Role is "owner" or "guest".
+	// Role is "owner", "guest", "kiosk" (#50) or "token".
 	Role string
 	// Tabs are the dashboard tabs a guest may see (empty for the owner).
 	Tabs []string
@@ -24,8 +24,15 @@ func (p Principal) IsToken() bool { return p.Role == "token" }
 // IsGuest reports whether the principal is a read-only guest.
 func (p Principal) IsGuest() bool { return p.Role == "guest" }
 
+// IsKiosk reports whether the principal is a read-only kiosk display (#50).
+func (p Principal) IsKiosk() bool { return p.Role == "kiosk" }
+
+// TabScoped reports whether the principal only sees some tabs (guests and
+// kiosk displays).
+func (p Principal) TabScoped() bool { return p.IsGuest() || p.IsKiosk() }
+
 // CanSeeTab reports whether the principal may see a dashboard tab.
-func (p Principal) CanSeeTab(id string) bool { return !p.IsGuest() || slices.Contains(p.Tabs, id) }
+func (p Principal) CanSeeTab(id string) bool { return !p.TabScoped() || slices.Contains(p.Tabs, id) }
 
 type principalKey struct{}
 

@@ -10,6 +10,7 @@ describe('viewFor', () => {
         csrfToken: null,
         demo: false,
         guest: false,
+        kiosk: false,
         sso: { oidc: false, header: false, localLogin: true },
       }),
     ).toBe('setup');
@@ -22,6 +23,7 @@ describe('viewFor', () => {
         csrfToken: 'x',
         demo: false,
         guest: false,
+        kiosk: false,
         sso: { oidc: false, header: false, localLogin: true },
       }),
     ).toBe('app');
@@ -34,6 +36,7 @@ describe('viewFor', () => {
         csrfToken: null,
         demo: false,
         guest: false,
+        kiosk: false,
         sso: { oidc: false, header: false, localLogin: true },
       }),
     ).toBe('login');
@@ -50,5 +53,18 @@ describe('validateNewPassword', () => {
   });
   it('accepts a good password', () => {
     expect(validateNewPassword('long-enough-password', 'long-enough-password')).toBeNull();
+  });
+});
+
+describe('kiosk displays (#50)', () => {
+  it('puts the token into the fragment and knows night windows over midnight', async () => {
+    const { inNightWindow, kioskLink } = await import('./auth');
+    expect(kioskLink('https://home.example', 'a/b')).toBe('https://home.example/kiosk#a%2Fb');
+    const at = (h: number, m = 0) => new Date(2026, 10, 14, h, m);
+    expect(inNightWindow(at(23), '22:00', '06:30')).toBe(true);
+    expect(inNightWindow(at(6, 15), '22:00', '06:30')).toBe(true);
+    expect(inNightWindow(at(6, 30), '22:00', '06:30')).toBe(false);
+    expect(inNightWindow(at(13), '12:00', '14:00')).toBe(true);
+    expect(inNightWindow(at(13), '', '')).toBe(false);
   });
 });
