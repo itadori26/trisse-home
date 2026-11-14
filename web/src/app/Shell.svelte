@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LiveRegion from '../shared/a11y/LiveRegion.svelte';
   import MaintenanceBanner from '../features/notifications/ui/MaintenanceBanner.svelte';
   import { setLanguage, t } from '../shared/i18n';
   import { type Appearance, cssVariables, defaultAppearance } from '../features/appearance';
@@ -217,9 +218,7 @@
 
 <!-- Top bar and hero (#189): brand · date, weather, to-dos · status, launcher, account. -->
 <header class="topbar">
-  <a class="brand" href="/" aria-label="trisse-home"
-    ><span class="logo" aria-hidden="true">t</span>trisse-home</a
-  >
+  <a class="brand" href="/"><span class="logo" aria-hidden="true">t</span>trisse-home</a>
   <div class="center">
     <TopInfo
       weather={modules?.has('weather') ? container.weather : null}
@@ -286,6 +285,7 @@
   widgetConfig={(kind) => firstWidgetConfig(dashboardState.tabs, dashboardState.activeId, kind)}
 />
 
+<LiveRegion />
 <main class="content">
   {#if offline}<p class="offline" role="status">
       {t('app.you_are_offline_showing_the_last')}
@@ -366,7 +366,7 @@
     display: grid;
     place-items: center;
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-accent-contrast);
     font-size: 0.95rem;
   }
   .center {

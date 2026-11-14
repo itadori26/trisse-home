@@ -107,7 +107,7 @@
     width: 0.6em;
     height: 0.6em;
     border-radius: 50%;
-    background: var(--color-muted, #888);
+    background: var(--color-text-muted);
   }
   .status-ok .dot {
     background: var(--color-success);
@@ -125,7 +125,7 @@
     margin: var(--space-1) 0 0;
   }
   .facts dt {
-    color: var(--color-muted, #888);
+    color: var(--color-text-muted);
   }
   .facts dd {
     margin: 0;

@@ -56,7 +56,7 @@
     gap: 4px;
     align-items: center;
     font-size: 0.7rem;
-    color: var(--color-muted, #888);
+    color: var(--color-text-muted);
     opacity: 0;
     transition: opacity 0.15s;
     pointer-events: none;

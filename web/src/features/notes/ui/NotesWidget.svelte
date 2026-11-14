@@ -100,12 +100,9 @@
   </ul>
 {:else if single}
   {@const only = single}
-  <button
-    class="single"
-    type="button"
-    onclick={() => (open = only)}
-    aria-label={t('notes.edit_2', { title: only.title })}
-  >
+  <!-- No aria-label: the visible note is the name (WCAG 2.5.3); the hidden prefix says what a click does. -->
+  <button class="single" type="button" onclick={() => (open = only)}>
+    <span class="sr-only">{t('notes.edit_prefix')}</span>
     {#if !/^\s*#/.test(only.body)}<strong>{only.title}</strong>{/if}
     <Markdown source={only.body} />
   </button>

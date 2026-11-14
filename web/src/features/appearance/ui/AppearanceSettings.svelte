@@ -66,7 +66,7 @@
     <span class="color">
       <input
         type="color"
-        value={form.accentColor || '#3b6ef5'}
+        value={form.accentColor || '#3365e8'}
         oninput={(e) => (form.accentColor = e.currentTarget.value)}
       />
       <input class="input" bind:value={form.accentColor} placeholder={t('appearance.default')} />

@@ -2,6 +2,7 @@ import type { FeatureMessages } from '../registry';
 
 /** English UI texts (source catalogue; keys are referenced by t()). */
 export const en = {
+  'a11y.widget_failed': '{name}: update failed',
   'app.could_not_reach_the_server': 'Could not reach the server: {loadError}',
   'app.back': '‹ Back',
   'app.results': 'Results',
@@ -487,7 +488,7 @@ export const en = {
   'notes.note': '＋ Note',
   'notes.edit': 'Edit',
   'notes.new_note': 'New note',
-  'notes.edit_2': 'Edit {title}',
+  'notes.edit_prefix': 'Edit note:',
   'notes.pinned_notes_only': 'Pinned notes only',
   'notes.all_notes': 'All notes',
   'ui.close': 'Close',

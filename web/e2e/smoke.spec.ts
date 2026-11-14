@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { setupToken } from '../playwright.config';
+import { expectAccessible } from './a11y';
 
 const password = 'smoke-test-password-123';
 
@@ -881,6 +882,48 @@ test.describe('calendar split view', () => {
     const right = (await boxOf(dayList)).x + (await boxOf(dayList)).width;
     expect(right).toBeLessThanOrEqual(390);
   });
+});
+
+test('the main views pass automated WCAG 2.2 AA checks (#113)', async ({ page, browser }) => {
+  const context = await browser.newContext();
+  const anonymous = await context.newPage();
+  await anonymous.goto('/');
+  await expect(anonymous.getByLabel('Password')).toBeVisible();
+  await expectAccessible(anonymous, 'login');
+  await context.close();
+
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await expectAccessible(page, 'dashboard');
+
+  await account(page, 'Edit');
+  await expectAccessible(page, 'edit mode');
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await expectAccessible(page, 'widget picker', 'dialog[open]');
+  await page.keyboard.press('Escape');
+  await account(page, 'Done');
+
+  await account(page, 'Settings');
+  const settings = page.getByRole('dialog');
+  await expectAccessible(page, 'settings', 'dialog[open]');
+  // Every settings section, including the ones of self-registering features.
+  const sections = settings.getByRole('navigation').getByRole('button');
+  for (const section of await sections.allTextContents()) {
+    await sections.filter({ hasText: section }).first().click();
+    await page.waitForLoadState('networkidle');
+    await expectAccessible(page, `settings ${section.trim()}`, 'dialog[open]');
+  }
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await page.keyboard.press('?');
+  await expectAccessible(page, 'shortcuts', 'dialog[open]');
+  await page.keyboard.press('Escape');
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expectAccessible(page, 'dashboard dark');
 });
 
 test('two-factor authentication can be enabled and is required at login', async ({ page }) => {

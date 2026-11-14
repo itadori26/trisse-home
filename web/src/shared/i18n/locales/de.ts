@@ -2,6 +2,7 @@ import type { BaseMessageKey } from './en';
 
 /** German UI texts. The type makes every key mandatory. */
 export const de: Record<BaseMessageKey, string> = {
+  'a11y.widget_failed': '{name}: Aktualisierung fehlgeschlagen',
   'app.could_not_reach_the_server': 'Der Server ist nicht erreichbar: {loadError}',
   'app.back': '‹ Zurück',
   'app.results': 'Ergebnisse',
@@ -499,7 +500,7 @@ export const de: Record<BaseMessageKey, string> = {
   'notes.note': '＋ Notiz',
   'notes.edit': 'Bearbeiten',
   'notes.new_note': 'Neue Notiz',
-  'notes.edit_2': '{title} bearbeiten',
+  'notes.edit_prefix': 'Notiz bearbeiten:',
   'notes.pinned_notes_only': 'Nur angeheftete Notizen',
   'notes.all_notes': 'Alle Notizen',
   'ui.close': 'Schließen',
