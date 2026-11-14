@@ -1,6 +1,11 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { ArticleDTO } from '../../../../shared/api-client/generated/readlater';
-import type { Article, ArticleStatus } from '../../domain/readlater';
+import type {
+  ArticleDTO,
+  ImportReportDTO,
+  SettingsDTO,
+} from '../../../../shared/api-client/generated/readlater';
+import type { SettingsInputDTO } from '../../../../shared/api-client/generated/readlater-requests';
+import type { Article, ArticleStatus, ImportReport } from '../../domain/readlater';
 import type { ReadLaterGateway } from '../../usecase/readLaterUseCases';
 
 const toArticle = (d: ArticleDTO): Article => ({
@@ -29,5 +34,17 @@ export class ReadLaterApi implements ReadLaterGateway {
   }
   remove(id: string): Promise<void> {
     return this.http.delete(`/api/readlater/${encodeURIComponent(id)}`);
+  }
+  async archiveDays(): Promise<number> {
+    return (await this.http.get<SettingsDTO>('/api/readlater/settings')).archiveDays;
+  }
+  async saveArchiveDays(days: number): Promise<number> {
+    const body: SettingsInputDTO = { archiveDays: days };
+    return (await this.http.put<SettingsDTO>('/api/readlater/settings', body)).archiveDays;
+  }
+  async importPocket(csv: string): Promise<ImportReport> {
+    return {
+      ...(await this.http.postText<ImportReportDTO>('/api/readlater/import/pocket', csv, 'text/csv')),
+    };
   }
 }

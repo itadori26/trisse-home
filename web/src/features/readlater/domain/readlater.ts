@@ -13,7 +13,19 @@ export interface Article {
   bytes: number;
   /** Why there is no reader copy (the link is kept). */
   error: string;
+  /** Imported: the reader copy is made in the background (#99). */
+  pending: boolean;
 }
+
+/** What an import did. */
+export interface ImportReport {
+  added: number;
+  duplicates: number;
+  invalid: number;
+}
+
+/** Cleanup options for archived articles, in days (0 = keep). */
+export const ARCHIVE_DAYS = [0, 7, 30, 90, 365] as const;
 
 export type ArticleStatus = 'unread' | 'read' | 'archived';
 export const STATUSES: readonly ArticleStatus[] = ['unread', 'read', 'archived'];

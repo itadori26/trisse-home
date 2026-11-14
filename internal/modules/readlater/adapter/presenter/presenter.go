@@ -24,12 +24,27 @@ type ArticleDTO struct {
 	Bytes          int64     `json:"bytes"`
 	// Error says why there is no reader copy (the link is kept).
 	Error string `json:"error"`
+	// Pending: imported, the reader copy is made in the background.
+	Pending bool `json:"pending"`
+}
+
+// SettingsDTO are the read-later settings.
+type SettingsDTO struct {
+	// ArchiveDays deletes archived articles after so many days; 0 = keep.
+	ArchiveDays int `json:"archiveDays"`
+}
+
+// ImportReportDTO says what an import did.
+type ImportReportDTO struct {
+	Added      int `json:"added"`
+	Duplicates int `json:"duplicates"`
+	Invalid    int `json:"invalid"`
 }
 
 // Article maps an article.
 func Article(a domain.Article) ArticleDTO {
 	return ArticleDTO{ID: a.ID, URL: a.URL, Title: a.Title, Site: a.Site, Excerpt: a.Excerpt, Content: a.Content,
-		ReadingMinutes: a.ReadingMinutes(), Status: string(a.Status), SavedAt: a.SavedAt, Bytes: a.Bytes, Error: a.Error}
+		ReadingMinutes: a.ReadingMinutes(), Status: string(a.Status), SavedAt: a.SavedAt, Bytes: a.Bytes, Error: a.Error, Pending: a.Pending}
 }
 
 // Articles maps a list.

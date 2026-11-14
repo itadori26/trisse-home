@@ -4,6 +4,19 @@ export const en = {
   'widget.readlater.description':
     'Saved articles with a clean reader copy that stays readable when the page is gone.',
   'settings.section.readlater': 'Read later',
+  'readlater.pending': 'Reader copy follows in the background',
+  'readlater.more': 'Cleanup and import',
+  'readlater.archive_days': 'Delete archived articles',
+  'readlater.after_days': 'after {n} days',
+  'readlater.keep': 'never',
+  'readlater.import_pocket': 'Import Pocket export…',
+  'readlater.import_hint':
+    'The CSV file from the Pocket export. The links are added at once; reader copies follow in the background, a few every five minutes.',
+  'readlater.import_report': '{added} added, {duplicates} already saved, {invalid} not importable.',
+  'readlater.import_too_large': 'The export file must be at most 5 MB.',
+  'readlater.read_later': 'Read later',
+  'readlater.read_later_item': 'Read {title} later',
+  'readlater.saved_for_later': 'Saved for later',
   'readlater.intro':
     'Saved pages get a clean reader copy with their images, stored on this server. Requests go only to the page you save, once.',
   'readlater.save': 'Save',

@@ -2,8 +2,12 @@
 
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
+  srv_cc69e38143dedd78: "Archived articles can be kept for 1 to 365 days, or forever (0).",
+  srv_03b5b5f039e06831: "At most 2000 links can be imported at once.",
   srv_8eb81e2c9daffa7f: "The address is not a web page.",
   srv_b1c94bd379a22bbd: "The article does not exist.",
+  srv_22fa6fd55903ce2e: "The export file must be at most 5 MB.",
+  srv_8680771d11b72ed2: "The file is not a Pocket export (CSV with title, url, time_added, status).",
   srv_573983f536a358ee: "The page is too large.",
   srv_ea46801fada63223: "The read-later storage is full (200 MB). Delete archived articles first.",
   srv_d802b8593fbbdf54: "The status must be unread, read or archived.",
