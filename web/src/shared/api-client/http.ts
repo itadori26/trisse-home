@@ -39,6 +39,11 @@ export interface HttpClient {
    * password re-entered in the form, so it does not end the session.
    */
   postForm<T>(path: string, form: FormData): Promise<T>;
+  /**
+   * POSTs JSON and returns the response body as a stream of text chunks,
+   * e.g. an AI answer (#162); aborting the signal cancels the request.
+   */
+  postStream?(path: string, body: unknown, signal: AbortSignal): Promise<AsyncIterable<string>>;
 }
 
 /** fetch-based HttpClient that adds the CSRF header and parses error envelopes. */
@@ -73,6 +78,41 @@ export class FetchHttpClient implements HttpClient {
   }
   postForm<T>(path: string, form: FormData): Promise<T> {
     return this.request<T>('POST', path, form);
+  }
+  async postStream(path: string, body: unknown, signal: AbortSignal): Promise<AsyncIterable<string>> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.csrfToken) headers[CSRF_HEADER] = this.csrfToken;
+    const res = await fetch(path, {
+      method: 'POST',
+      headers,
+      credentials: 'same-origin',
+      body: JSON.stringify(body),
+      signal,
+    });
+    if (!res.ok) {
+      const err = ((await res.json().catch(() => undefined)) as ErrorBody | undefined)?.error;
+      if (res.status === 401) this.onUnauthorized();
+      throw new ApiError(
+        err?.message ?? res.statusText,
+        res.status,
+        err?.code ?? 'unknown',
+        err?.field,
+        err?.messageKey,
+        err?.params,
+      );
+    }
+    const reader = res.body?.getReader();
+    const decoder = new TextDecoder();
+    return {
+      async *[Symbol.asyncIterator]() {
+        if (!reader) return;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) return;
+          yield decoder.decode(value, { stream: true });
+        }
+      },
+    };
   }
 
   private async request<T>(method: string, path: string, body?: unknown, rawType?: string): Promise<T> {

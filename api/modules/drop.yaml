@@ -1,0 +1,77 @@
+tags:
+  - name: drop
+
+paths:
+  /api/drop:
+    get:
+      tags: [drop]
+      summary: Items that have not expired, newest first
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/DropItem" } } } } }
+  /api/drop/text:
+    post:
+      tags: [drop]
+      summary: Drop text or a link (a single http(s) address becomes a link)
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 102400 }
+                expiresInHours: { type: integer, enum: [0, 1, 24, 168], description: "0 = 24" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/DropItem" } } } }
+        "409": { description: Quota full (200 MB or 100 items) }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/drop/files:
+    post:
+      tags: [drop]
+      summary: Drop a file (multipart; field expiresInHours before the file), at most 25 MB
+      security: [{ session: [], csrf: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                expiresInHours: { type: integer, enum: [0, 1, 24, 168] }
+                file: { type: string, format: binary }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/DropItem" } } } }
+        "409": { description: Quota full }
+        "413": { description: Larger than 25 MB }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/drop/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    delete:
+      tags: [drop]
+      summary: Delete an item
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { description: Unknown item } }
+  /api/drop/{id}/file:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [drop]
+      summary: Download a file (always as attachment; non-passive types as application/octet-stream)
+      responses:
+        "200": { description: The file, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+        "404": { description: Unknown or expired }
+
+schemas:
+  DropItem:
+    type: object
+    properties:
+      id: { type: string }
+      kind: { type: string, enum: [text, link, file] }
+      text: { type: string }
+      fileName: { type: string }
+      contentType: { type: string }
+      size: { type: integer }
+      createdAt: { type: string, format: date-time }
+      expiresAt: { type: string, format: date-time }

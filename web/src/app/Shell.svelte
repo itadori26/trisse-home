@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LiveRegion from '../shared/a11y/LiveRegion.svelte';
   import SyncStatus from './offline/SyncStatus.svelte';
   import MaintenanceBanner from '../features/notifications/ui/MaintenanceBanner.svelte';
   import { setLanguage, t } from '../shared/i18n';
@@ -44,6 +45,18 @@
   let shortcutHelp = $state(false);
   let dashboard = $state<{ selectTabAt: (index: number) => void; undo: () => void; redo: () => void }>();
   let hero = $state<{ focus: () => void }>();
+
+  // ?focus=search (the browser extension's new tab, #65): put the cursor into
+  // the search field once it exists, then drop the parameter from the address.
+  let focusRequested = new URLSearchParams(location.search).get('focus') === 'search';
+  $effect(() => {
+    if (!focusRequested || !hero) return;
+    focusRequested = false;
+    hero.focus();
+    const url = new URL(location.href);
+    url.searchParams.delete('focus');
+    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+  });
   let launcherOpen = $state<Segment | null>(null);
   let launcherTrigger = $state<HTMLButtonElement>();
   let serviceStatus = $state<ReturnType<typeof statusSummary>>({ kind: 'none', offline: 0 });
@@ -252,9 +265,7 @@
 
 <!-- Top bar and hero (#189): brand · date, weather, to-dos · status, launcher, account. -->
 <header class="topbar">
-  <a class="brand" href="/" aria-label="trisse-home"
-    ><span class="logo" aria-hidden="true">t</span>trisse-home</a
-  >
+  <a class="brand" href="/"><span class="logo" aria-hidden="true">t</span>trisse-home</a>
   <div class="center">
     <TopInfo
       weather={modules?.has('weather') ? container.weather : null}
@@ -340,6 +351,7 @@
     />
   {/await}
 {/if}
+<LiveRegion />
 <main class="content">
   {#if offline}<p class="offline" role="status">
       {t('app.you_are_offline_showing_the_last')}
@@ -421,7 +433,7 @@
     display: grid;
     place-items: center;
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-accent-contrast);
     font-size: 0.95rem;
   }
   .center {

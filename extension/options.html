@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>trisse-home – options</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="options">
+    <main>
+      <h1>trisse-home</h1>
+      <form id="form">
+        <label for="base">Address of your dashboard</label>
+        <input id="base" type="url" placeholder="http://homeserver:8090" required autocomplete="url" />
+        <p class="hint">
+          Every new tab opens this address. The extension sends nothing anywhere else and stores only this address
+          (synced with your browser profile).
+        </p>
+        <button type="submit">Save</button>
+        <p id="status" role="status"></p>
+      </form>
+    </main>
+    <script type="module" src="src/options.js"></script>
+  </body>
+</html>

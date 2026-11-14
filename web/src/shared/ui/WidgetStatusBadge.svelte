@@ -56,9 +56,14 @@
     gap: 4px;
     align-items: center;
     font-size: 0.7rem;
-    color: var(--color-muted, #888);
+    color: var(--color-text-muted);
+    /* visibility (not only opacity) keeps the hidden badge away from screen
+       readers; it switches at the end of the fade-out. */
     opacity: 0;
-    transition: opacity 0.15s;
+    visibility: hidden;
+    transition:
+      opacity 0.15s,
+      visibility 0.15s;
     pointer-events: none;
   }
   /* Shown on hover/focus; stale data and errors are always visible. */
@@ -67,6 +72,7 @@
   .badge.stale,
   .badge.error {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
   }
   .badge.stale {

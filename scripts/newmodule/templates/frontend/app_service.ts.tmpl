@@ -1,4 +1,5 @@
-import { {{.Pascal}}Api, {{.Pascal}}UseCases } from '../../features/{{.Name}}';
+import { {{.Pascal}}Api } from '../../features/{{.Name}}/adapter/api/{{.Name}}Api';
+import { {{.Pascal}}UseCases } from '../../features/{{.Name}}/usecase/{{.Name}}UseCases';
 import { defineService } from '../serviceKit';
 
 declare module '../serviceKit' {
@@ -7,4 +8,5 @@ declare module '../serviceKit' {
   }
 }
 
+// Direct imports keep UI exports of the feature index out of the initial bundle (#230).
 export const service = defineService('{{.Name}}', (http) => new {{.Pascal}}UseCases(new {{.Pascal}}Api(http)));

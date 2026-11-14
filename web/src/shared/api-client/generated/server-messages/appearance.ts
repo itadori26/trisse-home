@@ -2,11 +2,23 @@
 
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
+  srv_910076e320aa7e64: "At most 50 imported themes are supported.",
+  srv_23a5dd47efa15b4e: "Built-in themes cannot be deleted.",
+  srv_fb18e524af59aa63: "Invalid value for {token}.",
   srv_1c9c8a99006c73fe: "The accent color must look like #3b6ef5.",
+  srv_cd1893bbd9659e1f: "The author must be at most 60 characters long.",
   srv_b410fbcb84d6e168: "The custom CSS must be at most 64 KiB.",
+  srv_68677939789f0976: "The file is not a trisse-home theme (JSON).",
   srv_d55a4312396d903f: "The language must be en, de or empty (browser).",
   srv_64b6233c48b2792b: "The launcher shows both, services or bookmarks.",
+  srv_a285cd5903e89e3c: "The scheme must be light or dark.",
+  srv_911cd2bd497af69e: "The theme does not exist.",
+  srv_02919e323edadf49: "The theme id must be 2–40 lowercase letters, digits or '-'.",
   srv_d28e94f3f2756a0b: "The theme must be system, light or dark.",
+  srv_40b907ddd29a3043: "The theme must set {token}.",
+  srv_22e23d9a32c91ddb: "The theme needs a name of at most 40 characters.",
+  srv_a7d52a4191c5896d: "There is no custom CSS to restore.",
+  srv_213674f4c3cbfcf5: "Unknown token {token}.",
 } as const;
 
 /** Key of a backend message. */

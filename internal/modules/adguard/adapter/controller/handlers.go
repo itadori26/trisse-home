@@ -51,3 +51,18 @@ func (h *Handlers) Stats(w http.ResponseWriter, r *http.Request) {
 	}
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Stats(res))
 }
+
+// Pause handles POST /api/adguard/pause (#177).
+func (h *Handlers) Pause(w http.ResponseWriter, r *http.Request) {
+	var dto PauseDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.uc.Pause(r.Context(), provider(r), dto.Minutes)
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Stats(res))
+}

@@ -219,7 +219,7 @@
   .chip[aria-pressed='true'] {
     background: var(--color-accent);
     border-color: var(--color-accent);
-    color: #fff;
+    color: var(--color-accent-contrast);
   }
   .count {
     opacity: 0.8;

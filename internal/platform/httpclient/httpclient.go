@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/tls"
@@ -30,6 +31,7 @@ type options struct {
 	pinnedSHA256       []byte
 	guard              bool
 	integration        bool
+	privateOnly        bool
 	maxResponseBytes   int64
 }
 
@@ -41,6 +43,33 @@ type options struct {
 // unless WithMaxResponseBytes says otherwise. Loopback and LAN addresses
 // stay allowed: home-lab services live there.
 func WithIntegrationGuard() Option { return func(o *options) { o.integration = true } }
+
+// WithPrivateOnly narrows WithIntegrationGuard to loopback and private
+// addresses (RFC 1918, RFC 4193, 100.64.0.0/10), checked on the resolved
+// address of every connection. Used where the owner did not explicitly allow
+// public addresses, e.g. the generic JSON widget (#48).
+func WithPrivateOnly() Option {
+	return func(o *options) { o.integration, o.privateOnly = true, true }
+}
+
+// PrivateAddr reports whether ip is loopback or in a private range.
+func PrivateAddr(ip netip.Addr) bool {
+	ip = ip.Unmap()
+	return ip.IsLoopback() || ip.IsPrivate() || cgnat.Contains(ip)
+}
+
+var cgnat = netip.MustParsePrefix("100.64.0.0/10")
+
+func privateControl(network, address string, c syscall.RawConn) error {
+	if err := integrationControl(network, address, c); err != nil {
+		return err
+	}
+	host, _, _ := net.SplitHostPort(address) // checked by integrationControl
+	if ip, err := netip.ParseAddr(host); err != nil || !PrivateAddr(ip) {
+		return ErrBlockedAddress
+	}
+	return nil
+}
 
 // WithMaxResponseBytes limits the size of a response body; reading more
 // returns ErrResponseTooLarge.
@@ -161,7 +190,11 @@ func New(opts ...Option) *http.Client {
 	}
 	client := &http.Client{Timeout: o.timeout, Transport: rt}
 	if o.integration {
-		dialer := &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second, Control: integrationControl}
+		control := integrationControl
+		if o.privateOnly {
+			control = privateControl
+		}
+		dialer := &net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second, Control: control}
 		transport.DialContext = dialer.DialContext
 		transport.Proxy = nil // a proxy would connect on our behalf and bypass the check
 		// Integrations talk to one configured server; a redirect elsewhere is
@@ -234,3 +267,12 @@ func (b *limitedBody) Read(p []byte) (int, error) {
 }
 
 func (b *limitedBody) Close() error { return b.rc.Close() }
+
+// IntegrationDialContext dials TCP connections to owner-configured
+// integrations that do not speak HTTP, such as IMAP (#166), with the same
+// address check as WithIntegrationGuard: link-local, metadata, multicast and
+// unspecified addresses are refused on the resolved address.
+func IntegrationDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	d := &net.Dialer{Timeout: 10 * time.Second, Control: integrationControl}
+	return d.DialContext(ctx, network, address)
+}

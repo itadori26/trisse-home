@@ -18,11 +18,29 @@ export interface RuleDTO {
   icon: string;
 }
 /**
+ * CalendarFileDTO describes an uploaded ICS file (#153); dates are YYYY-MM-DD.
+ */
+export interface CalendarFileDTO {
+  name: string;
+  uploadedAt: string /* RFC 3339 */;
+  events: number /* int */;
+  from: string;
+  to: string;
+}
+/**
  * SettingsDTO is returned by the settings endpoints.
  */
 export interface SettingsDTO {
   configured: boolean;
+  /**
+   * Source is "url", "file" or "" (none).
+   */
+  source: string;
   url: string;
+  /**
+   * File is set for the file source; the content is never returned.
+   */
+  file?: CalendarFileDTO;
   rules: RuleDTO[];
 }
 /**
@@ -42,4 +60,8 @@ export interface OverviewDTO {
   types: TypeDTO[];
   updatedAt: string /* RFC 3339 */;
   error: string;
+  /**
+   * EndsOn (YYYY-MM-DD) is set when an uploaded calendar ends within 30 days.
+   */
+  endsOn: string;
 }

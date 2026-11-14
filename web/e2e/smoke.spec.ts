@@ -1,6 +1,9 @@
 import { createHmac } from 'node:crypto';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { setupToken } from '../playwright.config';
+import { expectAccessible } from './a11y';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 
 const password = 'smoke-test-password-123';
 
@@ -757,6 +760,53 @@ test('widgets poll at their interval, not in a loop (#219)', async ({ page }) =>
   expect(busiest[0]?.[1] ?? 0, JSON.stringify(busiest.slice(0, 5))).toBeLessThanOrEqual(4);
 });
 
+test('the waste calendar can be uploaded as an ICS file and removed (#153)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  const ymd = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const event = (uid: string, summary: string, day: string) =>
+    `BEGIN:VEVENT\r\nUID:${uid}\r\nSUMMARY:${summary}\r\nDTSTART;VALUE=DATE:${day}\r\nEND:VEVENT\r\n`;
+  const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${event('1', 'Biotonne', ymd(1))}${event('2', 'Papier', ymd(9))}END:VCALENDAR\r\n`;
+
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Waste', exact: true }).click();
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  // The radios are styled as a segmented control; the label is what gets clicked.
+  await page.locator('.modes label', { hasText: 'Upload ICS file' }).click();
+  await expect(page.getByRole('radio', { name: 'Upload ICS file' })).toBeChecked();
+  const section = page.getByRole('region', { name: 'Upload ICS file' });
+  // A wrong file is refused before anything is sent.
+  await section
+    .getByLabel('Choose .ics file…')
+    .setInputFiles({ name: 'plan.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF') });
+  await expect(page.getByText('Choose an .ics calendar file.')).toBeVisible();
+
+  await section
+    .getByLabel('Choose .ics file…')
+    .setInputFiles({ name: 'abfall.ics', mimeType: 'text/calendar', buffer: Buffer.from(ics) });
+  await expect(page.getByText('File checked and saved.')).toBeVisible();
+  await expect(section).toContainText('abfall.ics');
+  await expect(section).toContainText('2 collections');
+  // The last date is 9 days away: the settings ask for next year's file.
+  await expect(section.getByRole('status')).toContainText('Upload next year’s file');
+
+  await section.getByRole('button', { name: 'Remove file' }).click();
+  await expect(page.getByText('File removed.')).toBeVisible();
+  await expect(section).not.toContainText('abfall.ics');
+  // The other smoke tests expect an unconfigured waste calendar.
+  const status = await (await page.request.get('/api/waste/settings')).json();
+  expect(status.configured).toBe(false);
+  expect(errors).toEqual([]);
+});
+
 test.describe('calendar split view', () => {
   // The service worker would answer the API itself; page.route only sees requests without it.
   test.use({ serviceWorkers: 'block' });
@@ -1020,6 +1070,562 @@ test('a kiosk link shows the chosen tab read-only without controls (#50)', async
   page.once('dialog', (d) => d.accept());
   await dialog.getByRole('button', { name: 'Delete' }).first().click();
   await expect(dialog.getByText('No kiosk displays yet.')).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+});
+
+test('the header never scrolls the page sideways on a phone, even with many tabs (#226)', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  const status = await (await page.request.get('/api/auth/status')).json();
+  const headers = { 'X-CSRF-Token': status.csrfToken as string };
+  for (const name of [
+    'Einkaufen',
+    'Familie',
+    'Server-Raum',
+    'Studium',
+    'Garten',
+    'Urlaubsplanung',
+    'Fotos',
+  ]) {
+    await page.request.post('/api/dashboard/tabs', { data: { name }, headers });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  // The tab bar scrolls inside itself; the last tab can be reached.
+  await expect(page.getByRole('button', { name: 'Fotos', exact: true })).toBeAttached();
+});
+
+test('the main views pass automated WCAG 2.2 AA checks (#113)', async ({ page, browser }) => {
+  const context = await browser.newContext();
+  const anonymous = await context.newPage();
+  await anonymous.goto('/');
+  await expect(anonymous.getByLabel('Password')).toBeVisible();
+  await expectAccessible(anonymous, 'login');
+  await context.close();
+
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await expectAccessible(page, 'dashboard');
+
+  await account(page, 'Edit');
+  await expectAccessible(page, 'edit mode');
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await expectAccessible(page, 'widget picker', 'dialog[open]');
+  await page.keyboard.press('Escape');
+  await account(page, 'Done');
+
+  await account(page, 'Settings');
+  const settings = page.getByRole('dialog');
+  await expectAccessible(page, 'settings', 'dialog[open]');
+  // Every settings section, including the ones of self-registering features.
+  const sections = settings.getByRole('navigation').getByRole('button');
+  for (const section of await sections.allTextContents()) {
+    await sections.filter({ hasText: section }).first().click();
+    await page.waitForLoadState('networkidle');
+    await expectAccessible(page, `settings ${section.trim()}`, 'dialog[open]');
+  }
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await page.keyboard.press('?');
+  await expectAccessible(page, 'shortcuts', 'dialog[open]');
+  await page.keyboard.press('Escape');
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expectAccessible(page, 'dashboard dark');
+});
+
+test('the theme gallery applies, restores, imports and exports themes (#111)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  const bg = () =>
+    page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--color-bg').trim());
+  const before = await bg();
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Appearance', exact: true }).click();
+
+  await page.getByRole('button', { name: 'Apply theme Nord' }).click();
+  await expect(page.getByRole('button', { name: 'Apply theme Nord' })).toHaveText('Applied');
+  await expect.poll(bg).toBe('#2e3440');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+  const theme = {
+    id: 'e2e-mint',
+    name: 'E2E Mint',
+    scheme: 'light',
+    tokens: {
+      '--color-bg': '#e6fff4',
+      '--color-surface': '#ffffff',
+      '--color-text': '#123',
+      '--color-accent': '#0a7',
+    },
+  };
+  await page.getByLabel('Import theme…').setInputFiles({
+    name: 'mint.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(theme)),
+  });
+  const exported = page.getByRole('link', { name: 'Download theme E2E Mint' });
+  await expect(exported).toBeVisible();
+  const res = await page.request.get((await exported.getAttribute('href')) ?? '');
+  expect((await res.json()).tokens['--color-accent']).toBe('#0a7');
+  await page.getByRole('button', { name: 'Delete theme E2E Mint' }).click();
+  await expect(exported).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Restore my own style' }).click();
+  await expect.poll(bg).toBe(before);
+  await expect(page.getByRole('button', { name: 'Restore my own style' })).toHaveCount(0);
+});
+
+test('?focus=search puts the cursor into the search field (browser extension, #65)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.goto('/?focus=search');
+  await expect(page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' })).toBeFocused();
+  // The parameter is dropped, so a reload does not grab the focus again.
+  await expect(page).toHaveURL(/\/$/);
+});
+
+test('the JSON widget shows values from an endpoint picked with JSONPath (#48)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  // The server's own health check is a JSON endpoint on loopback, which counts as private.
+  const url = new URL('/healthz', page.url()).toString();
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'JSON APIs', exact: true }).click();
+  await page.getByRole('button', { name: 'Add endpoint' }).click();
+  await page.getByLabel('Name').fill('Self');
+  await page.getByLabel('URL').fill(url);
+  await page.getByLabel('Label').fill('Health');
+  await page.getByLabel('JSONPath', { exact: true }).fill('$.status');
+  await page.getByRole('button', { name: 'Add value' }).click();
+  await page.getByLabel('Label').nth(1).fill('Missing');
+  await page.getByLabel('JSONPath', { exact: true }).nth(1).fill('$.nope');
+  await page.getByRole('button', { name: 'Test', exact: true }).click();
+  const preview = page.getByRole('region', { name: 'Test' });
+  await expect(preview).toContainText('Health');
+  await expect(preview).toContainText('ok');
+  await expect(preview).toContainText('"nope" not found');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Saved.')).toBeVisible();
+  await expect(page.getByText('Self', { exact: true })).toBeVisible();
+
+  await page.goto('/');
+  await account(page, 'Edit');
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('JSON');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('jsonpath');
+  await page.getByRole('button', { name: /^JSON API/ }).click();
+  await expect(page.getByRole('combobox', { name: 'Endpoint' })).toHaveValue(/.+/);
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await account(page, 'Done');
+  const widget = page.locator('dl').filter({ hasText: 'Health' });
+  await expect(widget).toContainText('ok');
+  await expect(page.getByText('Self', { exact: true })).toBeVisible();
+});
+
+test('the holidays widget lists the public holidays of the chosen state (#55)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await account(page, 'Edit');
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Days off');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('ferien');
+  await page.getByRole('button', { name: /^Holidays/ }).click();
+  // The widget has settings; they open right after adding.
+  await expect(page.getByRole('combobox', { name: 'State' })).toHaveValue('NI');
+  await page.getByRole('combobox', { name: 'State' }).selectOption('BY');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await account(page, 'Done');
+
+  await expect(page.getByText('Bavaria', { exact: true })).toBeVisible();
+  // Public holidays are computed locally: there is always a next one, named and with a countdown.
+  const first = page
+    .locator('li')
+    .filter({ hasText: /in \d+ days|today|tomorrow/ })
+    .first();
+  await expect(first).toBeVisible();
+  await expect(first).toContainText(/Day|Christmas|Friday|Monday|Epiphany|Corpus Christi|Saints|Year/);
+});
+
+test('study progress sums up credits and the weighted average (#57)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Study progress', exact: true }).click();
+  await page.getByLabel('ECTS of the degree').fill('210');
+  await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+  await expect(page.getByText('Saved.')).toBeVisible();
+  for (const [name, ects, status, grade] of [
+    ['Analysis I', '10', 'passed', '1,0'],
+    ['Lineare Algebra', '5', 'passed', '2.5'],
+    ['Programmieren', '8', 'in_progress', ''],
+  ] as const) {
+    await page.getByRole('button', { name: 'Add module' }).click();
+    await page.getByLabel('Module', { exact: true }).fill(name);
+    await page.getByLabel('ECTS', { exact: true }).fill(ects);
+    await page.getByLabel('Status').selectOption(status);
+    if (grade) await page.getByLabel('Grade').fill(grade);
+    await page.getByRole('button', { name: 'Save', exact: true }).last().click();
+    await expect(page.getByRole('cell', { name, exact: true })).toBeVisible();
+  }
+
+  await page.goto('/');
+  await account(page, 'Edit');
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Uni');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('ects');
+  await page.getByRole('button', { name: /^Study progress/ }).click();
+  await account(page, 'Done');
+  await expect(page.getByText('15 of 210 ECTS')).toBeVisible();
+  // (1.0 · 10 + 2.5 · 5) / 15 = 1.5
+  await expect(page.getByText('Average 1.5')).toBeVisible();
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '15');
+  await expect(page.getByText('Programmieren')).toBeVisible();
+});
+
+test.describe('space widget', () => {
+  // The service worker would answer the API itself; page.route only sees requests without it.
+  test.use({ serviceWorkers: 'block' });
+
+  test('shows launches and the picture of the day once switched on (#64)', async ({ page }) => {
+    const net = new Date(Date.now() + 5 * 3600_000).toISOString();
+    await page.route(
+      (u) => u.pathname === '/api/space/launches',
+      (r) =>
+        r.fulfill({
+          json: [
+            {
+              id: '1',
+              mission: 'Starlink 12-3',
+              missionType: 'Communications',
+              description: '',
+              rocket: 'Falcon 9',
+              provider: 'SpaceX',
+              pad: 'SLC-40',
+              location: 'Cape Canaveral',
+              net,
+              status: 'go',
+              webcastLive: true,
+            },
+          ],
+        }),
+    );
+    await page.route(
+      (u) => u.pathname === '/api/space/apod',
+      (r) =>
+        r.fulfill({
+          json: {
+            date: '2026-11-13',
+            title: 'The Pleiades',
+            explanation: 'Seven sisters.',
+            copyright: 'Jane Doe',
+            mediaType: 'image',
+            image: '/api/space/apod/image?d=2026-11-13',
+            link: '',
+          },
+        }),
+    );
+    await page.route(
+      (u) => u.pathname === '/api/space/apod/image',
+      (r) =>
+        r.fulfill({
+          contentType: 'image/png',
+          body: Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            'base64',
+          ),
+        }),
+    );
+
+    await page.goto('/');
+    await page.getByLabel('Password').fill(password);
+    await page.getByRole('button', { name: 'Log in' }).click();
+    await expect(page.getByTestId('dashboard')).toBeVisible();
+    await account(page, 'Settings');
+    await page.getByRole('button', { name: 'Space', exact: true }).click();
+    await page.getByLabel('Show rocket launches (Launch Library 2)').check();
+    await page.getByLabel('Show the Astronomy Picture of the Day (NASA)').check();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByText('Saved.')).toBeVisible();
+    // The stable background address of today's picture is offered for copying.
+    await expect(page.getByText(/\/api\/space\/apod\/image$/)).toBeVisible();
+
+    await page.goto('/');
+    await account(page, 'Edit');
+    await page.getByRole('button', { name: '+ Tab' }).click();
+    await page.getByRole('textbox', { name: 'Name' }).fill('Orbit');
+    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByRole('button', { name: '+ Add widget' }).click();
+    await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('rakete');
+    await page.getByRole('button', { name: /^Space/ }).click();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await account(page, 'Done');
+    await expect(page.getByText('Starlink 12-3')).toBeVisible();
+    await expect(page.getByText('in 5 h')).toBeVisible();
+    await expect(page.getByText('Live', { exact: true })).toBeVisible();
+    await expect(page.getByRole('img', { name: 'The Pleiades' })).toBeVisible();
+
+    // Switch the sources off again so no later test makes real requests.
+    const status = await (await page.request.get('/api/auth/status')).json();
+    const res = await page.request.put('/api/space/settings', {
+      headers: { 'X-CSRF-Token': status.csrfToken as string },
+      data: { launches: false, picture: false, keepKey: true },
+    });
+    expect(res.ok()).toBeTruthy();
+  });
+});
+
+test('the drop zone shares text and files and serves files as downloads (#101)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await account(page, 'Edit');
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Ablage');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('teilen');
+  await page.getByRole('button', { name: /^Drop zone/ }).click();
+  await account(page, 'Done');
+
+  await page.getByRole('textbox', { name: 'Text or link' }).fill('https://example.org/von-handy');
+  await page.getByRole('button', { name: 'Drop', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'https://example.org/von-handy' })).toBeVisible();
+  await expect(page.getByText(/expires in 2[34] h/)).toBeVisible();
+
+  await page.getByLabel('File…').setInputFiles({
+    name: 'evil.html',
+    mimeType: 'text/html',
+    buffer: Buffer.from('<script>alert(1)</script>'),
+  });
+  const download = page.getByRole('link', { name: 'Download evil.html' });
+  await expect(download).toBeVisible();
+  const res = await page.request.get((await download.getAttribute('href')) ?? '');
+  expect(res.headers()['content-type']).toBe('application/octet-stream');
+  expect(res.headers()['content-disposition']).toContain('attachment');
+
+  for (let i = 0; i < 2; i++) await page.getByRole('button', { name: 'Delete', exact: true }).first().click();
+  await expect(page.getByText('Nothing here.', { exact: false })).toBeVisible();
+});
+
+test('read later keeps links, refuses internal addresses and checks off articles (#99)', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await account(page, 'Edit');
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Lesen');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('pocket');
+  await page.getByRole('button', { name: /^Read later/ }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await account(page, 'Done');
+
+  // The server itself is on loopback: the guarded client refuses to fetch it,
+  // the link is kept without a reader copy.
+  const url = new URL('/healthz', page.url()).toString();
+  const input = page.getByRole('textbox', { name: 'Address of the page to read later' });
+  await input.fill(url);
+  await input.press('Enter');
+  const host = new URL(url).host;
+  const item = page.locator('li', { hasText: host });
+  await expect(item).toBeVisible();
+  await item.getByRole('button').click();
+  const reader = page.getByRole('dialog');
+  await expect(reader).toContainText('could not be loaded');
+  await expect(reader.getByRole('link', { name: 'Original' })).toHaveAttribute('href', url);
+  await reader.getByRole('button', { name: 'Archive' }).click();
+  await expect(page.getByText('Nothing to read.')).toBeVisible();
+
+  // Settings: the archived article can be deleted.
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Read later', exact: true }).click();
+  await page.locator('.tabs label', { hasText: 'Archived' }).click();
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: new RegExp(`^Delete “${host}”`) }).click();
+  await expect(page.getByRole('dialog').getByText('Nothing to read.')).toBeVisible();
+
+  // Part 2: a Pocket export is imported at once, the copies follow later;
+  // archived articles can be cleaned up automatically.
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Delete archived articles').selectOption('30');
+  const csv =
+    'title,url,time_added,tags,status\nPocket eins,https://pocket.example/1,1700000000,,unread\nPocket zwei,https://pocket.example/2,1700000100,,archive\n';
+  await dialog
+    .getByLabel('Import Pocket export…')
+    .setInputFiles({ name: 'part_000000.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await expect(dialog.getByText('2 added, 0 already saved, 0 not importable.')).toBeVisible();
+  await dialog.locator('.tabs label', { hasText: 'Unread' }).click();
+  await expect(dialog.getByText('Pocket eins')).toBeVisible();
+  await expect(dialog.getByText('Reader copy follows in the background')).toBeVisible();
+  const settings = await (await page.request.get('/api/readlater/settings')).json();
+  expect(settings.archiveDays).toBe(30);
+});
+
+test('notes are summarised by a local Ollama once it is set up (#75)', async ({ page }) => {
+  page.on('pageerror', (e) => console.log('PAGEERROR', e.message.slice(0, 300)));
+  page.on('framenavigated', () => console.log('NAV', page.url()));
+  // A tiny stand-in for Ollama on the loopback interface.
+  const prompts: string[] = [];
+  const ollama = createServer((req, res) => {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      res.setHeader('Content-Type', 'application/json');
+      if (req.url === '/api/tags') return res.end(JSON.stringify({ models: [{ name: 'tiny:1b' }] }));
+      const request = JSON.parse(body);
+      prompts.push(request.prompt);
+      if (request.stream) {
+        // Streamed answer of the search question (#162), one JSON object per line.
+        res.write(JSON.stringify({ response: 'Jellyfin war ', done: false }) + '\n');
+        return res.end(JSON.stringify({ response: 'nicht erreichbar.', done: true }) + '\n');
+      }
+      res.end(JSON.stringify({ response: '- Radtour an den See am Samstag', done: true }));
+    });
+  });
+  await new Promise<void>((resolve) => ollama.listen(0, '127.0.0.1', resolve));
+  const port = (ollama.address() as AddressInfo).port;
+
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'AI summaries', exact: true }).click();
+  const url = page.getByLabel('Ollama address (home network)');
+  await url.fill('https://api.example.com');
+  await page.getByRole('button', { name: 'Load models' }).click();
+  await expect(page.getByRole('alert')).toContainText('home network');
+  await url.fill(`http://127.0.0.1:${port}`);
+  await page.getByRole('button', { name: 'Load models' }).click();
+  await expect(page.getByRole('combobox', { name: 'Model' })).toHaveValue('tiny:1b');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Connected and saved' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await page.reload(); // the notes widget asks once whether summaries are available
+  const field = page.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' });
+  await field.fill('n Ausflug mit dem Fahrrad an den See');
+  await field.press('Enter');
+  await expect(page.getByText('Note “Ausflug mit dem Fahrrad an den See” created')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await account(page, 'Edit');
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Notizen');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('notes');
+  await page
+    .getByRole('button', { name: /^Notes/ })
+    .first()
+    .click();
+  const notesSettings = page.getByRole('dialog', { name: 'Notes settings' });
+  await notesSettings.getByRole('radio', { name: 'All notes' }).check();
+  await notesSettings.getByRole('button', { name: 'Save' }).click();
+  await account(page, 'Done');
+  await page
+    .getByRole('button', { name: /Ausflug mit dem Fahrrad/ })
+    .first()
+    .click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Summarise' }).click();
+  await expect(page.getByRole('note', { name: 'Summary' })).toContainText('Radtour an den See');
+  expect(prompts[0]).toContain('Ausflug mit dem Fahrrad an den See');
+  await page.keyboard.press('Escape');
+
+  // Ask the AI in the search (#162): only after "?", only on request, marked as AI-generated.
+  await field.fill('? Warum war Jellyfin offline');
+  await page.getByRole('button', { name: 'Ask the AI' }).click();
+  await expect(page.getByText('Jellyfin war nicht erreichbar.')).toBeVisible();
+  await expect(page.getByText('AI-generated answer')).toBeVisible();
+  expect(prompts[1]).toContain('Question: Warum war Jellyfin offline');
+  expect(prompts[1]).toMatch(/now: \d{4}-\d\d-\d\d/);
+  await field.fill('');
+  ollama.close();
+
+  // Switched off again so later tests see the default.
+  await page.keyboard.press('Escape');
+  const status = await (await page.request.get('/api/auth/status')).json();
+  await page.request.delete('/api/summary/settings', {
+    headers: { 'X-CSRF-Token': status.csrfToken as string },
+  });
+});
+
+test('parcels of other carriers link to their tracking page and the mailbox is tested before saving (#166)', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await account(page, 'Edit');
+  await page.getByRole('button', { name: '+ Tab' }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Pakete');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: '+ Add widget' }).click();
+  await page.getByRole('searchbox', { name: 'Search widgets…' }).fill('parcels');
+  await page
+    .getByRole('button', { name: /^Parcels/ })
+    .first()
+    .click();
+  await account(page, 'Done');
+
+  await page.getByRole('button', { name: '+ Parcel' }).click();
+  await page.getByLabel('Tracking number').fill('1234 5678 901');
+  await page.getByLabel('Carrier').selectOption('gls');
+  await page.getByRole('textbox', { name: 'Label' }).fill('Kaufland');
+  await page.getByRole('button', { name: 'Track', exact: true }).click();
+  const link = page.getByRole('link', { name: 'Track Kaufland at GLS' });
+  await expect(link).toHaveAttribute(
+    'href',
+    'https://www.gls-pakete.de/sendungsverfolgung?match=12345678901',
+  );
+  await expect(page.getByText('No live status for GLS')).toBeVisible();
+
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Parcels', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Parcels from e-mails' })).toBeVisible();
+  await page.getByLabel('Look for parcels in e-mails').check();
+  await page.getByLabel('IMAP server').fill('localhost');
+  await page.getByLabel('Port').fill('1');
+  await page.getByLabel('User name').fill('me@example.com');
+  await page.getByLabel(/^App password/).fill('app-pw');
+  await page.getByLabel('Folder').fill('Pakete');
+  await page.getByRole('button', { name: 'Save mailbox' }).click();
+  await expect(page.getByRole('alert')).toContainText('could not be reached');
   await page.getByRole('button', { name: 'Close' }).click();
 });
 

@@ -181,3 +181,16 @@ func TestDeviceModuleOnlyOnAppliances(t *testing.T) {
 		t.Fatal(cfg.DeviceDir, err)
 	}
 }
+
+func TestDNSPauseProviders(t *testing.T) {
+	cfg, err := Load(env(map[string]string{"SECRET_KEY": validKey, "DNS_PAUSE_PROVIDERS": "AdGuard, pihole"}))
+	if err != nil || len(cfg.DNSPauseProviders) != 2 || cfg.DNSPauseProviders[0] != "adguard" {
+		t.Fatalf("%v %v", cfg.DNSPauseProviders, err)
+	}
+	if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "DNS_PAUSE_PROVIDERS": "bind"})); err == nil {
+		t.Fatal("unknown provider accepted")
+	}
+	if _, err := Load(env(map[string]string{"SECRET_KEY": validKey, "DEMO_MODE": "true", "DNS_PAUSE_PROVIDERS": "pihole"})); err == nil {
+		t.Fatal("a demo must not pause a real DNS filter")
+	}
+}

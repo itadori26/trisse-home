@@ -2,6 +2,8 @@ package domain
 
 import (
 	"cmp"
+	"fmt"
+	"net/url"
 	"regexp"
 	"slices"
 	"strings"
@@ -22,13 +24,35 @@ const (
 // Carrier identifies a tracking provider.
 type Carrier string
 
-// Supported carriers.
+// Supported carriers. Only DHL has a tracking provider; parcels of the
+// others link to the carrier's tracking page (#166).
 const (
-	CarrierDHL Carrier = "dhl"
+	CarrierDHL    Carrier = "dhl"
+	CarrierHermes Carrier = "hermes"
+	CarrierDPD    Carrier = "dpd"
+	CarrierGLS    Carrier = "gls"
+	CarrierUPS    Carrier = "ups"
 )
 
 // Carriers lists the supported carriers.
-var Carriers = []Carrier{CarrierDHL}
+var Carriers = []Carrier{CarrierDHL, CarrierHermes, CarrierDPD, CarrierGLS, CarrierUPS}
+
+// trackingPages are the public tracking pages; %s is the number.
+var trackingPages = map[Carrier]string{
+	CarrierDHL:    "https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode=%s",
+	CarrierHermes: "https://www.myhermes.de/empfangen/sendungsverfolgung/sendungsinformation#%s",
+	CarrierDPD:    "https://tracking.dpd.de/status/de_DE/parcel/%s",
+	CarrierGLS:    "https://www.gls-pakete.de/sendungsverfolgung?match=%s",
+	CarrierUPS:    "https://www.ups.com/track?tracknum=%s",
+}
+
+// TrackingURL is the carrier's public tracking page for the parcel.
+func (p Parcel) TrackingURL() string {
+	if page, ok := trackingPages[p.Carrier]; ok {
+		return fmt.Sprintf(page, url.QueryEscape(p.TrackingNumber))
+	}
+	return ""
+}
 
 // StatusCode is the normalised shipment state.
 type StatusCode string
@@ -93,6 +117,8 @@ type Parcel struct {
 	CheckedAt         time.Time
 	Error             string
 	CreatedAt         time.Time
+	// Discovered parcels were found in a shipping e-mail (#166).
+	Discovered bool
 }
 
 // NewParcel validates a new parcel.

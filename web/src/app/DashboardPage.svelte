@@ -53,6 +53,7 @@
         renderer={def.view}
         props={def.view.props(widget.config, container)}
         scheduler={container.refresh}
+        label={def.type.title}
       />
     {/if}
   {/snippet}

@@ -26,6 +26,20 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardStats" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/adguard/pause:
+    post:
+      tags: [adguard]
+      summary: Pause blocking for 5, 30 or 60 minutes (#177); only for providers listed in DNS_PAUSE_PROVIDERS, recorded in the security log
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ name: provider, in: query, schema: { type: string, enum: [adguard, pihole], default: adguard } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [minutes], properties: { minutes: { type: integer, enum: [5, 30, 60] } } } } }
+      responses:
+        "200": { description: Paused; the new statistics, content: { application/json: { schema: { $ref: "#/components/schemas/AdGuardStats" } } } }
+        "403": { description: Pausing is not enabled for this provider, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
 
 schemas:
   AdGuardSettings:
@@ -36,6 +50,7 @@ schemas:
       url: { type: string }
       username: { type: string, description: Empty for Pi-hole }
       hasPassword: { type: boolean }
+      canPause: { type: boolean, description: "Pausing is allowed by DNS_PAUSE_PROVIDERS (#177)" }
   AdGuardSettingsInput:
     type: object
     required: [url]
@@ -51,6 +66,7 @@ schemas:
       blockedPercent: { type: number }
       avgProcessingMs: { type: [number, "null"], description: Null for Pi-hole, which does not report it }
       protectionEnabled: { type: boolean }
+      pausedUntil: { type: string, format: date-time, nullable: true, description: End of a timed pause }
       topBlocked: { type: array, items: { type: object, properties: { domain: { type: string }, count: { type: integer } } } }
       updatedAt: { type: string, format: date-time }
       error: { type: string }

@@ -7,14 +7,22 @@
   import type { NotesUseCases } from '../usecase/notesUseCases';
   import NoteEditor from './NoteEditor.svelte';
   import NoteHistory from './NoteHistory.svelte';
+  import type { Summarizer } from '../../../shared/ui/summarizer';
+  import SummaryBox from '../../../shared/ui/SummaryBox.svelte';
   import NoteViewer from './NoteViewer.svelte';
 
   /** Props of the notes widget. */
   interface Props {
     notes: NotesUseCases;
     config: Record<string, unknown>;
+    /** Local AI summaries (#75); the button shows only when Ollama is set up. */
+    summarizer?: Summarizer;
   }
-  let { notes, config }: Props = $props();
+  let { notes, config, summarizer }: Props = $props();
+  let canSummarise = $state(false);
+  $effect(() => {
+    void summarizer?.available().then((ok) => (canSummarise = ok));
+  });
 
   const cfg = $derived(parseNotesConfig(config));
   let list = $state<Note[]>([]);
@@ -100,12 +108,9 @@
   </ul>
 {:else if single}
   {@const only = single}
-  <button
-    class="single"
-    type="button"
-    onclick={() => (open = only)}
-    aria-label={t('notes.edit_2', { title: only.title })}
-  >
+  <!-- No aria-label: the visible note is the name (WCAG 2.5.3); the hidden prefix says what a click does. -->
+  <button class="single" type="button" onclick={() => (open = only)}>
+    <span class="sr-only">{t('notes.edit_prefix')}</span>
     {#if !/^\s*#/.test(only.body)}<strong>{only.title}</strong>{/if}
     <Markdown source={only.body} />
   </button>
@@ -128,6 +133,11 @@
   {@const v = viewing}
   <Modal title={v.title} onclose={() => (viewing = null)}>
     <NoteViewer {notes} note={v} onopen={(n) => (viewing = n)} />
+    {#if canSummarise && summarizer}
+      {#key v.id}
+        <div class="summary"><SummaryBox run={() => summarizer.text(`${v.title}\n\n${v.body}`)} /></div>
+      {/key}
+    {/if}
     <p class="actions">
       <button class="btn" type="button" onclick={() => ((open = v), (viewing = null))}
         >{t('notes.edit')}</button

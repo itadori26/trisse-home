@@ -14,7 +14,7 @@ func TestParcel(t *testing.T) {
 	if _, err := NewParcel("1", "abc", CarrierDHL, "", now); err == nil {
 		t.Fatal("short number accepted")
 	}
-	if _, err := NewParcel("1", "JJD000390007912345", "ups", "", now); err == nil {
+	if _, err := NewParcel("1", "JJD000390007912345", "fedex", "", now); err == nil {
 		t.Fatal("unsupported carrier accepted")
 	}
 	p.Status = Status{Code: StatusDelivered, At: now.Add(-4 * 24 * time.Hour)}
