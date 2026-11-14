@@ -26,7 +26,7 @@ type Handlers struct{ uc UseCases }
 func NewHandlers(uc UseCases) *Handlers { return &Handlers{uc: uc} }
 
 func (d TodoInputDTO) toInput() (usecase.TodoInput, error) {
-	in := usecase.TodoInput{Title: d.Title}
+	in := usecase.TodoInput{Title: d.Title, ID: d.ID, Version: d.Version}
 	if d.Due != "" {
 		due, err := time.Parse(time.DateOnly, d.Due)
 		if err != nil {

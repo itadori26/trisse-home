@@ -44,7 +44,6 @@ type CallDTO struct {
 type StatusDTO struct {
 	Model     string    `json:"model"`
 	WAN       WANDTO    `json:"wan"`
-	Calls     []CallDTO `json:"calls"`
 	Hint      string    `json:"hint"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	Error     string    `json:"error"`
@@ -57,14 +56,28 @@ func Settings(v usecase.SettingsView) SettingsDTO { return SettingsDTO(v) }
 func Status(v usecase.StatusView) StatusDTO {
 	s, w := v.Status, v.Status.WAN
 	dto := StatusDTO{
-		Model: s.Model, Hint: s.Hint, UpdatedAt: v.UpdatedAt, Error: v.Error, Calls: make([]CallDTO, 0, len(s.Calls)),
+		Model: s.Model, Hint: s.Hint, UpdatedAt: v.UpdatedAt, Error: v.Error,
 		WAN: WANDTO{
 			Connected: w.Connected, ExternalIP: w.ExternalIP, UptimeSeconds: int64(w.Uptime.Seconds()), ThroughputKnown: w.Known,
 			DownstreamBs: w.DownstreamBs, UpstreamBs: w.UpstreamBs, DownstreamMaxBits: w.DownstreamMaxBits, UpstreamMaxBits: w.UpstreamMaxBits,
 			DownstreamPercent: w.DownstreamPercent(), UpstreamPercent: w.UpstreamPercent(),
 		},
 	}
-	for _, c := range s.Calls {
+	return dto
+}
+
+// CallsDTO is returned by GET /api/fritzbox/calls (#168).
+type CallsDTO struct {
+	Calls     []CallDTO `json:"calls"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Hint      string    `json:"hint"`
+	Error     string    `json:"error"`
+}
+
+// Calls maps a CallsView.
+func Calls(v usecase.CallsView) CallsDTO {
+	dto := CallsDTO{Calls: make([]CallDTO, 0, len(v.Calls)), UpdatedAt: v.UpdatedAt, Hint: v.Hint, Error: v.Error}
+	for _, c := range v.Calls {
 		dto.Calls = append(dto.Calls, CallDTO{Type: string(c.Type), Number: c.Number, Name: c.Name, At: c.At, DurationMinutes: int(c.Duration.Minutes())})
 	}
 	return dto
