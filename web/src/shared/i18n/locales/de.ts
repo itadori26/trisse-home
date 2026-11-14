@@ -564,8 +564,9 @@ export const de: Record<BaseMessageKey, string> = {
   'widget.adguard.description': 'DNS-Anfragen und Blockierstatistik von AdGuard Home oder Pi-hole.',
   'widget.nextcloud.title': 'Nextcloud',
   'widget.nextcloud.description': 'Version, dein Kontingent und Serverstatus deiner Nextcloud.',
-  'widget.fritzbox.title': 'FRITZ!Box',
-  'widget.fritzbox.description': 'Internetverbindung, aktueller Durchsatz und letzte Anrufe.',
+  'widget.fritzbox.title': 'FRITZ!Box-Internet',
+  'widget.fritzbox.description':
+    'Internetverbindung, aktueller Durchsatz und Verbindungsdauer; die Anrufe haben ein eigenes Widget.',
   'widget.wireguard.title': 'WireGuard',
   'widget.wireguard.description': 'VPN-Peers mit letztem Handshake und Datenmenge.',
   'widget.waste.title': 'Abfuhrkalender',
