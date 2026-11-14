@@ -93,3 +93,16 @@ func TestRepository(t *testing.T) {
 		t.Fatal("items not cascaded")
 	}
 }
+
+func TestRepositoryKeepsCategory(t *testing.T) {
+	ctx := context.Background()
+	repo := NewRepository(dbtest.Open(t, "rss", Migrations()))
+	f, _ := domain.NewFeed("c", "https://a.b/feed", time.Now())
+	f.Category = "Tech / Go"
+	if err := repo.CreateFeed(ctx, f); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := repo.GetFeed(ctx, "c"); got.Category != "Tech / Go" {
+		t.Fatalf("%+v", got)
+	}
+}

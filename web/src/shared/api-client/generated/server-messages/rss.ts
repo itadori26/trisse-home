@@ -2,9 +2,11 @@
 
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
+  srv_9684d4c2e31b6d2f: "The OPML file is larger than 2 MB.",
   srv_bbec0c13348226e8: "The feed URL must start with http:// or https://.",
   srv_4dfea8484179a15f: "The feed could not be loaded: {detail}",
   srv_5065a34cb1180bb7: "The feed does not exist.",
+  srv_0d8148b3ba698407: "The file is not an OPML subscription list.",
   srv_fd944f7eadfdb070: "The item does not exist.",
   srv_63f60053f8b51722: "The server answered {status}.",
   srv_d6a88cffb18a9963: "You are already subscribed to this feed.",

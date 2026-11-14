@@ -20,4 +20,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_d6a88cffb18a9963: 'Du hast diesen Feed bereits abonniert.',
   // this is not a valid RSS, Atom or JSON feed
   srv_668a30f80af88b85: 'das ist kein gültiger RSS-, Atom- oder JSON-Feed',
+  // The OPML file is larger than 2 MB.
+  srv_9684d4c2e31b6d2f: 'Die OPML-Datei ist größer als 2 MB.',
+  // The file is not an OPML subscription list.
+  srv_0d8148b3ba698407: 'Die Datei ist keine OPML-Abo-Liste.',
 };

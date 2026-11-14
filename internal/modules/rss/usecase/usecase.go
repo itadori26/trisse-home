@@ -20,6 +20,7 @@ const (
 // FeedView is a feed with its unread count.
 type FeedView struct {
 	ID, URL, Title, SiteURL, LastError string
+	Category                           string
 	LastFetchedAt                      time.Time
 	Unread                             int
 }
@@ -40,6 +41,18 @@ type Reader interface {
 	MarkRead(ctx context.Context, itemID string, read bool) error
 	MarkAllRead(ctx context.Context, feedID string) error
 	RefreshAll(ctx context.Context) error
+	// ImportOPML subscribes to the feeds of an OPML file (#97). Feeds are not
+	// fetched here; the next refresh loads them.
+	ImportOPML(ctx context.Context, data []byte) (ImportReport, error)
+	// ExportOPML writes all subscriptions as OPML 2.0.
+	ExportOPML(ctx context.Context) ([]byte, error)
+}
+
+// ImportReport says what an OPML import did.
+type ImportReport struct {
+	Added      int
+	Duplicates int
+	Invalid    []domain.InvalidEntry
 }
 
 type reader struct{ d Deps }
@@ -192,7 +205,8 @@ func (uc *reader) view(ctx context.Context, f domain.Feed) (FeedView, error) {
 }
 
 func toFeedView(f domain.Feed, unread int) FeedView {
-	return FeedView{ID: f.ID, URL: f.URL, Title: f.Title, SiteURL: f.SiteURL, LastError: f.LastError, LastFetchedAt: f.LastFetchedAt, Unread: unread}
+	return FeedView{ID: f.ID, URL: f.URL, Title: f.Title, SiteURL: f.SiteURL, LastError: f.LastError, LastFetchedAt: f.LastFetchedAt,
+		Unread: unread, Category: f.Category}
 }
 
 // publicReason shortens fetch errors to something safe and useful to show.
@@ -206,4 +220,54 @@ func publicReason(err error) string {
 		msg = msg[:160] + "…"
 	}
 	return msg
+}
+
+// ErrNotOPML is returned for files that are not OPML.
+var ErrNotOPML = kernel.NewPublicError(kernel.ErrInvalid, "The file is not an OPML subscription list.")
+
+// ImportOPML implements Reader.
+func (uc *reader) ImportOPML(ctx context.Context, data []byte) (ImportReport, error) {
+	if len(data) > domain.MaxImportBytes {
+		return ImportReport{}, kernel.NewValidationError("file", "The OPML file is larger than 2 MB.")
+	}
+	entries, err := uc.d.OPML.Decode(data)
+	if err != nil {
+		return ImportReport{}, ErrNotOPML
+	}
+	existing, err := uc.d.Repo.ListFeeds(ctx)
+	if err != nil {
+		return ImportReport{}, fmt.Errorf("list feeds: %w", err)
+	}
+	plan := domain.PlanImport(existing, entries)
+	report := ImportReport{Duplicates: plan.Duplicates, Invalid: plan.Invalid}
+	now := uc.d.Clock.Now()
+	for _, e := range plan.Add {
+		f, err := domain.NewFeed(uc.d.IDs.NewID(), e.URL, now)
+		if err != nil {
+			report.Invalid = append(report.Invalid, domain.InvalidEntry{Title: e.Title, URL: e.URL, Reason: err.Error()})
+			continue
+		}
+		if e.Title != "" {
+			f.Title = e.Title
+		}
+		f.SiteURL, f.Category = e.SiteURL, e.Category
+		switch err := uc.d.Repo.CreateFeed(ctx, f); {
+		case errors.Is(err, domain.ErrAlreadySubscribed):
+			report.Duplicates++
+		case err != nil:
+			return report, fmt.Errorf("create feed: %w", err)
+		default:
+			report.Added++
+		}
+	}
+	return report, nil
+}
+
+// ExportOPML implements Reader.
+func (uc *reader) ExportOPML(ctx context.Context) ([]byte, error) {
+	feeds, err := uc.d.Repo.ListFeeds(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list feeds: %w", err)
+	}
+	return uc.d.OPML.Encode(feeds, uc.d.Clock.Now())
 }

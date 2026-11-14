@@ -15,6 +15,31 @@ type FeedDTO struct {
 	LastError     string     `json:"lastError"`
 	LastFetchedAt *time.Time `json:"lastFetchedAt"`
 	Unread        int        `json:"unread"`
+	// Category groups feeds ("" = none; OPML folders, #97).
+	Category string `json:"category"`
+}
+
+// InvalidEntryDTO is an OPML entry that was not imported.
+type InvalidEntryDTO struct {
+	Title  string `json:"title"`
+	URL    string `json:"url"`
+	Reason string `json:"reason"`
+}
+
+// ImportReportDTO is returned by POST /api/rss/opml.
+type ImportReportDTO struct {
+	Added      int               `json:"added"`
+	Duplicates int               `json:"duplicates"`
+	Invalid    []InvalidEntryDTO `json:"invalid"`
+}
+
+// ImportReport maps an import report.
+func ImportReport(r usecase.ImportReport) ImportReportDTO {
+	dto := ImportReportDTO{Added: r.Added, Duplicates: r.Duplicates, Invalid: make([]InvalidEntryDTO, 0, len(r.Invalid))}
+	for _, i := range r.Invalid {
+		dto.Invalid = append(dto.Invalid, InvalidEntryDTO(i))
+	}
+	return dto
 }
 
 // ItemDTO is a feed entry.
@@ -30,7 +55,7 @@ type ItemDTO struct {
 
 // Feed maps a FeedView.
 func Feed(v usecase.FeedView) FeedDTO {
-	dto := FeedDTO{ID: v.ID, URL: v.URL, Title: v.Title, SiteURL: v.SiteURL, LastError: v.LastError, Unread: v.Unread}
+	dto := FeedDTO{ID: v.ID, URL: v.URL, Title: v.Title, SiteURL: v.SiteURL, LastError: v.LastError, Unread: v.Unread, Category: v.Category}
 	if !v.LastFetchedAt.IsZero() {
 		t := v.LastFetchedAt
 		dto.LastFetchedAt = &t
