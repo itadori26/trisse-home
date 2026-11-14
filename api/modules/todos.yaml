@@ -34,6 +34,7 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Todo" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Changed elsewhere since the given version (#80) }
         "422": { $ref: "#/components/responses/Invalid" }
     delete:
       tags: [todos]
@@ -53,6 +54,8 @@ schemas:
       done: { type: boolean, description: "Completing a recurring to-do creates its next occurrence" }
       repeat: { $ref: "#/components/schemas/TodoRepeat", description: Omit to keep the stored rule }
       reminder: { $ref: "#/components/schemas/TodoReminder", description: Omit to keep the stored reminder }
+      id: { type: string, pattern: "^[A-Za-z0-9_-]{8,64}$", description: "Create only: client-generated ID; replaying the create returns the existing to-do (#80)" }
+      version: { type: integer, description: "Update only: the version the change was made from; another stored version answers 409 (#80). Omit for no check" }
   Todo:
     type: object
     properties:
@@ -65,3 +68,4 @@ schemas:
       completedAt: { type: string }
       repeat: { $ref: "#/components/schemas/TodoRepeat" }
       reminder: { $ref: "#/components/schemas/TodoReminder" }
+      version: { type: integer, description: Number of stored changes (#80) }

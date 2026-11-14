@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CaptureBookmarklet from '../features/capture/ui/CaptureBookmarklet.svelte';
   import { TimelineSettings } from '../features/timeline';
   import { BriefingSettings } from '../features/briefing';
   import { AboutSettings, ForecastSettings } from '../features/system';
@@ -113,6 +114,7 @@
     <AppearanceSettings appearance={container.appearance} current={appearance} onchange={onappearance} />
   {:else if current === 'search'}
     <SearchSettings search={container.search} />
+    <CaptureBookmarklet />
     <SearchHistorySettings usage={searchUsage} />
   {:else if current === 'services'}
     <ServicesManager services={container.services} />
