@@ -72,7 +72,7 @@ Not sure whether trisse-home is the right fit? See the
 | **waste**      | Waste collection dates from your municipality’s ICS calendar; tomorrow’s bin is highlighted           |
 | **wireguard**  | WireGuard peers with name, last handshake and traffic (from a secret-free export on the host)        |
 | **diskhealth** | S.M.A.R.T. disk health: overall verdict, temperature, reallocated/pending sectors, NVMe wear and power-on hours; notifies on degradation (from a host export, no device access) |
-| **fritzbox**   | FRITZ!Box online status, external IP, current throughput and recent calls (missed calls highlighted)  |
+| **fritzbox**   | Two widgets: FRITZ!Box **internet** (online status, uptime, external IP, current throughput; each value can be hidden) and **calls** (all, missed, incoming or outgoing, 5–50 entries, numbers can be hidden; fetched only for a calls widget, guests see them only with a calls widget on their tab) |
 | **nextcloud**  | Nextcloud version, your quota and – for admins with the serverinfo app – free space, users and app updates |
 | **transfer**   | Export all your data as JSON (never secrets) and import it again; import browser bookmarks (HTML)     |
 | **quick search** | Ctrl+K or `/` searches bookmarks, services, notes and to-dos; Enter opens, no match searches the web; learns from your choices (frecency, kept in the browser, can be switched off and cleared under Settings → Search) |

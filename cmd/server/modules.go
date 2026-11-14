@@ -12,6 +12,7 @@ import (
 	"trisse-home/internal/modules/adguard"
 	"trisse-home/internal/modules/appearance"
 	"trisse-home/internal/modules/auth"
+	authdomain "trisse-home/internal/modules/auth/domain"
 	"trisse-home/internal/modules/backup"
 	"trisse-home/internal/modules/backupmonitor"
 	"trisse-home/internal/modules/bookmarks"
@@ -324,30 +325,40 @@ func (f observationFanOut) Observe(ctx context.Context, o kernel.Observation) {
 }
 
 // guestScope implements the auth module's GuestScope port: the modules a
-// guest may read are those whose widgets are on the guest's tabs.
+// guest may read are those whose widgets are on the guest's tabs; routes a
+// module reserves for a widget kind stay closed without it (#168).
 type guestScope struct {
 	registry  *modules.Registry
 	dashboard *dashboard.Module
 }
 
-// ModulesForTabs implements auth's usecase.GuestScope.
-func (g *guestScope) ModulesForTabs(ctx context.Context, tabs []string) (map[string]bool, error) {
-	out := map[string]bool{}
-	if g.dashboard == nil || len(tabs) == 0 {
-		return out, nil
-	}
-	kinds, err := g.dashboard.WidgetKindsOnTabs(ctx, tabs)
-	if err != nil {
-		return nil, err
+// ReachForTabs implements auth's usecase.GuestScope.
+func (g *guestScope) ReachForTabs(ctx context.Context, tabs []string) (authdomain.GuestReach, error) {
+	reach := authdomain.GuestReach{Modules: map[string]bool{}}
+	var kinds []string
+	if g.dashboard != nil && len(tabs) > 0 {
+		k, err := g.dashboard.WidgetKindsOnTabs(ctx, tabs)
+		if err != nil {
+			return authdomain.GuestReach{}, err
+		}
+		kinds = k
 	}
 	for _, m := range g.registry.All() {
 		for _, k := range m.WidgetKinds() {
 			if slices.Contains(kinds, k) {
-				out[m.Name()] = true
+				reach.Modules[m.Name()] = true
+			}
+		}
+		if gated, ok := m.(modules.GuestGated); ok {
+			for prefix, kind := range gated.GuestGatedRoutes() {
+				if !slices.Contains(kinds, kind) {
+					reach.Closed = append(reach.Closed, prefix)
+				}
 			}
 		}
 	}
-	return out, nil
+	slices.Sort(reach.Closed) // map order is random; keep it stable
+	return reach, nil
 }
 
 // ssoConfig builds the single sign-on settings of the auth module.

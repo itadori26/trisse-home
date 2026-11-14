@@ -36,7 +36,7 @@ func TestKiosk(t *testing.T) {
 }
 
 func TestKioskMayAccess(t *testing.T) {
-	mods := map[string]bool{"weather": true}
+	mods := GuestReach{Modules: map[string]bool{"weather": true}}
 	for _, c := range []struct {
 		method, path string
 		want         bool
