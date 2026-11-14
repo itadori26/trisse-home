@@ -24,7 +24,7 @@ const (
 
 var colorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
-// ErrNotConfigured is returned while no ICS URL is configured.
+// ErrNotConfigured is returned while no calendar (URL or file) is configured.
 var ErrNotConfigured = kernel.NewPublicError(kernel.ErrNotFound, "No waste calendar is configured yet.")
 
 // Rule maps summaries containing Match (case-insensitive) to a label and
@@ -36,41 +36,59 @@ type Rule struct {
 	Icon  string
 }
 
-// Settings are the ICS subscription and the custom rules.
+// Settings are the source of the dates (ICS URL or uploaded file, #153)
+// and the custom rules. Rules are kept when the source changes.
 type Settings struct {
-	URL   string
-	Rules []Rule
+	Source Source
+	Rules  []Rule
 }
 
-// NewSettings validates the settings.
+// NewSettings validates settings with an ICS subscription URL.
 func NewSettings(rawURL string, rules []Rule) (Settings, error) {
+	src, err := NewURLSource(rawURL)
+	if err != nil {
+		return Settings{}, err
+	}
+	clean, err := NewRules(rules)
+	if err != nil {
+		return Settings{}, err
+	}
+	return Settings{Source: src, Rules: clean}, nil
+}
+
+func normaliseURL(rawURL string) (string, error) {
 	rawURL = strings.TrimSpace(rawURL)
 	if strings.HasPrefix(strings.ToLower(rawURL), "webcal://") {
 		rawURL = "https://" + rawURL[len("webcal://"):]
 	}
 	u, err := url.Parse(rawURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return Settings{}, kernel.NewValidationError("url", "The ICS URL must start with https://, http:// or webcal://.")
+		return "", kernel.NewValidationError("url", "The ICS URL must start with https://, http:// or webcal://.")
 	}
+	return u.String(), nil
+}
+
+// NewRules validates and trims the custom rules.
+func NewRules(rules []Rule) ([]Rule, error) {
 	if len(rules) > MaxRules {
-		return Settings{}, kernel.NewValidationError("rules", "At most 20 rules are supported.")
+		return nil, kernel.NewValidationError("rules", "At most 20 rules are supported.")
 	}
 	clean := make([]Rule, 0, len(rules))
 	for _, r := range rules {
 		r = Rule{Match: strings.TrimSpace(r.Match), Label: strings.TrimSpace(r.Label), Color: strings.TrimSpace(r.Color), Icon: strings.TrimSpace(r.Icon)}
 		switch {
 		case r.Match == "" || utf8.RuneCountInString(r.Match) > maxMatchLength:
-			return Settings{}, kernel.NewValidationError("rules", "Every rule needs a match text of at most 40 characters.")
+			return nil, kernel.NewValidationError("rules", "Every rule needs a match text of at most 40 characters.")
 		case utf8.RuneCountInString(r.Label) > maxLabelLength:
-			return Settings{}, kernel.NewValidationError("rules", "Labels must be at most 40 characters long.")
+			return nil, kernel.NewValidationError("rules", "Labels must be at most 40 characters long.")
 		case r.Color != "" && !colorPattern.MatchString(r.Color):
-			return Settings{}, kernel.NewValidationError("rules", "Colors must look like #1a2b3c.")
+			return nil, kernel.NewValidationError("rules", "Colors must look like #1a2b3c.")
 		case utf8.RuneCountInString(r.Icon) > maxIconLength:
-			return Settings{}, kernel.NewValidationError("rules", "Icons must be at most 8 characters long.")
+			return nil, kernel.NewValidationError("rules", "Icons must be at most 8 characters long.")
 		}
 		clean = append(clean, r)
 	}
-	return Settings{URL: u.String(), Rules: clean}, nil
+	return clean, nil
 }
 
 // Style is how a collection type is shown.

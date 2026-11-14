@@ -27,7 +27,7 @@ type Module struct {
 
 // New builds the waste module; floating ICS times are interpreted in loc.
 func New(db *sql.DB, client *http.Client, clock kernel.Clock, loc *time.Location) *Module {
-	uc := usecase.NewWaste(gateway.NewSettingsRepository(db), gateway.NewICSSource(client, loc), clock)
+	uc := usecase.NewWaste(gateway.NewSettingsRepository(db), gateway.NewICSSource(client, db, loc), gateway.NewParser(loc), clock)
 	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, uc: uc, handlers: controller.NewHandlers(uc)}
 }
 
@@ -45,6 +45,8 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/waste/settings", m.handlers.Settings)
 	r.Protected("PUT /api/waste/settings", m.handlers.SaveSettings)
 	r.Protected("GET /api/waste/upcoming", m.handlers.Upcoming)
+	r.Protected("POST /api/waste/calendar", m.handlers.UploadCalendar)
+	r.Protected("DELETE /api/waste/calendar", m.handlers.RemoveCalendar)
 }
 
 // Jobs implements modules.Module.

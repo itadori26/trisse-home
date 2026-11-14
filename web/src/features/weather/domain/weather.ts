@@ -8,7 +8,61 @@ export interface WeatherConfig {
   days: number;
   /** Show official warnings (DWD, Germany only). */
   warnings: boolean;
+  /** DWD pollen region (0 = no pollen section, #56). */
+  pollenRegion: number;
+  /** Pollen types to show (empty = all). */
+  pollenTypes: PollenType[];
+  /** DWD UV index city ('' = no UV index). */
+  uvCity: string;
 }
+
+/** The eight allergens of the DWD pollen forecast, in season order. */
+export const POLLEN_TYPES = [
+  'hazel',
+  'alder',
+  'ash',
+  'birch',
+  'grasses',
+  'rye',
+  'mugwort',
+  'ambrosia',
+] as const;
+export type PollenType = (typeof POLLEN_TYPES)[number];
+
+export type PollenBurden = 'none' | 'low' | 'moderate' | 'high' | 'unknown';
+export type UVLevel = 'low' | 'moderate' | 'high' | 'very_high' | 'extreme' | 'unknown';
+
+/** Pollen forecast of one allergen; levels in DWD notation ("0-1"), '' = no data. */
+export interface PollenDay {
+  type: PollenType;
+  today: string;
+  tomorrow: string;
+  todayBurden: PollenBurden;
+  tomorrowBurden: PollenBurden;
+}
+
+/** Pollen and UV index of a widget; a part is null when not configured or unknown. */
+export interface HealthReport {
+  pollen: { regionName: string; days: PollenDay[] } | null;
+  uv: { city: string; today: number; tomorrow: number; todayLevel: UVLevel; tomorrowLevel: UVLevel } | null;
+}
+
+/** Selectable DWD pollen regions and UV cities. */
+export interface HealthOptions {
+  regions: { id: number; name: string }[];
+  cities: string[];
+}
+
+/** The config fields of a widget without pollen and UV index. */
+export const noHealth: Pick<WeatherConfig, 'pollenRegion' | 'pollenTypes' | 'uvCity'> = {
+  pollenRegion: 0,
+  pollenTypes: [],
+  uvCity: '',
+};
+
+/** Whether the widget shows the pollen/UV section at all. */
+export const wantsHealth = (c: Pick<WeatherConfig, 'pollenRegion' | 'uvCity'>): boolean =>
+  c.pollenRegion > 0 || c.uvCity !== '';
 
 /** One forecast day. */
 export interface ForecastDay {
@@ -54,6 +108,11 @@ export function parseWeatherConfig(raw: Record<string, unknown>): WeatherConfig 
     label: typeof raw['label'] === 'string' ? raw['label'] : '',
     days,
     warnings: raw['warnings'] !== false,
+    pollenRegion: typeof raw['pollenRegion'] === 'number' ? Math.max(0, Math.round(raw['pollenRegion'])) : 0,
+    pollenTypes: Array.isArray(raw['pollenTypes'])
+      ? POLLEN_TYPES.filter((p) => (raw['pollenTypes'] as unknown[]).includes(p))
+      : [],
+    uvCity: typeof raw['uvCity'] === 'string' ? raw['uvCity'] : '',
   };
 }
 
