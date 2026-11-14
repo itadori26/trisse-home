@@ -23,7 +23,9 @@
 </script>
 
 <figure class="snippet">
-  <pre aria-label={label}><code>{code}</code></pre>
+  <!-- Long snippets scroll; tabindex makes the region reachable with the keyboard (WCAG 2.1.1). -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <pre aria-label={label} tabindex="0"><code>{code}</code></pre>
   <button class="btn" type="button" onclick={copy} aria-live="polite">
     {copied ? t('common.copied') : t('common.copy')}
   </button>
