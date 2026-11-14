@@ -19,3 +19,16 @@ export interface NewParcelDTO {
   carrier: string;
   label: string;
 }
+/**
+ * MailSettingsInputDTO is the body of PUT /api/parcels/mail (#166); an
+ * empty password keeps the stored one for the same server and user.
+ */
+export interface MailSettingsInputDTO {
+  enabled: boolean;
+  host: string;
+  port: number /* int */;
+  username: string;
+  password: string;
+  folder: string;
+  intervalMinutes: number /* int */;
+}

@@ -2,6 +2,7 @@
   import { t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import type { ParcelsUseCases } from '../usecase/parcelsUseCases';
+  import MailDiscoverySettings from './MailDiscoverySettings.svelte';
 
   /** Props of the parcel tracking settings. */
   interface Props {
@@ -52,3 +53,5 @@
   {#if message}<p class="muted">{message}</p>{/if}
   <button class="btn btn-primary" type="submit">{t('parcels.save')}</button>
 </form>
+
+<MailDiscoverySettings {parcels} />

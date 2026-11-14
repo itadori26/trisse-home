@@ -154,6 +154,17 @@ the whole network, so it is off by default. Only the providers listed in
 cannot change that list. A pause always has a timer (5, 30 or 60 minutes), and
 the DNS filter switches itself back on. Every pause lands in the security
 event log, and the setting is refused together with `DEMO_MODE=true`.
+### Parcels from e-mails
+
+Mail is personal, so the IMAP discovery (#166) is off by default and reads
+one folder only. trisse-home opens it with `EXAMINE` and fetches with
+`BODY.PEEK`, so the server itself refuses changes and not even the read flag
+moves; a test against a scripted IMAP server fails on any writing command.
+Only IMAP over TLS is supported, and the connection goes through the same
+address check as the HTTP integrations (no link-local or metadata
+addresses). The app password is encrypted with `SECRET_KEY`, never returned,
+and sent again only to the same server and user. Message contents are never
+stored, only the extracted tracking number, carrier and label.
 
 ### WireGuard export
 

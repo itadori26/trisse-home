@@ -155,6 +155,27 @@ export const de: Record<BaseMessageKey, string> = {
   'todos.reminder_invalid_time': 'Bitte eine Uhrzeit wie 08:00 eingeben.',
   'todos.reminder_invalid_days': 'Höchstens {max} Tage vor dem Fälligkeitsdatum.',
   'todos.save': 'Speichern',
+  'parcels.carrier': 'Zusteller',
+  'parcels.discovered': 'In einer E-Mail gefunden',
+  'parcels.track_at': '{name} bei {carrier} verfolgen',
+  'parcels.link_only': 'Kein Live-Status für {carrier}: Sendungsverfolgung über ↗ öffnen',
+  'parcels.mail_title': 'Pakete aus E-Mails',
+  'parcels.mail_hint':
+    'Liest einen Ordner deines Postfachs per IMAP (TLS, nur lesend: nichts wird verschoben, gelöscht oder als gelesen markiert) und fügt die Pakete neuer Versand-Mails hinzu. Nutze ein App-Passwort und einen Ordner mit Filterregel.',
+  'parcels.mail_guide': 'Anleitung',
+  'parcels.mail_enabled': 'In E-Mails nach Paketen suchen',
+  'parcels.mail_host': 'IMAP-Server',
+  'parcels.mail_port': 'Port',
+  'parcels.mail_user': 'Benutzername',
+  'parcels.mail_password': 'App-Passwort {value}',
+  'parcels.mail_folder': 'Ordner',
+  'parcels.mail_interval': 'Prüfen',
+  'parcels.every_minutes': 'alle {n} Minuten',
+  'parcels.every_hours': 'alle {n} Std.',
+  'parcels.mail_last_run': 'Zuletzt geprüft {time} · bisher {found} Pakete gefunden',
+  'parcels.mail_save': 'Postfach speichern',
+  'parcels.mail_saved_tested':
+    'Verbunden und gespeichert. Neue Versand-Mails werden bei der nächsten Prüfung gelesen.',
   'parcels.dhl_tracking_needs_a_free_api':
     'Für die DHL-Sendungsverfolgung brauchst du einen kostenlosen API-Key: Registriere dich auf',
   'parcels.create_an_app_with_the_shipment':
