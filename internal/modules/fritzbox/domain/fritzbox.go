@@ -10,8 +10,12 @@ import (
 // DefaultURL is the TR-064 endpoint of a FRITZ!Box in its default network.
 const DefaultURL = "http://192.168.178.1:49000"
 
-// MaxCalls is the number of calls shown.
-const MaxCalls = 10
+// MaxCalls is the most calls a calls widget shows (#168); the box is asked
+// for this many and the widgets filter them.
+const MaxCalls = 50
+
+// DefaultCalls is the number of calls shown unless the widget says otherwise.
+const DefaultCalls = 10
 
 // ErrNotConfigured is returned while no FRITZ!Box is configured.
 var ErrNotConfigured = kernel.NewPublicError(kernel.ErrNotFound, "The FRITZ!Box is not configured yet.")
@@ -117,11 +121,69 @@ type Call struct {
 	Duration time.Duration
 }
 
-// Status is a snapshot of the box.
+// Status is a snapshot of the internet connection. The call list is not part
+// of it (#168): it is only fetched when a calls widget asks for it.
 type Status struct {
 	Model string
 	WAN   WAN
-	Calls []Call
-	// Hint explains missing data (no login, UPnP status disabled …).
+	// Hint explains missing data (UPnP status disabled …).
 	Hint string
+}
+
+// CallKind selects the calls a calls widget shows.
+type CallKind string
+
+// Call kinds of a CallFilter.
+const (
+	CallsAll      CallKind = "all"
+	CallsMissed   CallKind = "missed"
+	CallsIncoming CallKind = "incoming"
+	CallsOutgoing CallKind = "outgoing"
+)
+
+// CallFilter is what a calls widget shows: a kind of call and how many.
+type CallFilter struct {
+	kind  CallKind
+	limit int
+}
+
+// NewCallFilter validates the filter; an empty kind means all calls and a
+// limit of 0 the default.
+func NewCallFilter(kind string, limit int) (CallFilter, error) {
+	k := CallKind(strings.TrimSpace(kind))
+	if k == "" {
+		k = CallsAll
+	}
+	switch k {
+	case CallsAll, CallsMissed, CallsIncoming, CallsOutgoing:
+	default:
+		return CallFilter{}, kernel.NewValidationError("filter", "The filter must be all, missed, incoming or outgoing.")
+	}
+	if limit == 0 {
+		limit = DefaultCalls
+	}
+	if limit < 5 || limit > MaxCalls {
+		return CallFilter{}, kernel.NewValidationErrorf("limit", "Show between {min} and {max} calls.", "min", 5, "max", MaxCalls)
+	}
+	return CallFilter{kind: k, limit: limit}, nil
+}
+
+// Kind returns the selected kind of call.
+func (f CallFilter) Kind() CallKind { return f.kind }
+
+// Limit returns the number of calls shown.
+func (f CallFilter) Limit() int { return f.limit }
+
+// Apply keeps the calls of the selected kind, in the given order, at most Limit.
+func (f CallFilter) Apply(calls []Call) []Call {
+	out := make([]Call, 0, min(len(calls), f.limit))
+	for _, c := range calls {
+		if len(out) == f.limit {
+			break
+		}
+		if f.kind == CallsAll || string(c.Type) == string(f.kind) {
+			out = append(out, c)
+		}
+	}
+	return out
 }

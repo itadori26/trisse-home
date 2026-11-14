@@ -24,6 +24,7 @@ const toNote = (d: NoteDTO): Note => ({
   body: d.body,
   pinned: d.pinned,
   updatedAt: new Date(d.updatedAt),
+  version: d.version ?? 0,
 });
 
 const path = (id: string) => `/api/notes/${encodeURIComponent(id)}`;
@@ -41,8 +42,18 @@ export class NotesApi implements NotesGateway {
   async list(pinnedOnly: boolean): Promise<Note[]> {
     return (await this.http.get<NoteDTO[]>(`/api/notes${pinnedOnly ? '?pinned=true' : ''}`)).map(toNote);
   }
-  async save(input: NoteInput, id?: string): Promise<Note> {
-    const body: NoteInputDTO = { ...input };
+  async save(
+    input: NoteInput,
+    id?: string,
+    opts: { clientId?: string; version?: number } = {},
+  ): Promise<Note> {
+    // clientId (create) makes a replay idempotent; version (update) detects
+    // changes made elsewhere meanwhile (#80).
+    const body: NoteInputDTO = {
+      ...input,
+      ...(!id && opts.clientId ? { id: opts.clientId } : {}),
+      ...(id && opts.version ? { version: opts.version } : {}),
+    };
     const dto = id
       ? await this.http.put<NoteDTO>(`/api/notes/${encodeURIComponent(id)}`, body)
       : await this.http.post<NoteDTO>('/api/notes', body);

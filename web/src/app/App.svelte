@@ -42,6 +42,11 @@
   {#await import('../features/auth/ui/LoginPage.svelte') then { default: LoginPage }}
     <LoginPage auth={container.auth} ondone={refresh} />
   {/await}
+{:else if view === 'app' && location.pathname === '/capture'}
+  <!-- Quick capture (#66): a page of its own, without the dashboard. -->
+  {#await import('./CapturePage.svelte') then { default: CapturePage }}
+    <CapturePage {container} />
+  {/await}
 {:else if view === 'app'}
   {#if container.auth.demo}
     <p class="demo-banner" role="note">{t('app.demo_banner')}</p>

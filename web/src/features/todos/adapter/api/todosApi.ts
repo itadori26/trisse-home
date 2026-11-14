@@ -16,6 +16,7 @@ const toTodo = (d: TodoDTO): Todo => ({
     days: d.repeat?.days ?? [],
   },
   reminder: { at: d.reminder?.at ?? '', daysBefore: d.reminder?.daysBefore ?? 0 },
+  version: d.version ?? 0,
 });
 
 /** TodosGateway backed by the REST API. */
@@ -25,8 +26,9 @@ export class TodosApi implements TodosGateway {
   async list(includeDone: boolean): Promise<Todo[]> {
     return (await this.http.get<TodoDTO[]>(`/api/todos${includeDone ? '?done=true' : ''}`)).map(toTodo);
   }
-  async create(title: string, due: string): Promise<Todo> {
-    const body: TodoInputDTO = { title, due, done: false };
+  async create(title: string, due: string, id?: string): Promise<Todo> {
+    // A client-generated id makes a replayed create idempotent (#80).
+    const body: TodoInputDTO = { title, due, done: false, ...(id ? { id } : {}) };
     return toTodo(await this.http.post<TodoDTO>('/api/todos', body));
   }
   async update(
@@ -35,9 +37,11 @@ export class TodosApi implements TodosGateway {
     due: string,
     done: boolean,
     schedule?: { repeat: Repeat; reminder: Reminder },
+    version?: number,
   ): Promise<Todo> {
-    // Without a schedule the server keeps the stored recurrence and reminder.
-    const body: TodoInputDTO = { title, due, done, ...schedule };
+    // Without a schedule the server keeps the stored recurrence and reminder;
+    // with a version it refuses changes made from an older one (409, #80).
+    const body: TodoInputDTO = { title, due, done, ...schedule, ...(version ? { version } : {}) };
     return toTodo(await this.http.put<TodoDTO>(`/api/todos/${encodeURIComponent(id)}`, body));
   }
   delete(id: string): Promise<void> {
