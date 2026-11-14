@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"encoding/base64"
+	"encoding/binary"
 	"strings"
 	"unicode/utf16"
 )
@@ -21,9 +22,9 @@ func encodeMailbox(name string) string {
 			return
 		}
 		units := utf16.Encode(run)
-		raw := make([]byte, 0, len(units)*2)
-		for _, u := range units {
-			raw = append(raw, byte(u>>8), byte(u))
+		raw := make([]byte, len(units)*2)
+		for i, u := range units {
+			binary.BigEndian.PutUint16(raw[2*i:], u)
 		}
 		b.WriteByte('&')
 		b.WriteString(mailboxEncoding.EncodeToString(raw))
