@@ -37,6 +37,17 @@ not offer its customisation for a local file, so use Ethernet and add a user
 later on the console if you need one. trisse-home itself needs no user
 account on the Pi.
 
+To check that the image was built by this repository's release workflow and
+not changed since (#138), verify its signed build provenance with the GitHub
+CLI:
+
+```sh
+gh attestation verify trisse-home-<version>-raspberrypi-arm64.img.xz -R itadori26/trisse-home
+```
+
+The release also carries the image's SPDX SBOM
+(`trisse-home-<version>-raspberrypi-arm64.spdx.json`).
+
 ## 2. First start and setup
 
 Insert the card, connect the network and power. The first boot takes one to
