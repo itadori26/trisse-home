@@ -196,6 +196,17 @@ export const de: Record<BaseMessageKey, string> = {
   'appearance.custom_css_override_variables_such_as':
     'Eigenes CSS (überschreibt Variablen wie --radius oder --color-bg)',
   'appearance.save_appearance': 'Darstellung speichern',
+  'appearance.gallery': 'Design-Galerie',
+  'appearance.gallery_hint':
+    'Fertige Designs. Beim Anwenden werden Hell/Dunkel, dein eigenes CSS und deine Akzentfarbe ersetzt; alles wird gesichert und kann wiederhergestellt werden.',
+  'appearance.apply': 'Anwenden',
+  'appearance.applied': 'Angewendet',
+  'appearance.apply_theme': 'Design {name} anwenden',
+  'appearance.export_theme': 'Design {name} herunterladen',
+  'appearance.delete_theme': 'Design {name} löschen',
+  'appearance.restore_own': 'Eigenen Stil wiederherstellen',
+  'appearance.import_theme': 'Design importieren …',
+  'appearance.theme_file_too_large': 'Die Design-Datei darf höchstens 16 KB groß sein.',
   'appearance.default': 'Standard',
   'nextcloud.create_an_app_password_in_nextcloud':
     'Lege in Nextcloud unter Persönliche Einstellungen → Sicherheit → Geräte & Sitzungen ein App-Passwort an. Serverdetails (freier Speicher, Benutzer, App-Updates) brauchen ein Admin-Konto und die App serverinfo; ohne sie zeigt das Widget Version und dein Kontingent.',

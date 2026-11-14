@@ -392,6 +392,30 @@ func TestAPIEndToEnd(t *testing.T) {
 	c.do(http.MethodPut, "/api/appearance", obj{"theme": "neon", "accentColor": "", "backgroundImage": "", "customCss": ""}, http.StatusUnprocessableEntity)
 	c.json(http.MethodPut, "/api/appearance", obj{"theme": "dark", "accentColor": "#112233", "backgroundImage": "", "customCss": ""}, http.StatusOK, nil)
 	c.json(http.MethodGet, "/api/appearance", nil, http.StatusOK, nil)
+	// Theme gallery (#111): apply keeps own CSS, import validates, export round-trips.
+	c.json(http.MethodPut, "/api/appearance", obj{"theme": "light", "accentColor": "", "backgroundImage": "", "customCss": "body{zoom:1.1}"}, http.StatusOK, nil)
+	var applied obj
+	c.json(http.MethodPost, "/api/appearance/themes/nord/apply", nil, http.StatusOK, &applied)
+	if applied["theme"] != "dark" || !strings.Contains(applied["customCss"].(string), "--color-bg") {
+		t.Fatalf("apply: %v", applied)
+	}
+	var gallery obj
+	c.json(http.MethodGet, "/api/appearance/themes", nil, http.StatusOK, &gallery)
+	if gallery["applied"] != "nord" || gallery["canRestore"] != true || len(gallery["themes"].([]any)) < 6 {
+		t.Fatalf("gallery: %v", gallery)
+	}
+	c.json(http.MethodPost, "/api/appearance/themes/restore", nil, http.StatusOK, &applied)
+	if applied["customCss"] != "body{zoom:1.1}" || applied["theme"] != "light" {
+		t.Fatalf("restore: %v", applied)
+	}
+	mine := obj{"id": "mine", "name": "Mine", "scheme": "dark", "tokens": obj{"--color-bg": "#000", "--color-surface": "#111", "--color-text": "#fff", "--color-accent": "#f0f"}}
+	c.json(http.MethodPost, "/api/appearance/themes", mine, http.StatusCreated, nil)
+	c.do(http.MethodPost, "/api/appearance/themes", obj{"id": "evil", "name": "E", "scheme": "dark", "css": "body{display:none}"}, http.StatusUnprocessableEntity)
+	if out := c.do(http.MethodGet, "/api/appearance/themes/mine", nil, http.StatusOK); !strings.Contains(string(out), `"--color-accent": "#f0f"`) {
+		t.Fatalf("export: %s", out)
+	}
+	c.do(http.MethodDelete, "/api/appearance/themes/nord", nil, http.StatusUnprocessableEntity)
+	c.do(http.MethodDelete, "/api/appearance/themes/mine", nil, http.StatusNoContent)
 
 	// --- search ---
 	c.do(http.MethodGet, "/api/search?q=hello", nil, http.StatusFound)

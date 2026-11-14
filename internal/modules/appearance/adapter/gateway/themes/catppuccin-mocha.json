@@ -1,0 +1,19 @@
+{
+  "id": "catppuccin-mocha",
+  "name": "Catppuccin Mocha",
+  "author": "Catppuccin (MIT)",
+  "scheme": "dark",
+  "tokens": {
+    "--color-bg": "#1e1e2e",
+    "--color-surface": "#313244",
+    "--color-surface-2": "#45475a",
+    "--color-border": "#585b70",
+    "--color-text": "#cdd6f4",
+    "--color-text-muted": "#b1b7cf",
+    "--color-accent": "#cba6f7",
+    "--color-accent-contrast": "#1e1e2e",
+    "--color-danger": "#f38ba8",
+    "--color-success": "#a6e3a1",
+    "--color-warning": "#f9e2af"
+  }
+}
