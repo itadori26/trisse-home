@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SyncStatus from './offline/SyncStatus.svelte';
   import MaintenanceBanner from '../features/notifications/ui/MaintenanceBanner.svelte';
   import { setLanguage, t } from '../shared/i18n';
   import { type Appearance, cssVariables, defaultAppearance } from '../features/appearance';
@@ -214,13 +215,33 @@
   }
 
   async function logout() {
+    // Waiting offline changes are only on this device (#80).
+    if (
+      container.offline.pending > 0 &&
+      !confirm(t('offline.logout_pending', { n: container.offline.pending }))
+    )
+      return;
     try {
       await container.auth.logout();
+      await container.offline.clear();
       onlogout();
     } catch (err) {
       error = errorMessage(err);
     }
   }
+
+  // After offline changes reached the server, widgets show the server's state (#80).
+  // svelte-ignore state_referenced_locally
+  let seenSync = container.offline.revision; // the container never changes
+  $effect(() => {
+    const r = container.offline.revision;
+    if (r === seenSync) return;
+    seenSync = r;
+    container.refresh.refreshAll();
+  });
+  // Replay what was changed offline in an earlier session.
+  // svelte-ignore state_referenced_locally
+  void container.offline.replay();
 
   init();
 </script>
@@ -302,6 +323,7 @@
   {#if offline}<p class="offline" role="status">
       {t('app.you_are_offline_showing_the_last')}
     </p>{/if}
+  <SyncStatus sync={container.offline} />
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if modules}
     {#if modules.has('notifications') && !container.auth.guest}<MaintenanceBanner
