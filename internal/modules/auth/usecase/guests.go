@@ -47,7 +47,7 @@ type guests struct{ deps Deps }
 func NewGuests(deps Deps) Guests { return &guests{deps: deps} }
 
 func ownerOnly(ctx context.Context) error {
-	if kernel.PrincipalFrom(ctx).IsGuest() {
+	if p := kernel.PrincipalFrom(ctx); p.TabScoped() || p.IsToken() {
 		return domain.ErrOwnerOnly
 	}
 	return nil
@@ -68,7 +68,7 @@ func (uc *guests) List(ctx context.Context) ([]GuestView, error) {
 	}
 	out := []GuestView{}
 	for _, a := range all {
-		if !a.IsOwner() {
+		if a.Role() == domain.RoleGuest {
 			out = append(out, guestView(a))
 		}
 	}
@@ -118,7 +118,11 @@ func (uc *guests) guest(ctx context.Context, id string) (domain.Account, error) 
 	if id == domain.OwnerID {
 		return domain.Account{}, domain.ErrOwnerNotAGuest
 	}
-	return uc.deps.Accounts.Get(ctx, id)
+	a, err := uc.deps.Accounts.Get(ctx, id)
+	if err == nil && a.Role() != domain.RoleGuest {
+		return domain.Account{}, domain.ErrGuestNotFound // kiosk displays are managed apart
+	}
+	return a, err
 }
 
 // Update implements Guests. Disabling a guest or changing its password ends
@@ -202,7 +206,7 @@ func (uc *authorizer) Authorize(ctx context.Context, p kernel.Principal, method,
 		}
 		return nil
 	}
-	if !p.IsGuest() {
+	if !p.TabScoped() {
 		return nil
 	}
 	reach := domain.GuestReach{Modules: map[string]bool{}}
@@ -213,7 +217,11 @@ func (uc *authorizer) Authorize(ctx context.Context, p kernel.Principal, method,
 		}
 		reach = r
 	}
-	if !domain.GuestMayAccess(method, path, reach) {
+	allowed := domain.GuestMayAccess(method, path, reach)
+	if p.IsKiosk() {
+		allowed = domain.KioskMayAccess(method, path, reach)
+	}
+	if !allowed {
 		return domain.ErrReadOnly
 	}
 	return nil

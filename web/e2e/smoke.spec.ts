@@ -990,6 +990,39 @@ test('to-dos can be added and edited offline and are synced afterwards (#80)', a
   });
 });
 
+test('a kiosk link shows the chosen tab read-only without controls (#50)', async ({ page, browser }) => {
+  await page.goto('/');
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in' }).click();
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await account(page, 'Settings');
+  await page.getByRole('button', { name: 'Kiosk displays', exact: true }).click();
+  await page.getByLabel('Name (e.g. flur-tablet)').fill('flur');
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('checkbox', { name: 'Home' }).check();
+  await dialog.getByLabel('Tab rotation').selectOption('30');
+  await page.getByRole('button', { name: 'Create display' }).click();
+  await expect(page.getByRole('img', { name: 'QR code of the kiosk link' })).toBeVisible();
+  const link = (await dialog.locator('code').textContent()) ?? '';
+  expect(link).toMatch(/\/kiosk#.+/);
+  await expect(dialog.getByRole('listitem').getByText('next tab every 30 s')).toBeVisible();
+
+  const context = await browser.newContext();
+  const display = await context.newPage();
+  await display.goto(link);
+  await expect(display.getByTestId('dashboard')).toBeVisible();
+  await expect(display).toHaveURL(/\/$/); // the token left the address bar
+  await expect(display.getByRole('button', { name: 'Account menu' })).toBeHidden();
+  await expect(display.getByRole('combobox', { name: 'Quick search (Ctrl+K or /)' })).toBeHidden();
+  expect((await display.request.get('/api/auth/sessions')).status()).toBe(403);
+  await context.close();
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  page.once('dialog', (d) => d.accept());
+  await dialog.getByRole('button', { name: 'Delete' }).first().click();
+  await expect(dialog.getByText('No kiosk displays yet.')).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+});
+
 test('the header never scrolls the page sideways on a phone, even with many tabs (#226)', async ({
   page,
 }) => {

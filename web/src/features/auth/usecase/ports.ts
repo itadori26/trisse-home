@@ -6,7 +6,7 @@ import type {
   PasskeyRegistrationOptions,
   SecondFactorChallenge,
 } from '../domain/passkey';
-import type { AuthStatus, Guest, Session } from '../domain/auth';
+import type { AuthStatus, Guest, KioskDisplay, KioskInput, KioskOptions, Session } from '../domain/auth';
 import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
@@ -26,6 +26,13 @@ export interface AuthGateway {
   createGuest(name: string, password: string, tabs: string[]): Promise<Guest>;
   updateGuest(id: string, tabs: string[], disabled: boolean, password: string): Promise<Guest>;
   deleteGuest(id: string): Promise<void>;
+  kiosks(): Promise<KioskDisplay[]>;
+  createKiosk(input: KioskInput): Promise<{ kiosk: KioskDisplay; token: string }>;
+  updateKiosk(id: string, input: KioskInput): Promise<KioskDisplay>;
+  renewKioskLink(id: string): Promise<string>;
+  deleteKiosk(id: string): Promise<void>;
+  kioskLogin(token: string): Promise<Session>;
+  kioskOptions(): Promise<KioskOptions>;
   apiTokens(): Promise<ApiToken[]>;
   createApiToken(name: string, scopes: string[], expiresInDays: number): Promise<string>;
   revokeApiToken(id: string): Promise<void>;

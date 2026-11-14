@@ -66,6 +66,7 @@
         <span class="muted small">{changedAgo(e.lastChanged, now)}</span>
         {#if e.action}
           <button
+            data-action
             class="btn"
             type="button"
             disabled={busy !== ''}

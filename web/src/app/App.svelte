@@ -18,6 +18,13 @@
     try {
       // The browser language's catalogue first, so the page never flashes English.
       await loadLanguage().catch(() => undefined);
+      // A kiosk link (#50): the token is in the fragment, so it never reaches
+      // the server log; it signs this browser in as the display.
+      if (location.pathname === '/kiosk' && location.hash.length > 1) {
+        const token = decodeURIComponent(location.hash.slice(1));
+        history.replaceState(null, '', '/');
+        await container.auth.kioskLogin(token);
+      }
       view = await container.auth.currentView();
       loadError = '';
       rememberSignedIn(view === 'app');

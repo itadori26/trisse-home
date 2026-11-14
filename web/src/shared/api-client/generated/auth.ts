@@ -171,3 +171,41 @@ export interface RegistrationOptionsDTO {
   userName: string;
   excludeCredentials: string[];
 }
+/**
+ * KioskOptionsDTO are the display options of a kiosk (#50).
+ */
+export interface KioskOptionsDTO {
+  /**
+   * RotateSeconds switches tabs; 0 = no rotation.
+   */
+  rotateSeconds: number /* int */;
+  /**
+   * NightFrom and NightTo ("HH:MM", display time) dim the screen.
+   */
+  nightFrom: string;
+  nightTo: string;
+}
+/**
+ * KioskDTO is a kiosk display in GET /api/auth/kiosks.
+ */
+export interface KioskDTO extends KioskOptionsDTO {
+  id: string;
+  name: string;
+  tabs: string[];
+  disabled: boolean;
+  createdAt: string /* RFC 3339 */;
+  lastUsedAt?: string /* RFC 3339 */;
+}
+/**
+ * KioskCreatedDTO answers POST /api/auth/kiosks; the token is shown once.
+ */
+export interface KioskCreatedDTO {
+  kiosk: KioskDTO;
+  token: string;
+}
+/**
+ * KioskLinkDTO answers a renewed link.
+ */
+export interface KioskLinkDTO {
+  token: string;
+}

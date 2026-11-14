@@ -134,6 +134,19 @@ the node and catch the token. Start and shutdown need two independent steps:
 and the `VM.PowerMgmt` permission for exactly these guests in Proxmox. A hard
 stop is never offered, and every action lands in the security event log.
 
+### Kiosk displays
+
+A kiosk display (#50) is an account of its own role: it reads the tabs it is
+given, exactly like a guest, but it has no password and none of the account
+self-service (password, two-factor, passkeys, session list). It signs in with
+a secret link whose token is stored as a SHA-256 hash and shown to the owner
+once. The token sits in the URL fragment (`/kiosk#…`), so it never reaches the
+server log, a proxy log or a referrer; the page posts it to
+`/api/auth/kiosk/login`, which is rate limited like the login and subject to
+`ALLOWED_CIDRS`. A new link, disabling or deleting the display signs the
+device out at once. Action buttons of widgets are hidden on displays, and the
+server refuses every write anyway.
+
 ### WireGuard export
 
 `wg` needs `CAP_NET_ADMIN` in the network namespace of the VPN, and its
