@@ -8,7 +8,6 @@ export const serverMessages = {
   srv_5065a34cb1180bb7: "The feed does not exist.",
   srv_0d8148b3ba698407: "The file is not an OPML subscription list.",
   srv_fd944f7eadfdb070: "The item does not exist.",
-  srv_63f60053f8b51722: "The server answered {status}.",
   srv_d6a88cffb18a9963: "You are already subscribed to this feed.",
   srv_668a30f80af88b85: "this is not a valid RSS, Atom or JSON feed",
 } as const;

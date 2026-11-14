@@ -1,0 +1,67 @@
+tags:
+  - name: readlater
+
+paths:
+  /api/readlater:
+    get:
+      tags: [readlater]
+      summary: Saved articles, newest first, without the reader copies; status filters (none = unread and read)
+      parameters: [{ name: status, in: query, schema: { type: string, enum: [unread, read, archived] } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/ReadLaterArticle" } } } } }
+    post:
+      tags: [readlater]
+      summary: Save a page with a sanitised reader copy and its images (the same address again returns the existing article)
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [url], properties: { url: { type: string } } } } } }
+      responses:
+        "201": { description: Saved (error is set when no reader copy could be made), content: { application/json: { schema: { $ref: "#/components/schemas/ReadLaterArticle" } } } }
+        "409": { description: Storage full (200 MB) }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/readlater/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [readlater]
+      summary: One article with its reader copy (sanitised HTML)
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ReadLaterArticle" } } } }
+        "404": { description: Unknown article }
+    delete:
+      tags: [readlater]
+      summary: Delete an article with its images
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Deleted }, "404": { description: Unknown article } }
+  /api/readlater/{id}/status:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+    put:
+      tags: [readlater]
+      summary: Mark as unread, read or archived
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { status: { type: string, enum: [unread, read, archived] } } } } } }
+      responses: { "204": { description: OK }, "404": { description: Unknown article }, "422": { $ref: "#/components/responses/Invalid" } }
+  /api/readlater/{id}/images/{n}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: n, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [readlater]
+      summary: A stored image of the reader copy (raster formats only)
+      responses:
+        "200": { description: The image, content: { image/png: { schema: { type: string, format: binary } } } }
+        "404": { description: Unknown image }
+
+schemas:
+  ReadLaterArticle:
+    type: object
+    properties:
+      id: { type: string }
+      url: { type: string }
+      title: { type: string }
+      site: { type: string }
+      excerpt: { type: string }
+      content: { type: string, description: Sanitised HTML; only for a single article }
+      readingMinutes: { type: integer }
+      status: { type: string, enum: [unread, read, archived] }
+      savedAt: { type: string, format: date-time }
+      bytes: { type: integer }
+      error: { type: string, description: Why there is no reader copy }
