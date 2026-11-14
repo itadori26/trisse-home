@@ -48,8 +48,16 @@ export interface CallDTO {
 export interface StatusDTO {
   model: string;
   wan: WANDTO;
-  calls: CallDTO[];
   hint: string;
   updatedAt: string /* RFC 3339 */;
+  error: string;
+}
+/**
+ * CallsDTO is returned by GET /api/fritzbox/calls (#168).
+ */
+export interface CallsDTO {
+  calls: CallDTO[];
+  updatedAt: string /* RFC 3339 */;
+  hint: string;
   error: string;
 }

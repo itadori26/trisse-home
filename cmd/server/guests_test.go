@@ -59,6 +59,15 @@ func TestGuestAccess(t *testing.T) {
 		g.do(http.MethodGet, path, nil, http.StatusForbidden)
 	}
 
+	// The call list is personal: an internet widget opens the FRITZ!Box module
+	// for the guest, but its calls only with a calls widget on the tab (#168).
+	// (404 = allowed but no box configured; 403 = closed for the guest.)
+	owner.do(http.MethodPost, "/api/dashboard/tabs/"+home+"/widgets", obj{"kind": "fritzbox", "x": 0, "y": 20, "w": 4, "h": 3}, http.StatusCreated)
+	g.do(http.MethodGet, "/api/fritzbox/status", nil, http.StatusNotFound)
+	g.do(http.MethodGet, "/api/fritzbox/calls", nil, http.StatusForbidden)
+	owner.do(http.MethodPost, "/api/dashboard/tabs/"+home+"/widgets", obj{"kind": "fritzbox-calls", "x": 4, "y": 20, "w": 4, "h": 3}, http.StatusCreated)
+	g.do(http.MethodGet, "/api/fritzbox/calls", nil, http.StatusNotFound)
+
 	// Writes: always denied, including widget actions and dashboard edits.
 	g.do(http.MethodPost, "/api/notes", obj{"title": "x"}, http.StatusForbidden)
 	g.do(http.MethodPost, "/api/todos", obj{"title": "x"}, http.StatusForbidden)
