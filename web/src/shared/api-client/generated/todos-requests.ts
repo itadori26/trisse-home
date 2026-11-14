@@ -17,6 +17,16 @@ export interface TodoInputDTO {
    */
   repeat?: RepeatDTO;
   reminder?: ReminderDTO;
+  /**
+   * ID (create) is a client-generated ID; replaying the create returns the
+   * existing to-do (#80).
+   */
+  id?: string;
+  /**
+   * Version (update) is the version the client edited; a different stored
+   * version answers 409 Conflict. 0/omitted = no check.
+   */
+  version?: number /* int */;
 }
 /**
  * RepeatDTO is a recurrence: kind "" (none), "daily", "weekly", "monthly"

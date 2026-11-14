@@ -22,6 +22,11 @@ export interface TodoDTO {
    * Reminder fires at "HH:MM" on the due date or days before ("" = none).
    */
   reminder: ReminderDTO;
+  /**
+   * Version counts the stored changes; send it back with an update to
+   * detect concurrent changes (#80).
+   */
+  version: number /* int */;
 }
 /**
  * RepeatDTO describes a recurrence.

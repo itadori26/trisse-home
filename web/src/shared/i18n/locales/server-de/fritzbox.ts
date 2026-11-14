@@ -12,4 +12,8 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_6f0fbfbef4b05402: 'Die FRITZ!Box ist noch nicht eingerichtet.',
   // The URL must look like http://192.168.178.1:49000.
   srv_d14b64d005d328ef: 'Die URL muss wie http://192.168.178.1:49000 aussehen.',
+  // Show between {min} and {max} calls.
+  srv_3de8440f30f2cb18: 'Zeige zwischen {min} und {max} Anrufen.',
+  // The filter must be all, missed, incoming or outgoing.
+  srv_ab808509e7ff3cb7: 'Der Filter muss alle, verpasst, eingehend oder ausgehend sein.',
 };

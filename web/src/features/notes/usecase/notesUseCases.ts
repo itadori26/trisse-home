@@ -12,7 +12,7 @@ import type {
 /** Output port: notes backend. */
 export interface NotesGateway {
   list(pinnedOnly: boolean): Promise<Note[]>;
-  save(input: NoteInput, id?: string): Promise<Note>;
+  save(input: NoteInput, id?: string, opts?: { clientId?: string; version?: number }): Promise<Note>;
   delete(id: string): Promise<void>;
   get(id: string): Promise<Note>;
   search(query: string): Promise<SearchHit[]>;

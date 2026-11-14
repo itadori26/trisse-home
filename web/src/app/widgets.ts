@@ -339,7 +339,11 @@ const legacyDefinitions: WidgetDefinition[] = [
     icon: 'router',
     view: lazy(
       () => import('../features/fritzbox/ui/FritzBoxWidget.svelte'),
-      (_config, c) => ({ fritzbox: c.fritzbox }),
+      (config, c) => ({ config, fritzbox: c.fritzbox }),
+    ),
+    settings: lazy(
+      () => import('../features/fritzbox/ui/FritzBoxWidgetSettings.svelte'),
+      (config) => ({ config }),
     ),
   },
   {

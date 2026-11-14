@@ -15,6 +15,8 @@ type NoteDTO struct {
 	Pinned    bool      `json:"pinned"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	// Version counts the stored changes; send it back with an update (#80).
+	Version int `json:"version"`
 }
 
 // Note maps a NoteView.

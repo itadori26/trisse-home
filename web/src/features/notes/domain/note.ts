@@ -5,6 +5,8 @@ export interface Note {
   body: string;
   pinned: boolean;
   updatedAt: Date;
+  /** Stored version (#80); 0 = only on this device so far (offline). */
+  version: number;
 }
 
 /** Editable fields of a note. */
