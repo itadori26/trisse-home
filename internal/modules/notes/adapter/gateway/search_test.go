@@ -58,6 +58,7 @@ func TestFullTextSearchFollowsEdits(t *testing.T) {
 
 	// Updates and deletes keep the index in sync.
 	_ = b.Edit("Einkauf", "Nur noch Milch", false, now)
+	b.Bump()
 	if err := repo.Save(ctx, b); err != nil {
 		t.Fatal(err)
 	}

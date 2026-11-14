@@ -10,6 +10,7 @@ export const serverMessages = {
   srv_83cc78074d3e2ff6: "Remove the user name and password from the address and use the fields below.",
   srv_ea4ce39d77587136: "Storing credentials is disabled in the demo.",
   srv_457b52382d260269: "The ICS URL must start with https://, http:// or webcal://.",
+  srv_9cdf89c6055b9583: "The ID must have 8 to 64 letters, digits, '-' or '_'.",
   srv_022f9a869dd885c4: "The MAC address must look like aa:bb:cc:dd:ee:ff.",
   srv_33e6dad254bc6264: "The URL must start with http:// or https://.",
   srv_7bd9cc89bdd1560a: "The Wake-on-LAN relay did not answer. Is COMPOSE_PROFILES=wol set (see README)?",

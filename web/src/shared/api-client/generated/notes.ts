@@ -13,6 +13,10 @@ export interface NoteDTO {
   pinned: boolean;
   createdAt: string /* RFC 3339 */;
   updatedAt: string /* RFC 3339 */;
+  /**
+   * Version counts the stored changes; send it back with an update (#80).
+   */
+  version: number /* int */;
 }
 /**
  * SegmentDTO is a piece of highlighted search output; hit marks a match.
