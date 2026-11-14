@@ -77,7 +77,8 @@ func (uc *login) account(ctx context.Context, owner domain.Account, name string)
 		return owner, nil
 	}
 	a, err := uc.deps.Accounts.FindByName(ctx, name)
-	if errors.Is(err, domain.ErrGuestNotFound) || (err == nil && a.IsOwner()) {
+	// Kiosk displays have no password; they sign in with their link (#50).
+	if errors.Is(err, domain.ErrGuestNotFound) || (err == nil && (a.IsOwner() || a.Role() == domain.RoleKiosk)) {
 		return owner, nil
 	}
 	return a, err

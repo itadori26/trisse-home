@@ -1,6 +1,15 @@
 import { t } from '../../../shared/i18n';
 import type { ApiToken } from '../domain/apiToken';
-import { type AuthView, type Guest, validGuestName, validateNewPassword, viewFor } from '../domain/auth';
+import {
+  type AuthView,
+  type Guest,
+  type KioskDisplay,
+  type KioskInput,
+  type KioskOptions,
+  validGuestName,
+  validateNewPassword,
+  viewFor,
+} from '../domain/auth';
 import type { SecurityEvent } from '../domain/securityEvent';
 import type { SessionInfo } from '../domain/session';
 import type { TwoFactorEnrollment, TwoFactorStatus } from '../domain/twoFactor';
@@ -29,6 +38,8 @@ export class AuthUseCases {
   demo = false;
   /** True when a read-only guest is signed in (set by currentView). */
   guest = false;
+  /** True when a kiosk display is signed in (#50); guest is true as well. */
+  kiosk = false;
   /** Sign-in methods offered by the server (set by currentView). */
   sso = { oidc: false, header: false, localLogin: true };
   /** Ticket of an SSO sign-in that still needs the local code. */
@@ -39,6 +50,7 @@ export class AuthUseCases {
     const status = await this.gateway.status();
     this.demo = status.demo;
     this.guest = status.guest;
+    this.kiosk = status.kiosk;
     this.sso = status.sso;
     // Behind a reverse proxy with forward auth the user is already known.
     if (status.sso.header && !status.authenticated && !status.setupRequired) {
@@ -155,6 +167,35 @@ export class AuthUseCases {
 
   deleteGuest(id: string): Promise<void> {
     return this.gateway.deleteGuest(id);
+  }
+
+  /** Kiosk displays (owner only, #50). */
+  kiosks(): Promise<KioskDisplay[]> {
+    return this.gateway.kiosks();
+  }
+  /** Creates a display; the link token is returned once. */
+  async createKiosk(input: KioskInput): Promise<{ kiosk: KioskDisplay; token: string }> {
+    const name = input.name.trim().toLowerCase();
+    if (!validGuestName(name)) throw new ValidationError(t('auth.guest_name_invalid'));
+    return this.gateway.createKiosk({ ...input, name });
+  }
+  updateKiosk(id: string, input: KioskInput): Promise<KioskDisplay> {
+    return this.gateway.updateKiosk(id, input);
+  }
+  renewKioskLink(id: string): Promise<string> {
+    return this.gateway.renewKioskLink(id);
+  }
+  deleteKiosk(id: string): Promise<void> {
+    return this.gateway.deleteKiosk(id);
+  }
+  /** Signs this browser in as a kiosk display with the token of its link. */
+  async kioskLogin(token: string): Promise<void> {
+    const session = await this.gateway.kioskLogin(token);
+    this.csrf.setCsrfToken(session.csrfToken);
+  }
+  /** Display options of the signed-in kiosk. */
+  kioskOptions(): Promise<KioskOptions> {
+    return this.gateway.kioskOptions();
   }
 
   /** Personal API tokens (owner only). */

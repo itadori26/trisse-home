@@ -29,6 +29,7 @@ type UseCases struct {
 	SecurityLog    usecase.SecurityLog
 	Authorizer     usecase.Authorizer
 	Guests         usecase.Guests
+	Kiosks         usecase.Kiosks
 	APITokens      usecase.APITokens
 	// SSO is nil when no single sign-on method is configured.
 	SSO      usecase.SSO
@@ -508,4 +509,89 @@ func (h *Handlers) PasskeyLogin(w http.ResponseWriter, r *http.Request) {
 		ClientDataJSON: b["clientDataJSON"], AuthenticatorData: b["authenticatorData"], Signature: b["signature"]},
 		domain.NewClient(r.UserAgent(), clientKey(r)))
 	h.respondWithSession(w, r, res, err)
+}
+
+func (dto KioskRequestDTO) input() usecase.KioskInput { return usecase.KioskInput(dto) }
+
+// ListKiosks handles GET /api/auth/kiosks.
+func (h *Handlers) ListKiosks(w http.ResponseWriter, r *http.Request) {
+	list, err := h.uc.Kiosks.List(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Kiosks(list))
+}
+
+// CreateKiosk handles POST /api/auth/kiosks; the link token is returned once.
+func (h *Handlers) CreateKiosk(w http.ResponseWriter, r *http.Request) {
+	var dto KioskRequestDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	k, token, err := h.uc.Kiosks.Create(r.Context(), dto.input())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	httpapi.WriteJSON(w, http.StatusCreated, presenter.KioskCreatedDTO{Kiosk: presenter.Kiosk(k), Token: token})
+}
+
+// UpdateKiosk handles PUT /api/auth/kiosks/{id}.
+func (h *Handlers) UpdateKiosk(w http.ResponseWriter, r *http.Request) {
+	var dto KioskRequestDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	k, err := h.uc.Kiosks.Update(r.Context(), r.PathValue("id"), dto.input())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Kiosk(k))
+}
+
+// RenewKioskLink handles POST /api/auth/kiosks/{id}/link.
+func (h *Handlers) RenewKioskLink(w http.ResponseWriter, r *http.Request) {
+	token, err := h.uc.Kiosks.RenewLink(r.Context(), r.PathValue("id"))
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	httpapi.WriteJSON(w, http.StatusOK, presenter.KioskLinkDTO{Token: token})
+}
+
+// DeleteKiosk handles DELETE /api/auth/kiosks/{id}.
+func (h *Handlers) DeleteKiosk(w http.ResponseWriter, r *http.Request) {
+	if err := h.uc.Kiosks.Delete(r.Context(), r.PathValue("id")); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// KioskLogin handles POST /api/auth/kiosk/login: the token of the link
+// (sent from the page, never in a URL the server sees) starts a session.
+func (h *Handlers) KioskLogin(w http.ResponseWriter, r *http.Request) {
+	var dto KioskLoginDTO
+	if err := httpapi.DecodeJSON(w, r, &dto); err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	res, err := h.uc.Kiosks.Login(r.Context(), dto.Token, clientKey(r), r.UserAgent())
+	h.respondWithSession(w, r, res, err)
+}
+
+// KioskOptions handles GET /api/auth/kiosk: the options of the signed-in display.
+func (h *Handlers) KioskOptions(w http.ResponseWriter, r *http.Request) {
+	o, err := h.uc.Kiosks.Options(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.KioskOptions(o))
 }

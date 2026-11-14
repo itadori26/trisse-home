@@ -114,6 +114,7 @@
         <span class="muted small status">{c.status}</span>
         {#if canAct(actions, c.name)}
           <button
+            data-action
             class="btn btn-icon act"
             type="button"
             title={t('docker.show_logs')}
@@ -121,6 +122,7 @@
             onclick={() => showLogs(c.name)}>≡</button
           >
           <button
+            data-action
             class="btn btn-icon act"
             type="button"
             title={t('docker.restart')}

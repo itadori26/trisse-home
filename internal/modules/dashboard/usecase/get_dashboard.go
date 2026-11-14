@@ -43,7 +43,7 @@ func (uc *getDashboard) ExecuteFor(ctx context.Context, client netip.Addr) (Dash
 		return DashboardResponse{}, fmt.Errorf("list tabs: %w", err)
 	}
 	// Guests only see the tabs the owner shared with them.
-	if p := kernel.PrincipalFrom(ctx); p.IsGuest() {
+	if p := kernel.PrincipalFrom(ctx); p.TabScoped() {
 		tabs = slices.DeleteFunc(tabs, func(t domain.Tab) bool { return !p.CanSeeTab(t.ID()) })
 	} else if len(tabs) == 0 {
 		tab, err := uc.seed(ctx)
