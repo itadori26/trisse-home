@@ -1,9 +1,16 @@
-import type { WasteOverview, WasteRule, WasteSettings } from '../domain/waste';
+import {
+  validateCalendarFile,
+  type WasteOverview,
+  type WasteRule,
+  type WasteSettings,
+} from '../domain/waste';
 
 /** Output port: waste backend. */
 export interface WasteGateway {
   settings(): Promise<WasteSettings>;
   saveSettings(url: string, rules: WasteRule[]): Promise<WasteSettings>;
+  uploadCalendar(file: File): Promise<WasteSettings>;
+  removeCalendar(): Promise<WasteSettings>;
   upcoming(): Promise<WasteOverview>;
 }
 
@@ -15,7 +22,23 @@ export class WasteUseCases {
     return this.gateway.settings();
   }
 
-  /** Saves the subscription; rules without match text are dropped. */
+  /** Checks and uploads an ICS file as the source; the rules stay (#153). */
+  uploadCalendar(file: File): Promise<WasteSettings> {
+    const problem = validateCalendarFile(file);
+    if (problem) return Promise.reject(new Error(problem));
+    return this.gateway.uploadCalendar(file);
+  }
+
+  /** Removes the uploaded file; the source is reset, the rules stay. */
+  removeCalendar(): Promise<WasteSettings> {
+    return this.gateway.removeCalendar();
+  }
+
+  /**
+   * Saves the rules and, with a URL, switches to that subscription; an empty
+   * URL keeps the current source (e.g. an uploaded file). Rules without match
+   * text are dropped.
+   */
   saveSettings(url: string, rules: WasteRule[]): Promise<WasteSettings> {
     const clean = rules
       .map((r) => ({

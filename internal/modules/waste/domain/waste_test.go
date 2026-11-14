@@ -1,8 +1,10 @@
 package domain
 
 import (
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 func TestClassify(t *testing.T) {
@@ -39,7 +41,7 @@ func TestNextCollections(t *testing.T) {
 
 func TestSettings(t *testing.T) {
 	s, err := NewSettings("webcal://example.org/abfall.ics", []Rule{{Match: " bio ", Color: "#00ff00"}})
-	if err != nil || s.URL != "https://example.org/abfall.ics" || s.Rules[0].Match != "bio" {
+	if err != nil || s.Source.URL != "https://example.org/abfall.ics" || s.Rules[0].Match != "bio" {
 		t.Fatalf("%+v %v", s, err)
 	}
 	if _, err := NewSettings("https://x", []Rule{{Match: "x", Color: "green"}}); err == nil {
@@ -47,5 +49,37 @@ func TestSettings(t *testing.T) {
 	}
 	if _, err := NewSettings("ftp://x", nil); err == nil {
 		t.Fatal("invalid URL accepted")
+	}
+}
+
+func TestFileSource(t *testing.T) {
+	day := func(m time.Month, d int) time.Time { return time.Date(2027, m, d, 0, 0, 0, 0, time.UTC) }
+	if _, err := NewFileSource("a.ics", day(1, 1), nil); err == nil {
+		t.Fatal("a file without dates must be rejected")
+	}
+	src, err := NewFileSource("../../etc/\x00plan.ics", day(1, 1), []Collection{{Date: day(3, 2)}, {Date: day(1, 5)}, {Date: day(12, 28)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := src.File
+	if src.Kind != SourceFile || f.Name != "plan.ics" || f.Events != 3 || !f.From.Equal(day(1, 5)) || !f.To.Equal(day(12, 28)) {
+		t.Fatalf("%+v", src)
+	}
+	if long, _ := NewFileSource(strings.Repeat("ä", 150)+".ics", day(1, 1), []Collection{{Date: day(1, 5)}}); utf8.RuneCountInString(long.File.Name) != 100 {
+		t.Fatalf("name not cut: %q", long.File.Name)
+	}
+	// The hint starts 30 days before the last date and stays after it.
+	at := func(m time.Month, d int) time.Time { return time.Date(2027, m, d, 18, 0, 0, 0, time.UTC) }
+	for now, want := range map[time.Time]bool{at(11, 27): false, at(11, 28): true, at(12, 28): true, at(12, 30): true} {
+		if got := src.ExpiresWithin(now, ExpiryWarning); got != want {
+			t.Errorf("ExpiresWithin(%v) = %v, want %v", now, got, want)
+		}
+	}
+	url, _ := NewURLSource("webcal://example.org/a.ics")
+	if url.Kind != SourceURL || url.URL != "https://example.org/a.ics" || url.ExpiresWithin(at(12, 30), ExpiryWarning) {
+		t.Fatalf("%+v", url)
+	}
+	if (Source{}).Configured() || !url.Configured() {
+		t.Fatal("Configured")
 	}
 }

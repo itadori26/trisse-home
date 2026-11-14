@@ -55,11 +55,17 @@
     {/each}
   </ul>
   {#if overview.error}<p class="error small">{overview.error}</p>{/if}
+  {#if overview.endsOn}<p class="warning small">
+      {t('waste.calendar_ends', { date: date(overview.endsOn) })}
+    </p>{/if}
 {:else}
   <p class="muted">{t('waste.loading')}</p>
 {/if}
 
 <style>
+  .warning {
+    color: var(--color-warning);
+  }
   .types {
     list-style: none;
     margin: 0;
