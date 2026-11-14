@@ -32,7 +32,7 @@ const sampleRefreshTimeout = time.Minute
 // New builds the feed reader module; sampleFeeds are subscribed on a fresh
 // installation.
 func New(db *sql.DB, client *http.Client, clock kernel.Clock, ids kernel.IDGenerator, sampleFeeds []string) *Module {
-	deps := usecase.Deps{Repo: gateway.NewRepository(db), Fetcher: gateway.NewHTTPFetcher(client), Clock: clock, IDs: ids}
+	deps := usecase.Deps{Repo: gateway.NewRepository(db), Fetcher: gateway.NewHTTPFetcher(client), OPML: gateway.OPML{}, Clock: clock, IDs: ids}
 	uc := usecase.NewReader(deps)
 	return &Module{Transferable: modules.Transferable{DB: db, Tables: gateway.TransferTables}, uc: uc, seed: usecase.NewSeedSampleData(deps), sampleFeeds: sampleFeeds, handlers: controller.NewHandlers(uc)}
 }
@@ -71,6 +71,8 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("PUT /api/rss/items/{id}/read", h.SetRead)
 	r.Protected("POST /api/rss/read-all", h.MarkAllRead)
 	r.Protected("POST /api/rss/refresh", h.Refresh)
+	r.Protected("GET /api/rss/opml", h.ExportOPML)
+	r.Protected("POST /api/rss/opml", h.ImportOPML)
 }
 
 // Jobs implements modules.Module.

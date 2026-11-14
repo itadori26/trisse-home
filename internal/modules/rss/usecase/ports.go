@@ -56,10 +56,17 @@ type Repository interface {
 	UnreadCounts(ctx context.Context) (map[string]int, error)
 }
 
+// OPMLCodec reads and writes OPML subscription lists (output port, #97).
+type OPMLCodec interface {
+	Decode(data []byte) ([]domain.ImportEntry, error)
+	Encode(feeds []domain.Feed, created time.Time) ([]byte, error)
+}
+
 // Deps bundles the output ports.
 type Deps struct {
 	Repo    Repository
 	Fetcher FeedFetcher
+	OPML    OPMLCodec
 	Clock   kernel.Clock
 	IDs     kernel.IDGenerator
 }

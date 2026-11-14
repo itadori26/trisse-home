@@ -28,13 +28,13 @@ type Repository struct{ db *sql.DB }
 // NewRepository returns a repository backed by db.
 func NewRepository(db *sql.DB) *Repository { return &Repository{db: db} }
 
-const feedColumns = `id, url, title, site_url, last_fetched_at, last_error, created_at`
+const feedColumns = `id, url, title, site_url, last_fetched_at, last_error, created_at, category`
 
 func scanFeed(s interface{ Scan(...any) error }) (domain.Feed, error) {
 	var f domain.Feed
 	var fetched *string
 	var created string
-	if err := s.Scan(&f.ID, &f.URL, &f.Title, &f.SiteURL, &fetched, &f.LastError, &created); err != nil {
+	if err := s.Scan(&f.ID, &f.URL, &f.Title, &f.SiteURL, &fetched, &f.LastError, &created, &f.Category); err != nil {
 		return f, err
 	}
 	var err error
@@ -77,8 +77,8 @@ func (r *Repository) GetFeed(ctx context.Context, id string) (domain.Feed, error
 
 // CreateFeed inserts a feed.
 func (r *Repository) CreateFeed(ctx context.Context, f domain.Feed) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO rss_feeds (`+feedColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		f.ID, f.URL, f.Title, f.SiteURL, sqlutil.FormatNullableTime(f.LastFetchedAt), f.LastError, sqlutil.FormatTime(f.CreatedAt))
+	_, err := r.db.ExecContext(ctx, `INSERT INTO rss_feeds (`+feedColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		f.ID, f.URL, f.Title, f.SiteURL, sqlutil.FormatNullableTime(f.LastFetchedAt), f.LastError, sqlutil.FormatTime(f.CreatedAt), f.Category)
 	if sqlutil.IsUniqueViolation(err) {
 		return domain.ErrAlreadySubscribed
 	}

@@ -161,7 +161,7 @@ const legacyDefinitions: WidgetDefinition[] = [
     icon: 'note',
     view: lazy(
       () => import('../features/notes/ui/NotesWidget.svelte'),
-      (config, c) => ({ config, notes: c.notes }),
+      (config, c) => ({ config, notes: c.notes, summarizer: c.summary }),
     ),
     settings: lazy(
       () => import('../features/notes/ui/NotesWidgetSettings.svelte'),
@@ -207,7 +207,7 @@ const legacyDefinitions: WidgetDefinition[] = [
     icon: 'rss',
     view: lazy(
       () => import('../features/rss/ui/RssWidget.svelte'),
-      (config, c) => ({ config, rss: c.rss }),
+      (config, c) => ({ config, rss: c.rss, readLater: c.readlater, summarizer: c.summary }),
     ),
     settings: lazy(
       () => import('../features/rss/ui/RssWidgetSettings.svelte'),

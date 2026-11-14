@@ -14,10 +14,12 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_5065a34cb1180bb7: 'Der Feed existiert nicht.',
   // The item does not exist.
   srv_fd944f7eadfdb070: 'Der Eintrag existiert nicht.',
-  // The server answered {status}.
-  srv_63f60053f8b51722: 'Der Server antwortete mit {status}.',
   // You are already subscribed to this feed.
   srv_d6a88cffb18a9963: 'Du hast diesen Feed bereits abonniert.',
   // this is not a valid RSS, Atom or JSON feed
   srv_668a30f80af88b85: 'das ist kein gültiger RSS-, Atom- oder JSON-Feed',
+  // The OPML file is larger than 2 MB.
+  srv_9684d4c2e31b6d2f: 'Die OPML-Datei ist größer als 2 MB.',
+  // The file is not an OPML subscription list.
+  srv_0d8148b3ba698407: 'Die Datei ist keine OPML-Abo-Liste.',
 };

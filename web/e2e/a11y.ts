@@ -9,9 +9,7 @@ const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
  * violations: rule, impact and the offending elements.
  */
 export async function expectAccessible(page: Page, view: string, include?: string): Promise<void> {
-  // Fades (hover, focus) would let axe measure colours mid-transition; with
-  // reduced motion the app switches transitions off, so every state is final.
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+  // A hover would fade elements in or out while axe measures their contrast.
   await page.mouse.move(0, 0);
   let builder = new AxeBuilder({ page }).withTags(tags);
   if (include) builder = builder.include(include);
