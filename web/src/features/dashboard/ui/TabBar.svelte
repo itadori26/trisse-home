@@ -143,7 +143,7 @@
   }
   .active .name {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-accent-contrast);
     font-weight: 600;
   }
   .name:focus-visible {
