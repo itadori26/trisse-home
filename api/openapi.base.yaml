@@ -67,6 +67,7 @@ components:
       description: Bearer token of an app session (wa_…) from POST /api/auth/app-sessions; acts like a session of the account, no CSRF token needed. See docs/accounts.md#apps.
   parameters:
     id: { name: id, in: path, required: true, schema: { type: string } }
+    connection: { name: connection, in: query, required: false, schema: { type: string }, description: "Named connection the widget chose (integrations); without it, or when it is not usable, the module settings are used" }
   responses:
     Session: { description: Session started; the cookie is set, content: { application/json: { schema: { $ref: "#/components/schemas/Session" } } } }
     SearchSettings: { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SearchSettings" } } } }

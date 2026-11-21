@@ -44,21 +44,25 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, presenter.Settings(res), err)
 }
 
-// Alerts handles GET /api/grafana/alerts.
+// connection is the named connection the widget chose (#610); empty means
+// the module settings.
+func connection(r *http.Request) string { return r.URL.Query().Get("connection") }
+
+// Alerts handles GET /api/grafana/alerts[?connection=<id>].
 func (h *Handlers) Alerts(w http.ResponseWriter, r *http.Request) {
-	list, err := h.uc.Alerts(r.Context())
-	respond(w, r, presenter.Alerts(list, h.uc.URL(r.Context())), err)
+	list, err := h.uc.Alerts(r.Context(), connection(r))
+	respond(w, r, presenter.Alerts(list, h.uc.URL(r.Context(), connection(r))), err)
 }
 
 // Dashboards handles GET /api/grafana/dashboards?q=….
 func (h *Handlers) Dashboards(w http.ResponseWriter, r *http.Request) {
-	list, err := h.uc.Dashboards(r.Context(), r.URL.Query().Get("q"))
+	list, err := h.uc.Dashboards(r.Context(), connection(r), r.URL.Query().Get("q"))
 	respond(w, r, presenter.Dashboards(list), err)
 }
 
 // Panels handles GET /api/grafana/dashboards/{uid}/panels.
 func (h *Handlers) Panels(w http.ResponseWriter, r *http.Request) {
-	list, err := h.uc.Panels(r.Context(), r.PathValue("uid"))
+	list, err := h.uc.Panels(r.Context(), connection(r), r.PathValue("uid"))
 	respond(w, r, presenter.Panels(list), err)
 }
 
@@ -71,7 +75,7 @@ func (h *Handlers) PanelData(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	d, err := h.uc.PanelData(r.Context(), req)
+	d, err := h.uc.PanelData(r.Context(), connection(r), req)
 	respond(w, r, presenter.PanelData(d), err)
 }
 
@@ -87,7 +91,7 @@ func (h *Handlers) Render(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	img, err := h.uc.Render(r.Context(), req)
+	img, err := h.uc.Render(r.Context(), connection(r), req)
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return

@@ -43,9 +43,13 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
 }
 
-// Entities handles GET /api/smarthome/entities.
+// connection is the named connection the widget chose (#610); empty means
+// the module settings.
+func connection(r *http.Request) string { return r.URL.Query().Get("connection") }
+
+// Entities handles GET /api/smarthome/entities[?connection=<id>].
 func (h *Handlers) Entities(w http.ResponseWriter, r *http.Request) {
-	res, err := h.uc.Entities(r.Context())
+	res, err := h.uc.Entities(r.Context(), connection(r))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
@@ -61,7 +65,7 @@ func (h *Handlers) States(w http.ResponseWriter, r *http.Request) {
 			ids = append(ids, id)
 		}
 	}
-	res, err := h.uc.States(r.Context(), ids)
+	res, err := h.uc.States(r.Context(), connection(r), ids)
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
@@ -69,9 +73,9 @@ func (h *Handlers) States(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Entities(res))
 }
 
-// Act handles POST /api/smarthome/entities/{id}/action.
+// Act handles POST /api/smarthome/entities/{id}/action[?connection=<id>].
 func (h *Handlers) Act(w http.ResponseWriter, r *http.Request) {
-	if err := h.uc.Act(r.Context(), r.PathValue("id")); err != nil {
+	if err := h.uc.Act(r.Context(), connection(r), r.PathValue("id")); err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}

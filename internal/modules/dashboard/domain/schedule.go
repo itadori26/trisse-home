@@ -179,3 +179,26 @@ func DefaultTabID(tabs []Tab, now time.Time, ip netip.Addr) string {
 	}
 	return ""
 }
+
+// Prefix lengths of the network a client is offered for a rule: a typical
+// home LAN for IPv4 and the standard subnet size for IPv6.
+const (
+	clientNetworkBitsV4 = 24
+	clientNetworkBitsV6 = 64
+)
+
+// ClientNetwork returns the private network around ip that a rule can use
+// to open a tab "in this network" (#673). Public, loopback and unknown
+// addresses yield false: their networks change too often to be useful.
+func ClientNetwork(ip netip.Addr) (netip.Prefix, bool) {
+	ip = ip.Unmap()
+	if !ip.IsValid() || !ip.IsPrivate() {
+		return netip.Prefix{}, false
+	}
+	bits := clientNetworkBitsV6
+	if ip.Is4() {
+		bits = clientNetworkBitsV4
+	}
+	p, err := ip.Prefix(bits)
+	return p, err == nil
+}

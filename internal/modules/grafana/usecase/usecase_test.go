@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,7 +56,7 @@ func (c *clock) Now() time.Time { return c.now }
 
 func TestSettingsKeepTheTokenAndTestTheConnection(t *testing.T) {
 	repo, client := &memRepo{}, &fakeClient{}
-	uc := New(repo, client, &clock{now: time.Now()})
+	uc := New(repo, client, nil, &clock{now: time.Now()})
 	if v, _ := uc.Settings(context.Background()); v.Configured {
 		t.Fatal("not configured yet")
 	}
@@ -80,28 +81,28 @@ func TestAlertsAreSortedAndCached(t *testing.T) {
 		{Name: "old", State: domain.Firing, Since: now.Add(-time.Hour)},
 		{Name: "new", State: domain.Firing, Since: now.Add(-2 * time.Minute)},
 	}}
-	uc := New(&memRepo{s: &domain.Settings{URL: "http://g", Token: "t"}}, client, c)
-	list, err := uc.Alerts(context.Background())
+	uc := New(&memRepo{s: &domain.Settings{URL: "http://g", Token: "t"}}, client, nil, c)
+	list, err := uc.Alerts(context.Background(), "")
 	if err != nil || list[0].Name != "new" || list[1].Name != "old" || list[2].Name != "pending" {
 		t.Fatalf("alerts = %+v, %v", list, err)
 	}
-	_, _ = uc.Alerts(context.Background())
+	_, _ = uc.Alerts(context.Background(), "")
 	c.now = now.Add(time.Minute)
-	_, _ = uc.Alerts(context.Background())
+	_, _ = uc.Alerts(context.Background(), "")
 	if client.alertCall != 2 {
 		t.Fatalf("Grafana asked %d times, want 2", client.alertCall)
 	}
 }
 
 func TestNotConfiguredAndBadUID(t *testing.T) {
-	uc := New(&memRepo{}, &fakeClient{}, &clock{now: time.Now()})
-	if _, err := uc.Alerts(context.Background()); !errors.Is(err, domain.ErrNotConfigured) {
+	uc := New(&memRepo{}, &fakeClient{}, nil, &clock{now: time.Now()})
+	if _, err := uc.Alerts(context.Background(), ""); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("err = %v", err)
 	}
-	if _, err := uc.Panels(context.Background(), "a/b"); !errors.Is(err, domain.ErrBadDashboard) {
+	if _, err := uc.Panels(context.Background(), "", "a/b"); !errors.Is(err, domain.ErrBadDashboard) {
 		t.Fatalf("err = %v", err)
 	}
-	if uc.URL(context.Background()) != "" {
+	if uc.URL(context.Background(), "") != "" {
 		t.Fatal("no URL without settings")
 	}
 }
@@ -116,17 +117,69 @@ func TestPanelDataKeepsItsOwnErrors(t *testing.T) {
 		"no values":     {domain.ErrNoData, domain.ErrNoData},
 		"other":         {errors.New("boom"), domain.ErrUnreachable},
 	} {
-		uc := New(repo, &fakeClient{dataErr: c.err}, &clock{now: time.Now()})
-		if _, err := uc.PanelData(context.Background(), req); !errors.Is(err, c.want) {
+		uc := New(repo, &fakeClient{dataErr: c.err}, nil, &clock{now: time.Now()})
+		if _, err := uc.PanelData(context.Background(), "", req); !errors.Is(err, c.want) {
 			t.Errorf("%s: got %v", name, err)
 		}
 	}
 	want := domain.PanelData{Title: "CPU", Series: []domain.Series{{Name: "cpu", Points: []domain.Point{{Value: 1}}}}}
-	uc := New(repo, &fakeClient{data: want}, &clock{now: time.Now()})
-	if got, err := uc.PanelData(context.Background(), req); err != nil || got.Title != "CPU" {
+	uc := New(repo, &fakeClient{data: want}, nil, &clock{now: time.Now()})
+	if got, err := uc.PanelData(context.Background(), "", req); err != nil || got.Title != "CPU" {
 		t.Fatalf("got %+v %v", got, err)
 	}
-	if _, err := New(&memRepo{}, &fakeClient{}, &clock{}).PanelData(context.Background(), req); !errors.Is(err, domain.ErrNotConfigured) {
+	if _, err := New(&memRepo{}, &fakeClient{}, nil, &clock{}).PanelData(context.Background(), "", req); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("not configured: %v", err)
+	}
+}
+
+// conns resolves "office" to another Grafana; everything else fails, like
+// a missing copy or a connection of another service.
+type conns struct{}
+
+func (conns) Settings(_ context.Context, id string) (domain.Settings, error) {
+	if id == "office" {
+		return domain.Settings{URL: "http://office", Token: "t"}, nil
+	}
+	return domain.Settings{}, errors.New("no usable connection")
+}
+
+// recordingClient remembers which Grafana was asked for alerts.
+type recordingClient struct {
+	fakeClient
+	urls []string
+}
+
+func (r *recordingClient) Alerts(ctx context.Context, s domain.Settings) ([]domain.Alert, error) {
+	r.urls = append(r.urls, s.URL)
+	return r.fakeClient.Alerts(ctx, s)
+}
+
+func TestAlertsThroughConnection(t *testing.T) {
+	ctx := context.Background()
+	repo := &memRepo{s: &domain.Settings{URL: "http://home", Token: "t"}}
+	client := &recordingClient{}
+	uc := New(repo, client, conns{}, &clock{now: time.Now()})
+	for _, id := range []string{"office", "", "missing"} {
+		if _, err := uc.Alerts(ctx, id); err != nil {
+			t.Fatalf("%q: %v", id, err)
+		}
+	}
+	// "missing" falls back to the module settings, cached on its own key.
+	if want := "http://office http://home http://home"; strings.Join(client.urls, " ") != want {
+		t.Fatalf("asked %v, want %s", client.urls, want)
+	}
+	_, _ = uc.Alerts(ctx, "office")
+	if len(client.urls) != 3 {
+		t.Fatal("each connection is cached")
+	}
+	if got := uc.URL(ctx, "office"); got != "http://office" {
+		t.Fatalf("links point to the connection: %q", got)
+	}
+	repo.s = nil
+	if _, err := uc.Dashboards(ctx, "office", ""); err != nil {
+		t.Fatalf("a connection works without module settings: %v", err)
+	}
+	if _, err := uc.Dashboards(ctx, "missing", ""); !errors.Is(err, domain.ErrNotConfigured) {
+		t.Fatalf("no connection and no settings: %v", err)
 	}
 }

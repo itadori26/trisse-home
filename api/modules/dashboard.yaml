@@ -231,6 +231,7 @@ schemas:
     properties:
       tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } }
       defaultTabId: { type: string, description: 'Tab whose rules match the server time and the client address; "" = keep the last used tab' }
+      clientNetwork: { type: string, description: 'Private network of the client (CIDR, /24 or /64) for an "in this network" rule; absent for public or unknown addresses' }
   MobileItem:
     type: object
     required: [id, hidden, rows]

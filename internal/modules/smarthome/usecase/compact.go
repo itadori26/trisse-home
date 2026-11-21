@@ -11,14 +11,14 @@ import (
 // Compact implements SmartHome (#614): the name and state of one entity.
 // A state is neither good nor bad, so the level stays none. The entity is
 // returned too: the module turns its action into the request a client sends.
-func (uc *smartHome) Compact(ctx context.Context, id string) (kernel.CompactState, EntityView, error) {
+func (uc *smartHome) Compact(ctx context.Context, connectionID, id string) (kernel.CompactState, EntityView, error) {
 	if id == "" {
 		return kernel.CompactState{}, EntityView{}, kernel.NewValidationError("entity", "Choose one entity for the compact view.")
 	}
 	if !domain.ValidEntityID(id) {
 		return kernel.CompactState{}, EntityView{}, domain.ErrEntityNotFound
 	}
-	states, err := uc.current(ctx)
+	states, err := uc.current(ctx, connectionID)
 	if err != nil {
 		return kernel.CompactState{}, EntityView{}, err
 	}

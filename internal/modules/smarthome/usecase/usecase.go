@@ -40,19 +40,29 @@ type EntityView struct {
 	Action domain.ActionKind
 }
 
-// SmartHome is the input port of the module (#49).
+// SmartHome is the input port of the module (#49). The methods that talk
+// to the hub take the named connection the widget chose (#610); an empty
+// connectionID, or a connection that is not usable, uses the module
+// settings.
 type SmartHome interface {
 	Settings(ctx context.Context) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
 	// Entities lists every entity for the widget's entity picker.
-	Entities(ctx context.Context) ([]EntityView, error)
+	Entities(ctx context.Context, connectionID string) ([]EntityView, error)
 	// States returns the given entities in the given order; unknown IDs are
 	// skipped.
-	States(ctx context.Context, ids []string) ([]EntityView, error)
+	States(ctx context.Context, connectionID string, ids []string) ([]EntityView, error)
 	// Act toggles or presses an allow-listed entity.
-	Act(ctx context.Context, id string) error
+	Act(ctx context.Context, connectionID, id string) error
 	// Compact is the compact state of one entity and the entity itself (#614).
-	Compact(ctx context.Context, id string) (kernel.CompactState, EntityView, error)
+	Compact(ctx context.Context, connectionID, id string) (kernel.CompactState, EntityView, error)
+}
+
+// Connections resolves a named connection of the integrations module to
+// settings (output port, #610). Any error means the module settings are
+// used instead.
+type Connections interface {
+	Settings(ctx context.Context, id string) (domain.Settings, error)
 }
 
 // SettingsRepository persists the settings (output port). Load returns
@@ -80,6 +90,8 @@ type TokenRenewer interface {
 type Deps struct {
 	Repo     SettingsRepository
 	Provider Provider
+	// Conns resolves named connections; may be nil.
+	Conns Connections
 	// Renewer and SignIns serve signing in with Home Assistant (#654);
 	// without them only pasted tokens work.
 	Renewer TokenRenewer
@@ -90,11 +102,16 @@ type Deps struct {
 	Audit kernel.AuditSink
 }
 
-type smartHome struct {
-	d       Deps
-	mu      sync.Mutex
+type cachedStates struct {
 	states  []domain.Entity
 	fetched time.Time
+}
+
+type smartHome struct {
+	d  Deps
+	mu sync.Mutex
+	// states holds one list per connection ID; "" is the module settings.
+	states map[string]cachedStates
 	// renewing serialises renewals, so two requests never spend one
 	// refresh token at the same time.
 	renewing sync.Mutex
@@ -105,7 +122,7 @@ func NewSmartHome(d Deps) SmartHome {
 	if d.Audit == nil {
 		d.Audit = kernel.DiscardAudit{}
 	}
-	return &smartHome{d: d}
+	return &smartHome{d: d, states: map[string]cachedStates{}}
 }
 
 // Settings implements SmartHome.
@@ -137,7 +154,8 @@ func (uc *smartHome) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
 	}
 	uc.mu.Lock()
-	uc.states, uc.fetched = states, uc.d.Clock.Now()
+	clear(uc.states)
+	uc.states[""] = cachedStates{states: states, fetched: uc.d.Clock.Now()}
 	uc.mu.Unlock()
 	return SettingsView{Configured: true, URL: s.URL, HasToken: true}, nil
 }
@@ -170,8 +188,16 @@ func (uc *smartHome) input(ctx context.Context, in SettingsInput) (domain.Settin
 	return domain.NewSettings(in.URL, in.Token)
 }
 
-// load returns the stored settings with a valid access token.
-func (uc *smartHome) load(ctx context.Context) (domain.Settings, error) {
+// load returns the settings of the named connection, or the module
+// settings with a valid access token while that connection does not exist
+// or is not usable. A connection holds a pasted long-lived token: the copy
+// skips signed-in settings, so only the module settings are ever renewed.
+func (uc *smartHome) load(ctx context.Context, connectionID string) (domain.Settings, error) {
+	if connectionID != "" && uc.d.Conns != nil {
+		if s, err := uc.d.Conns.Settings(ctx, connectionID); err == nil {
+			return s, nil
+		}
+	}
 	s, err := uc.d.Repo.Load(ctx)
 	if err != nil {
 		return domain.Settings{}, err
@@ -212,8 +238,8 @@ func (uc *smartHome) renew(ctx context.Context, s domain.Settings) (domain.Setti
 }
 
 // Entities implements SmartHome.
-func (uc *smartHome) Entities(ctx context.Context) ([]EntityView, error) {
-	states, err := uc.current(ctx)
+func (uc *smartHome) Entities(ctx context.Context, connectionID string) ([]EntityView, error) {
+	states, err := uc.current(ctx, connectionID)
 	if err != nil {
 		return nil, err
 	}
@@ -227,11 +253,11 @@ func (uc *smartHome) Entities(ctx context.Context) ([]EntityView, error) {
 }
 
 // States implements SmartHome.
-func (uc *smartHome) States(ctx context.Context, ids []string) ([]EntityView, error) {
+func (uc *smartHome) States(ctx context.Context, connectionID string, ids []string) ([]EntityView, error) {
 	if len(ids) > MaxEntitiesPerWidget {
 		return nil, kernel.NewValidationErrorf("ids", "At most {max} entities per widget.", "max", MaxEntitiesPerWidget)
 	}
-	states, err := uc.current(ctx)
+	states, err := uc.current(ctx, connectionID)
 	if err != nil {
 		return nil, err
 	}
@@ -249,18 +275,18 @@ func (uc *smartHome) States(ctx context.Context, ids []string) ([]EntityView, er
 }
 
 // Act implements SmartHome.
-func (uc *smartHome) Act(ctx context.Context, id string) error {
+func (uc *smartHome) Act(ctx context.Context, connectionID, id string) error {
 	if !domain.ValidEntityID(id) {
 		return domain.ErrEntityNotFound
 	}
 	if !uc.d.Policy.Allows(id) {
 		return domain.ErrActionNotAllowed
 	}
-	s, err := uc.load(ctx)
+	s, err := uc.load(ctx, connectionID)
 	if err != nil {
 		return err
 	}
-	states, err := uc.current(ctx)
+	states, err := uc.current(ctx, connectionID)
 	if err != nil {
 		return err
 	}
@@ -281,29 +307,30 @@ func (uc *smartHome) Act(ctx context.Context, id string) error {
 }
 
 // current returns cached states younger than statesTTL or fetches them.
-func (uc *smartHome) current(ctx context.Context) ([]domain.Entity, error) {
-	s, err := uc.load(ctx)
+func (uc *smartHome) current(ctx context.Context, connectionID string) ([]domain.Entity, error) {
+	s, err := uc.load(ctx, connectionID)
 	if err != nil {
 		return nil, err
 	}
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	now := uc.d.Clock.Now()
-	if uc.states != nil && now.Sub(uc.fetched) < statesTTL {
-		return uc.states, nil
+	if c, ok := uc.states[connectionID]; ok && now.Sub(c.fetched) < statesTTL {
+		return c.states, nil
 	}
 	states, err := uc.d.Provider.States(ctx, s)
 	if err != nil {
 		return nil, kernel.NewPublicError(kernel.ErrUnavailable, "Home Assistant is not reachable.")
 	}
-	uc.states, uc.fetched = states, now
+	uc.states[connectionID] = cachedStates{states: states, fetched: now}
 	return states, nil
 }
 
 func (uc *smartHome) invalidate() {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
-	uc.states = nil
+	// Two connections may point at the same hub, so every cached list goes.
+	clear(uc.states)
 }
 
 func (uc *smartHome) view(e domain.Entity) EntityView {

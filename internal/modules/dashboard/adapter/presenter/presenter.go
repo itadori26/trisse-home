@@ -11,6 +11,9 @@ type DashboardDTO struct {
 	Tabs []TabDTO `json:"tabs"`
 	// DefaultTabID is the tab whose rules match now ("" = keep the last used one, #71).
 	DefaultTabID string `json:"defaultTabId"`
+	// ClientNetwork is the client's private network (CIDR) for an "in this
+	// network" rule (#673); omitted when the client has none.
+	ClientNetwork string `json:"clientNetwork,omitempty"`
 }
 
 // RuleDTO opens a tab by default on weekdays (0 = Sunday), in a time range
@@ -75,7 +78,7 @@ type WidgetDTO struct {
 
 // Dashboard maps a DashboardResponse.
 func Dashboard(r usecase.DashboardResponse) DashboardDTO {
-	out := DashboardDTO{Tabs: make([]TabDTO, 0, len(r.Tabs)), DefaultTabID: r.DefaultTabID}
+	out := DashboardDTO{Tabs: make([]TabDTO, 0, len(r.Tabs)), DefaultTabID: r.DefaultTabID, ClientNetwork: r.ClientNetwork}
 	for _, t := range r.Tabs {
 		out.Tabs = append(out.Tabs, Tab(t))
 	}

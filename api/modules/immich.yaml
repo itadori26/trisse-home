@@ -21,7 +21,7 @@ paths:
       tags: [immich]
       summary: Library statistics, storage and today's memories (cached for 5 minutes, fetched on demand)
       parameters:
-        - { name: connection, in: query, required: false, schema: { type: string }, description: "Named connection the widget chose (integrations); without it, or when it is not usable, the module settings are used" }
+        - $ref: "#/components/parameters/connection"
       responses:
         "200":
           description: OK; storage and memories are empty when the key lacks server.storage or memory.read
@@ -44,7 +44,7 @@ paths:
       summary: Thumbnail of a photo of today's memories, proxied from Immich
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: connection, in: query, required: false, schema: { type: string }, description: "Named connection the widget chose (integrations); without it, or when it is not usable, the module settings are used" }
+        - $ref: "#/components/parameters/connection"
       responses:
         "200": { description: Image, content: { image/*: { schema: { type: string, format: binary } } } }
         "404": { description: Not part of today's memories, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }

@@ -28,11 +28,12 @@ type Module struct {
 	repo usecase.SettingsRepository
 }
 
-// New builds the Grafana module (#574); cipher encrypts the token.
-func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock) *Module {
+// New builds the Grafana module (#574); cipher encrypts the token, conns
+// resolves the named connection a widget chose (#610).
+func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, conns modules.ConnectionResolver, clock kernel.Clock) *Module {
 	api := gateway.NewAPI(client)
 	repo := gateway.NewSettingsRepository(db, cipher)
-	uc := usecase.New(repo, api, clock)
+	uc := usecase.New(repo, api, connections{conns}, clock)
 	return &Module{handlers: controller.NewHandlers(uc), uc: uc, repo: repo, specs: connectionSpecs(api)}
 }
 
@@ -81,7 +82,7 @@ func (m *Module) AnswerSources() []answers.Source {
 // ConnectionStatus implements modules.StatusReporter (#599): the alert list
 // the widget shows tells whether Grafana answers.
 func (m *Module) ConnectionStatus(ctx context.Context) modules.ConnectionStatus {
-	_, err := m.uc.Alerts(ctx)
+	_, err := m.uc.Alerts(ctx, "")
 	return modules.StatusOf(err, domain.ErrNotConfigured)
 }
 

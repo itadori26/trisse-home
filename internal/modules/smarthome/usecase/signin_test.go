@@ -88,12 +88,12 @@ func TestRenewal(t *testing.T) {
 	if _, err := uc.SaveSettings(ctx, SettingsInput{SignIn: "s1"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := uc.Entities(ctx); err != nil || r.calls != 0 {
+	if _, err := uc.Entities(ctx, ""); err != nil || r.calls != 0 {
 		t.Fatalf("a fresh token is used as it is: %v, %d renewals", err, r.calls)
 	}
 	c.now = c.now.Add(29*time.Minute + statesTTL)
 	repo.s.Token = "expired"
-	if _, err := uc.Entities(ctx); err != nil || r.calls != 1 {
+	if _, err := uc.Entities(ctx, ""); err != nil || r.calls != 1 {
 		t.Fatalf("renew before expiry: %v, %d renewals", err, r.calls)
 	}
 	if repo.s.Token != "token" || !repo.s.Expiry.After(c.now) {
@@ -101,7 +101,7 @@ func TestRenewal(t *testing.T) {
 	}
 	c.now = c.now.Add(time.Hour)
 	r.err = kernel.ErrTargetAuth
-	if _, err := uc.Entities(ctx); !errors.Is(err, kernel.ErrUnavailable) {
+	if _, err := uc.Entities(ctx, ""); !errors.Is(err, kernel.ErrUnavailable) {
 		t.Fatalf("refused renewal: %v", err)
 	}
 }

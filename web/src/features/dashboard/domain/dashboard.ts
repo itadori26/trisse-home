@@ -113,6 +113,8 @@ export function initialTabId(
 export interface Dashboard {
   tabs: Tab[];
   defaultTabId: string;
+  /** The client's private network (CIDR) for an "in this network" rule; server only (#673). */
+  clientNetwork?: string;
 }
 
 /** A saved tab layout new tabs can be created from. */

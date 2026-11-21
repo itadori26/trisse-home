@@ -8,6 +8,7 @@ paths:
       summary: "Compact state of one entity (#614): its name and state, with a toggle or press as action while actions are enabled for it"
       parameters:
         - { name: entity, in: query, required: true, schema: { type: string }, description: "Entity ID, e.g. switch.coffee" }
+        - $ref: "#/components/parameters/connection"
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CompactState" } } } }
         "404": { description: Not configured or unknown entity, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
@@ -32,6 +33,7 @@ paths:
     get:
       tags: [smarthome]
       summary: Every entity, sorted by name (for the widget's entity picker)
+      parameters: [{ $ref: "#/components/parameters/connection" }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SmartHomeEntity" } } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
@@ -39,7 +41,7 @@ paths:
     get:
       tags: [smarthome]
       summary: States of the given entities in the given order (cached for 10 seconds)
-      parameters: [{ name: ids, in: query, required: true, description: "Comma-separated entity IDs, at most 50", schema: { type: string } }]
+      parameters: [{ name: ids, in: query, required: true, description: "Comma-separated entity IDs, at most 50", schema: { type: string } }, { $ref: "#/components/parameters/connection" }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/SmartHomeEntity" } } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
@@ -49,7 +51,7 @@ paths:
       tags: [smarthome]
       summary: Toggle or press an allow-listed entity (SMARTHOME_ACTIONS_ENTITIES)
       security: [{ session: [], csrf: [] }]
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, example: switch.coffee_machine } }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, example: switch.coffee_machine } }, { $ref: "#/components/parameters/connection" }]
       responses:
         "204": { description: Done }
         "403": { description: Entity not on the allow-list, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }

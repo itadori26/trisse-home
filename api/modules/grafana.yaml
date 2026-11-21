@@ -20,6 +20,7 @@ paths:
     get:
       tags: [grafana]
       summary: Firing and pending alerts of Grafana Alerting, firing first (cached for 30 seconds)
+      parameters: [{ $ref: "#/components/parameters/connection" }]
       responses:
         "200":
           description: OK
@@ -47,7 +48,7 @@ paths:
     get:
       tags: [grafana]
       summary: Dashboards whose title matches q (at most 50)
-      parameters: [{ name: q, in: query, schema: { type: string } }]
+      parameters: [{ name: q, in: query, schema: { type: string } }, { $ref: "#/components/parameters/connection" }]
       responses:
         "200":
           description: OK
@@ -61,7 +62,7 @@ paths:
     get:
       tags: [grafana]
       summary: Panels of a dashboard, panels in rows included
-      parameters: [{ name: uid, in: path, required: true, schema: { type: string } }]
+      parameters: [{ name: uid, in: path, required: true, schema: { type: string } }, { $ref: "#/components/parameters/connection" }]
       responses:
         "200":
           description: OK
@@ -82,6 +83,7 @@ paths:
         - { name: height, in: query, schema: { type: integer, minimum: 100, maximum: 1200 } }
         - { name: range, in: query, description: 'Time range back from now, e.g. 30m, 6h, 7d', schema: { type: string } }
         - { name: theme, in: query, schema: { type: string, enum: [light, dark] } }
+        - $ref: "#/components/parameters/connection"
       responses:
         "200": { description: The image, content: { image/png: { schema: { type: string, format: binary } } } }
         "422": { $ref: "#/components/responses/Invalid" }
@@ -94,6 +96,7 @@ paths:
         - { name: uid, in: path, required: true, schema: { type: string } }
         - { name: panel, in: path, required: true, schema: { type: integer } }
         - { name: range, in: query, description: 'Time range back from now, e.g. 30m, 6h, 7d', schema: { type: string } }
+        - $ref: "#/components/parameters/connection"
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GrafanaPanelData" } } } }
         "404": { $ref: "#/components/responses/NotFound" }

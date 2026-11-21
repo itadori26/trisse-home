@@ -40,3 +40,15 @@ func savedConnections(ctx context.Context, repo usecase.SettingsRepository) ([]m
 	}
 	return []modules.SavedConnection{{Source: "grafana", Service: "grafana", URL: s.URL, Credential: map[string]string{"token": s.Token}}}, nil
 }
+
+// connections adapts the integrations resolver to usecase.Connections.
+type connections struct{ r modules.ConnectionResolver }
+
+// Settings implements usecase.Connections.
+func (c connections) Settings(ctx context.Context, id string) (domain.Settings, error) {
+	rc, err := c.r.ResolveConnection(ctx, "grafana", id)
+	if err != nil {
+		return domain.Settings{}, err
+	}
+	return domain.NewSettings(rc.URL, rc.Credential["token"])
+}

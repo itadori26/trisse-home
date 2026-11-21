@@ -39,6 +39,17 @@ func init() {
 		Check: func(e e2eEnv) {
 			t, c, up := e.t, e.c, e.up
 			c.do(http.MethodGet, "/api/grafana/alerts", nil, http.StatusNotFound)
+			// A widget that chose a named connection reads through it (#610);
+			// an unknown one falls back to the (still empty) module settings.
+			var conn obj
+			c.json(http.MethodPost, "/api/integrations/connections", obj{"service": "grafana", "name": "Upstream", "url": up.URL + "/grafana",
+				"credential": obj{"token": "glsa_e2e"}}, http.StatusCreated, &conn)
+			id := conn["id"].(string)
+			c.do(http.MethodPost, "/api/integrations/connections/"+id+"/check", nil, http.StatusNoContent)
+			c.do(http.MethodGet, "/api/grafana/dashboards/node/panels?connection="+id, nil, http.StatusOK)
+			c.do(http.MethodGet, "/api/grafana/alerts?connection="+id, nil, http.StatusOK)
+			c.do(http.MethodGet, "/api/grafana/alerts?connection=missing", nil, http.StatusNotFound)
+			c.do(http.MethodDelete, "/api/integrations/connections/"+id, nil, http.StatusNoContent)
 			c.do(http.MethodPut, "/api/grafana/settings", obj{"url": up.URL + "/grafana", "token": "wrong"}, http.StatusUnprocessableEntity)
 			var settings obj
 			c.json(http.MethodPut, "/api/grafana/settings", obj{"url": up.URL + "/grafana", "token": "glsa_e2e"}, http.StatusOK, &settings)

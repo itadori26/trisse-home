@@ -704,6 +704,17 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	// --- smart home (#49): read-only without SMARTHOME_ACTIONS_ENTITIES ---
 	c.do(http.MethodGet, "/api/smarthome/states?ids=switch.coffee", nil, http.StatusNotFound)
+	// A widget that chose a named connection reads through it (#610); an
+	// unknown one falls back to the (still empty) module settings.
+	var haConn obj
+	c.json(http.MethodPost, "/api/integrations/connections", obj{"service": "homeassistant", "name": "Upstream", "url": up.URL + "/ha",
+		"credential": obj{"token": "ha-token"}}, http.StatusCreated, &haConn)
+	haID := haConn["id"].(string)
+	c.do(http.MethodPost, "/api/integrations/connections/"+haID+"/check", nil, http.StatusNoContent)
+	c.do(http.MethodGet, "/api/smarthome/states?ids=switch.coffee&connection="+haID, nil, http.StatusOK)
+	c.do(http.MethodGet, "/api/smarthome/compact?entity=switch.coffee&connection="+haID, nil, http.StatusOK)
+	c.do(http.MethodGet, "/api/smarthome/states?ids=switch.coffee&connection=missing", nil, http.StatusNotFound)
+	c.do(http.MethodDelete, "/api/integrations/connections/"+haID, nil, http.StatusNoContent)
 	c.json(http.MethodPut, "/api/smarthome/settings", obj{"url": up.URL + "/ha", "token": "ha-token"}, http.StatusOK, nil)
 	if body := string(c.do(http.MethodGet, "/api/smarthome/settings", nil, http.StatusOK)); strings.Contains(body, "ha-token") {
 		t.Fatal("home assistant token leaked")

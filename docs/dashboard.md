@@ -157,6 +157,14 @@ match, the first tab in the tab bar wins. Rules use the server's time zone
 (`TZ`). Network rules see your real address only if Waylight trusts your
 reverse proxy (`TRUSTED_PROXIES`, see [configuration](configuration.md)).
 
+Right after you create a tab, a short question above the grid offers three
+quick choices: mornings (06:00–10:00), weekdays from 08:00 to 17:00, and "in
+this network". The last one only appears when your browser is in a private
+network; it uses the /24 (IPv4) or /64 (IPv6) around your address. Each
+choice becomes an ordinary rule you can change later under **Open by
+default**. If you answer **No, thanks** or reload the page, the question does
+not come back for that tab.
+
 ## The phone layout
 
 On narrow screens the widgets are stacked in one column. By default the

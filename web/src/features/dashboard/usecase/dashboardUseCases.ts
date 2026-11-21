@@ -35,8 +35,8 @@ export class DashboardUseCases {
 
   /** Loads the dashboard with the tab whose rules match now (#71). */
   async open(): Promise<Dashboard> {
-    const { tabs, defaultTabId } = await this.gateway.load();
-    return { tabs: [...tabs].sort((a, b) => a.position - b.position), defaultTabId };
+    const dashboard = await this.gateway.load();
+    return { ...dashboard, tabs: [...dashboard.tabs].sort((a, b) => a.position - b.position) };
   }
 
   /** Creates a tab after validating its name. */

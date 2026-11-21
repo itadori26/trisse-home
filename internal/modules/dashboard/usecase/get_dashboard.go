@@ -70,6 +70,9 @@ func (uc *getDashboard) ExecuteFor(ctx context.Context, client netip.Addr) (Dash
 			res.DefaultTabID = id
 		}
 	}
+	if n, ok := domain.ClientNetwork(client); ok {
+		res.ClientNetwork = n.String()
+	}
 	for _, t := range tabs {
 		res.Tabs = append(res.Tabs, toTabResponse(ctx, t, widgets))
 	}

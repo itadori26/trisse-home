@@ -164,6 +164,9 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	// Team calendar (#299): the calendar adds calendars others shared only
 	// while ee/ switches it on; without ee/ nothing ever does.
 	calendarSharing := calendar.NewSharing()
+	// Integrations read the named connection a widget chose; the
+	// integrations module is set into it once it is built, last (#610).
+	connections := &modules.LateResolver{}
 	optional := []struct {
 		name  string
 		build func() modules.Module
@@ -248,7 +251,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"smarthome", func() modules.Module {
 			return smarthome.New(smarthome.Config{DB: db, Cipher: secrets, Client: out.integration,
-				ActionEntities: cfg.SmartHomeActionsEntities, Clock: clk, Audit: authModule, SignIns: signIns})
+				ActionEntities: cfg.SmartHomeActionsEntities, Clock: clk, Audit: authModule, SignIns: signIns, Connections: connections})
 		}},
 		{"countdown", func() modules.Module { return countdown.New(db, clk, ids) }},
 		{"focus", func() modules.Module { return focus.New(db, clk, ids) }},
@@ -262,7 +265,6 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 	// switches them on; without ee/ nothing ever does.
 	tabSharing := dashboard.NewSharing()
 	// Modules from cmd/server/module_<name>.go (#193).
-	connections := &modules.LateResolver{}
 	registerSelfRegistered(moduleDeps{cfg: cfg, db: db, clock: clk, ids: ids, out: out, sink: sink, connections: connections,
 		alerts: alerts, auth: authModule, registry: registry, wikiSources: &wiki.MemberSources{},
 		notifications: notificationsModule, tabSharing: tabSharing, calendarSharing: calendarSharing})

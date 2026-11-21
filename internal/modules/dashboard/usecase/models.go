@@ -5,6 +5,9 @@ type DashboardResponse struct {
 	Tabs []TabResponse
 	// DefaultTabID is the tab whose rules match now ("" = last used, #71).
 	DefaultTabID string
+	// ClientNetwork is the private network of the client as CIDR, offered
+	// for an "in this network" rule (#673); "" when it has none.
+	ClientNetwork string
 }
 
 // RuleView is a default-tab rule at the use case boundary.

@@ -43,7 +43,7 @@ func (*Source) Entities(context.Context) ([]answers.Entity, error) { return nil,
 
 // Resolve implements answers.Source.
 func (s *Source) Resolve(ctx context.Context, r answers.Request) (answers.Answer, error) {
-	list, err := s.grafana.Alerts(ctx)
+	list, err := s.grafana.Alerts(ctx, "")
 	if err != nil {
 		return answers.Answer{}, fmt.Errorf("grafana alerts: %w", err)
 	}

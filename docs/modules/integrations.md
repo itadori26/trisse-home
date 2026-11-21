@@ -23,6 +23,8 @@ settings only.
 | Module | Read endpoints |
 | --- | --- |
 | Immich | `GET /api/immich/overview`, `GET /api/immich/thumbnails/{id}` |
+| Home Assistant | `GET /api/smarthome/entities`, `GET /api/smarthome/states`, `GET /api/smarthome/compact`, `POST /api/smarthome/entities/{id}/action` (acts on the same server) |
+| Grafana | `GET /api/grafana/alerts`, `GET /api/grafana/dashboards`, `GET /api/grafana/dashboards/{uid}/panels`, `GET /api/grafana/render/{uid}/{panel}`, `GET /api/grafana/data/{uid}/{panel}` |
 
 ## Copy of the module settings
 
@@ -58,7 +60,8 @@ credential fields they need. `GET /api/integrations/services` lists them:
 | --- | --- | --- |
 | `adguard` | AdGuard Home | `username`, **`password`** |
 | `fritzbox` | FRITZ!Box | *`username`*, ***`password`*** |
-| `grafana` | Grafana | **`token`** |
+| `grafana` | Home Assistant | `GET /api/smarthome/entities`, `GET /api/smarthome/states`, `GET /api/smarthome/compact`, `POST /api/smarthome/entities/{id}/action` (acts on the same server) |
+| Grafana | **`token`** |
 | `homeassistant` | Home Assistant | **`token`** |
 | `immich` | Immich | **`apiKey`** |
 | `jellyfin`, `plex` | Jellyfin, Plex | **`token`** |

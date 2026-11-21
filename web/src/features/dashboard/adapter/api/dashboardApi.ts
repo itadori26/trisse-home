@@ -83,7 +83,11 @@ export class DashboardApi implements DashboardGateway {
 
   async load(): Promise<Dashboard> {
     const dto = await this.http.get<DashboardDTO>('/api/dashboard');
-    return { tabs: dto.tabs.map(toTab), defaultTabId: dto.defaultTabId ?? '' };
+    return {
+      tabs: dto.tabs.map(toTab),
+      defaultTabId: dto.defaultTabId ?? '',
+      clientNetwork: dto.clientNetwork,
+    };
   }
 
   async createTab(name: string): Promise<Tab> {

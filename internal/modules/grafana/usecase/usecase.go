@@ -27,19 +27,28 @@ type SettingsInput struct {
 	URL, Token string
 }
 
-// Grafana is the input port of the module (#574).
+// Grafana is the input port of the module (#574). The read methods take
+// the named connection the widget chose (#610); an empty connectionID, or
+// a connection that is not usable, reads through the module settings.
 type Grafana interface {
 	Settings(ctx context.Context) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
 	// Alerts are the firing and pending alerts, firing first, then newest.
-	Alerts(ctx context.Context) ([]domain.Alert, error)
-	Dashboards(ctx context.Context, query string) ([]domain.Dashboard, error)
-	Panels(ctx context.Context, uid string) ([]domain.Panel, error)
-	Render(ctx context.Context, r domain.RenderRequest) (domain.Image, error)
+	Alerts(ctx context.Context, connectionID string) ([]domain.Alert, error)
+	Dashboards(ctx context.Context, connectionID, query string) ([]domain.Dashboard, error)
+	Panels(ctx context.Context, connectionID, uid string) ([]domain.Panel, error)
+	Render(ctx context.Context, connectionID string, r domain.RenderRequest) (domain.Image, error)
 	// PanelData are the panel's values without the image renderer (#579).
-	PanelData(ctx context.Context, r domain.DataRequest) (domain.PanelData, error)
+	PanelData(ctx context.Context, connectionID string, r domain.DataRequest) (domain.PanelData, error)
 	// URL is the address of Grafana, for links; empty while not configured.
-	URL(ctx context.Context) string
+	URL(ctx context.Context, connectionID string) string
+}
+
+// Connections resolves a named connection of the integrations module to
+// settings (output port, #610). Any error means the module settings are
+// used instead.
+type Connections interface {
+	Settings(ctx context.Context, id string) (domain.Settings, error)
 }
 
 // SettingsRepository persists the settings (output port). Load returns
@@ -58,18 +67,36 @@ type Client interface {
 	PanelData(ctx context.Context, s domain.Settings, r domain.DataRequest) (domain.PanelData, error)
 }
 
-type grafana struct {
-	repo    SettingsRepository
-	client  Client
-	clock   kernel.Clock
-	mu      sync.Mutex
+type cachedAlerts struct {
 	alerts  []domain.Alert
 	fetched time.Time
 }
 
-// New returns the use cases.
-func New(repo SettingsRepository, client Client, clock kernel.Clock) Grafana {
-	return &grafana{repo: repo, client: client, clock: clock}
+type grafana struct {
+	repo   SettingsRepository
+	client Client
+	conns  Connections
+	clock  kernel.Clock
+	mu     sync.Mutex
+	// alerts holds one list per connection ID; "" is the module settings.
+	alerts map[string]cachedAlerts
+}
+
+// New returns the use cases; conns may be nil, then only the module
+// settings are used.
+func New(repo SettingsRepository, client Client, conns Connections, clock kernel.Clock) Grafana {
+	return &grafana{repo: repo, client: client, conns: conns, clock: clock, alerts: map[string]cachedAlerts{}}
+}
+
+// load returns the settings of the named connection, falling back to the
+// module settings while the connection does not exist or is not usable.
+func (uc *grafana) load(ctx context.Context, connectionID string) (domain.Settings, error) {
+	if connectionID != "" && uc.conns != nil {
+		if s, err := uc.conns.Settings(ctx, connectionID); err == nil {
+			return s, nil
+		}
+	}
+	return uc.repo.Load(ctx)
 }
 
 // Settings implements Grafana.
@@ -104,22 +131,22 @@ func (uc *grafana) SaveSettings(ctx context.Context, in SettingsInput) (Settings
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
 	}
 	uc.mu.Lock()
-	uc.alerts, uc.fetched = nil, time.Time{}
+	clear(uc.alerts)
 	uc.mu.Unlock()
 	return SettingsView{Configured: true, URL: s.URL, HasToken: true}, nil
 }
 
 // Alerts implements Grafana.
-func (uc *grafana) Alerts(ctx context.Context) ([]domain.Alert, error) {
-	s, err := uc.repo.Load(ctx)
+func (uc *grafana) Alerts(ctx context.Context, connectionID string) ([]domain.Alert, error) {
+	s, err := uc.load(ctx, connectionID)
 	if err != nil {
 		return nil, err
 	}
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	now := uc.clock.Now()
-	if uc.alerts != nil && now.Sub(uc.fetched) < alertsTTL {
-		return uc.alerts, nil
+	if c, ok := uc.alerts[connectionID]; ok && now.Sub(c.fetched) < alertsTTL {
+		return c.alerts, nil
 	}
 	list, err := uc.client.Alerts(ctx, s)
 	if err != nil {
@@ -137,13 +164,13 @@ func (uc *grafana) Alerts(ctx context.Context) ([]domain.Alert, error) {
 	if list == nil {
 		list = []domain.Alert{}
 	}
-	uc.alerts, uc.fetched = list, now
+	uc.alerts[connectionID] = cachedAlerts{alerts: list, fetched: now}
 	return list, nil
 }
 
 // Dashboards implements Grafana.
-func (uc *grafana) Dashboards(ctx context.Context, query string) ([]domain.Dashboard, error) {
-	s, err := uc.repo.Load(ctx)
+func (uc *grafana) Dashboards(ctx context.Context, connectionID, query string) ([]domain.Dashboard, error) {
+	s, err := uc.load(ctx, connectionID)
 	if err != nil {
 		return nil, err
 	}
@@ -155,11 +182,11 @@ func (uc *grafana) Dashboards(ctx context.Context, query string) ([]domain.Dashb
 }
 
 // Panels implements Grafana.
-func (uc *grafana) Panels(ctx context.Context, uid string) ([]domain.Panel, error) {
+func (uc *grafana) Panels(ctx context.Context, connectionID, uid string) ([]domain.Panel, error) {
 	if !domain.ValidUID(uid) {
 		return nil, domain.ErrBadDashboard
 	}
-	s, err := uc.repo.Load(ctx)
+	s, err := uc.load(ctx, connectionID)
 	if err != nil {
 		return nil, err
 	}
@@ -167,8 +194,8 @@ func (uc *grafana) Panels(ctx context.Context, uid string) ([]domain.Panel, erro
 }
 
 // Render implements Grafana.
-func (uc *grafana) Render(ctx context.Context, r domain.RenderRequest) (domain.Image, error) {
-	s, err := uc.repo.Load(ctx)
+func (uc *grafana) Render(ctx context.Context, connectionID string, r domain.RenderRequest) (domain.Image, error) {
+	s, err := uc.load(ctx, connectionID)
 	if err != nil {
 		return domain.Image{}, err
 	}
@@ -178,8 +205,8 @@ func (uc *grafana) Render(ctx context.Context, r domain.RenderRequest) (domain.I
 // PanelData implements Grafana. A missing dashboard or panel and a panel
 // without readable values keep their own error; anything else means Grafana
 // did not answer properly.
-func (uc *grafana) PanelData(ctx context.Context, r domain.DataRequest) (domain.PanelData, error) {
-	s, err := uc.repo.Load(ctx)
+func (uc *grafana) PanelData(ctx context.Context, connectionID string, r domain.DataRequest) (domain.PanelData, error) {
+	s, err := uc.load(ctx, connectionID)
 	if err != nil {
 		return domain.PanelData{}, err
 	}
@@ -194,8 +221,8 @@ func (uc *grafana) PanelData(ctx context.Context, r domain.DataRequest) (domain.
 }
 
 // URL implements Grafana.
-func (uc *grafana) URL(ctx context.Context) string {
-	s, err := uc.repo.Load(ctx)
+func (uc *grafana) URL(ctx context.Context, connectionID string) string {
+	s, err := uc.load(ctx, connectionID)
 	if err != nil {
 		return ""
 	}
