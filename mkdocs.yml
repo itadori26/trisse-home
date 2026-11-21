@@ -84,6 +84,7 @@ nav:
           - Electricity prices: modules/electricity.md
           - Fuel prices: modules/fuel.md
           - Game deals: modules/gamedeals.md
+          - Gift ideas: modules/gifts.md
           - Grafana: modules/grafana.md
           - Habits: modules/habits.md
           - Holidays: modules/holidays.md

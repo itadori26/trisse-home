@@ -1,0 +1,65 @@
+# OpenAPI fragment of the gift idea module (#684). `make openapi` merges it
+# with api/openapi.base.yaml and checks it.
+tags:
+  - name: gifts
+
+paths:
+  /api/gifts:
+    get:
+      tags: [gifts]
+      summary: List the signed-in account's gift ideas; ideas are never shared
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/GiftIdea" } } } } }
+    post:
+      tags: [gifts]
+      summary: Write down a gift idea
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/GiftIdeaInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/GiftIdea" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/gifts/{id}:
+    put:
+      tags: [gifts]
+      summary: Change a gift idea
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/GiftIdeaInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GiftIdea" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [gifts]
+      summary: Remove a gift idea
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      responses:
+        "204": { description: Deleted }
+  /api/gifts/compact:
+    get:
+      tags: [gifts]
+      summary: Compact state, the number of ideas still to buy
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CompactState" } } } }
+
+schemas:
+  GiftIdeaInput:
+    type: object
+    required: [person, title]
+    properties:
+      person: { type: string, maxLength: 60 }
+      title: { type: string, maxLength: 120 }
+      link: { type: string, description: "http or https URL" }
+      note: { type: string, maxLength: 500 }
+      bought: { type: boolean }
+  GiftIdea:
+    type: object
+    properties:
+      id: { type: string }
+      person: { type: string }
+      title: { type: string }
+      link: { type: string }
+      note: { type: string }
+      bought: { type: boolean }
+      createdAt: { type: string, format: date-time }
