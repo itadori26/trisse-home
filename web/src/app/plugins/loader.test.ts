@@ -5,7 +5,7 @@ import type { SearchAction } from '../searchActions';
 import type { SettingsSection } from '../settingsKit';
 import type { WidgetDefinition } from '../widgetKit';
 import { PLUGIN_API_VERSION, type WaylightPlugin } from './api';
-import { loadPlugins, supportedVersion } from './loader';
+import { loadPlugins, supportedVersion, type OnboardingStep } from './loader';
 import { serverMessage, setLanguage } from '../../shared/i18n';
 
 const auth = { owner: true, admin: true, member: false, guest: false } as AuthUseCases;
@@ -140,6 +140,45 @@ describe('loadPlugins', () => {
     it('still loads a plugin built before search actions existed', async () => {
       expect(await load(auth, plugin)).toEqual([]);
     });
+  });
+});
+
+describe('first-start steps of plugins (#671)', () => {
+  const withSteps: WaylightPlugin = {
+    ...plugin,
+    onboardingSteps: [
+      {
+        id: 'name',
+        feature: 'branding',
+        ownerOnly: true,
+        title: { en: 'Name', de: 'Name' },
+        view: mountable,
+      },
+      { id: 'free', title: { en: 'Free' }, view: mountable },
+      { id: 'unlicensed', feature: 'presence', title: { en: 'Locked' }, view: mountable },
+    ],
+  };
+  const routes = {
+    '/api/plugins': { plugins: ['/ee/plugin.js'] },
+    '/api/licence/features': { features: { branding: 'full', presence: 'read' } },
+  };
+  const load = async (account: AuthUseCases, p: WaylightPlugin = withSteps) => {
+    const targets = { widgets: [], sections: [], onboardingSteps: [] as OnboardingStep[] };
+    await loadPlugins(http(routes), account, targets, () => Promise.resolve({ plugin: p }));
+    return targets.onboardingSteps.map((s) => s.id);
+  };
+
+  it('offers the owner the steps of fully licensed features', async () => {
+    expect(await load(auth)).toEqual(['plugin-ee-name', 'plugin-ee-free']);
+  });
+
+  it('keeps owner-only steps from members and every step from guests', async () => {
+    expect(await load({ ...auth, owner: false } as AuthUseCases)).toEqual(['plugin-ee-free']);
+    expect(await load({ ...auth, guest: true } as AuthUseCases)).toEqual([]);
+  });
+
+  it('still loads a plugin built before the steps existed', async () => {
+    expect(await load(auth, plugin)).toEqual([]);
   });
 });
 

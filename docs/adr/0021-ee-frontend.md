@@ -47,9 +47,16 @@ the ones that are switched off.
   keywords and lists the action under *Actions*. Guests get none, and an
   action whose feature is not fully licensed is left out, since it could
   only fail.
+- First-start steps (`onboardingSteps`, #671) add questions to the
+  first-start flow after the core's own: a title and a view that registers
+  what *Next* saves. The core draws the progress and the buttons. Guests get
+  none, owner-only steps reach only the owner, and a step whose feature is
+  not fully licensed is left out, so it never stores a setting that is not
+  shown.
 - The contract grows by optional fields only. `apiVersion` goes up when
   fields are added (version 2: compact views of plugin widgets and German
-  texts of the plugin's backend messages, #632); the loader accepts every
+  texts of the plugin's backend messages, #632; version 3: first-start
+  steps, #671); the loader accepts every
   version from 1 up to its own, so a plugin built against an older contract
   keeps loading, and an older core ignores fields it does not know.
 - A plugin widget can name the source of its compact view (`compact`), and a

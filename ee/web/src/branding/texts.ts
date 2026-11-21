@@ -8,6 +8,12 @@ export const texts: Catalogue = {
     de: 'Name, Logo und Farben eurer Organisation auf der Anmeldeseite, in der Kopfzeile und im Browser-Tab.',
   },
   name: { en: 'Name', de: 'Name' },
+  step_title: { en: 'Name of this Waylight', de: 'Name dieses Waylight' },
+  step_name_label: { en: 'Name', de: 'Name' },
+  step_name_hint: {
+    en: 'Shown on the sign-in page, in the header and in the browser tab. You can change it later under Settings → Branding.',
+    de: 'Erscheint auf der Anmeldeseite, in der Kopfzeile und im Browser-Tab. Ändern lässt er sich später unter Einstellungen → Branding.',
+  },
   accent: { en: 'Accent colour', de: 'Akzentfarbe' },
   secondary: { en: 'Second colour', de: 'Zweite Farbe' },
   none: { en: 'Default', de: 'Standard' },

@@ -27,12 +27,23 @@
      * template or "start empty" replaces them, closing the dialog keeps them.
      */
     sample?: boolean;
+    /** A place chosen just before (#671); the location step is not asked then. */
+    location?: TemplateLocation;
     oncreated: (tab: Tab) => void;
     /** The example tabs were removed for an empty start (#670). */
     onemptied?: () => void;
     onclose: () => void;
   }
-  let { uc, widgetName, searchPlaces, sample = false, oncreated, onemptied, onclose }: Props = $props();
+  let {
+    uc,
+    widgetName,
+    searchPlaces,
+    sample = false,
+    location,
+    oncreated,
+    onemptied,
+    onclose,
+  }: Props = $props();
 
   let list = $state<BuiltinTemplate[]>([]);
   let chosen = $state('');
@@ -105,8 +116,8 @@
   }
 
   function next() {
-    if (current?.needs.includes('location')) step = 'location';
-    else void create();
+    if (current?.needs.includes('location') && !location) step = 'location';
+    else void create(current?.needs.includes('location') ? location : undefined);
   }
 
   async function find(e: SubmitEvent) {
