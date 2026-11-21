@@ -206,7 +206,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"docker", func() modules.Module { return dockerModule }},
 		{"adguard", func() modules.Module {
-			return adguard.New(adguard.Config{DB: db, Cipher: secrets, Client: out.integration, Pausable: cfg.DNSPauseProviders, Audit: authModule, Clock: clk})
+			return adguard.New(adguard.Config{DB: db, Cipher: secrets, Client: out.integration, Pausable: cfg.DNSPauseProviders, Audit: authModule, Clock: clk, Connections: connections})
 		}},
 		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, out.integration, connections, clk, signIns) }},
 		{"parcels", func() modules.Module {

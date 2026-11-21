@@ -71,7 +71,7 @@ func TestAdGuard(t *testing.T) {
 	if s, _ := uc.Settings(ctx, ""); s.Configured || s.Provider != "adguard" {
 		t.Fatalf("expected unconfigured adguard: %+v", s)
 	}
-	if _, err := uc.Stats(ctx, ""); !errors.Is(err, domain.ErrNotConfigured) {
+	if _, err := uc.Stats(ctx, "", ""); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("expected not configured, got %v", err)
 	}
 	if _, err := uc.SaveSettings(ctx, SettingsInput{URL: "http://ag:3000", Username: "admin", Password: "wrong"}); err == nil {
@@ -95,13 +95,13 @@ func TestAdGuard(t *testing.T) {
 			t.Fatalf("%+v: %v", in, err)
 		}
 	}
-	stats, _ := uc.Stats(ctx, "adguard")
+	stats, _ := uc.Stats(ctx, "adguard", "")
 	if stats.BlockedPercent != 20 || stats.AvgProcessingMs != 1.5 || !stats.HasAvgProcessing {
 		t.Fatalf("stats %+v", stats)
 	}
 	src.err = errors.New("timeout")
 	_ = uc.Refresh(ctx)
-	if stats, _ := uc.Stats(ctx, ""); stats.Error == "" || stats.Queries != 100 {
+	if stats, _ := uc.Stats(ctx, "", ""); stats.Error == "" || stats.Queries != 100 {
 		t.Fatalf("last known stats not kept: %+v", stats)
 	}
 }
@@ -112,10 +112,10 @@ func TestPiHoleBesideAdGuard(t *testing.T) {
 	if _, err := uc.SaveSettings(ctx, SettingsInput{Provider: "pihole", URL: "http://pi.hole", Password: "secret"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := uc.Stats(ctx, "adguard"); !errors.Is(err, domain.ErrNotConfigured) {
+	if _, err := uc.Stats(ctx, "adguard", ""); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("AdGuard stays unconfigured: %v", err)
 	}
-	stats, err := uc.Stats(ctx, "pihole")
+	stats, err := uc.Stats(ctx, "pihole", "")
 	if err != nil || stats.BlockedPercent != 25 || stats.HasAvgProcessing || !stats.ProtectionEnabled {
 		t.Fatalf("pi-hole stats: %+v %v", stats, err)
 	}
@@ -127,14 +127,14 @@ func TestPiHoleBesideAdGuard(t *testing.T) {
 	if err := uc.Refresh(ctx); err != nil {
 		t.Fatalf("only configured providers are refreshed: %v", err)
 	}
-	if stats, _ := uc.Stats(ctx, "pihole"); stats.Queries != 800 {
+	if stats, _ := uc.Stats(ctx, "pihole", ""); stats.Queries != 800 {
 		t.Fatalf("refresh: %+v", stats)
 	}
 	pi.err = errors.New("down")
 	if err := uc.Refresh(ctx); err == nil {
 		t.Fatal("refresh errors are reported for the log")
 	}
-	if _, err := uc.Stats(ctx, "bind"); !errors.Is(err, kernel.ErrInvalid) {
+	if _, err := uc.Stats(ctx, "bind", ""); !errors.Is(err, kernel.ErrInvalid) {
 		t.Fatalf("unknown provider: %v", err)
 	}
 }
@@ -156,13 +156,13 @@ func TestPause(t *testing.T) {
 	if s, _ := uc.Settings(ctx, "adguard"); s.CanPause {
 		t.Fatal("adguard is not pausable")
 	}
-	if _, err := uc.Pause(ctx, "adguard", 5); !errors.Is(err, kernel.ErrForbidden) || ag.paused != 0 {
+	if _, err := uc.Pause(ctx, "adguard", "", 5); !errors.Is(err, kernel.ErrForbidden) || ag.paused != 0 {
 		t.Fatalf("pausing must be opt-in per provider: %v", err)
 	}
-	if _, err := uc.Pause(ctx, "pihole", 7); !errors.Is(err, kernel.ErrInvalid) {
+	if _, err := uc.Pause(ctx, "pihole", "", 7); !errors.Is(err, kernel.ErrInvalid) {
 		t.Fatal(err)
 	}
-	v, err := uc.Pause(ctx, "pihole", 30)
+	v, err := uc.Pause(ctx, "pihole", "", 30)
 	if err != nil || pi.paused != 30*time.Minute || v.ProtectionEnabled || v.PausedUntil == nil || !v.PausedUntil.Equal(time.Unix(0, 0).Add(30*time.Minute)) {
 		t.Fatalf("%+v %v", v, err)
 	}
@@ -172,7 +172,7 @@ func TestPause(t *testing.T) {
 	// Paused, but the read-back fails: the widget still shows the pause.
 	uc2 := NewDNSFilter(Deps{Repo: repo, Providers: map[domain.Provider]DNSFilterProvider{domain.ProviderPiHole: &pauseOnly{&fakeSource{}}},
 		Pausable: []domain.Provider{domain.ProviderPiHole}, Clock: clk{}})
-	if v, err := uc2.Pause(ctx, "pihole", 5); err != nil || v.PausedUntil == nil || v.ProtectionEnabled {
+	if v, err := uc2.Pause(ctx, "pihole", "", 5); err != nil || v.PausedUntil == nil || v.ProtectionEnabled {
 		t.Fatalf("%+v %v", v, err)
 	}
 }
@@ -182,4 +182,51 @@ type pauseOnly struct{ *fakeSource }
 
 func (p *pauseOnly) Stats(context.Context, domain.Settings) (domain.Stats, error) {
 	return domain.Stats{}, errors.New("timeout")
+}
+
+// conns resolves "office" to a Pi-hole connection and "home" to an AdGuard
+// Home one; everything else fails, like a missing copy.
+type conns struct{}
+
+func (conns) Settings(_ context.Context, p domain.Provider, id string) (domain.Settings, error) {
+	switch {
+	case id == "office" && p == domain.ProviderPiHole:
+		return domain.NewSettings(p, "http://office", "", "secret")
+	case id == "home" && p == domain.ProviderAdGuard:
+		return domain.NewSettings(p, "http://home", "admin", "secret")
+	}
+	return domain.Settings{}, errors.New("no usable connection")
+}
+
+// countingSource counts the statistics reads.
+type countingSource struct {
+	fakeSource
+	reads int
+}
+
+func (c *countingSource) Stats(ctx context.Context, s domain.Settings) (domain.Stats, error) {
+	c.reads++
+	return c.fakeSource.Stats(ctx, s)
+}
+
+func TestStatsAndPauseThroughConnection(t *testing.T) {
+	ctx := context.Background()
+	pi := &countingSource{fakeSource: fakeSource{stats: domain.Stats{Queries: 400, Blocked: 100, ProtectionEnabled: true}}}
+	uc := NewDNSFilter(Deps{Repo: &memRepo{s: map[domain.Provider]domain.Settings{}}, Providers: map[domain.Provider]DNSFilterProvider{
+		domain.ProviderAdGuard: &fakeSource{}, domain.ProviderPiHole: pi}, Pausable: []domain.Provider{domain.ProviderPiHole}, Conns: conns{}, Clock: clk{}})
+	if v, err := uc.Stats(ctx, "pihole", "office"); err != nil || v.Queries != 400 {
+		t.Fatalf("office: %+v %v", v, err)
+	}
+	_, _ = uc.Stats(ctx, "pihole", "office")
+	if pi.reads != 1 {
+		t.Fatal("a connection's statistics are cached")
+	}
+	// A connection of the other provider is not usable for this one.
+	if _, err := uc.Stats(ctx, "pihole", "home"); !errors.Is(err, domain.ErrNotConfigured) {
+		t.Fatalf("an AdGuard Home connection for Pi-hole falls back: %v", err)
+	}
+	v, err := uc.Pause(ctx, "pihole", "office", 5)
+	if err != nil || pi.paused != 5*time.Minute || v.PausedUntil == nil || pi.reads != 2 {
+		t.Fatalf("pause through the connection: %+v %v (%d reads)", v, err, pi.reads)
+	}
 }

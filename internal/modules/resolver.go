@@ -6,9 +6,10 @@ import (
 	"sync"
 )
 
-// ResolvedConnection is the address and credential of a named connection
-// of the integrations module (#610).
+// ResolvedConnection is the name, address and credential of a named
+// connection of the integrations module (#610).
 type ResolvedConnection struct {
+	Name       string
 	URL        string
 	Credential map[string]string
 }

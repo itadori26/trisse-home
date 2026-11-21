@@ -41,6 +41,9 @@ type Config struct {
 	Pausable []string
 	Audit    kernel.AuditSink
 	Clock    kernel.Clock
+	// Connections resolves the named connection a widget chose (#610); may
+	// be nil.
+	Connections modules.ConnectionResolver
 }
 
 // New builds the module.
@@ -57,7 +60,7 @@ func New(c Config) *Module {
 	}
 	repo := gateway.NewSettingsRepository(c.DB, c.Cipher)
 	uc := usecase.NewDNSFilter(usecase.Deps{Repo: repo, Providers: providers,
-		Pausable: pausable, Audit: c.Audit, Clock: c.Clock})
+		Pausable: pausable, Conns: connectionsOf(c.Connections), Audit: c.Audit, Clock: c.Clock})
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc), repo: repo, specs: connectionSpecs(providers)}
 }
 
@@ -88,9 +91,10 @@ func (m *Module) Jobs() []modules.Job {
 
 // CompactStateFor implements modules.CompactParamProvider (#641): the share
 // of blocked queries of the widget's provider, chosen with ?provider=
-// (adguard or pihole; empty means AdGuard Home).
+// (adguard or pihole; empty means AdGuard Home), read through the
+// connection in ?connection= (#610).
 func (m *Module) CompactStateFor(ctx context.Context, params url.Values) (kernel.CompactState, error) {
-	v, err := m.uc.Stats(ctx, params.Get("provider"))
+	v, err := m.uc.Stats(ctx, params.Get("provider"), params.Get("connection"))
 	if err != nil {
 		return kernel.CompactState{}, err
 	}
@@ -98,7 +102,7 @@ func (m *Module) CompactStateFor(ctx context.Context, params url.Values) (kernel
 }
 
 // CompactParams implements modules.CompactParamProvider.
-func (m *Module) CompactParams() []string { return []string{"provider"} }
+func (m *Module) CompactParams() []string { return []string{"provider", "connection"} }
 
 // Discovery implements modules.Discoverable (#627) for AdGuard Home, whose
 // login page is public; Pi-hole is entered by hand.

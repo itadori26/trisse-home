@@ -685,6 +685,13 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	// --- adguard ---
 	c.do(http.MethodGet, "/api/adguard/stats", nil, http.StatusNotFound)
+	// A widget that chose a named connection reads through it (#610); a
+	// connection of the other provider falls back to the module settings.
+	agID := connectionE2E(c, "adguard", up.URL, obj{"username": "admin", "password": "pw"})
+	c.do(http.MethodGet, "/api/adguard/stats?connection="+agID, nil, http.StatusOK)
+	c.do(http.MethodGet, "/api/adguard/compact?connection="+agID, nil, http.StatusOK)
+	c.do(http.MethodGet, "/api/adguard/stats?provider=pihole&connection="+agID, nil, http.StatusNotFound)
+	c.do(http.MethodDelete, "/api/integrations/connections/"+agID, nil, http.StatusNoContent)
 	c.json(http.MethodPut, "/api/adguard/settings", obj{"url": up.URL, "username": "admin", "password": "pw"}, http.StatusOK, nil)
 	if body := string(c.do(http.MethodGet, "/api/adguard/settings", nil, http.StatusOK)); strings.Contains(body, `"pw"`) {
 		t.Fatal("password leaked")

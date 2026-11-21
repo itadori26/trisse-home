@@ -26,7 +26,7 @@ func (f *fakeArr) AddInstance(_ context.Context, in usecase.InstanceInput) (usec
 	return usecase.InstanceView{ID: "2", App: in.App, Name: in.Name, URL: in.URL}, nil
 }
 
-func (f *fakeArr) Overview(context.Context) (domain.Overview, error) {
+func (f *fakeArr) Overview(context.Context, []string) (domain.Overview, error) {
 	return domain.Overview{Queue: []domain.QueueItem{{Title: "x", Progress: 33.3, TimeLeft: 90 * time.Second}}}, nil
 }
 

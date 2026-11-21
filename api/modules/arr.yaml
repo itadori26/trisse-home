@@ -38,6 +38,8 @@ paths:
     get:
       tags: [arr]
       summary: Upcoming releases (14 days), queue, health and missing counts of all instances (cached for a minute)
+      parameters:
+        - { name: connection, in: query, required: false, style: form, explode: true, schema: { type: array, maxItems: 10, items: { type: string } }, description: "Named Sonarr, Radarr or Prowlarr connections the widget chose (integrations), repeated; unusable ones are skipped, and without a usable one every instance of the module is merged" }
       responses:
         "200":
           description: OK; unreachable instances are listed in errors
