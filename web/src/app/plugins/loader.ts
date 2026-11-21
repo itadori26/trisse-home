@@ -15,6 +15,7 @@ import {
   type FeatureLevel,
   type Mountable,
   type PluginContext,
+  type PluginOnboardingStep,
   type PluginSearchAction,
   type PluginSection,
   type PluginWidget,
@@ -29,6 +30,16 @@ export interface PluginTargets {
   sections: SettingsSection[];
   /** Commands for the search field (#453); left out where nobody searches. */
   searchActions?: SearchAction[];
+  /** Steps of the first-start flow (#671); left out where there is none. */
+  onboardingSteps?: OnboardingStep[];
+}
+
+/** A plugin step of the first-start flow, ready for the core to host. */
+export interface OnboardingStep {
+  id: string;
+  title: () => string;
+  mountable: Mountable;
+  context: PluginContext;
 }
 
 /** How the loader reaches a plugin module; tests replace it. */
@@ -137,6 +148,16 @@ const mayRun = (a: PluginSearchAction, context: PluginContext) =>
   !context.account.guest && (!a.feature || context.level(a.feature) === 'full');
 
 /**
+ * Whether the account gets a plugin's first-start step: never guests, only
+ * the owner for owner-only steps, and only with the feature fully licensed,
+ * so a step never saves something that is stored but not shown.
+ */
+const mayOnboard = (s: PluginOnboardingStep, context: PluginContext) =>
+  !context.account.guest &&
+  (!s.ownerOnly || context.account.owner) &&
+  (!s.feature || context.level(s.feature) === 'full');
+
+/**
  * Loads the plugins the server offers (GET /api/plugins) and registers their
  * widgets and settings sections. Without ee/ the list is empty and nothing
  * is downloaded. A plugin that fails to load is skipped; the app works on.
@@ -183,6 +204,15 @@ export async function loadPlugins(
       for (const a of plugin.searchActions ?? []) {
         if (targets.searchActions && mayRun(a, context))
           targets.searchActions.push(toSearchAction(plugin.name, a, context));
+      }
+      for (const s of plugin.onboardingSteps ?? []) {
+        if (targets.onboardingSteps && mayOnboard(s, context))
+          targets.onboardingSteps.push({
+            id: `plugin-${plugin.name}-${s.id}`,
+            title: () => pick(s.title, locale()),
+            mountable: s.view,
+            context,
+          });
       }
       for (const [language, texts] of Object.entries(plugin.serverMessages ?? {})) {
         registerServerMessages(language, texts);

@@ -17,7 +17,10 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "no-referrer")
-		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		// Geolocation stays available to the page itself: "Use my location"
+		// in the first-start flow, the templates and the places asks for it
+		// on click (#671). Other origins never get it.
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)")
 		h.Set("Cross-Origin-Opener-Policy", "same-origin")
 		next.ServeHTTP(w, r)
 	})

@@ -64,3 +64,13 @@ func TestRecover(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 }
+
+// TestSecurityHeadersAllowOwnGeolocation: the page may ask for the location
+// on click ("Use my location", #671); camera and microphone stay off.
+func TestSecurityHeadersAllowOwnGeolocation(t *testing.T) {
+	rec := httptest.NewRecorder()
+	SecurityHeaders(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if got := rec.Header().Get("Permissions-Policy"); got != "camera=(), microphone=(), geolocation=(self)" {
+		t.Fatalf("Permissions-Policy: %q", got)
+	}
+}

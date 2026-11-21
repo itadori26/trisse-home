@@ -405,6 +405,26 @@ export const de: Record<BaseMessageKey, string> = {
   'docker.save': 'Speichern',
   'onboarding.skip_tour': 'Tour überspringen',
   'onboarding.back': 'Zurück',
+  // First-start flow (#671).
+  'first_start.progress': 'Schritt {n} von {total}',
+  'first_start.skip': 'Überspringen',
+  'first_start.next': 'Weiter',
+  'first_start.name.title': 'Wie soll Waylight dich nennen?',
+  'first_start.name.label': 'Dein Name',
+  'first_start.name.hint':
+    'Er erscheint in der Begrüßung auf der Startseite. Ändern lässt er sich später unter Einstellungen → Darstellung.',
+  'first_start.place.title': 'Wo bist du?',
+  'first_start.place.intro':
+    'Wetter, Regenradar, Spritpreise und Abfahrten nutzen diesen Ort. Er wird als Ort „Zuhause“ unter Einstellungen → Orte gespeichert.',
+  'first_start.place.results': 'Gefundene Orte',
+  'first_start.place.chosen': 'Gewählt: {place}',
+  'first_start.place.here': 'Mein Standort',
+  'first_start.place.name': 'Zuhause',
+  'first_start.language.title': 'Sprache und Zeitzone',
+  'first_start.language.time_zone':
+    'Uhrzeiten folgen der Zeitzone dieses Geräts ({zone}). Um sie zu ändern, stelle die Zeitzone des Geräts um.',
+  'first_start.look.title': 'Wie soll Waylight aussehen?',
+  'first_start.look.hint': 'Die Seite zeigt deine Wahl sofort.',
   'system.load': 'Last {value}',
   'system.up': 'Läuft seit {value}',
   'system.loading': 'Wird geladen …',

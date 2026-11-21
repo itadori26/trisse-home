@@ -7,9 +7,10 @@
 
 /**
  * Version of this contract. Version 2 added compact views of plugin widgets
- * and translations of the plugin's backend messages (#632).
+ * and translations of the plugin's backend messages (#632); version 3 added
+ * steps of the first-start flow (#671).
  */
-export const PLUGIN_API_VERSION = 2;
+export const PLUGIN_API_VERSION = 3;
 
 /**
  * Oldest version the loader still accepts: later versions only add optional
@@ -136,6 +137,24 @@ export interface PluginSearchAction {
 }
 
 /**
+ * A step of the first-start flow (#671), shown after the core's own steps
+ * and before the template choice. The core draws the heading, the progress
+ * and the Back, Skip and Next buttons; the view receives
+ * { setSubmit(save: () => Promise<void>) } and registers what Next saves.
+ * A rejected save keeps the step open and shows the error.
+ */
+export interface PluginOnboardingStep {
+  /** Unique within the plugin. */
+  id: string;
+  /** Licence feature it needs at level "full"; the step is left out otherwise. */
+  feature?: string;
+  /** Only the owner sees it; invited members get the personal steps only. */
+  ownerOnly?: boolean;
+  title: Texts;
+  view: Mountable;
+}
+
+/**
  * What a plugin module exports as `plugin`. Fields added after version 1
  * shipped are optional, so plugins built against the first version still
  * load and an older core ignores what it does not know.
@@ -147,6 +166,8 @@ export interface WaylightPlugin {
   settings: PluginSection[];
   /** Commands for the search field (#453); optional. */
   searchActions?: PluginSearchAction[];
+  /** Steps of the first-start flow (#671); optional. Since version 3. */
+  onboardingSteps?: PluginOnboardingStep[];
   /**
    * Translations of the plugin's backend messages (errors and compact
    * states) by language and message key, e.g. { de: { srv_…: '…' } }.

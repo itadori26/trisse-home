@@ -395,6 +395,26 @@ export const en = {
   'docker.save': 'Save',
   'onboarding.skip_tour': 'Skip tour',
   'onboarding.back': 'Back',
+  // First-start flow (#671).
+  'first_start.progress': 'Step {n} of {total}',
+  'first_start.skip': 'Skip',
+  'first_start.next': 'Next',
+  'first_start.name.title': 'What should Waylight call you?',
+  'first_start.name.label': 'Your name',
+  'first_start.name.hint':
+    'It appears in the greeting on the start page. You can change it later under Settings → Appearance.',
+  'first_start.place.title': 'Where are you?',
+  'first_start.place.intro':
+    'Weather, rain radar, fuel prices and departures use this place. It is saved as the place “Home” under Settings → Places.',
+  'first_start.place.results': 'Places found',
+  'first_start.place.chosen': 'Chosen: {place}',
+  'first_start.place.here': 'My location',
+  'first_start.place.name': 'Home',
+  'first_start.language.title': 'Language and time zone',
+  'first_start.language.time_zone':
+    'Times follow the time zone of this device ({zone}). To change it, change the time zone of the device.',
+  'first_start.look.title': 'How should Waylight look?',
+  'first_start.look.hint': 'The page shows your choice right away.',
   'system.load': 'Load {value}',
   'system.up': 'Up {value}',
   'system.loading': 'Loading…',

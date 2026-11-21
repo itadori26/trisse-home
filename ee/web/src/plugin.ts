@@ -124,6 +124,18 @@ export const plugin: WaylightPlugin = {
     },
   ],
   searchActions: [...presenceSearchActions()],
+  // The instance name in the first-start flow (#671); only with branding licensed.
+  onboardingSteps: [
+    {
+      id: 'instance-name',
+      feature: 'branding',
+      ownerOnly: true,
+      title: brandingTexts.step_title ?? { en: 'Name of this Waylight' },
+      view: lazyMountable<{ setSubmit: (save: () => Promise<void>) => void }>(
+        () => import('./branding/InstanceNameStep.svelte'),
+      ),
+    },
+  ],
   // German texts of the ee/ backend messages; the server sends English.
   serverMessages: { de: serverDe },
 };

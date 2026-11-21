@@ -17,7 +17,9 @@
   import { provideRefresh } from '../shared/refresh';
   import DashboardPage from './DashboardPage.svelte';
   import { branding } from './branding/branding.svelte';
-  import { loadPlugins } from './plugins/loader';
+  import { loadPlugins, type OnboardingStep } from './plugins/loader';
+  import PluginHost from './plugins/PluginHost.svelte';
+  import type { Personal, Place } from '../features/onboarding/domain/firstStart';
   import { definitionFor, widgetDefinitions } from './widgets';
   import { searchActions } from './searchActions';
   import { registeredSections } from './settingsSections';
@@ -386,12 +388,16 @@
 
   let offline = $state(!navigator.onLine);
 
-  $effect(() => applyTheme(appearance.theme));
-  $effect(() => setLanguage(appearance.language));
+  // The first-start flow previews language and look before they are saved (#671).
+  let lookPreview = $state<Partial<Personal> | null>(null);
+  const shownLook = $derived(lookPreview ? { ...appearance, ...lookPreview } : appearance);
+
+  $effect(() => applyTheme(shownLook.theme));
+  $effect(() => setLanguage(shownLook.language));
 
   $effect(() => {
     const root = document.documentElement;
-    const vars = cssVariables(appearance);
+    const vars = cssVariables(shownLook);
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     return () => Object.keys(vars).forEach((k) => root.style.removeProperty(k));
   });
@@ -409,6 +415,8 @@
   // the modules are read, so their widgets and settings are known when the
   // dashboard renders. Local mode has no server to offer any.
   let pluginsLoaded: Promise<unknown> | undefined;
+  /** First-start steps of the plugins, e.g. the instance name (#671). */
+  const onboardingSteps: OnboardingStep[] = [];
 
   async function init() {
     try {
@@ -417,6 +425,7 @@
           widgets: widgetDefinitions,
           sections: registeredSections,
           searchActions,
+          onboardingSteps,
         });
         await pluginsLoaded;
       }
@@ -434,17 +443,36 @@
         info.modules.has('onboarding') &&
         (await container.onboarding.shouldShowTour())
       ) {
-        // A fresh dashboard first offers the templates (#589); the tour
-        // follows once one is chosen or skipped.
-        const fresh = container.localMode ? 'no' : await freshDashboard();
-        if (fresh !== 'no') {
-          sampleDashboard = fresh === 'sample';
-          choosingTemplate = true;
-        } else setTimeout(startTour, 600);
+        // The essential settings come first (#671), then the templates
+        // and the tour. The public demo shares one account and keeps its
+        // showcase, so it goes straight to the tour.
+        if (container.localMode || container.auth.demo) setTimeout(startTour, 600);
+        else firstStart = true;
       }
     } catch (err) {
       error = errorMessage(err);
     }
+  }
+
+  let firstStart = $state(false);
+  /** The place saved in the first-start flow; the templates use it for the weather. */
+  let firstPlace = $state<Place | undefined>();
+
+  /** Saves personal settings from the first-start flow (#671). */
+  async function savePersonal(patch: Partial<Personal>) {
+    appearance = await container.appearance.save({ ...appearance, ...patch });
+  }
+
+  /** After the first-start flow: a fresh dashboard offers the templates (#589), then the tour. */
+  async function firstStartDone(result: { place?: Place }) {
+    firstStart = false;
+    lookPreview = null;
+    firstPlace = result.place;
+    const fresh = await freshDashboard();
+    if (fresh !== 'no') {
+      sampleDashboard = fresh === 'sample';
+      choosingTemplate = true;
+    } else setTimeout(startTour, 600);
   }
 
   let choosingTemplate = $state(false);
@@ -734,6 +762,40 @@
   {/await}
 {/if}
 
+{#if firstStart}
+  {#await import('../features/onboarding/ui/FirstStart.svelte') then { default: FirstStart }}
+    <FirstStart
+      owner={container.auth.owner}
+      personal={modules?.has('appearance') ? appearance : undefined}
+      {savePersonal}
+      preview={(patch) => (lookPreview = patch)}
+      places={modules?.has('places')
+        ? {
+            search: modules.has('weather')
+              ? async (q) =>
+                  (await container.weather.searchPlaces(q)).map((p) => ({
+                    name: '',
+                    label: [p.name, p.region, p.country].filter(Boolean).join(', '),
+                    lat: p.lat,
+                    lon: p.lon,
+                  }))
+              : undefined,
+            save: (p) => container.places.add(p),
+          }
+        : undefined}
+      extraSteps={onboardingSteps.map((s) => ({ id: s.id, title: s.title() }))}
+      ondone={firstStartDone}
+    >
+      {#snippet extra(id: string, setSubmit: (save: () => Promise<void>) => void)}
+        {@const step = onboardingSteps.find((s) => s.id === id)}
+        {#if step}
+          <PluginHost mountable={step.mountable} context={step.context} props={{ setSubmit }} />
+        {/if}
+      {/snippet}
+    </FirstStart>
+  {/await}
+{/if}
+
 {#if choosingTemplate}
   {#await import('../features/dashboard/ui/TemplatePicker.svelte') then { default: TemplatePicker }}
     <TemplatePicker
@@ -748,6 +810,9 @@
             }))
         : undefined}
       sample={sampleDashboard}
+      location={firstPlace
+        ? { lat: firstPlace.lat, lon: firstPlace.lon, label: firstPlace.label, placeId: firstPlace.id }
+        : undefined}
       oncreated={(tab) => (sampleDashboard ? dashboard?.reload(tab.id) : dashboard?.addTab(tab))}
       onemptied={() => dashboard?.reload()}
       onclose={templateChosen}
