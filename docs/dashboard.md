@@ -106,29 +106,39 @@ In edit mode you can:
 
 ## Templates
 
-On the first sign-in, while the dashboard is still empty, Waylight asks
-**What do you use Waylight for?** and offers four templates, each with a
-small preview of its layout and the widgets it contains:
+On the first sign-in, while the dashboard is still empty or holds only the
+example tabs of the sample data, Waylight asks **What do you use Waylight
+for?** and offers four templates, each with a small preview of its layout and
+the widgets it contains. The guided tour starts once the question is
+answered.
 
-| Template | Widgets |
-| --- | --- |
-| Family | Calendar, weather, shopping list, waste collection, birthdays |
-| Homelab | Services, containers, backups, drive health, bookmarks |
-| Work | Today's events, to-dos, focus timer, mail, notes |
-| Wall tablet | Large clock, weather, calendar, departures |
+| Template | Today | My things | System (admins) |
+| --- | --- | --- | --- |
+| Family | Weather, to-dos, calendar strip, waste collection | Shopping list, birthdays, notes | Services strip |
+| Homelab | Clock, to-dos | Bookmarks | Services strip, containers, backups, drive health, host metrics |
+| Work | Calendar strip, to-dos, focus timer | Mail, notes, bookmarks | Services strip |
+| Wall tablet | Large clock, weather, calendar | Departures | Services strip |
 
-A template creates a tab with its widgets placed, including the phone
-layout. Templates with a weather widget ask for a location first (search or
-*Use my location*; *Set it up later* skips it). Widgets that need a service
-or a setting show *Set up* or what is missing. *Start with an empty
-dashboard* closes the question. Kiosk mode and night dimming for a wall
-tablet are set on the kiosk display itself.
+A template creates a tab laid out in [zones](#zones) with its widgets
+placed, including the phone layout. Widgets with a compact view start small
+or as a strip; status widgets in the System zone feed the attention line.
+Templates with a weather widget ask for a location first (search or *Use my
+location*; *Set it up later* skips it). Widgets that need a service or a
+setting show *Set up* or what is missing. Kiosk mode and night dimming for a
+wall tablet are set on the kiosk display itself.
+
+With sample data, a template replaces the example tabs; the example to-dos,
+notes, bookmarks and services stay. *Keep the example dashboard* keeps the
+example tabs as ordinary tabs, and so does closing the dialog. *Start with
+an empty dashboard* removes them (with sample data) or just closes the
+question.
 
 The same templates appear when you create a tab (**+ Tab**), above your own
 saved templates. They are YAML files in the format of the `dashboard`
 section of [waylight.yaml](config-as-code.md), one tab each, under
 `internal/modules/dashboard/adapter/configfile/templates/`; the tests check
-that each one parses and only uses widgets the server knows.
+that each one parses, places its widgets without overlap, puts every widget
+in a zone and gives sized widgets the cells of their size.
 
 ## Opening a tab by default
 
@@ -146,6 +156,14 @@ A tab can have several rules; any one of them is enough. When several tabs
 match, the first tab in the tab bar wins. Rules use the server's time zone
 (`TZ`). Network rules see your real address only if Waylight trusts your
 reverse proxy (`TRUSTED_PROXIES`, see [configuration](configuration.md)).
+
+Right after you create a tab, a short question above the grid offers three
+quick choices: mornings (06:00–10:00), weekdays from 08:00 to 17:00, and "in
+this network". The last one only appears when your browser is in a private
+network; it uses the /24 (IPv4) or /64 (IPv6) around your address. Each
+choice becomes an ordinary rule you can change later under **Open by
+default**. If you answer **No, thanks** or reload the page, the question does
+not come back for that tab.
 
 ## The phone layout
 

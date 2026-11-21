@@ -74,6 +74,7 @@ const toTab = (dto: TabDTO): Tab => ({
   mine: dto.mine ?? true,
   mobileCustom: dto.mobileCustom ?? false,
   zoned: dto.zoned ?? false,
+  ...(dto.sample ? { sample: true } : {}),
 });
 
 /** DashboardGateway backed by the REST API. */
@@ -82,7 +83,11 @@ export class DashboardApi implements DashboardGateway {
 
   async load(): Promise<Dashboard> {
     const dto = await this.http.get<DashboardDTO>('/api/dashboard');
-    return { tabs: dto.tabs.map(toTab), defaultTabId: dto.defaultTabId ?? '' };
+    return {
+      tabs: dto.tabs.map(toTab),
+      defaultTabId: dto.defaultTabId ?? '',
+      clientNetwork: dto.clientNetwork,
+    };
   }
 
   async createTab(name: string): Promise<Tab> {
@@ -203,6 +208,14 @@ export class DashboardApi implements DashboardGateway {
     return toTab(
       await this.http.post<TabDTO>(`/api/dashboard/templates/builtin/${encodeURIComponent(id)}/tabs`, body),
     );
+  }
+
+  discardSample(): Promise<void> {
+    return this.http.delete('/api/dashboard/sample');
+  }
+
+  async keepSample(): Promise<void> {
+    await this.http.post('/api/dashboard/sample/keep', {});
   }
 
   async createTabFromTemplate(templateId: string, name: string): Promise<Tab> {

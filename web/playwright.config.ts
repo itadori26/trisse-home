@@ -11,6 +11,22 @@ export const setupToken = 'e2e-setup-token-0123456789';
 
 const dataDir = mkdtempSync(join(tmpdir(), 'waylight-e2e-'));
 
+/**
+ * Port of a second, untouched server for the first start (#670): the shared
+ * account of the chain has made its template choice already.
+ */
+const firstStartPort = port + 1;
+
+/** Environment both servers share. */
+const serverEnv = {
+  SECRET_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
+  SETUP_TOKEN: setupToken,
+  ALLOWED_CIDRS: '127.0.0.0/8',
+  LOG_LEVEL: 'warn',
+  // calendar stays on: unconfigured it makes no outbound requests, and #163 tests its split view.
+  MODULES_DISABLED: 'docker,adguard,rss,weather,markets,sports,electricity',
+};
+
 const chrome = { ...devices['Desktop Chrome'] };
 
 export default defineConfig({
@@ -34,20 +50,30 @@ export default defineConfig({
     { name: 'twofactor', testMatch: 'twofactor.spec.ts', dependencies: ['features'], use: chrome },
     // The browser extension in local mode (#291) starts its own Chromium and needs no account.
     { name: 'extension', testMatch: 'extension.spec.ts' },
-  ],
-  webServer: {
-    command: '../bin/waylight',
-    url: `http://127.0.0.1:${port}/healthz`,
-    reuseExistingServer: false,
-    env: {
-      LISTEN_ADDR: `127.0.0.1:${port}`,
-      DATABASE_PATH: join(dataDir, 'e2e.db'),
-      SECRET_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
-      SETUP_TOKEN: setupToken,
-      ALLOWED_CIDRS: '127.0.0.0/8',
-      LOG_LEVEL: 'warn',
-      // calendar stays on: unconfigured it makes no outbound requests, and #163 tests its split view.
-      MODULES_DISABLED: 'docker,adguard,rss,weather,markets,sports,electricity',
+    // The first start with sample data (#670) on its own fresh server.
+    {
+      name: 'first-start',
+      testMatch: 'first-start.spec.ts',
+      use: { ...chrome, baseURL: `http://127.0.0.1:${firstStartPort}` },
     },
-  },
+  ],
+  webServer: [
+    {
+      command: '../bin/waylight',
+      url: `http://127.0.0.1:${port}/healthz`,
+      reuseExistingServer: false,
+      env: { ...serverEnv, LISTEN_ADDR: `127.0.0.1:${port}`, DATABASE_PATH: join(dataDir, 'e2e.db') },
+    },
+    {
+      command: '../bin/waylight',
+      url: `http://127.0.0.1:${firstStartPort}/healthz`,
+      reuseExistingServer: false,
+      env: {
+        ...serverEnv,
+        LISTEN_ADDR: `127.0.0.1:${firstStartPort}`,
+        DATABASE_PATH: join(dataDir, 'first-start.db'),
+        SAMPLE_DATA: 'true',
+      },
+    },
+  ],
 });

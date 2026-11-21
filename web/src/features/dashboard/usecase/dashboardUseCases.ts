@@ -35,8 +35,8 @@ export class DashboardUseCases {
 
   /** Loads the dashboard with the tab whose rules match now (#71). */
   async open(): Promise<Dashboard> {
-    const { tabs, defaultTabId } = await this.gateway.load();
-    return { tabs: [...tabs].sort((a, b) => a.position - b.position), defaultTabId };
+    const dashboard = await this.gateway.load();
+    return { ...dashboard, tabs: [...dashboard.tabs].sort((a, b) => a.position - b.position) };
   }
 
   /** Creates a tab after validating its name. */
@@ -190,6 +190,19 @@ export class DashboardUseCases {
   createTabFromBuiltin(id: string, name: string, location?: TemplateLocation): Promise<Tab> {
     if (!this.gateway.createTabFromBuiltin) return Promise.reject(new Error('templates need a server'));
     return this.gateway.createTabFromBuiltin(id, name.trim(), location);
+  }
+
+  /**
+   * Removes the example tabs the setup created (#670), when a template
+   * replaces them or the user starts empty.
+   */
+  async discardSample(): Promise<void> {
+    await this.gateway.discardSample?.();
+  }
+
+  /** Keeps the example tabs of the setup as ordinary tabs (#670). */
+  async keepSample(): Promise<void> {
+    await this.gateway.keepSample?.();
   }
 
   /** Creates a new tab from a template; the template name is used if name is empty. */

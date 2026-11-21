@@ -1,22 +1,35 @@
 # Wall tablet: large and readable from across the room. Kiosk mode and night
-# dimming are set on the kiosk display itself (#589).
+# dimming are set on the kiosk display itself (#589). The tab is zoned
+# (#619) with large tiles; the System zone shows only to admins.
 id: wall
 title: Wall tablet
 needs: [location]
 tab:
   name: Wall
+  zones: true
   widgets:
     - kind: clock
       at: { x: 0, y: 0, w: 6, h: 4 }
+      zone: today
       phone: { order: 1, rows: 3 }
       config: { showDate: true, showSeconds: false }
     - kind: weather
       at: { x: 6, y: 0, w: 6, h: 4 }
+      zone: today
       phone: { order: 2, rows: 4 }
     - kind: calendar
-      at: { x: 0, y: 4, w: 6, h: 5 }
+      at: { x: 0, y: 4, w: 6, h: 6 }
+      size: large
+      zone: today
       phone: { order: 3, rows: 5 }
       config: { view: agenda, days: 3 }
     - kind: transit
-      at: { x: 6, y: 4, w: 6, h: 5 }
+      at: { x: 6, y: 4, w: 6, h: 6 }
+      size: large
+      zone: mine
       phone: { order: 4, rows: 4 }
+    - kind: services
+      at: { x: 0, y: 10, w: 6, h: 1 }
+      size: strip
+      zone: system
+      phone: { order: 5, rows: 1, size: strip }

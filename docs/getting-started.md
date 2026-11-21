@@ -55,21 +55,34 @@ sudo docker compose logs waylight | grep setup_token
 Open `http://<server-ip>:8090`, enter the token and choose a password of at
 least 12 characters. The token stops working as soon as the account exists.
 
-You land on a dashboard that is already filled with sample data: a *Home*
-tab with search, clock, weather, to-dos, a welcome note, bookmarks, news and
-a calendar, and a *Server* tab with service tiles, host metrics, Docker and
-AdGuard Home. It is there to show what each widget does. Change or delete
-anything you like. If you would rather start from an almost empty page, set
-`SAMPLE_DATA=false` before the first start; the first login then offers the
-dashboard templates (Family, Homelab, Work, Wall tablet, see
-[Templates](dashboard.md#templates)).
+Right after the login Waylight asks what you use it for and offers four
+dashboard templates: Family, Homelab, Work and Wall tablet (see
+[Templates](dashboard.md#templates)). Each one creates a tab laid out in
+zones: *Today* on top, *My things* below and *System* at the bottom, which
+only admins see. Widgets that have a compact view start small or as a
+one-line strip, and the services strip feeds the attention line above the
+zones, so a stopped service shows up there first. Templates with a weather
+widget ask for your location; you can also set it later.
+
+The first start also creates example data: to-dos, a welcome note,
+bookmarks, a news feed and a few service tiles, so the widgets of a template
+are not empty. Behind the templates sits an example dashboard with a *Home*
+and a *Server* tab that shows every widget. Picking a template replaces it.
+**Keep the example dashboard** keeps it instead, and **Start with an empty
+dashboard** removes it and leaves a single tab with a clock. Closing the
+dialog keeps the example dashboard as well. The example data of the modules
+stays in every case; delete it whenever you like.
+
+If you set `SAMPLE_DATA=false` before the first start, there is no example
+data or example dashboard, and the same template choice starts from a single
+tab with a clock.
 
 Widgets and settings for a home server or network (Docker, Proxmox,
 Pi-hole, …) are shown on a new installation. If you do not need them, set
 **Settings → Appearance → The start page shows** to *Everyday*. Switching
 only shows or hides widgets and settings and never deletes anything.
 
-A short guided tour opens after the first login. You can restart it later
+A short guided tour follows the template choice. You can restart it later
 under Settings → About.
 
 ## Secure the account

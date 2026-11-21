@@ -20,6 +20,9 @@ type Tab struct {
 	mobile     []MobileEntry
 	// zoned lays the tab out in zones instead of the free grid (#619).
 	zoned bool
+	// sample marks an example tab created at setup (#670) that the template
+	// choice on first start may replace.
+	sample bool
 	// access is the owner and visibility (ADR 0018). A tab an admin shares
 	// with a group is a team tab (#295): the group sees it read-only.
 	access kernel.Access
@@ -51,6 +54,15 @@ func (t Tab) Zoned() bool { return t.zoned }
 // their grid places, so switching back restores the free grid unchanged.
 func (t Tab) WithZones(on bool) Tab {
 	t.zoned = on
+	return t
+}
+
+// Sample reports whether the tab is an example tab from the setup (#670).
+func (t Tab) Sample() bool { return t.sample }
+
+// WithSample returns the tab marked as an example tab or not.
+func (t Tab) WithSample(on bool) Tab {
+	t.sample = on
 	return t
 }
 

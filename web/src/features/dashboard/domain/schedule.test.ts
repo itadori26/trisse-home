@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Tab, TabRule } from './dashboard';
-import { defaultTabId, ruleMatches } from './schedule';
+import { defaultTabId, presetRule, rulePresets, ruleMatches } from './schedule';
 
 const rule = (r: Partial<TabRule>): TabRule => ({ days: [], from: '', to: '', networks: [], ...r });
 // 2026-11-16 is a Monday.
@@ -49,5 +49,20 @@ describe('defaultTabId', () => {
     const tabs = [tab('a', []), tab('b', [rule({ days: [1] })]), tab('c', [rule({})])];
     expect(defaultTabId(tabs, at('12:00'))).toBe('b');
     expect(defaultTabId([tab('a', [])], at('12:00'))).toBe('');
+  });
+});
+
+describe('rule presets (#673)', () => {
+  it('offers the network preset only with a client network', () => {
+    expect(rulePresets()).toEqual(['mornings', 'workdays']);
+    expect(rulePresets('192.168.178.0/24')).toEqual(['mornings', 'workdays', 'network']);
+  });
+  it('turns presets into plain rules', () => {
+    const workdays = presetRule('workdays');
+    expect(ruleMatches(workdays, at('09:00'))).toBe(true);
+    expect(ruleMatches(workdays, at('09:00', 15))).toBe(false); // Sunday
+    expect(ruleMatches(presetRule('mornings'), at('07:30', 15))).toBe(true);
+    expect(ruleMatches(presetRule('mornings'), at('10:00'))).toBe(false);
+    expect(presetRule('network', '10.0.0.0/24').networks).toEqual(['10.0.0.0/24']);
   });
 });

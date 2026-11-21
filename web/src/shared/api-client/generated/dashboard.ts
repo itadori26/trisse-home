@@ -12,6 +12,11 @@ export interface DashboardDTO {
    * DefaultTabID is the tab whose rules match now ("" = keep the last used one, #71).
    */
   defaultTabId: string;
+  /**
+   * ClientNetwork is the client's private network (CIDR) for an "in this
+   * network" rule (#673); omitted when the client has none.
+   */
+  clientNetwork?: string;
 }
 /**
  * RuleDTO opens a tab by default on weekdays (0 = Sunday), in a time range
@@ -51,6 +56,11 @@ export interface TabDTO {
    * Zoned lays the tab out in zones instead of the free grid (#619).
    */
   zoned: boolean;
+  /**
+   * Sample marks an example tab from the setup that the template choice
+   * on first start replaces (#670); omitted for ordinary tabs.
+   */
+  sample?: boolean;
 }
 /**
  * MobileItemDTO places a widget in the phone layout.

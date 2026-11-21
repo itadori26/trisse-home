@@ -29,6 +29,7 @@
   import { tick } from 'svelte';
   import { highlightWidget, onWidgetFocusRequest, pickWidget } from '../../../shared/ui/widgetFocus';
   import { announce } from '../../../shared/a11y/live.svelte';
+  import TabRuleOffer from './TabRuleOffer.svelte';
   import TabRulesDialog from './TabRulesDialog.svelte';
   import TextPrompt from './TextPrompt.svelte';
   import WidgetFrame from './WidgetFrame.svelte';
@@ -190,6 +191,11 @@
   let activeId = $state('');
   let error = $state('');
   let loaded = $state(false);
+  // The client's private network for an "in this network" rule (#673).
+  let clientNetwork = $state('');
+  // The tab just created, which is offered rule presets once (#673). Kept in
+  // memory only: after a reload the offer is gone for good.
+  let offerTabId = $state('');
   let dialog = $state<
     | { kind: 'add-widget'; query?: string }
     | { kind: 'new-tab' }
@@ -320,6 +326,15 @@
     select(tab.id);
   }
 
+  /**
+   * Loads the tabs again, e.g. after the template choice on first start
+   * replaced the example tabs (#670), and selects the given tab.
+   */
+  export async function reload(selectId?: string) {
+    await load();
+    if (selectId) selectTab(selectId);
+  }
+
   /** Selects the n-th tab (0-based), e.g. from the 1–9 shortcuts (#95). */
   export function selectTabAt(index: number) {
     const tab = tabs[index];
@@ -363,6 +378,7 @@
     await run(async () => {
       const dashboard = await uc.open();
       tabs = dashboard.tabs;
+      clientNetwork = dashboard.clientNetwork ?? '';
       activeId = initialTabId(
         tabs.map((t) => t.id),
         {
@@ -639,6 +655,22 @@
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   {#if editing && !editingTab}<p class="edit-hint">{t('dashboard.team_tab_read_only')}</p>
   {:else if editing}<p class="edit-hint">{t('dashboard.edit_mode_hint')}</p>{/if}
+  {#if active && active.id === offerTabId}
+    {@const tab = active}
+    <TabRuleOffer
+      {tab}
+      {clientNetwork}
+      onsubmit={async (rules) => {
+        const updated = await uc.setRules(tab.id, rules);
+        replaceTab({ ...tab, rules: updated.rules });
+      }}
+      onedit={() => {
+        offerTabId = '';
+        dialog = { kind: 'rules', tab };
+      }}
+      onclose={() => (offerTabId = '')}
+    />
+  {/if}
 
   {#if active}
     {@const status = active.widgets.filter((w) => available.has(w.kind) && statusWidget(w))}
@@ -847,6 +879,8 @@
     oncreated={(tab) => {
       tabs = [...tabs, tab];
       select(tab.id);
+      offerTabId = tab.id;
+      announce(t('dashboard.offer_question', { name: tab.name }));
     }}
   />
 {:else if dialog?.kind === 'background'}

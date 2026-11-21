@@ -11,6 +11,9 @@ type DashboardDTO struct {
 	Tabs []TabDTO `json:"tabs"`
 	// DefaultTabID is the tab whose rules match now ("" = keep the last used one, #71).
 	DefaultTabID string `json:"defaultTabId"`
+	// ClientNetwork is the client's private network (CIDR) for an "in this
+	// network" rule (#673); omitted when the client has none.
+	ClientNetwork string `json:"clientNetwork,omitempty"`
 }
 
 // RuleDTO opens a tab by default on weekdays (0 = Sunday), in a time range
@@ -40,6 +43,9 @@ type TabDTO struct {
 	Visibility string `json:"visibility"`
 	// Zoned lays the tab out in zones instead of the free grid (#619).
 	Zoned bool `json:"zoned"`
+	// Sample marks an example tab from the setup that the template choice
+	// on first start replaces (#670); omitted for ordinary tabs.
+	Sample bool `json:"sample,omitempty"`
 }
 
 // MobileItemDTO places a widget in the phone layout.
@@ -72,7 +78,7 @@ type WidgetDTO struct {
 
 // Dashboard maps a DashboardResponse.
 func Dashboard(r usecase.DashboardResponse) DashboardDTO {
-	out := DashboardDTO{Tabs: make([]TabDTO, 0, len(r.Tabs)), DefaultTabID: r.DefaultTabID}
+	out := DashboardDTO{Tabs: make([]TabDTO, 0, len(r.Tabs)), DefaultTabID: r.DefaultTabID, ClientNetwork: r.ClientNetwork}
 	for _, t := range r.Tabs {
 		out.Tabs = append(out.Tabs, Tab(t))
 	}
@@ -81,7 +87,7 @@ func Dashboard(r usecase.DashboardResponse) DashboardDTO {
 
 // Tab maps a TabResponse.
 func Tab(t usecase.TabResponse) TabDTO {
-	dto := TabDTO{ID: t.ID, Name: t.Name, Position: t.Position, Background: t.Background, Mine: t.Mine, Visibility: t.Visibility, Zoned: t.Zoned, Widgets: make([]WidgetDTO, 0, len(t.Widgets)),
+	dto := TabDTO{ID: t.ID, Name: t.Name, Position: t.Position, Background: t.Background, Mine: t.Mine, Visibility: t.Visibility, Zoned: t.Zoned, Sample: t.Sample, Widgets: make([]WidgetDTO, 0, len(t.Widgets)),
 		Rules: make([]RuleDTO, 0, len(t.Rules))}
 	for _, r := range t.Rules {
 		dto.Rules = append(dto.Rules, RuleDTO{Days: append([]int{}, r.Days...), From: r.From, To: r.To, Networks: append([]string{}, r.Networks...)})

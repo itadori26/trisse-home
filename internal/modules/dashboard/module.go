@@ -20,6 +20,7 @@ type Module struct {
 	modules.Base
 	modules.Transferable
 	builtin  *controller.BuiltinHandlers
+	sample   *controller.SampleHandlers
 	handlers *controller.Handlers
 	deps     usecase.Deps
 	seed     usecase.SeedSampleData
@@ -52,6 +53,7 @@ func New(db *sql.DB, ids kernel.IDGenerator, clock kernel.Clock, widgetKinds []s
 		handlers: controller.NewHandlers(usecase.NewGetDashboard(deps), usecase.NewManageTabs(deps), usecase.NewManageWidgets(deps),
 			usecase.NewManageTemplates(deps)),
 		builtin:  controller.NewBuiltinHandlers(usecase.NewBuiltinTemplates(deps, builtinTemplates(), configfile.MergeConfig)),
+		sample:   controller.NewSampleHandlers(usecase.NewSampleTabs(deps)),
 		deps:     deps,
 		seed:     usecase.NewSeedSampleData(deps, usecase.SampleLayout(string(weatherConfig))),
 		everyday: usecase.NewSeedSampleData(deps, usecase.EverydayLayout(string(weatherConfig))),
@@ -64,7 +66,7 @@ func New(db *sql.DB, ids kernel.IDGenerator, clock kernel.Clock, widgetKinds []s
 // sample layout; weather is the location of the weather widget.
 func (m *Module) UseShowcase(weather SampleWeather) {
 	weatherConfig, _ := json.Marshal(map[string]any{"lat": weather.Lat, "lon": weather.Lon, "label": weather.Label, "days": 4}) // plain map, cannot fail
-	m.seed = usecase.NewSeedSampleData(m.deps, usecase.ShowcaseLayout(string(weatherConfig)))
+	m.seed = usecase.NewSeedShowcase(m.deps, usecase.ShowcaseLayout(string(weatherConfig)))
 }
 
 // ConfigSection implements modules.Configurable.
@@ -97,6 +99,8 @@ func (m *Module) ConfigRoutes() []string {
 		"DELETE /api/dashboard/tabs/{id}/mobile-layout",
 		"POST /api/dashboard/templates/{id}/tabs",
 		"POST /api/dashboard/templates/builtin/{id}/tabs",
+		"DELETE /api/dashboard/sample",
+		"POST /api/dashboard/sample/keep",
 	}
 }
 
@@ -160,6 +164,8 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("POST /api/dashboard/templates/{id}/tabs", h.CreateTabFromTemplate)
 	r.Protected("GET /api/dashboard/templates/builtin", m.builtin.List)
 	r.Protected("POST /api/dashboard/templates/builtin/{id}/tabs", m.builtin.CreateTab)
+	r.Protected("DELETE /api/dashboard/sample", m.sample.Discard)
+	r.Protected("POST /api/dashboard/sample/keep", m.sample.Keep)
 }
 
 // WidgetKindsOnTabs returns the widget kinds placed on the given tabs (used
