@@ -1,0 +1,81 @@
+# OpenAPI fragment of the chore plan module (#683). `make openapi` merges it
+# with api/openapi.base.yaml and checks it.
+tags:
+  - name: chores
+
+paths:
+  /api/chores:
+    get:
+      tags: [chores]
+      summary: List the visible chores, the ones due soonest first
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Chore" } } } } }
+    post:
+      tags: [chores]
+      summary: Create a chore
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ChoreInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Chore" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/chores/{id}:
+    put:
+      tags: [chores]
+      summary: Change a chore (creator only)
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ChoreInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Chore" } } } }
+        "403": { description: Not the creator, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [chores]
+      summary: Remove a chore (creator only)
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      responses:
+        "204": { description: Deleted }
+        "403": { description: Not the creator, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/chores/{id}/done:
+    post:
+      tags: [chores]
+      summary: Mark a chore done; it moves on by its interval and passes to the next assignee
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Chore" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/chores/compact:
+    get:
+      tags: [chores]
+      summary: Compact state, chores due today with a quick action that ticks off the first
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CompactState" } } } }
+
+schemas:
+  ChoreInput:
+    type: object
+    required: [title, everyDays, due]
+    properties:
+      title: { type: string, maxLength: 80 }
+      everyDays: { type: integer, minimum: 1, maximum: 365 }
+      due: { type: string, format: date }
+      assignees: { type: array, maxItems: 8, items: { type: string, maxLength: 40 } }
+      visibility: { type: string, description: "private, everyone or group:<id>; empty shares a new chore with everyone" }
+  Chore:
+    type: object
+    properties:
+      id: { type: string }
+      title: { type: string }
+      everyDays: { type: integer }
+      due: { type: string, format: date }
+      assignees: { type: array, items: { type: string } }
+      assignee: { type: string }
+      dueNow: { type: boolean }
+      overdue: { type: boolean }
+      lastDoneAt: { type: string, format: date-time }
+      lastDoneBy: { type: string }
+      visibility: { type: string }
+      mine: { type: boolean }

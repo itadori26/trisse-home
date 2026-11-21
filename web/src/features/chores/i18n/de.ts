@@ -1,0 +1,36 @@
+import type { en } from './en';
+
+/** German UI texts of the chore plan feature; the type makes every key mandatory. */
+export const de: Record<keyof typeof en, string> = {
+  'widget.chores.title': 'Haushaltsplan',
+  'widget.chores.description': 'Wiederkehrende Aufgaben im Haushalt, die reihum erledigt werden.',
+  'compact.example.chores': 'Heute 2 Aufgaben',
+  'chores.new': 'Neue Aufgabe',
+  'chores.edit': 'Aufgabe ändern',
+  'chores.title_label': 'Aufgabe',
+  'chores.every_label': 'Wiederholen alle … Tage',
+  'chores.every.daily': 'Täglich',
+  'chores.every.weekly': 'Wöchentlich',
+  'chores.every.days': 'Alle {n} Tage',
+  'chores.first_due_label': 'Zum ersten Mal am',
+  'chores.due_label': 'Nächstes Mal am',
+  'chores.assignees_label': 'Wer ist dran',
+  'chores.assignees_hint':
+    'Ein Name pro Zeile, in Reihenfolge. Nach jedem Erledigen ist der nächste Name dran.',
+  'chores.empty': 'Noch keine Aufgaben.',
+  'chores.nothing_today': 'Heute ist nichts zu tun.',
+  'chores.due_heading': 'Heute ({n})',
+  'chores.later_heading': 'Demnächst',
+  'chores.today': 'Heute',
+  'chores.tomorrow': 'Morgen',
+  'chores.in_days': 'In {n} Tagen',
+  'chores.overdue_days': 'Seit {n} Tagen überfällig',
+  'chores.turn': '{name} ist dran',
+  'chores.done_named': 'Erledigt: {title}',
+  'chores.edit_named': '{title} ändern',
+  'chores.remove': '{title} entfernen',
+  'chores.error.title': 'Bitte eine Aufgabe mit bis zu 80 Zeichen eingeben.',
+  'chores.error.every': 'Eine Aufgabe wiederholt sich alle 1 bis 365 Tage.',
+  'chores.error.due': 'Bitte einen Tag wählen.',
+  'chores.error.assignees': 'Eine Aufgabe kann höchstens zwischen 8 Personen wechseln.',
+};
