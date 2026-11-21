@@ -15,6 +15,7 @@ export const en = {
   'compact.example.status-overview': '11 of 12 running',
   'compact.example.calendar': 'Dentist · Today at 14:00',
   'compact.example.backup-status': 'Backup OK',
+  'compact.example.backup-health': 'Backups all good',
   'compact.example.diskhealth': '3 drives healthy',
   'compact.example.docker': '11 of 12 running · 1 stopped',
   'compact.example.parcels': '2 on the way · 1 arriving today',

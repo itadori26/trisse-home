@@ -16,6 +16,21 @@ export interface FileDTO {
   size: number /* int64 */;
   createdAt: string /* RFC 3339 */;
 }
+/**
+ * StatusDTO is the traffic light of GET /api/backups/status (#677). Times
+ * are null when there was none; the errors are the server's own words.
+ */
+export interface StatusDTO {
+  health: string;
+  lastBackupAt?: string /* RFC 3339 */;
+  count: number /* int */;
+  intervalHours: number /* float64 */;
+  staleAfterHours: number /* float64 */;
+  failedAt?: string /* RFC 3339 */;
+  error: string;
+  offsiteFailedAt?: string /* RFC 3339 */;
+  offsiteError: string;
+}
 
 //////////
 // source: remote.go

@@ -48,6 +48,7 @@ type Config struct {
 type Module struct {
 	modules.Base
 	uc       usecase.Backups
+	clock    kernel.Clock
 	handlers *controller.Handlers
 	remote   *controller.RemoteHandlers
 	restore  *controller.RestoreHandlers
@@ -68,18 +69,22 @@ func New(cfg Config, db *sql.DB, clock kernel.Clock) (*Module, error) {
 	if log == nil {
 		log = slog.Default()
 	}
+	tracker := &usecase.Tracker{}
 	// Uploads run in the background so a manual backup returns at once.
 	upload := func(ctx context.Context, f usecase.FileView) {
 		go func() {
 			ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), uploadTimeout)
 			defer cancel()
-			if err := offsite.Upload(ctx, f.Name); err != nil {
+			err := offsite.Upload(ctx, f.Name)
+			tracker.OffsiteResult(clock.Now(), err)
+			if err != nil {
 				log.Warn("off-site backup failed", "file", f.Name, "error", err)
 			}
 		}()
 	}
-	uc := usecase.NewBackups(policy, gateway.NewSnapshotter(db), store, clock, usecase.WithAfterBackup(upload))
-	m := &Module{uc: uc, handlers: controller.NewHandlers(uc), remote: controller.NewRemoteHandlers(offsite)}
+	uc := usecase.NewBackups(policy, gateway.NewSnapshotter(db), store, clock,
+		usecase.WithAfterBackup(upload), usecase.WithTracker(tracker))
+	m := &Module{uc: uc, clock: clock, handlers: controller.NewHandlers(uc), remote: controller.NewRemoteHandlers(offsite)}
 	if cfg.Swapper != nil && cfg.Reauth != nil && cfg.Restart != nil {
 		restorer := usecase.NewRestorer(usecase.RestoreDeps{Store: store, Remote: gateway.NewWebDAV(cfg.Client),
 			RemoteCfg: gateway.NewRemoteSettingsRepository(db, cfg.Cipher), Inspector: gateway.NewInspector(db),
@@ -101,6 +106,7 @@ func (m *Module) DataKind() modules.DataKind { return modules.InstanceData }
 // RegisterRoutes implements modules.Module.
 func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/backups", m.handlers.List)
+	r.Protected("GET /api/backups/status", m.handlers.Status)
 	r.Protected("POST /api/backups", m.handlers.Create)
 	r.Protected("GET /api/backups/remote", m.remote.List)
 	r.Protected("GET /api/backups/remote/settings", m.remote.Settings)
@@ -111,6 +117,20 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 		r.Protected("POST /api/backups/restore", m.restore.Restore)
 	}
 	r.Protected("GET /api/backups/{name}", m.handlers.Download)
+}
+
+// WidgetKinds implements modules.Module: the traffic light of Waylight's
+// own backups (#677).
+func (m *Module) WidgetKinds() []string { return []string{"backup-health"} }
+
+// CompactState implements modules.CompactProvider (#677): the traffic light
+// of the backups in one line.
+func (m *Module) CompactState(ctx context.Context) (kernel.CompactState, error) {
+	s, err := m.uc.Status(ctx)
+	if err != nil {
+		return kernel.CompactState{}, err
+	}
+	return usecase.CompactState(s, m.clock.Now(), time.Local), nil
 }
 
 // Jobs implements modules.Module.

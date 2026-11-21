@@ -65,7 +65,7 @@ func TestSeveralAdmins(t *testing.T) {
 	a.do(http.MethodPut, "/api/auth/members/"+benID, obj{"role": "guest"}, http.StatusUnprocessableEntity)
 
 	// What contains or replaces everyone's data stays with the owner.
-	for _, path := range []string{"/api/backups", "/api/transfer/export", "/api/auth/tokens"} {
+	for _, path := range []string{"/api/backups", "/api/backups/status", "/api/backup/compact", "/api/transfer/export", "/api/auth/tokens"} {
 		a.do(http.MethodGet, path, nil, http.StatusForbidden)
 	}
 	a.do(http.MethodPost, "/api/auth/tokens", obj{"name": "x", "scopes": []string{"read"}}, http.StatusForbidden)

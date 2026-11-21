@@ -131,7 +131,7 @@ func TestMemberAccess(t *testing.T) {
 	m.do(http.MethodGet, "/api/services", nil, http.StatusOK)
 	m.do(http.MethodPost, "/api/services", obj{"name": "x", "url": "http://x"}, http.StatusForbidden)
 	for _, path := range []string{"/api/auth/guests", "/api/auth/members", "/api/auth/groups", "/api/auth/events", "/api/auth/tokens",
-		"/api/transfer/export", "/api/backups", "/api/notifications/settings", "/api/adguard/settings", "/api/docker/containers"} {
+		"/api/transfer/export", "/api/backups", "/api/backup/compact", "/api/notifications/settings", "/api/adguard/settings", "/api/docker/containers"} {
 		m.do(http.MethodGet, path, nil, http.StatusForbidden)
 	}
 	m.do(http.MethodPost, "/api/auth/members", obj{"name": "eve", "password": "member-password-2"}, http.StatusForbidden)

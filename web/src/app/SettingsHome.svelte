@@ -37,7 +37,8 @@
           <span class="hint">{t(a.hint)}</span>
           {#if status}
             <span class="status {status.tone}">
-              {#if status.tone === 'warn'}<span class="dot" aria-hidden="true"></span>{/if}
+              {#if status.tone === 'warn' || status.tone === 'error'}<span class="dot" aria-hidden="true"
+                ></span>{/if}
               {status.text}
             </span>
           {/if}
@@ -148,6 +149,9 @@
   }
   .status.warn {
     color: var(--color-warning);
+  }
+  .status.error {
+    color: var(--color-danger);
   }
   .dot {
     width: 8px;

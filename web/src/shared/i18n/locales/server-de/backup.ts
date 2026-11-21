@@ -31,4 +31,18 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_7054f9e52efbae1e: 'Die Quelle muss local, remote oder upload sein.',
   // User name and password (or app password) are required.
   srv_1c73ff4160f4ee94: 'Benutzername und Passwort (oder App-Passwort) sind erforderlich.',
+  // Backup older than expected
+  srv_6a02ee04f1083e2c: 'Backup älter als erwartet',
+  // Backups all good
+  srv_d0f41247027c6d48: 'Backups in Ordnung',
+  // Failed {time}
+  srv_b2df19aea32832fb: 'Fehlgeschlagen {time}',
+  // Last backup {time}
+  srv_771c68846be5456c: 'Letztes Backup {time}',
+  // No backup yet
+  srv_9a9b8a508d5dcf82: 'Noch kein Backup',
+  // The last backup failed
+  srv_0b6056a8bbfbd827: 'Das letzte Backup ist fehlgeschlagen',
+  // The off-site copy failed
+  srv_4ad084d71a9bd861: 'Die externe Kopie ist fehlgeschlagen',
 };

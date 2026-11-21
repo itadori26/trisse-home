@@ -3,7 +3,7 @@ package domain
 import "testing"
 
 func TestGuestMayAccess(t *testing.T) {
-	reach := GuestReach{Modules: map[string]bool{"notes": true, "weather": true, "fritzbox": true},
+	reach := GuestReach{Modules: map[string]bool{"notes": true, "weather": true, "fritzbox": true, "backup": true},
 		Closed: []string{"/api/fritzbox/calls"}}
 	cases := []struct {
 		method, path string
@@ -27,6 +27,8 @@ func TestGuestMayAccess(t *testing.T) {
 		{"PUT", "/api/dashboard/tabs/1", false},
 		{"GET", "/api/transfer/export", false},
 		{"GET", "/api/backups", false},
+		// The backup widget on a guest's tab does not open the owner's status (#677).
+		{"GET", "/api/backup/compact", false},
 		{"GET", "/api/", false},
 		{"GET", "/healthz", false},
 		// A module's personal route stays closed without its widget (#168).
@@ -43,6 +45,22 @@ func TestGuestMayAccess(t *testing.T) {
 	for _, c := range cases {
 		if got := GuestMayAccess(c.method, c.path, reach); got != c.want {
 			t.Errorf("%s %s: %v, want %v", c.method, c.path, got, c.want)
+		}
+	}
+}
+
+func TestOwnerOnlyPath(t *testing.T) {
+	for path, want := range map[string]bool{
+		"/api/backups":            true,
+		"/api/backups/status":     true,
+		"/api/backup/compact":     true,
+		"/api/transfer/export":    true,
+		"/api/backupmonitor":      false,
+		"/api/backup-status/ping": false,
+		"/api/notes":              false,
+	} {
+		if got := OwnerOnlyPath(path); got != want {
+			t.Errorf("%s: %v, want %v", path, got, want)
 		}
 	}
 }

@@ -201,7 +201,7 @@
       twoFactor:
         shown('account') && !auth.kiosk && !container.localMode ? () => auth.twoFactorStatus() : undefined,
       channels: shown('notifications') ? () => container.notifications.channels() : undefined,
-      backups: shown('backups') ? () => container.backup.list() : undefined,
+      backups: shown('backups') ? () => container.backup.status() : undefined,
       version: shown('about') ? () => container.system.version() : undefined,
       connections: areas
         .find((a) => a.id === 'connections')

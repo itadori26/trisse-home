@@ -345,6 +345,15 @@ func TestAPIEndToEnd(t *testing.T) {
 		t.Fatal("backup download is not an SQLite database")
 	}
 	c.do(http.MethodGet, "/api/backups/..%2F..%2Fetc%2Fpasswd", nil, http.StatusNotFound)
+	var backupStatus, backupCompact obj
+	c.json(http.MethodGet, "/api/backups/status", nil, http.StatusOK, &backupStatus)
+	if backupStatus["health"] != "ok" || backupStatus["count"] != float64(1) || backupStatus["lastBackupAt"] == nil {
+		t.Fatalf("backup status: %v", backupStatus)
+	}
+	c.json(http.MethodGet, "/api/backup/compact", nil, http.StatusOK, &backupCompact)
+	if backupCompact["level"] != "ok" {
+		t.Fatalf("backup compact: %v", backupCompact)
+	}
 
 	// --- onboarding ---
 	var tour obj

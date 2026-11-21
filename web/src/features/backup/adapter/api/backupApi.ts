@@ -1,8 +1,10 @@
 import type { HttpClient } from '../../../../shared/api-client/http';
-import type { FileDTO, RemoteSettingsDTO } from '../../../../shared/api-client/generated/backup';
+import type { FileDTO, RemoteSettingsDTO, StatusDTO } from '../../../../shared/api-client/generated/backup';
 import type { RemoteSettingsInputDTO } from '../../../../shared/api-client/generated/backup-requests';
 import {
   type BackupFile,
+  type BackupHealth,
+  type BackupStatus,
   type RemoteSettings,
   type RemoteSettingsInput,
   type RestoreRequest,
@@ -11,6 +13,7 @@ import {
 import type { BackupGateway } from '../../usecase/backupUseCases';
 
 const toFile = (d: FileDTO): BackupFile => ({ name: d.name, size: d.size, createdAt: new Date(d.createdAt) });
+const toDate = (s: string | null | undefined) => (s ? new Date(s) : null);
 
 /** BackupGateway backed by the REST API. */
 export class BackupApi implements BackupGateway {
@@ -44,6 +47,19 @@ export class BackupApi implements BackupGateway {
 
   async listRemote(): Promise<BackupFile[]> {
     return (await this.http.get<FileDTO[]>('/api/backups/remote')).map(toFile);
+  }
+
+  async status(): Promise<BackupStatus> {
+    const d = await this.http.get<StatusDTO>('/api/backups/status');
+    return {
+      health: d.health as BackupHealth,
+      lastBackupAt: toDate(d.lastBackupAt),
+      count: d.count,
+      failedAt: toDate(d.failedAt),
+      error: d.error,
+      offsiteFailedAt: toDate(d.offsiteFailedAt),
+      offsiteError: d.offsiteError,
+    };
   }
 
   async restore(req: RestoreRequest): Promise<void> {

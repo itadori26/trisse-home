@@ -1,4 +1,10 @@
-import type { BackupFile, RemoteSettings, RemoteSettingsInput, RestoreRequest } from '../domain/backup';
+import type {
+  BackupFile,
+  BackupStatus,
+  RemoteSettings,
+  RemoteSettingsInput,
+  RestoreRequest,
+} from '../domain/backup';
 
 /** Output port: backup backend. */
 export interface BackupGateway {
@@ -10,6 +16,7 @@ export interface BackupGateway {
   disableRemote(): Promise<void>;
   listRemote(): Promise<BackupFile[]>;
   restore(req: RestoreRequest): Promise<void>;
+  status(): Promise<BackupStatus>;
 }
 
 const newestFirst = (files: BackupFile[]) =>
@@ -22,6 +29,11 @@ export class BackupUseCases {
   /** Lists backups, newest first. */
   async list(): Promise<BackupFile[]> {
     return newestFirst(await this.gateway.list());
+  }
+
+  /** The traffic light of the backups (#677). */
+  status(): Promise<BackupStatus> {
+    return this.gateway.status();
   }
 
   backupNow(): Promise<BackupFile> {

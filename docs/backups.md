@@ -20,6 +20,24 @@ encrypted form. **Keep your `SECRET_KEY` separately**, for example in your
 password manager. A backup restored without the matching key still works,
 but you will have to enter every integration password again.
 
+## Is my backup all right?
+
+The *Data & backup* tile on the settings start page and the top of
+Settings → Backups show a traffic light:
+
+- **Green**: the newest backup is as recent as the schedule promises, for
+  example "Last backup today 03:00, all good".
+- **Amber**: there is no backup yet, the newest one is older than expected
+  (one interval plus half an interval, at least two hours of slack), or
+  the backup worked but the upload to the off-site target failed.
+- **Red**: the latest attempt failed. Settings → Backups shows the reason;
+  the light turns green again with the next backup that works.
+
+The *Waylight backup* widget puts the same light on a dashboard, and its
+compact view fits a small tile. Only the owner can read it. To watch backups
+made by other tools, such as restic or borg on your NAS, use the
+[backup monitor](notifications.md#backup-and-job-monitoring) instead.
+
 ## Copies away from the server
 
 A backup on the same disk does not help when that disk dies. Under Settings

@@ -1,14 +1,16 @@
-import { intlLocale, t } from '../shared/i18n';
+import { t } from '../shared/i18n';
+import { type BackupStatus, healthText } from '../features/backup';
 import type { SettingsArea } from './settingsNav';
 
 /**
  * The one-line status of an area tile on the settings start page (#600),
- * e.g. "3 channels on" or "Backup today 03:00". "warn" asks for a look,
- * "ok" confirms that something works, "info" just describes.
+ * e.g. "3 channels on" or "Last backup today 03:00, all good". "error"
+ * means something broke, "warn" asks for a look, "ok" confirms that
+ * something works, "info" just describes.
  */
 export interface AreaStatus {
   text: string;
-  tone: 'ok' | 'warn' | 'info';
+  tone: 'ok' | 'warn' | 'error' | 'info';
 }
 
 /**
@@ -19,7 +21,8 @@ export interface AreaStatus {
 export interface StatusSources {
   twoFactor?: () => Promise<{ enabled: boolean }>;
   channels?: () => Promise<readonly { enabled: boolean }[]>;
-  backups?: () => Promise<readonly { createdAt: Date }[]>;
+  /** The backup traffic light (#677). */
+  backups?: () => Promise<BackupStatus>;
   version?: () => Promise<{ current: string; updateAvailable: boolean; latest: { version: string } | null }>;
   /** Visible connection sections; a count until connections report health (#592). */
   connections?: number;
@@ -56,12 +59,7 @@ const LOADERS: Partial<Record<SettingsArea, Loader>> = {
           tone: 'info',
         }
       : null,
-  data: async (s, now) => {
-    if (!s.backups) return null;
-    const latest = newest(await s.backups());
-    if (!latest) return { text: t('settings.status.no_backup'), tone: 'warn' };
-    return { text: backupText(latest, now), tone: ageDays(latest, now) > STALE_BACKUP_DAYS ? 'warn' : 'ok' };
-  },
+  data: async (s, now) => (s.backups ? healthText(await s.backups(), now) : null),
   system: async (s) => {
     if (!s.version) return null;
     const v = await s.version();
@@ -70,28 +68,6 @@ const LOADERS: Partial<Record<SettingsArea, Loader>> = {
       : { text: t('settings.status.version', { version: v.current }), tone: 'info' };
   },
 };
-
-/**
- * A nightly backup older than this means the schedule stopped; two days
- * leave room for one missed night (server restart, full disk warning).
- */
-const STALE_BACKUP_DAYS = 2;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function newest(files: readonly { createdAt: Date }[]): Date | null {
-  let best: Date | null = null;
-  for (const f of files) if (!best || f.createdAt > best) best = f.createdAt;
-  return best;
-}
-
-const ageDays = (d: Date, now: Date) => (now.getTime() - d.getTime()) / DAY_MS;
-
-function backupText(d: Date, now: Date): string {
-  const time = new Intl.DateTimeFormat(intlLocale(), { hour: '2-digit', minute: '2-digit' }).format(d);
-  if (d.toDateString() === now.toDateString()) return t('settings.status.backup_today', { time });
-  const date = new Intl.DateTimeFormat(intlLocale(), { day: 'numeric', month: 'short' }).format(d);
-  return t('settings.status.backup_on', { date, time });
-}
 
 /**
  * Loads the status of every given area. A source that fails (offline,

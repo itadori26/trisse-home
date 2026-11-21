@@ -40,6 +40,16 @@ func (h *Handlers) Create(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusCreated, presenter.File(res))
 }
 
+// Status handles GET /api/backups/status.
+func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
+	res, err := h.uc.Status(r.Context())
+	if err != nil {
+		httpapi.WriteDomainError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, presenter.Status(res))
+}
+
 // Download handles GET /api/backups/{name}.
 func (h *Handlers) Download(w http.ResponseWriter, r *http.Request) {
 	rc, f, err := h.uc.Open(r.Context(), r.PathValue("name"))

@@ -56,7 +56,7 @@ func GuestMayAccess(method, path string, reach GuestReach) bool {
 		return false
 	}
 	switch parts[0] {
-	case "auth", "dashboard", "transfer", "backups", "notifications", "backupmonitor":
+	case "auth", "dashboard", "transfer", "backups", "backup", "notifications", "backupmonitor":
 		return false
 	}
 	return reach.Modules[parts[0]]
@@ -131,7 +131,8 @@ func SecondFactorSetupPath(method, path string) bool {
 // ownerOnlyPrefixes are the routes only the owner may use, also against
 // admins (ADR 0022): backups and the data transfer contain or replace the
 // data of everyone, including private records and the owner's account.
-var ownerOnlyPrefixes = []string{"/api/backups", "/api/transfer"}
+// "/api/backup" is the compact state of the backup widget (#677).
+var ownerOnlyPrefixes = []string{"/api/backups", "/api/backup", "/api/transfer"}
 
 // OwnerOnlyPath reports whether path is one of the owner's alone.
 func OwnerOnlyPath(path string) bool {

@@ -2,8 +2,9 @@
   import { intlLocale, t } from '../../../shared/i18n';
   import { errorMessage } from '../../../shared/api-client/http';
   import { formatBytes } from '../../../shared/ui/format';
-  import { type BackupFile, downloadUrl } from '../domain/backup';
+  import { type BackupFile, type BackupStatus, downloadUrl } from '../domain/backup';
   import type { BackupUseCases } from '../usecase/backupUseCases';
+  import BackupHealthLight from './BackupHealthLight.svelte';
   import OffsiteSettings from './OffsiteSettings.svelte';
   import RestoreForm from './RestoreForm.svelte';
 
@@ -14,12 +15,13 @@
   let { backups }: Props = $props();
 
   let files = $state<BackupFile[]>([]);
+  let status = $state<BackupStatus | null>(null);
   let error = $state('');
   let busy = $state(false);
 
   async function load() {
     try {
-      files = await backups.list();
+      [files, status] = await Promise.all([backups.list(), backups.status()]);
     } catch (err) {
       error = errorMessage(err);
     }
@@ -43,6 +45,7 @@
   });
 </script>
 
+{#if status}<div class="health"><BackupHealthLight {status} details /></div>{/if}
 <p class="muted">
   {t('backup.backups_are_created_automatically_interv')}
 </p>
@@ -68,6 +71,13 @@
 <RestoreForm {backups} local={files} />
 
 <style>
+  .health {
+    margin-bottom: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+  }
   .list {
     list-style: none;
     padding: 0;

@@ -146,6 +146,18 @@ paths:
       security: [{ session: [], csrf: [] }]
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/BackupFile" } } } }
+  /api/backups/status:
+    get:
+      tags: [backup]
+      summary: "Traffic light of the backups (#677): ok, stale (older than expected, none yet or the off-site copy failed) or failed (the latest attempt failed); owner only"
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/BackupStatus" } } } }
+  /api/backup/compact:
+    get:
+      tags: [backup]
+      summary: "Compact state of the backup health widget (#677); owner only"
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CompactState" } } } }
   /api/backups/{name}:
     get:
       tags: [backup]
@@ -205,4 +217,17 @@ paths:
         "422": { description: Not a valid or too new backup }
 
 schemas:
+  BackupStatus:
+    type: object
+    required: [health, lastBackupAt, count, intervalHours, staleAfterHours, failedAt, error, offsiteFailedAt, offsiteError]
+    properties:
+      health: { type: string, enum: [ok, stale, failed] }
+      lastBackupAt: { type: [string, "null"], format: date-time }
+      count: { type: integer }
+      intervalHours: { type: number }
+      staleAfterHours: { type: number, description: Age of the newest backup from which it counts as overdue }
+      failedAt: { type: [string, "null"], format: date-time, description: Latest failed attempt while no backup followed it }
+      error: { type: string }
+      offsiteFailedAt: { type: [string, "null"], format: date-time }
+      offsiteError: { type: string }
   BackupFile: { type: object, properties: { name: { type: string }, size: { type: integer }, createdAt: { type: string, format: date-time } } }

@@ -142,6 +142,10 @@ test('settings: start page with areas, keyboard navigation and phones (#600)', a
   // The start page lists the areas as tiles.
   const tiles = dialog.getByRole('list', { name: 'Settings areas' });
   await expect(tiles.getByRole('button', { name: /^Connections & services/ })).toBeVisible();
+  // The backup traffic light (#677): the job backs up right after the start.
+  await expect(tiles.getByRole('button', { name: /^Data & backup/ })).toContainText(
+    /Last backup today .*, all good/,
+  );
   await tiles.getByRole('button', { name: /^Connections & services/ }).click();
   await expect(dialog.getByRole('region', { name: 'Connections & services', exact: true })).toBeVisible();
   // An area lists its sections; the open section is marked in the navigation.

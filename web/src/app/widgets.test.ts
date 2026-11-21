@@ -33,6 +33,7 @@ describe('widget registry (#116)', () => {
       'status-overview': 'services',
       calendar: 'calendar',
       'backup-status': 'backupmonitor',
+      'backup-health': 'backup',
       diskhealth: 'diskhealth',
       docker: 'docker',
       parcels: 'parcels',

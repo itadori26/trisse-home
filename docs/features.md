@@ -92,7 +92,7 @@ cannot be switched off.
 | Appearance (`appearance`) | Language, light and dark mode, theme gallery, backgrounds and custom CSS. See [appearance](appearance.md). |
 | Notifications (`notifications`) | ntfy, Gotify, webhooks, e-mail, Slack and Microsoft Teams with importance levels, quiet hours and maintenance windows. See [notifications](notifications.md). |
 | Wiki search (`wiki`) | Pages of BookStack, Outline and Wiki.js in the search field, asked while you type; nothing is stored. [Details](modules/wiki.md) |
-| Backups (`backup`) | Automatic database backups, off-site copies over WebDAV and a guided restore. See [backups](backups.md). |
+| Backups (`backup`) | Automatic database backups with a traffic light on the settings start page and as a widget, off-site copies over WebDAV and a guided restore. See [backups](backups.md). |
 | Import and export (`transfer`) | All your data as one JSON file, without secrets. See [backups](backups.md#export-and-import). Settings (appearance, search, services, bookmarks, dashboard) also as a readable `waylight.yaml` for Git, with `${ENV}` references and a JSON Schema, and an import from Homepage and Homarr 0.x ([details](config-as-code.md)). |
 | Guided tour (`onboarding`) | A short tour after the first sign-in. |
 | Device (`device`) | Raspberry Pi image only: run the Pi as a server or also show the dashboard full-screen on a connected display. [Details](modules/device.md) |

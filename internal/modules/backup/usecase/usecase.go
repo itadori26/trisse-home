@@ -26,6 +26,8 @@ type Backups interface {
 	List(ctx context.Context) ([]FileView, error)
 	// Open returns the content of a backup for download.
 	Open(ctx context.Context, name string) (io.ReadCloser, FileView, error)
+	// Status returns the traffic light of the backups (#677).
+	Status(ctx context.Context) (StatusView, error)
 }
 
 // Snapshotter writes a consistent copy of the live database (output port).
@@ -43,11 +45,12 @@ type Store interface {
 }
 
 type backups struct {
-	policy domain.Policy
-	snap   Snapshotter
-	store  Store
-	clock  kernel.Clock
-	after  func(ctx context.Context, f FileView)
+	policy  domain.Policy
+	snap    Snapshotter
+	store   Store
+	clock   kernel.Clock
+	after   func(ctx context.Context, f FileView)
+	tracker *Tracker
 }
 
 // Option configures the backup use cases.
@@ -59,9 +62,15 @@ func WithAfterBackup(fn func(ctx context.Context, f FileView)) Option {
 	return func(b *backups) { b.after = fn }
 }
 
+// WithTracker shares the outcome tracker with the off-site upload, which
+// records its results there too.
+func WithTracker(t *Tracker) Option {
+	return func(b *backups) { b.tracker = t }
+}
+
 // NewBackups returns the backup use cases.
 func NewBackups(policy domain.Policy, snap Snapshotter, store Store, clock kernel.Clock, opts ...Option) Backups {
-	b := &backups{policy: policy, snap: snap, store: store, clock: clock}
+	b := &backups{policy: policy, snap: snap, store: store, clock: clock, tracker: &Tracker{}}
 	for _, o := range opts {
 		o(b)
 	}
@@ -91,9 +100,21 @@ func (uc *backups) RunScheduled(ctx context.Context) error {
 	return err
 }
 
-// BackupNow implements Backups.
+// BackupNow implements Backups. Its outcome feeds the traffic light.
 func (uc *backups) BackupNow(ctx context.Context) (FileView, error) {
 	now := uc.clock.Now()
+	f, err := uc.backup(ctx, now)
+	uc.tracker.BackupResult(now, err)
+	if err != nil {
+		return FileView{}, err
+	}
+	if uc.after != nil {
+		uc.after(ctx, f)
+	}
+	return f, nil
+}
+
+func (uc *backups) backup(ctx context.Context, now time.Time) (FileView, error) {
 	name := domain.FileName(now)
 	if err := uc.snap.SnapshotTo(ctx, uc.store.Path(name)); err != nil {
 		return FileView{}, fmt.Errorf("create backup: %w", err)
@@ -106,9 +127,6 @@ func (uc *backups) BackupNow(ctx context.Context) (FileView, error) {
 		return FileView{}, err
 	}
 	_ = rc.Close()
-	if uc.after != nil {
-		uc.after(ctx, toView(f))
-	}
 	return toView(f), nil
 }
 
