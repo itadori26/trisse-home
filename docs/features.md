@@ -18,6 +18,7 @@ modules in detail.
 | Calendar (`calendar`) | CalDAV calendars such as Nextcloud, including recurring events, Google Calendar and Microsoft 365 accounts, plus read-only ICS subscriptions. Agenda, month or split view with event details; new events can be added from the widget. [Details](modules/calendar.md) |
 | Shopping list (`shopping`) | Lists kept on Waylight, shareable with a group or everyone and exportable as text or `.ics`, or a CalDAV task list the household already uses in its task app. See [shopping](modules/shopping.md). |
 | Phone list (`phonelist`) | A searchable directory of names, roles, teams, phone numbers and e-mail addresses, maintained by admins; the search field answers "phone <name>". [Details](modules/phonelist.md) |
+| Chores (`chores`) | Recurring household tasks with assignees who take turns, a done button and "2 tasks today" in the compact view. [Details](modules/chores.md) |
 | Countdowns (`countdown`) | Days left until exams, holidays or deadlines, highlighted when the date is close. |
 | Focus timer (`focus`) | Pomodoro timer kept per account on the server, so every device and the compact view show the same timer (in the extension's local mode it stays in the browser), with an optional browser notification and a count of finished sessions per day. |
 | Habits (`habits`) | Daily habits or habits on chosen weekdays, checked off with one tap, with current and best streak and a four-week heatmap. |
