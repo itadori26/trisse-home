@@ -105,29 +105,66 @@ func TestInstances(t *testing.T) {
 func TestOverview(t *testing.T) {
 	ctx := context.Background()
 	uc, repo, sonarr, radarr, c := setup()
-	if _, err := uc.Overview(ctx); !errors.Is(err, domain.ErrNotConfigured) {
+	if _, err := uc.Overview(ctx, nil); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("not configured: %v", err)
 	}
 	repo.list = []domain.Instance{{ID: "1", App: domain.AppSonarr, Name: "Sonarr4K"}, {ID: "2", App: domain.AppRadarr, Name: "Radarr"}}
 	radarr.down = true
-	o, err := uc.Overview(ctx)
+	o, err := uc.Overview(ctx, nil)
 	if err != nil || len(o.Upcoming) != 1 || len(o.Errors) != 1 || o.Errors[0] != "Radarr (timeout)" {
 		t.Fatalf("a failing instance is reported, the others shown: %+v %v", o, err)
 	}
-	_, _ = uc.Overview(ctx)
+	_, _ = uc.Overview(ctx, nil)
 	if sonarr.calls != 1 {
 		t.Fatalf("cached within the TTL, got %d calls", sonarr.calls)
 	}
 	radarr.down = false
 	c.now = c.now.Add(overviewTTL)
-	o, _ = uc.Overview(ctx)
+	o, _ = uc.Overview(ctx, nil)
 	if len(o.Upcoming) != 2 || o.Upcoming[0].Title != "Radarr" {
 		t.Fatalf("merged and sorted after the TTL: %+v", o.Upcoming)
 	}
 	if err := uc.DeleteInstance(ctx, "2"); err != nil {
 		t.Fatal(err)
 	}
-	if o, _ := uc.Overview(ctx); len(o.Upcoming) != 1 {
+	if o, _ := uc.Overview(ctx, nil); len(o.Upcoming) != 1 {
 		t.Fatalf("deleting invalidates the cache: %+v", o.Upcoming)
+	}
+}
+
+// conns resolves "tv" to a Sonarr and "films" to a Radarr connection;
+// everything else fails, like a missing copy.
+type conns struct{}
+
+func (conns) Instance(_ context.Context, id string) (domain.Instance, error) {
+	switch id {
+	case "tv":
+		return domain.NewInstance(id, "sonarr", "TV", "http://tv:8989", "key")
+	case "films":
+		return domain.NewInstance(id, "radarr", "Films", "http://films:7878", "key")
+	}
+	return domain.Instance{}, errors.New("no usable connection")
+}
+
+func TestOverviewThroughConnections(t *testing.T) {
+	ctx := context.Background()
+	sonarr, radarr := &fakeApp{}, &fakeApp{}
+	repo := &memRepo{list: []domain.Instance{{ID: "1", App: domain.AppSonarr, Name: "Module Sonarr", URL: "http://s", APIKey: "key"}}}
+	uc := NewArr(Deps{Repo: repo, Providers: map[domain.App]Provider{domain.AppSonarr: sonarr, domain.AppRadarr: radarr, domain.AppProwlarr: &fakeApp{}},
+		Conns: conns{}, Clock: &movingClock{now: time.Unix(0, 0)}, IDs: &ids{}})
+	o, err := uc.Overview(ctx, []string{"films", "missing", "tv"})
+	if err != nil || len(o.Upcoming) != 2 || sonarr.calls != 1 || radarr.calls != 1 {
+		t.Fatalf("both connections, the missing one skipped: %+v %v", o, err)
+	}
+	if _, _ = uc.Overview(ctx, []string{"tv", "films"}); sonarr.calls != 1 {
+		t.Fatal("the same set of connections is cached whatever the order")
+	}
+	o, _ = uc.Overview(ctx, []string{"missing"})
+	if len(o.Upcoming) != 1 || o.Upcoming[0].Instance != "Module Sonarr" {
+		t.Fatalf("no usable connection falls back to the module's instances: %+v", o)
+	}
+	repo.list = nil
+	if _, err := uc.Overview(ctx, []string{"tv"}); err != nil {
+		t.Fatalf("connections work without module instances: %v", err)
 	}
 }

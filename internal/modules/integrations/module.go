@@ -204,5 +204,5 @@ func (m *Module) ResolveConnection(ctx context.Context, service, id string) (mod
 	if spec, ok := m.specs[service]; !ok || spec.CheckCredential(c.Credential, true) != nil {
 		return modules.ResolvedConnection{}, modules.ErrNoConnection
 	}
-	return modules.ResolvedConnection{URL: c.URL, Credential: maps.Clone(c.Credential)}, nil
+	return modules.ResolvedConnection{Name: c.Name, URL: c.URL, Credential: maps.Clone(c.Credential)}, nil
 }

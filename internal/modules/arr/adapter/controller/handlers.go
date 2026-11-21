@@ -66,9 +66,10 @@ func (h *Handlers) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Overview handles GET /api/arr/overview.
+// Overview handles GET /api/arr/overview[?connection=<id>&connection=<id>…]:
+// a widget may choose a Sonarr, a Radarr and a Prowlarr connection (#610).
 func (h *Handlers) Overview(w http.ResponseWriter, r *http.Request) {
-	res, err := h.uc.Overview(r.Context())
+	res, err := h.uc.Overview(r.Context(), r.URL.Query()["connection"])
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return

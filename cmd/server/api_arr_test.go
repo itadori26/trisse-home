@@ -26,8 +26,16 @@ func init() {
 		},
 		Check: func(e e2eEnv) {
 			t, c, up := e.t, e.c, e.up
-			_ = up
 			c.do(http.MethodGet, "/api/arr/overview", nil, http.StatusNotFound)
+			// A widget that chose named connections merges them (#610).
+			id := connectionE2E(c, "sonarr", up.URL+"/sonarr", obj{"apiKey": "sonarr-key"})
+			var viaConn obj
+			c.json(http.MethodGet, "/api/arr/overview?connection=missing&connection="+id, nil, http.StatusOK, &viaConn)
+			if viaConn["missing"].(obj)["E2E sonarr"] != float64(2) {
+				t.Fatalf("arr through a connection: %v", viaConn)
+			}
+			c.do(http.MethodGet, "/api/arr/overview?connection=missing", nil, http.StatusNotFound)
+			c.do(http.MethodDelete, "/api/integrations/connections/"+id, nil, http.StatusNoContent)
 			c.do(http.MethodPost, "/api/arr/instances", obj{"app": "radarr", "url": up.URL + "/sonarr", "apiKey": "k"}, http.StatusUnprocessableEntity)
 			c.json(http.MethodPost, "/api/arr/instances", obj{"app": "sonarr", "url": up.URL + "/sonarr", "apiKey": "sonarr-key"}, http.StatusCreated, nil)
 			if body := string(c.do(http.MethodGet, "/api/arr/instances", nil, http.StatusOK)); strings.Contains(body, "sonarr-key") {

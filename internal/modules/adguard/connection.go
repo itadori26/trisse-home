@@ -54,3 +54,25 @@ func savedConnections(ctx context.Context, repo usecase.SettingsRepository) ([]m
 	}
 	return out, nil
 }
+
+// connections adapts the integrations resolver to usecase.Connections; the
+// connection's service is the provider.
+type connections struct{ r modules.ConnectionResolver }
+
+// connectionsOf returns nil without a resolver, so the use cases only read
+// the module settings.
+func connectionsOf(r modules.ConnectionResolver) usecase.Connections {
+	if r == nil {
+		return nil
+	}
+	return connections{r}
+}
+
+// Settings implements usecase.Connections.
+func (c connections) Settings(ctx context.Context, p domain.Provider, id string) (domain.Settings, error) {
+	rc, err := c.r.ResolveConnection(ctx, string(p), id)
+	if err != nil {
+		return domain.Settings{}, err
+	}
+	return domain.NewSettings(p, rc.URL, rc.Credential["username"], rc.Credential["password"])
+}

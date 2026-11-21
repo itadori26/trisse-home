@@ -25,13 +25,14 @@ type Module struct {
 	repo usecase.InstanceRepository
 }
 
-// New builds the *arr module (#86); cipher encrypts the API keys.
-func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock, ids kernel.IDGenerator) *Module {
+// New builds the *arr module (#86); cipher encrypts the API keys, conns
+// resolves the named connections a widget chose (#610).
+func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, conns modules.ConnectionResolver, clock kernel.Clock, ids kernel.IDGenerator) *Module {
 	providers := map[domain.App]usecase.Provider{
 		domain.AppSonarr: gateway.NewSonarr(client), domain.AppRadarr: gateway.NewRadarr(client), domain.AppProwlarr: gateway.NewProwlarr(client),
 	}
 	repo := gateway.NewInstanceRepository(db, cipher)
-	uc := usecase.NewArr(usecase.Deps{Repo: repo, Providers: providers, Clock: clock, IDs: ids})
+	uc := usecase.NewArr(usecase.Deps{Repo: repo, Providers: providers, Conns: connections{conns}, Clock: clock, IDs: ids})
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc), repo: repo, specs: connectionSpecs(providers)}
 }
 
@@ -59,7 +60,7 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 // ConnectionStatus implements modules.StatusReporter (#592): the cached
 // overview names the instances that did not answer.
 func (m *Module) ConnectionStatus(ctx context.Context) modules.ConnectionStatus {
-	o, err := m.uc.Overview(ctx)
+	o, err := m.uc.Overview(ctx, nil)
 	if err == nil && len(o.Errors) > 0 {
 		err = errInstanceDown
 	}

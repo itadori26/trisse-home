@@ -21,7 +21,7 @@ func (f *fakeAdGuard) Settings(_ context.Context, provider string) (usecase.Sett
 	return usecase.SettingsView{Provider: "adguard", Configured: true, URL: "http://ag", Username: "admin", HasPassword: true}, nil
 }
 
-func (f *fakeAdGuard) Stats(_ context.Context, provider string) (usecase.StatsView, error) {
+func (f *fakeAdGuard) Stats(_ context.Context, provider, _ string) (usecase.StatsView, error) {
 	f.provider = provider
 	return usecase.StatsView{Queries: 10}, nil
 }
@@ -47,7 +47,7 @@ func TestProviderParameter(t *testing.T) {
 	}
 }
 
-func (f *fakeAdGuard) Pause(_ context.Context, provider string, minutes int) (usecase.StatsView, error) {
+func (f *fakeAdGuard) Pause(_ context.Context, provider, _ string, minutes int) (usecase.StatsView, error) {
 	f.provider = provider
 	until := time.Date(2026, 11, 14, 8, 30, 0, 0, time.UTC)
 	return usecase.StatsView{PausedUntil: &until, Queries: minutes}, nil

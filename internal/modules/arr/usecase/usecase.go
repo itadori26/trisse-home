@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,7 +33,17 @@ type Arr interface {
 	AddInstance(ctx context.Context, in InstanceInput) (InstanceView, error)
 	UpdateInstance(ctx context.Context, id string, in InstanceInput) (InstanceView, error)
 	DeleteInstance(ctx context.Context, id string) error
-	Overview(ctx context.Context) (domain.Overview, error)
+	// Overview merges the named connections the widget chose (#610); the
+	// ones that are not usable are skipped. Without connectionIDs, or when
+	// none of them is usable, it merges every instance of the module.
+	Overview(ctx context.Context, connectionIDs []string) (domain.Overview, error)
+}
+
+// Connections resolves a named Sonarr, Radarr or Prowlarr connection of
+// the integrations module to an instance (output port, #610). Any error
+// means the connection is skipped.
+type Connections interface {
+	Instance(ctx context.Context, id string) (domain.Instance, error)
 }
 
 // InstanceRepository persists instances (output port).
@@ -53,19 +65,51 @@ type Provider interface {
 type Deps struct {
 	Repo      InstanceRepository
 	Providers map[domain.App]Provider
-	Clock     kernel.Clock
-	IDs       kernel.IDGenerator
+	// Conns resolves named connections; may be nil.
+	Conns Connections
+	Clock kernel.Clock
+	IDs   kernel.IDGenerator
+}
+
+type cachedOverview struct {
+	overview domain.Overview
+	fetched  time.Time
 }
 
 type arr struct {
-	d       Deps
-	mu      sync.Mutex
-	cached  *domain.Overview
-	fetched time.Time
+	d  Deps
+	mu sync.Mutex
+	// cache holds one overview per set of connections, keyed by their IDs;
+	// "" is every instance of the module.
+	cache map[string]cachedOverview
 }
 
 // NewArr returns the use cases.
-func NewArr(d Deps) Arr { return &arr{d: d} }
+func NewArr(d Deps) Arr { return &arr{d: d, cache: map[string]cachedOverview{}} }
+
+// instances returns the usable connections among ids with their cache
+// key, or every instance of the module (key "").
+func (uc *arr) instances(ctx context.Context, ids []string) ([]domain.Instance, string, error) {
+	if uc.d.Conns != nil {
+		ids = ids[:min(len(ids), domain.MaxInstances)] // a widget never shows more
+		var list []domain.Instance
+		var used []string
+		for _, id := range ids {
+			if in, err := uc.d.Conns.Instance(ctx, id); err == nil && !slices.Contains(used, id) {
+				list, used = append(list, in), append(used, id)
+			}
+		}
+		if len(list) > 0 {
+			slices.Sort(used)
+			return list, strings.Join(used, ","), nil
+		}
+	}
+	list, err := uc.d.Repo.List(ctx)
+	if err != nil {
+		return nil, "", fmt.Errorf("list instances: %w", err)
+	}
+	return list, "", nil
+}
 
 // Instances implements Arr.
 func (uc *arr) Instances(ctx context.Context) ([]InstanceView, error) {
@@ -138,10 +182,10 @@ func (uc *arr) save(ctx context.Context, in domain.Instance) (InstanceView, erro
 
 // Overview implements Arr. Instances are queried in parallel; one that
 // fails is listed in Errors and does not hide the others.
-func (uc *arr) Overview(ctx context.Context) (domain.Overview, error) {
-	list, err := uc.d.Repo.List(ctx)
+func (uc *arr) Overview(ctx context.Context, connectionIDs []string) (domain.Overview, error) {
+	list, key, err := uc.instances(ctx, connectionIDs)
 	if err != nil {
-		return domain.Overview{}, fmt.Errorf("list instances: %w", err)
+		return domain.Overview{}, err
 	}
 	if len(list) == 0 {
 		return domain.Overview{}, domain.ErrNotConfigured
@@ -149,8 +193,8 @@ func (uc *arr) Overview(ctx context.Context) (domain.Overview, error) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	now := uc.d.Clock.Now()
-	if uc.cached != nil && now.Sub(uc.fetched) < overviewTTL {
-		return *uc.cached, nil
+	if c, ok := uc.cache[key]; ok && now.Sub(c.fetched) < overviewTTL {
+		return c.overview, nil
 	}
 	from, to := now.Add(-12*time.Hour), now.AddDate(0, 0, domain.UpcomingDays)
 	snaps := make([]domain.Snapshot, len(list))
@@ -170,14 +214,14 @@ func (uc *arr) Overview(ctx context.Context) (domain.Overview, error) {
 	}
 	o := domain.Merge(names, snaps)
 	o.Errors = failed
-	uc.cached, uc.fetched = &o, now
+	uc.cache[key] = cachedOverview{overview: o, fetched: now}
 	return o, nil
 }
 
 func (uc *arr) invalidate() {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
-	uc.cached = nil
+	clear(uc.cache)
 }
 
 func view(in domain.Instance) InstanceView {

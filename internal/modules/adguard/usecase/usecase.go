@@ -51,17 +51,32 @@ type StatsView struct {
 	Error       string
 }
 
+// connectionTTL is how long the statistics of a named connection are
+// reused. The background job only refreshes the module settings, so
+// connections are read on demand at the same pace.
+const connectionTTL = time.Minute
+
 // DNSFilter is the input port of the module; provider is "adguard",
-// "pihole" or empty (AdGuard Home).
+// "pihole" or empty (AdGuard Home). Stats and Pause take the named
+// connection of that provider the widget chose (#610); an empty
+// connectionID, or a connection that is not usable, uses the module
+// settings.
 type DNSFilter interface {
 	Settings(ctx context.Context, provider string) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
-	Stats(ctx context.Context, provider string) (StatsView, error)
+	Stats(ctx context.Context, provider, connectionID string) (StatsView, error)
 	// Refresh updates every configured provider; it is run by the job.
 	Refresh(ctx context.Context) error
 	// Pause switches blocking off for a few minutes, if the server allows it
 	// for the provider (#177); it returns the new statistics.
-	Pause(ctx context.Context, provider string, minutes int) (StatsView, error)
+	Pause(ctx context.Context, provider, connectionID string, minutes int) (StatsView, error)
+}
+
+// Connections resolves a named connection of the integrations module to
+// settings of the provider (output port, #610). Any error means the module
+// settings are used instead.
+type Connections interface {
+	Settings(ctx context.Context, p domain.Provider, id string) (domain.Settings, error)
 }
 
 // SettingsRepository persists the settings per provider (output port).
@@ -86,18 +101,23 @@ type Deps struct {
 	Providers map[domain.Provider]DNSFilterProvider
 	// Pausable lists the providers that may be paused (DNS_PAUSE_PROVIDERS).
 	Pausable []domain.Provider
-	Audit    kernel.AuditSink
-	Clock    kernel.Clock
+	// Conns resolves named connections; may be nil.
+	Conns Connections
+	Audit kernel.AuditSink
+	Clock kernel.Clock
 }
 
 type dnsFilter struct {
 	repo      SettingsRepository
 	providers map[domain.Provider]DNSFilterProvider
 	pausable  []domain.Provider
+	conns     Connections
 	audit     kernel.AuditSink
 	clock     kernel.Clock
 	mu        sync.RWMutex
 	cached    map[domain.Provider]StatsView
+	// byConnection holds the statistics per named connection.
+	byConnection map[string]StatsView
 }
 
 // NewDNSFilter returns the use cases.
@@ -105,7 +125,39 @@ func NewDNSFilter(d Deps) DNSFilter {
 	if d.Audit == nil {
 		d.Audit = kernel.DiscardAudit{}
 	}
-	return &dnsFilter{repo: d.Repo, providers: d.Providers, pausable: d.Pausable, audit: d.Audit, clock: d.Clock, cached: map[domain.Provider]StatsView{}}
+	return &dnsFilter{repo: d.Repo, providers: d.Providers, pausable: d.Pausable, conns: d.Conns, audit: d.Audit, clock: d.Clock,
+		cached: map[domain.Provider]StatsView{}, byConnection: map[string]StatsView{}}
+}
+
+// connection returns the settings of a usable named connection of p.
+func (uc *dnsFilter) connection(ctx context.Context, p domain.Provider, id string) (domain.Settings, bool) {
+	if id == "" || uc.conns == nil {
+		return domain.Settings{}, false
+	}
+	s, err := uc.conns.Settings(ctx, p, id)
+	return s, err == nil
+}
+
+// connectionStats returns the cached statistics of a named connection or
+// reads them; force reads them anyway. Like the module statistics, a
+// failed read keeps the last ones and reports the error alongside.
+func (uc *dnsFilter) connectionStats(ctx context.Context, id string, s domain.Settings, force bool) StatsView {
+	now := uc.clock.Now()
+	uc.mu.RLock()
+	v, ok := uc.byConnection[id]
+	uc.mu.RUnlock()
+	if ok && !force && now.Sub(v.UpdatedAt) < connectionTTL {
+		return v
+	}
+	if stats, err := uc.providers[s.Provider].Stats(ctx, s); err != nil {
+		v.Error, v.UpdatedAt = "The DNS filter is not reachable.", now
+	} else {
+		v = toView(stats, now)
+	}
+	uc.mu.Lock()
+	uc.byConnection[id] = v
+	uc.mu.Unlock()
+	return v
 }
 
 // Settings implements DNSFilter.
@@ -127,7 +179,7 @@ func (uc *dnsFilter) Settings(ctx context.Context, provider string) (SettingsVie
 func (uc *dnsFilter) canPause(p domain.Provider) bool { return slices.Contains(uc.pausable, p) }
 
 // Pause implements DNSFilter.
-func (uc *dnsFilter) Pause(ctx context.Context, provider string, minutes int) (StatsView, error) {
+func (uc *dnsFilter) Pause(ctx context.Context, provider, connectionID string, minutes int) (StatsView, error) {
 	p, err := domain.ParseProvider(provider)
 	if err != nil {
 		return StatsView{}, err
@@ -139,14 +191,27 @@ func (uc *dnsFilter) Pause(ctx context.Context, provider string, minutes int) (S
 	if err != nil {
 		return StatsView{}, err
 	}
-	s, err := uc.repo.Load(ctx, p)
-	if err != nil {
-		return StatsView{}, err
+	s, viaConnection := uc.connection(ctx, p, connectionID)
+	if !viaConnection {
+		if s, err = uc.repo.Load(ctx, p); err != nil {
+			return StatsView{}, err
+		}
 	}
 	if err := uc.providers[p].Pause(ctx, s, d); err != nil {
 		return StatsView{}, kernel.TargetFailure(kernel.ErrUnavailable, err)
 	}
 	uc.audit.Audit(ctx, kernel.AuditEvent{Type: "dns_filter_paused", Detail: fmt.Sprintf("%s for %d min", p, minutes)})
+	if viaConnection {
+		v := uc.connectionStats(ctx, connectionID, s, true)
+		if v.Error != "" {
+			until := uc.clock.Now().Add(d)
+			v.ProtectionEnabled, v.PausedUntil = false, &until
+			uc.mu.Lock()
+			uc.byConnection[connectionID] = v
+			uc.mu.Unlock()
+		}
+		return v, nil
+	}
 	if err := uc.refresh(ctx, s); err != nil {
 		// Paused, but the statistics could not be read back: report the pause.
 		until := uc.clock.Now().Add(d)
@@ -191,10 +256,13 @@ func (uc *dnsFilter) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 }
 
 // Stats implements DNSFilter (cache-aside).
-func (uc *dnsFilter) Stats(ctx context.Context, provider string) (StatsView, error) {
+func (uc *dnsFilter) Stats(ctx context.Context, provider, connectionID string) (StatsView, error) {
 	p, err := domain.ParseProvider(provider)
 	if err != nil {
 		return StatsView{}, err
+	}
+	if s, ok := uc.connection(ctx, p, connectionID); ok {
+		return uc.connectionStats(ctx, connectionID, s, false), nil
 	}
 	if v, ok := uc.cachedView(p); ok {
 		return v, nil

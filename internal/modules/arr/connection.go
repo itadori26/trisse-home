@@ -2,6 +2,7 @@ package arr
 
 import (
 	"context"
+	"errors"
 
 	"waylight/internal/modules"
 	"waylight/internal/modules/arr/domain"
@@ -46,4 +47,24 @@ func savedConnections(ctx context.Context, repo usecase.InstanceRepository) ([]m
 			Credential: map[string]string{"apiKey": in.APIKey}})
 	}
 	return out, nil
+}
+
+// connections adapts the integrations resolver to usecase.Connections; a
+// connection may be of any of the three apps.
+type connections struct{ r modules.ConnectionResolver }
+
+// Instance implements usecase.Connections; the connection's ID and name
+// stand in for the instance's.
+func (c connections) Instance(ctx context.Context, id string) (domain.Instance, error) {
+	for _, app := range []domain.App{domain.AppSonarr, domain.AppRadarr, domain.AppProwlarr} {
+		rc, err := c.r.ResolveConnection(ctx, string(app), id)
+		if errors.Is(err, modules.ErrNoConnection) {
+			continue
+		}
+		if err != nil {
+			return domain.Instance{}, err
+		}
+		return domain.NewInstance(id, string(app), rc.Name, rc.URL, rc.Credential["apiKey"])
+	}
+	return domain.Instance{}, modules.ErrNoConnection
 }

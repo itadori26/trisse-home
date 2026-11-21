@@ -20,10 +20,10 @@ example after a `SECRET_KEY` change), the module uses its own settings as
 before. Saving in a module's settings page still writes the module
 settings only.
 
-The background jobs of Nextcloud, Proxmox VE, Speedtest Tracker and the
-FRITZ!Box refresh the module settings only. A connection is read when a
-widget asks, at most as often as the job runs (5 minutes, 30 seconds,
-10 minutes and 15 seconds).
+The background jobs of Nextcloud, Proxmox VE, Speedtest Tracker, the
+FRITZ!Box and the DNS filters refresh the module settings only. A
+connection is read when a widget asks, at most as often as the job runs
+(5 minutes, 30 seconds, 10 minutes, 15 seconds and 1 minute).
 
 | Module | Read endpoints |
 | --- | --- |
@@ -35,6 +35,8 @@ widget asks, at most as often as the job runs (5 minutes, 30 seconds,
 | FRITZ!Box | `GET /api/fritzbox/status`, `GET /api/fritzbox/calls` |
 | Media server | `GET /api/media/overview`, `GET /api/media/posters/{id}` (a Jellyfin or a Plex connection) |
 | Fuel prices | `GET /api/fuel/overview` (only the API key; place, radius and favourites stay in the module settings) |
+| AdGuard Home / Pi-hole | `GET /api/adguard/stats`, `GET /api/adguard/compact`, `POST /api/adguard/pause` (a connection of the provider asked for; acts on the same server) |
+| Sonarr / Radarr / Prowlarr | `GET /api/arr/overview` (`connection` repeated; merges the usable connections, or every instance of the module when none is usable) |
 | Grafana | `GET /api/grafana/alerts`, `GET /api/grafana/dashboards`, `GET /api/grafana/dashboards/{uid}/panels`, `GET /api/grafana/render/{uid}/{panel}`, `GET /api/grafana/data/{uid}/{panel}` |
 
 ## Copy of the module settings
@@ -78,6 +80,8 @@ credential fields they need. `GET /api/integrations/services` lists them:
 | FRITZ!Box | `GET /api/fritzbox/status`, `GET /api/fritzbox/calls` |
 | Media server | `GET /api/media/overview`, `GET /api/media/posters/{id}` (a Jellyfin or a Plex connection) |
 | Fuel prices | `GET /api/fuel/overview` (only the API key; place, radius and favourites stay in the module settings) |
+| AdGuard Home / Pi-hole | `GET /api/adguard/stats`, `GET /api/adguard/compact`, `POST /api/adguard/pause` (a connection of the provider asked for; acts on the same server) |
+| Sonarr / Radarr / Prowlarr | `GET /api/arr/overview` (`connection` repeated; merges the usable connections, or every instance of the module when none is usable) |
 | Grafana | **`token`** |
 | `homeassistant` | Home Assistant | **`token`** |
 | `immich` | Immich | **`apiKey`** |

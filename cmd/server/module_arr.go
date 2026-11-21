@@ -7,6 +7,6 @@ import (
 
 func init() {
 	registerModule("arr", func(d moduleDeps) modules.Module {
-		return arr.New(d.db, d.out.secrets, d.out.integration, d.clock, d.ids)
+		return arr.New(d.db, d.out.secrets, d.out.integration, d.connections, d.clock, d.ids)
 	})
 }
