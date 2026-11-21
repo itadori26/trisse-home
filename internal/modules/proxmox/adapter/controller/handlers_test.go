@@ -20,12 +20,12 @@ func (f *fakeProxmox) Settings(context.Context) (usecase.SettingsView, error) {
 	return usecase.SettingsView{Configured: true, URL: "https://pve", TokenID: "a@pve!t", HasSecret: true}, nil
 }
 
-func (f *fakeProxmox) Status(context.Context) (usecase.StatusView, error) {
+func (f *fakeProxmox) Status(context.Context, string) (usecase.StatusView, error) {
 	return usecase.StatusView{Cluster: domain.Cluster{Guests: []domain.Guest{{ID: 100, Kind: domain.KindVM, CPU: 0.1234}, {ID: 101, Kind: domain.KindLXC}}},
 		Actions: []int{100}}, nil
 }
 
-func (f *fakeProxmox) Act(_ context.Context, id int, action string) error {
+func (f *fakeProxmox) Act(_ context.Context, _ string, id int, action string) error {
 	if id != 100 {
 		return domain.ErrActionNotAllowed
 	}

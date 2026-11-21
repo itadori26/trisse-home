@@ -41,3 +41,15 @@ func savedConnections(ctx context.Context, repo usecase.SettingsRepository) ([]m
 	return []modules.SavedConnection{{Source: "nextcloud", Service: "nextcloud", URL: s.URL,
 		Credential: map[string]string{"username": s.Username, "appPassword": s.AppPassword}}}, nil
 }
+
+// connections adapts the integrations resolver to usecase.Connections.
+type connections struct{ r modules.ConnectionResolver }
+
+// Settings implements usecase.Connections.
+func (c connections) Settings(ctx context.Context, id string) (domain.Settings, error) {
+	rc, err := c.r.ResolveConnection(ctx, "nextcloud", id)
+	if err != nil {
+		return domain.Settings{}, err
+	}
+	return domain.NewSettings(rc.URL, rc.Credential["username"], rc.Credential["appPassword"])
+}

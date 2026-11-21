@@ -44,9 +44,9 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
 }
 
-// Status handles GET /api/proxmox/status.
+// Status handles GET /api/proxmox/status[?connection=<id>].
 func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
-	res, err := h.uc.Status(r.Context())
+	res, err := h.uc.Status(r.Context(), r.URL.Query().Get("connection"))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
@@ -54,14 +54,14 @@ func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Status(res))
 }
 
-// Act handles POST /api/proxmox/guests/{id}/{action}.
+// Act handles POST /api/proxmox/guests/{id}/{action}[?connection=<id>].
 func (h *Handlers) Act(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, domain.ErrGuestNotFound)
 		return
 	}
-	if err := h.uc.Act(r.Context(), id, r.PathValue("action")); err != nil {
+	if err := h.uc.Act(r.Context(), r.URL.Query().Get("connection"), id, r.PathValue("action")); err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}

@@ -42,9 +42,9 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
 }
 
-// Status handles GET /api/nextcloud/status.
+// Status handles GET /api/nextcloud/status[?connection=<id>].
 func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
-	res, err := h.uc.Status(r.Context())
+	res, err := h.uc.Status(r.Context(), r.URL.Query().Get("connection"))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return

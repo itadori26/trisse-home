@@ -17,7 +17,7 @@ type fakeUC struct {
 	hours int
 }
 
-func (f *fakeUC) Results(_ context.Context, hours int) (usecase.ResultsView, error) {
+func (f *fakeUC) Results(_ context.Context, _ string, hours int) (usecase.ResultsView, error) {
 	f.hours = hours
 	m := domain.Measurement{At: time.Unix(0, 0), DownloadBps: 123456789, UploadBps: 1e6, PingMs: 9.87}
 	return usecase.ResultsView{Latest: &m, History: []domain.Measurement{m}}, nil

@@ -71,7 +71,7 @@ var input = SettingsInput{URL: "https://pve:8006", TokenID: "monitor@pve!th", Se
 func TestSettingsAndStatus(t *testing.T) {
 	ctx := context.Background()
 	uc, repo, client, _ := setup()
-	if _, err := uc.Status(ctx); !errors.Is(err, domain.ErrNotConfigured) {
+	if _, err := uc.Status(ctx, ""); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("expected not configured, got %v", err)
 	}
 	if err := uc.Refresh(ctx); err != nil {
@@ -107,13 +107,13 @@ func TestSettingsAndStatus(t *testing.T) {
 	if s, _ := uc.Settings(ctx); !s.Configured || s.TokenID != "monitor@pve!th" {
 		t.Fatalf("settings: %+v", s)
 	}
-	st, err := uc.Status(ctx)
+	st, err := uc.Status(ctx, "")
 	if err != nil || st.Cluster.Guests[0].ID != 100 || len(st.Actions) != 1 || st.Actions[0] != 100 {
 		t.Fatalf("status is sorted and lists allowed guests: %+v %v", st, err)
 	}
 	client.err = errors.New("timeout")
 	_ = uc.Refresh(ctx)
-	if st, _ := uc.Status(ctx); st.Error == "" || len(st.Cluster.Guests) != 2 {
+	if st, _ := uc.Status(ctx, ""); st.Error == "" || len(st.Cluster.Guests) != 2 {
 		t.Fatalf("last known state is kept: %+v", st)
 	}
 }
@@ -121,19 +121,19 @@ func TestSettingsAndStatus(t *testing.T) {
 func TestAct(t *testing.T) {
 	ctx := context.Background()
 	uc, _, client, a := setup()
-	if err := uc.Act(ctx, 100, "start"); !errors.Is(err, domain.ErrNotConfigured) {
+	if err := uc.Act(ctx, "", 100, "start"); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("not configured: %v", err)
 	}
 	if _, err := uc.SaveSettings(ctx, input); err != nil {
 		t.Fatal(err)
 	}
-	if err := uc.Act(ctx, 101, "start"); !errors.Is(err, kernel.ErrForbidden) {
+	if err := uc.Act(ctx, "", 101, "start"); !errors.Is(err, kernel.ErrForbidden) {
 		t.Fatalf("not allow-listed: %v", err)
 	}
-	if err := uc.Act(ctx, 100, "stop"); !errors.Is(err, kernel.ErrInvalid) {
+	if err := uc.Act(ctx, "", 100, "stop"); !errors.Is(err, kernel.ErrInvalid) {
 		t.Fatalf("unknown action: %v", err)
 	}
-	if err := uc.Act(ctx, 100, "shutdown"); err != nil {
+	if err := uc.Act(ctx, "", 100, "shutdown"); err != nil {
 		t.Fatal(err)
 	}
 	if len(client.acts) != 1 || client.acts[0].guest.Node != "pve" || client.acts[0].guest.Kind != domain.KindVM || client.acts[0].act != domain.ActionShutdown {
@@ -143,7 +143,59 @@ func TestAct(t *testing.T) {
 		t.Fatalf("audit: %+v", a.events)
 	}
 	uc2 := NewProxmox(Deps{Repo: &memRepo{s: &domain.Settings{Secret: "secret"}}, Client: &fakeClient{}, Clock: clk{}, Policy: domain.ActionPolicy{Allowed: []int{7}}})
-	if err := uc2.Act(ctx, 7, "start"); !errors.Is(err, domain.ErrGuestNotFound) {
+	if err := uc2.Act(ctx, "", 7, "start"); !errors.Is(err, domain.ErrGuestNotFound) {
 		t.Fatalf("unknown guest: %v", err)
+	}
+}
+
+// conns resolves "office" to another cluster; everything else fails, like
+// a missing copy or a connection of another service.
+type conns struct{}
+
+func (conns) Settings(_ context.Context, id string) (domain.Settings, error) {
+	if id == "office" {
+		return domain.Settings{URL: "https://office:8006", TokenID: "monitor@pve!th", Secret: "secret"}, nil
+	}
+	return domain.Settings{}, errors.New("no usable connection")
+}
+
+// countingClient counts the cluster reads per address.
+type countingClient struct {
+	fakeClient
+	reads map[string]int
+}
+
+func (c *countingClient) Cluster(ctx context.Context, s domain.Settings) (domain.Cluster, error) {
+	c.reads[s.URL]++
+	return c.fakeClient.Cluster(ctx, s)
+}
+
+func TestStatusAndActThroughConnection(t *testing.T) {
+	ctx := context.Background()
+	client := &countingClient{reads: map[string]int{}, fakeClient: fakeClient{cluster: domain.Cluster{
+		Guests: []domain.Guest{{ID: 100, Name: "ha", Node: "pve", Kind: domain.KindVM, Status: "running"}},
+	}}}
+	uc := NewProxmox(Deps{Repo: &memRepo{}, Client: client, Conns: conns{}, Clock: clk{}, Policy: domain.ActionPolicy{Allowed: []int{100}}})
+	st, err := uc.Status(ctx, "office")
+	if err != nil || len(st.Cluster.Guests) != 1 || len(st.Actions) != 1 {
+		t.Fatalf("office: %+v %v", st, err)
+	}
+	if _, err := uc.Status(ctx, "missing"); !errors.Is(err, domain.ErrNotConfigured) {
+		t.Fatalf("missing falls back to the (empty) module settings: %v", err)
+	}
+	_, _ = uc.Status(ctx, "office")
+	if client.reads["https://office:8006"] != 1 {
+		t.Fatal("a connection's state is cached")
+	}
+	if err := uc.Act(ctx, "office", 100, "shutdown"); err != nil || len(client.acts) != 1 {
+		t.Fatalf("act through the connection without module settings: %v", err)
+	}
+	_, _ = uc.Status(ctx, "office")
+	if client.reads["https://office:8006"] != 2 {
+		t.Fatal("an action makes the next status read the new state")
+	}
+	client.err = errors.New("down")
+	if err := uc.Act(ctx, "office", 100, "start"); err != nil {
+		t.Fatalf("the last known state still names the guest: %v", err)
 	}
 }

@@ -42,3 +42,24 @@ func savedConnections(ctx context.Context, repo usecase.SettingsRepository) ([]m
 	return []modules.SavedConnection{{Source: "proxmox", Service: "proxmox", URL: s.URL,
 		Credential: map[string]string{"tokenId": s.TokenID, "secret": s.Secret, "fingerprint": s.Fingerprint}}}, nil
 }
+
+// connections adapts the integrations resolver to usecase.Connections.
+type connections struct{ r modules.ConnectionResolver }
+
+// connectionsOf returns nil without a resolver, so the use cases only read
+// the module settings.
+func connectionsOf(r modules.ConnectionResolver) usecase.Connections {
+	if r == nil {
+		return nil
+	}
+	return connections{r}
+}
+
+// Settings implements usecase.Connections.
+func (c connections) Settings(ctx context.Context, id string) (domain.Settings, error) {
+	rc, err := c.r.ResolveConnection(ctx, "proxmox", id)
+	if err != nil {
+		return domain.Settings{}, err
+	}
+	return domain.NewSettings(rc.URL, rc.Credential["tokenId"], rc.Credential["secret"], rc.Credential["fingerprint"])
+}

@@ -40,10 +40,10 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
 }
 
-// Results handles GET /api/speedtest/results?hours=24|168.
+// Results handles GET /api/speedtest/results?hours=24|168[&connection=<id>].
 func (h *Handlers) Results(w http.ResponseWriter, r *http.Request) {
 	hours, _ := strconv.Atoi(r.URL.Query().Get("hours")) // invalid or missing means 7 days
-	res, err := h.uc.Results(r.Context(), hours)
+	res, err := h.uc.Results(r.Context(), r.URL.Query().Get("connection"), hours)
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return

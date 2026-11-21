@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"time"
 
 	"waylight/internal/modules"
@@ -29,12 +30,13 @@ type Module struct {
 	repo usecase.SettingsRepository
 }
 
-// New builds the speedtest module; cipher encrypts the stored token and
-// sink receives threshold observations.
-func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, sink kernel.ObservationSink, clock kernel.Clock) *Module {
+// New builds the speedtest module; cipher encrypts the stored token, conns
+// resolves the named connection a widget chose (#610) and sink receives
+// threshold observations.
+func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, conns modules.ConnectionResolver, sink kernel.ObservationSink, clock kernel.Clock) *Module {
 	api := gateway.NewAPI(client)
 	repo := gateway.NewSettingsRepository(db, cipher)
-	uc := usecase.NewSpeedtest(repo, api, sink, clock)
+	uc := usecase.NewSpeedtest(repo, api, connections{conns}, sink, clock)
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc), repo: repo, specs: connectionSpecs(api, clock)}
 }
 
@@ -65,7 +67,7 @@ func (m *Module) Jobs() []modules.Job {
 // ConnectionStatus implements modules.StatusReporter (#592): the results
 // the job keeps say whether the last refresh reached Speedtest Tracker.
 func (m *Module) ConnectionStatus(ctx context.Context) modules.ConnectionStatus {
-	v, err := m.uc.Results(ctx, 1)
+	v, err := m.uc.Results(ctx, "", 1)
 	if err == nil && v.Error != "" {
 		err = errUnreachable
 	}
@@ -78,15 +80,18 @@ var errUnreachable = kernel.NewPublicError(kernel.ErrUnavailable, "Speedtest Tra
 // view only needs the latest measurement.
 const compactHistoryHours = 1
 
-// CompactState implements modules.CompactProvider (#638): the latest
-// measurement.
-func (m *Module) CompactState(ctx context.Context) (kernel.CompactState, error) {
-	v, err := m.uc.Results(ctx, compactHistoryHours)
+// CompactStateFor implements modules.CompactParamProvider (#638): the
+// latest measurement, read through the connection in ?connection= (#610).
+func (m *Module) CompactStateFor(ctx context.Context, params url.Values) (kernel.CompactState, error) {
+	v, err := m.uc.Results(ctx, params.Get("connection"), compactHistoryHours)
 	if err != nil {
 		return kernel.CompactState{}, err
 	}
 	return usecase.CompactState(v), nil
 }
+
+// CompactParams implements modules.CompactParamProvider.
+func (m *Module) CompactParams() []string { return []string{"connection"} }
 
 // ConnectionSpecs implements modules.Connectable (#610).
 func (m *Module) ConnectionSpecs() []modules.ConnectionSpec { return m.specs }

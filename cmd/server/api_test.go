@@ -659,6 +659,12 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	// --- nextcloud (no serverinfo app on the fake: degrades gracefully) ---
 	c.do(http.MethodGet, "/api/nextcloud/status", nil, http.StatusNotFound)
+	// Widgets that chose a named connection read through it (#610); an
+	// unknown one falls back to the (still empty) module settings.
+	ncID := connectionE2E(c, "nextcloud", up.URL, obj{"username": "anna", "appPassword": "app-pw"})
+	c.do(http.MethodGet, "/api/nextcloud/status?connection="+ncID, nil, http.StatusOK)
+	c.do(http.MethodGet, "/api/nextcloud/status?connection=missing", nil, http.StatusNotFound)
+	c.do(http.MethodDelete, "/api/integrations/connections/"+ncID, nil, http.StatusNoContent)
 	c.do(http.MethodPut, "/api/nextcloud/settings", obj{"url": up.URL, "username": "anna", "appPassword": "wrong"}, http.StatusUnprocessableEntity)
 	c.json(http.MethodPut, "/api/nextcloud/settings", obj{"url": up.URL, "username": "anna", "appPassword": "app-pw"}, http.StatusOK, nil)
 	var nc obj
@@ -690,6 +696,11 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	// --- proxmox (#84): read-only, actions off without PROXMOX_ACTIONS_GUESTS ---
 	c.do(http.MethodGet, "/api/proxmox/status", nil, http.StatusNotFound)
+	pveID := connectionE2E(c, "proxmox", up.URL, obj{"tokenId": "monitor@pve!th", "secret": "uuid"})
+	c.do(http.MethodGet, "/api/proxmox/status?connection="+pveID, nil, http.StatusOK)
+	c.do(http.MethodGet, "/api/proxmox/compact?connection="+pveID, nil, http.StatusOK)
+	c.do(http.MethodGet, "/api/proxmox/status?connection=missing", nil, http.StatusNotFound)
+	c.do(http.MethodDelete, "/api/integrations/connections/"+pveID, nil, http.StatusNoContent)
 	c.do(http.MethodPut, "/api/proxmox/settings", obj{"url": up.URL, "tokenId": "monitor@pve!th", "secret": "bad"}, http.StatusUnprocessableEntity)
 	c.json(http.MethodPut, "/api/proxmox/settings", obj{"url": up.URL, "tokenId": "monitor@pve!th", "secret": "uuid"}, http.StatusOK, nil)
 	if body := string(c.do(http.MethodGet, "/api/proxmox/settings", nil, http.StatusOK)); strings.Contains(body, "uuid") {
@@ -822,6 +833,16 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	// --- speedtest (#60): off until configured ---
 	c.do(http.MethodGet, "/api/speedtest/results", nil, http.StatusNotFound)
+	// The fake has no Speedtest Tracker: through a connection the widget
+	// gets the error in the results instead of "not configured".
+	stID := connectionE2E(c, "speedtest", up.URL+"/no-speedtest", obj{"token": "t"})
+	var stRes obj
+	c.json(http.MethodGet, "/api/speedtest/results?connection="+stID, nil, http.StatusOK, &stRes)
+	if stRes["error"] == "" || stRes["error"] == nil {
+		t.Fatalf("speedtest through a connection: %v", stRes)
+	}
+	c.do(http.MethodGet, "/api/speedtest/results?connection=missing", nil, http.StatusNotFound)
+	c.do(http.MethodDelete, "/api/integrations/connections/"+stID, nil, http.StatusNoContent)
 	var st obj
 	c.json(http.MethodGet, "/api/speedtest/settings", nil, http.StatusOK, &st)
 	if st["configured"] != false {

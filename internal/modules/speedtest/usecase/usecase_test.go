@@ -47,9 +47,9 @@ func TestSpeedtest(t *testing.T) {
 		{At: now.Add(-time.Hour), DownloadBps: 80e6, UploadBps: 40e6},
 	}}
 	repo, obs := &memRepo{}, &rec{}
-	uc := NewSpeedtest(repo, src, obs, clock{now})
+	uc := NewSpeedtest(repo, src, nil, obs, clock{now})
 
-	if _, err := uc.Results(ctx, 24); !errors.Is(err, kernel.ErrNotFound) {
+	if _, err := uc.Results(ctx, "", 24); !errors.Is(err, kernel.ErrNotFound) {
 		t.Fatalf("unconfigured: %v", err)
 	}
 	if _, err := uc.SaveSettings(ctx, SettingsInput{URL: "http://nas:8765", Token: "secret", MinDownMbps: 100}); err != nil {
@@ -63,11 +63,11 @@ func TestSpeedtest(t *testing.T) {
 	if _, err := uc.SaveSettings(ctx, SettingsInput{URL: "http://nas:8765", MinDownMbps: 100}); err != nil || src.token != "secret" {
 		t.Fatalf("token kept: %v %q", err, src.token)
 	}
-	res, err := uc.Results(ctx, 24)
+	res, err := uc.Results(ctx, "", 24)
 	if err != nil || len(res.History) != 1 || res.Latest.DownloadBps != 80e6 {
 		t.Fatalf("%+v %v", res, err)
 	}
-	if week, _ := uc.Results(ctx, 0); len(week.History) != 2 {
+	if week, _ := uc.Results(ctx, "", 0); len(week.History) != 2 {
 		t.Fatalf("week: %+v", week)
 	}
 	if err := uc.Refresh(ctx); err != nil {
@@ -78,14 +78,50 @@ func TestSpeedtest(t *testing.T) {
 	}
 	src.err = errors.New("down")
 	_ = uc.Refresh(ctx)
-	if res, _ := uc.Results(ctx, 24); res.Error == "" || res.Latest == nil {
+	if res, _ := uc.Results(ctx, "", 24); res.Error == "" || res.Latest == nil {
 		t.Fatalf("stale cache with error expected: %+v", res)
 	}
 }
 
 func TestSaveRejectsUnreachable(t *testing.T) {
-	uc := NewSpeedtest(&memRepo{}, &fakeSource{err: errors.New("401")}, nil, clock{time.Now()})
+	uc := NewSpeedtest(&memRepo{}, &fakeSource{err: errors.New("401")}, nil, nil, clock{time.Now()})
 	if _, err := uc.SaveSettings(context.Background(), SettingsInput{URL: "http://nas", Token: "x"}); !errors.Is(err, kernel.ErrInvalid) {
 		t.Fatalf("%v", err)
+	}
+}
+
+// conns resolves "office" to another Speedtest Tracker; everything else
+// fails, like a missing copy or a connection of another service.
+type conns struct{}
+
+func (conns) Settings(_ context.Context, id string) (domain.Settings, error) {
+	if id == "office" {
+		return domain.Settings{URL: "http://office", Token: "office-token"}, nil
+	}
+	return domain.Settings{}, errors.New("no usable connection")
+}
+
+func TestResultsThroughConnection(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 11, 12, 12, 0, 0, 0, time.UTC)
+	src := &fakeSource{list: []domain.Measurement{
+		{At: now.Add(-48 * time.Hour), DownloadBps: 250e6},
+		{At: now.Add(-time.Hour), DownloadBps: 80e6},
+	}}
+	obs := &rec{}
+	uc := NewSpeedtest(&memRepo{}, src, conns{}, obs, clock{now})
+	res, err := uc.Results(ctx, "office", 24)
+	if err != nil || src.token != "office-token" || len(res.History) != 1 || res.Latest == nil {
+		t.Fatalf("office: %+v %v", res, err)
+	}
+	if _, err := uc.Results(ctx, "missing", 24); !errors.Is(err, kernel.ErrNotFound) {
+		t.Fatalf("missing falls back to the (empty) module settings: %v", err)
+	}
+	src.token = ""
+	if week, _ := uc.Results(ctx, "office", 0); len(week.History) != 2 || src.token != "" {
+		t.Fatalf("a connection's results are cached and windowed: %+v", week)
+	}
+	if len(obs.got) != 0 {
+		t.Fatal("a connection has no thresholds to observe")
 	}
 }

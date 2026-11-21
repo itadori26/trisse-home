@@ -29,7 +29,7 @@ func TestSaveWithSignIn(t *testing.T) {
 	repo, src := &memRepo{}, &fakeSource{}
 	signIns := &oneSignIn{id: "s1", service: kernel.SignInNextcloud,
 		grant: kernel.SignInGrant{URL: "https://cloud.example", Username: "anna", Secret: "app-pw"}}
-	uc := NewNextcloud(repo, src, clk{}, signIns)
+	uc := NewNextcloud(repo, src, nil, clk{}, signIns)
 
 	v, err := uc.SaveSettings(ctx, SettingsInput{URL: "https://other.example", SignIn: "s1"})
 	if err != nil || v.URL != "https://cloud.example" || repo.s.Username != "anna" || repo.s.AppPassword != "app-pw" {
@@ -38,7 +38,7 @@ func TestSaveWithSignIn(t *testing.T) {
 	if _, err := uc.SaveSettings(ctx, SettingsInput{SignIn: "s1"}); !errors.Is(err, kernel.ErrSignInUnknown) {
 		t.Fatalf("a sign-in is redeemed once: %v", err)
 	}
-	if _, err := NewNextcloud(&memRepo{}, src, clk{}, nil).SaveSettings(ctx, SettingsInput{SignIn: "s1"}); !errors.Is(err, kernel.ErrSignInUnknown) {
+	if _, err := NewNextcloud(&memRepo{}, src, nil, clk{}, nil).SaveSettings(ctx, SettingsInput{SignIn: "s1"}); !errors.Is(err, kernel.ErrSignInUnknown) {
 		t.Fatalf("without the sign-in module: %v", err)
 	}
 }

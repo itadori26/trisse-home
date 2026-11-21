@@ -20,10 +20,17 @@ example after a `SECRET_KEY` change), the module uses its own settings as
 before. Saving in a module's settings page still writes the module
 settings only.
 
+The background jobs of Nextcloud, Proxmox VE and Speedtest Tracker refresh
+the module settings only. A connection is read when a widget asks, at most
+as often as the job runs (5 minutes, 30 seconds and 10 minutes).
+
 | Module | Read endpoints |
 | --- | --- |
 | Immich | `GET /api/immich/overview`, `GET /api/immich/thumbnails/{id}` |
 | Home Assistant | `GET /api/smarthome/entities`, `GET /api/smarthome/states`, `GET /api/smarthome/compact`, `POST /api/smarthome/entities/{id}/action` (acts on the same server) |
+| Nextcloud | `GET /api/nextcloud/status` |
+| Proxmox VE | `GET /api/proxmox/status`, `GET /api/proxmox/compact`, `POST /api/proxmox/guests/{id}/{action}` (acts on the same cluster) |
+| Speedtest Tracker | `GET /api/speedtest/results`, `GET /api/speedtest/compact` (the thresholds stay in the module settings) |
 | Grafana | `GET /api/grafana/alerts`, `GET /api/grafana/dashboards`, `GET /api/grafana/dashboards/{uid}/panels`, `GET /api/grafana/render/{uid}/{panel}`, `GET /api/grafana/data/{uid}/{panel}` |
 
 ## Copy of the module settings
@@ -60,8 +67,7 @@ credential fields they need. `GET /api/integrations/services` lists them:
 | --- | --- | --- |
 | `adguard` | AdGuard Home | `username`, **`password`** |
 | `fritzbox` | FRITZ!Box | *`username`*, ***`password`*** |
-| `grafana` | Home Assistant | `GET /api/smarthome/entities`, `GET /api/smarthome/states`, `GET /api/smarthome/compact`, `POST /api/smarthome/entities/{id}/action` (acts on the same server) |
-| Grafana | **`token`** |
+| `grafana` | Grafana | **`token`** |
 | `homeassistant` | Home Assistant | **`token`** |
 | `immich` | Immich | **`apiKey`** |
 | `jellyfin`, `plex` | Jellyfin, Plex | **`token`** |

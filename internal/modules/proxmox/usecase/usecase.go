@@ -37,15 +37,29 @@ type StatusView struct {
 	Actions []int
 }
 
-// Proxmox is the input port of the module (#84).
+// connectionTTL is how long the state of a named connection is reused.
+// The background job only refreshes the module settings, so connections
+// are read on demand at the same pace.
+const connectionTTL = 30 * time.Second
+
+// Proxmox is the input port of the module (#84). Status and Act take the
+// named connection the widget chose (#610); an empty connectionID, or a
+// connection that is not usable, uses the module settings.
 type Proxmox interface {
 	Settings(ctx context.Context) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
-	Status(ctx context.Context) (StatusView, error)
+	Status(ctx context.Context, connectionID string) (StatusView, error)
 	// Refresh is run by the background job.
 	Refresh(ctx context.Context) error
 	// Act starts or shuts down an allow-listed guest.
-	Act(ctx context.Context, guestID int, action string) error
+	Act(ctx context.Context, connectionID string, guestID int, action string) error
+}
+
+// Connections resolves a named connection of the integrations module to
+// settings (output port, #610). Any error means the module settings are
+// used instead.
+type Connections interface {
+	Settings(ctx context.Context, id string) (domain.Settings, error)
 }
 
 // SettingsRepository persists the settings (output port). Load returns
@@ -65,6 +79,8 @@ type Client interface {
 type Deps struct {
 	Repo   SettingsRepository
 	Client Client
+	// Conns resolves named connections; may be nil.
+	Conns  Connections
 	Clock  kernel.Clock
 	Policy domain.ActionPolicy
 	// Audit records power actions in the security event log; may be nil.
@@ -78,6 +94,8 @@ type proxmox struct {
 	d      Deps
 	mu     sync.RWMutex
 	cached *StatusView
+	// byConnection holds the state per named connection.
+	byConnection map[string]StatusView
 }
 
 // NewProxmox returns the Proxmox use cases.
@@ -85,7 +103,7 @@ func NewProxmox(d Deps) Proxmox {
 	if d.Audit == nil {
 		d.Audit = kernel.DiscardAudit{}
 	}
-	return &proxmox{d: d}
+	return &proxmox{d: d, byConnection: map[string]StatusView{}}
 }
 
 // Settings implements Proxmox.
@@ -128,8 +146,20 @@ func (uc *proxmox) SaveSettings(ctx context.Context, in SettingsInput) (Settings
 	return settingsView(s), nil
 }
 
+// connection returns the settings of a usable named connection.
+func (uc *proxmox) connection(ctx context.Context, id string) (domain.Settings, bool) {
+	if id == "" || uc.d.Conns == nil {
+		return domain.Settings{}, false
+	}
+	s, err := uc.d.Conns.Settings(ctx, id)
+	return s, err == nil
+}
+
 // Status implements Proxmox (cache-aside).
-func (uc *proxmox) Status(ctx context.Context) (StatusView, error) {
+func (uc *proxmox) Status(ctx context.Context, connectionID string) (StatusView, error) {
+	if s, ok := uc.connection(ctx, connectionID); ok {
+		return uc.connectionStatus(ctx, connectionID, s), nil
+	}
 	if v, ok := uc.cachedView(); ok {
 		return v, nil
 	}
@@ -168,18 +198,43 @@ func (uc *proxmox) Refresh(ctx context.Context) error {
 	return nil
 }
 
+// connectionStatus returns the cached state of a named connection or
+// reads it. Like the module state, a failed read keeps the last state and
+// reports the error alongside.
+func (uc *proxmox) connectionStatus(ctx context.Context, id string, s domain.Settings) StatusView {
+	now := uc.d.Clock.Now()
+	uc.mu.RLock()
+	v, ok := uc.byConnection[id]
+	uc.mu.RUnlock()
+	if ok && now.Sub(v.UpdatedAt) < connectionTTL {
+		return v
+	}
+	if c, err := uc.d.Client.Cluster(ctx, s); err != nil {
+		v.Error, v.UpdatedAt = errUnreachable.Error(), now
+	} else {
+		v = uc.view(c)
+	}
+	uc.mu.Lock()
+	uc.byConnection[id] = v
+	uc.mu.Unlock()
+	return v
+}
+
 // Act implements Proxmox. The guest's node and kind come from the last
 // known cluster state, never from the request.
-func (uc *proxmox) Act(ctx context.Context, guestID int, action string) error {
+func (uc *proxmox) Act(ctx context.Context, connectionID string, guestID int, action string) error {
 	a := domain.Action(action)
 	if err := uc.d.Policy.Check(guestID, a); err != nil {
 		return err
 	}
-	s, err := uc.d.Repo.Load(ctx)
-	if err != nil {
-		return err
+	s, viaConnection := uc.connection(ctx, connectionID)
+	if !viaConnection {
+		var err error
+		if s, err = uc.d.Repo.Load(ctx); err != nil {
+			return err
+		}
 	}
-	status, err := uc.Status(ctx)
+	status, err := uc.Status(ctx, connectionID)
 	if err != nil {
 		return err
 	}
@@ -191,6 +246,16 @@ func (uc *proxmox) Act(ctx context.Context, guestID int, action string) error {
 		return kernel.TargetFailure(kernel.ErrUnavailable, err)
 	}
 	uc.d.Audit.Audit(ctx, kernel.AuditEvent{Type: "proxmox_" + string(a), Detail: fmt.Sprintf("%s %d (%s)", g.Kind, g.ID, g.Name)})
+	if viaConnection {
+		// The next status reads the new state; the old one stays as the last
+		// known state should that read fail.
+		uc.mu.Lock()
+		v := uc.byConnection[connectionID]
+		v.UpdatedAt = time.Time{}
+		uc.byConnection[connectionID] = v
+		uc.mu.Unlock()
+		return nil
+	}
 	_ = uc.Refresh(ctx) // the new state shows up with the next refresh at the latest
 	return nil
 }
@@ -205,6 +270,14 @@ func (uc *proxmox) cachedView() (StatusView, bool) {
 }
 
 func (uc *proxmox) store(c domain.Cluster) {
+	v := uc.view(c)
+	uc.mu.Lock()
+	defer uc.mu.Unlock()
+	uc.cached = &v
+}
+
+// view is the sorted cluster with the guests whose actions are enabled.
+func (uc *proxmox) view(c domain.Cluster) StatusView {
 	c.Sort()
 	actions := []int{}
 	for _, g := range c.Guests {
@@ -212,9 +285,7 @@ func (uc *proxmox) store(c domain.Cluster) {
 			actions = append(actions, g.ID)
 		}
 	}
-	uc.mu.Lock()
-	defer uc.mu.Unlock()
-	uc.cached = &StatusView{Cluster: c, UpdatedAt: uc.d.Clock.Now(), Actions: actions}
+	return StatusView{Cluster: c, UpdatedAt: uc.d.Clock.Now(), Actions: actions}
 }
 
 func settingsView(s domain.Settings) SettingsView {

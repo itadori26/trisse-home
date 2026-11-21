@@ -33,12 +33,27 @@ type StatusView struct {
 	Error     string
 }
 
+// connectionTTL is how long the status of a named connection is reused.
+// The background job only refreshes the module settings, so connections
+// are read on demand at the same pace.
+const connectionTTL = 5 * time.Minute
+
 // Nextcloud is the input port of the module.
 type Nextcloud interface {
 	Settings(ctx context.Context) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
-	Status(ctx context.Context) (StatusView, error)
+	// Status reads through the named connection the widget chose (#610),
+	// or through the module settings when connectionID is empty or the
+	// connection is not usable.
+	Status(ctx context.Context, connectionID string) (StatusView, error)
 	Refresh(ctx context.Context) error
+}
+
+// Connections resolves a named connection of the integrations module to
+// settings (output port, #610). Any error means the module settings are
+// used instead.
+type Connections interface {
+	Settings(ctx context.Context, id string) (domain.Settings, error)
 }
 
 // SettingsRepository persists the settings (output port); Load returns
@@ -56,16 +71,20 @@ type StatusSource interface {
 type nextcloud struct {
 	repo    SettingsRepository
 	source  StatusSource
+	conns   Connections
 	clock   kernel.Clock
 	signIns kernel.SignIns
 	mu      sync.RWMutex
 	cached  *StatusView
+	// byConnection holds the status per named connection.
+	byConnection map[string]StatusView
 }
 
-// NewNextcloud returns the Nextcloud use cases; signIns (may be nil) hands
-// over sign-ins of the setup assistant.
-func NewNextcloud(repo SettingsRepository, source StatusSource, clock kernel.Clock, signIns kernel.SignIns) Nextcloud {
-	return &nextcloud{repo: repo, source: source, clock: clock, signIns: signIns}
+// NewNextcloud returns the Nextcloud use cases; conns (may be nil)
+// resolves named connections, signIns (may be nil) hands over sign-ins of
+// the setup assistant.
+func NewNextcloud(repo SettingsRepository, source StatusSource, conns Connections, clock kernel.Clock, signIns kernel.SignIns) Nextcloud {
+	return &nextcloud{repo: repo, source: source, conns: conns, clock: clock, signIns: signIns, byConnection: map[string]StatusView{}}
 }
 
 // Settings implements Nextcloud.
@@ -114,7 +133,12 @@ func (uc *nextcloud) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 }
 
 // Status implements Nextcloud (cache-aside).
-func (uc *nextcloud) Status(ctx context.Context) (StatusView, error) {
+func (uc *nextcloud) Status(ctx context.Context, connectionID string) (StatusView, error) {
+	if connectionID != "" && uc.conns != nil {
+		if s, err := uc.conns.Settings(ctx, connectionID); err == nil {
+			return uc.connectionStatus(ctx, connectionID, s), nil
+		}
+	}
 	uc.mu.RLock()
 	cached := uc.cached
 	uc.mu.RUnlock()
@@ -153,6 +177,29 @@ func (uc *nextcloud) Refresh(ctx context.Context) error {
 	}
 	uc.store(StatusView{Status: st, UpdatedAt: uc.clock.Now()})
 	return nil
+}
+
+// connectionStatus returns the cached status of a named connection or
+// reads it. Like the module status, a failed read keeps the last status
+// and reports the error alongside.
+func (uc *nextcloud) connectionStatus(ctx context.Context, id string, s domain.Settings) StatusView {
+	now := uc.clock.Now()
+	uc.mu.RLock()
+	view, ok := uc.byConnection[id]
+	uc.mu.RUnlock()
+	if ok && now.Sub(view.UpdatedAt) < connectionTTL {
+		return view
+	}
+	if st, err := uc.source.Status(ctx, s); err != nil {
+		view.Error = "Nextcloud is not reachable."
+	} else {
+		view = StatusView{Status: st}
+	}
+	view.UpdatedAt = now
+	uc.mu.Lock()
+	uc.byConnection[id] = view
+	uc.mu.Unlock()
+	return view
 }
 
 func (uc *nextcloud) store(v StatusView) {

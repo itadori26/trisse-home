@@ -208,7 +208,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"adguard", func() modules.Module {
 			return adguard.New(adguard.Config{DB: db, Cipher: secrets, Client: out.integration, Pausable: cfg.DNSPauseProviders, Audit: authModule, Clock: clk})
 		}},
-		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, out.integration, clk, signIns) }},
+		{"nextcloud", func() modules.Module { return nextcloud.New(db, secrets, out.integration, connections, clk, signIns) }},
 		{"parcels", func() modules.Module {
 			return parcels.New(db, secrets, client, httpclient.IntegrationDialContext, clk, ids)
 		}},
@@ -241,13 +241,13 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		{"diskhealth", func() modules.Module {
 			return diskhealth.New(diskhealth.Config{Dir: cfg.DiskHealthDir, StaleAfter: cfg.DiskHealthStaleAfter}, sink, clk)
 		}},
-		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, out.integration, sink, clk) }},
+		{"speedtest", func() modules.Module { return speedtest.New(db, secrets, out.integration, connections, sink, clk) }},
 		{"calendar", func() modules.Module {
 			return calendar.New(db, secrets, out.integration, clk, ids, time.Local, cfg.PublicURL, calendarSharing, signIns)
 		}},
 		{"proxmox", func() modules.Module {
 			return proxmox.New(proxmox.Config{DB: db, Cipher: secrets, Client: out.integration, Pinned: out.pinned,
-				ActionGuests: cfg.ProxmoxActionsGuests, Clock: clk, Audit: authModule})
+				ActionGuests: cfg.ProxmoxActionsGuests, Clock: clk, Audit: authModule, Connections: connections})
 		}},
 		{"smarthome", func() modules.Module {
 			return smarthome.New(smarthome.Config{DB: db, Cipher: secrets, Client: out.integration,

@@ -6,6 +6,7 @@ paths:
     get:
       tags: [proxmox]
       summary: "Compact state of the widget (#641): running guests, with offline nodes as detail"
+      parameters: [{ $ref: "#/components/parameters/connection" }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CompactState" } } } }
   /api/proxmox/settings:
@@ -26,6 +27,7 @@ paths:
     get:
       tags: [proxmox]
       summary: Cached nodes, guests and storages (refreshed every 30 seconds)
+      parameters: [{ $ref: "#/components/parameters/connection" }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ProxmoxStatus" } } } }
         "404": { description: Not configured, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
@@ -37,6 +39,7 @@ paths:
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer } }
         - { name: action, in: path, required: true, schema: { type: string, enum: [start, shutdown] } }
+        - $ref: "#/components/parameters/connection"
       responses:
         "204": { description: Task started }
         "403": { description: Guest not on the allow-list, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }

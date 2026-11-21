@@ -40,13 +40,20 @@ type ResultsView struct {
 	Error     string
 }
 
+// connectionTTL is how long the results of a named connection are reused.
+// The background job only refreshes the module settings, so connections
+// are read on demand at the same pace.
+const connectionTTL = 10 * time.Minute
+
 // Speedtest is the input port.
 type Speedtest interface {
 	Settings(ctx context.Context) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
 	// Results returns the latest result and the history of the last hours
-	// (GetLatest, GetHistory).
-	Results(ctx context.Context, hours int) (ResultsView, error)
+	// (GetLatest, GetHistory), read through the named connection the widget
+	// chose (#610) or through the module settings when connectionID is
+	// empty or the connection is not usable.
+	Results(ctx context.Context, connectionID string, hours int) (ResultsView, error)
 	// Refresh fetches new results and checks the thresholds (job).
 	Refresh(ctx context.Context) error
 }
@@ -58,6 +65,13 @@ type SettingsRepository interface {
 	Save(ctx context.Context, s domain.Settings) error
 }
 
+// Connections resolves a named connection of the integrations module to
+// settings (output port, #610). Any error means the module settings are
+// used instead. A connection has no thresholds.
+type Connections interface {
+	Settings(ctx context.Context, id string) (domain.Settings, error)
+}
+
 // SpeedtestSource reads results from Speedtest Tracker (output port),
 // oldest first.
 type SpeedtestSource interface {
@@ -67,18 +81,22 @@ type SpeedtestSource interface {
 type speedtest struct {
 	repo   SettingsRepository
 	source SpeedtestSource
+	conns  Connections
 	sink   kernel.ObservationSink
 	clock  kernel.Clock
 	mu     sync.RWMutex
 	cached *ResultsView
+	// byConnection holds the results per named connection.
+	byConnection map[string]ResultsView
 }
 
-// NewSpeedtest returns the use cases; sink receives threshold observations.
-func NewSpeedtest(repo SettingsRepository, source SpeedtestSource, sink kernel.ObservationSink, clock kernel.Clock) Speedtest {
+// NewSpeedtest returns the use cases; conns (may be nil) resolves named
+// connections, sink receives threshold observations.
+func NewSpeedtest(repo SettingsRepository, source SpeedtestSource, conns Connections, sink kernel.ObservationSink, clock kernel.Clock) Speedtest {
 	if sink == nil {
 		sink = kernel.DiscardObservations{}
 	}
-	return &speedtest{repo: repo, source: source, sink: sink, clock: clock}
+	return &speedtest{repo: repo, source: source, conns: conns, sink: sink, clock: clock, byConnection: map[string]ResultsView{}}
 }
 
 // Settings implements Speedtest.
@@ -124,7 +142,12 @@ func (uc *speedtest) SaveSettings(ctx context.Context, in SettingsInput) (Settin
 }
 
 // Results implements Speedtest (cache-aside).
-func (uc *speedtest) Results(ctx context.Context, hours int) (ResultsView, error) {
+func (uc *speedtest) Results(ctx context.Context, connectionID string, hours int) (ResultsView, error) {
+	if connectionID != "" && uc.conns != nil {
+		if s, err := uc.conns.Settings(ctx, connectionID); err == nil {
+			return uc.window(uc.connectionResults(ctx, connectionID, s), hours), nil
+		}
+	}
 	uc.mu.RLock()
 	cached := uc.cached
 	uc.mu.RUnlock()
@@ -140,19 +163,46 @@ func (uc *speedtest) Results(ctx context.Context, hours int) (ResultsView, error
 			return ResultsView{}, kernel.NewPublicError(kernel.ErrUnavailable, "Speedtest Tracker is not reachable.")
 		}
 	}
+	return uc.window(*cached, hours), nil
+}
+
+// window keeps the history of the last hours, at most HistoryRange.
+func (uc *speedtest) window(v ResultsView, hours int) ResultsView {
 	maxHours := int(HistoryRange / time.Hour)
 	if hours <= 0 || hours > maxHours {
 		hours = maxHours
 	}
 	from := uc.clock.Now().Add(-time.Duration(hours) * time.Hour)
-	out := *cached
+	out := v
 	out.History = nil
-	for _, m := range cached.History {
+	for _, m := range v.History {
 		if !m.At.Before(from) {
 			out.History = append(out.History, m)
 		}
 	}
-	return out, nil
+	return out
+}
+
+// connectionResults returns the cached results of a named connection or
+// reads them. Like the module results, a failed read keeps the last
+// results and reports the error alongside.
+func (uc *speedtest) connectionResults(ctx context.Context, id string, s domain.Settings) ResultsView {
+	now := uc.clock.Now()
+	uc.mu.RLock()
+	v, ok := uc.byConnection[id]
+	uc.mu.RUnlock()
+	if ok && now.Sub(v.UpdatedAt) < connectionTTL {
+		return v
+	}
+	if list, err := uc.source.Results(ctx, s, now.Add(-HistoryRange)); err != nil {
+		v.Error, v.UpdatedAt = "Speedtest Tracker is not reachable.", now
+	} else {
+		v = results(list, now)
+	}
+	uc.mu.Lock()
+	uc.byConnection[id] = v
+	uc.mu.Unlock()
+	return v
 }
 
 // Refresh implements Speedtest.
@@ -187,12 +237,18 @@ func (uc *speedtest) Refresh(ctx context.Context) error {
 }
 
 func (uc *speedtest) store(list []domain.Measurement) {
-	v := ResultsView{History: list, UpdatedAt: uc.clock.Now()}
+	v := results(list, uc.clock.Now())
+	uc.mu.Lock()
+	defer uc.mu.Unlock()
+	uc.cached = &v
+}
+
+// results is the history with its newest measurement as the latest.
+func results(list []domain.Measurement, at time.Time) ResultsView {
+	v := ResultsView{History: list, UpdatedAt: at}
 	if len(list) > 0 {
 		latest := list[len(list)-1]
 		v.Latest = &latest
 	}
-	uc.mu.Lock()
-	defer uc.mu.Unlock()
-	uc.cached = &v
+	return v
 }

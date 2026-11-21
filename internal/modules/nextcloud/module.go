@@ -29,12 +29,13 @@ type Module struct {
 	repo usecase.SettingsRepository
 }
 
-// New builds the Nextcloud module; cipher encrypts the app password and
-// signIns (may be nil) hands over sign-ins of the setup assistant (#654).
-func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock, signIns kernel.SignIns) *Module {
+// New builds the Nextcloud module; cipher encrypts the app password, conns
+// resolves the named connection a widget chose (#610) and signIns (may be
+// nil) hands over sign-ins of the setup assistant (#654).
+func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, conns modules.ConnectionResolver, clock kernel.Clock, signIns kernel.SignIns) *Module {
 	api := gateway.NewAPI(client)
 	repo := gateway.NewSettingsRepository(db, cipher)
-	uc := usecase.NewNextcloud(repo, api, clock, signIns)
+	uc := usecase.NewNextcloud(repo, api, connections{conns}, clock, signIns)
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc), repo: repo, specs: connectionSpecs(api)}
 }
 
@@ -64,7 +65,7 @@ func (m *Module) Jobs() []modules.Job {
 
 // ConnectionStatus implements modules.StatusReporter (#599).
 func (m *Module) ConnectionStatus(ctx context.Context) modules.ConnectionStatus {
-	_, err := m.uc.Status(ctx)
+	_, err := m.uc.Status(ctx, "")
 	return modules.StatusOf(err, domain.ErrNotConfigured)
 }
 

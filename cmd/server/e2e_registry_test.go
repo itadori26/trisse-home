@@ -67,3 +67,13 @@ func runModuleE2E(t *testing.T, c *client, up *httptest.Server) {
 		})
 	}
 }
+
+// connectionE2E saves a named connection of the integrations module (#610)
+// for a module check and returns its ID; the check removes it again.
+func connectionE2E(c *client, service, url string, credential obj) string {
+	c.t.Helper()
+	var conn obj
+	c.json(http.MethodPost, "/api/integrations/connections", obj{"service": service, "name": "E2E " + service, "url": url,
+		"credential": credential}, http.StatusCreated, &conn)
+	return conn["id"].(string)
+}

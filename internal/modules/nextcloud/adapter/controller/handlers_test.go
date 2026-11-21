@@ -13,7 +13,7 @@ import (
 
 type fakeUC struct{ usecase.Nextcloud }
 
-func (fakeUC) Status(context.Context) (usecase.StatusView, error) {
+func (fakeUC) Status(context.Context, string) (usecase.StatusView, error) {
 	return usecase.StatusView{}, domain.ErrNotConfigured
 }
 
