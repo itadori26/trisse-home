@@ -47,9 +47,9 @@ func (h *Handlers) Favourites(w http.ResponseWriter, r *http.Request) {
 	h.writeSettings(w, r)(h.uc.SetFavourites(r.Context(), list))
 }
 
-// Overview handles GET /api/fuel/overview.
+// Overview handles GET /api/fuel/overview[?connection=<id>].
 func (h *Handlers) Overview(w http.ResponseWriter, r *http.Request) {
-	res, err := h.uc.Overview(r.Context())
+	res, err := h.uc.Overview(r.Context(), r.URL.Query().Get("connection"))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return

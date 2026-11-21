@@ -13,7 +13,7 @@ import (
 
 type fakeUC struct{ usecase.FritzBox }
 
-func (fakeUC) Status(context.Context) (usecase.StatusView, error) {
+func (fakeUC) Status(context.Context, string) (usecase.StatusView, error) {
 	return usecase.StatusView{}, domain.ErrNotConfigured
 }
 
@@ -30,7 +30,7 @@ type callsUC struct {
 	got domain.CallFilter
 }
 
-func (c *callsUC) Calls(_ context.Context, f domain.CallFilter) (usecase.CallsView, error) {
+func (c *callsUC) Calls(_ context.Context, _ string, f domain.CallFilter) (usecase.CallsView, error) {
 	c.got = f
 	return usecase.CallsView{Calls: []domain.Call{{Type: domain.CallMissed, Number: "0441 123", Name: "Oma"}}}, nil
 }

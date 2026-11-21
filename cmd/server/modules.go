@@ -234,7 +234,7 @@ func buildModules(cfg config.Config, log *slog.Logger, db *sql.DB, cipher secret
 		}},
 		{"waste", func() modules.Module { return waste.New(db, client, clk, time.Local) }},
 		{"wireguard", func() modules.Module { return wireguard.New(db, cfg.WireGuardDir, clk) }},
-		{"fritzbox", func() modules.Module { return fritzbox.New(db, secrets, out.integration, clk, time.Local) }},
+		{"fritzbox", func() modules.Module { return fritzbox.New(db, secrets, out.integration, connections, clk, time.Local) }},
 		{"backupmonitor", func() modules.Module {
 			return backupmonitor.New(backupmonitor.Deps{DB: db, Tokens: crypto.RandomTokens{}, Clock: clk, IDs: ids, Observations: sink})
 		}},

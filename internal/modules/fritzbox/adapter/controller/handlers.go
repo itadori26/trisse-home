@@ -45,9 +45,9 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
 }
 
-// Status handles GET /api/fritzbox/status.
+// Status handles GET /api/fritzbox/status[?connection=<id>].
 func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
-	res, err := h.uc.Status(r.Context())
+	res, err := h.uc.Status(r.Context(), r.URL.Query().Get("connection"))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
@@ -55,7 +55,7 @@ func (h *Handlers) Status(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Status(res))
 }
 
-// Calls handles GET /api/fritzbox/calls?filter=missed&limit=10 (#168).
+// Calls handles GET /api/fritzbox/calls?filter=missed&limit=10[&connection=<id>] (#168).
 func (h *Handlers) Calls(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	limit := 0
@@ -72,7 +72,7 @@ func (h *Handlers) Calls(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteDomainError(w, r, err)
 		return
 	}
-	res, err := h.uc.Calls(r.Context(), f)
+	res, err := h.uc.Calls(r.Context(), q.Get("connection"), f)
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return

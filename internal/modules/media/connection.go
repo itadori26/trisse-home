@@ -47,3 +47,22 @@ func savedConnections(ctx context.Context, repo usecase.SettingsRepository) ([]m
 	}
 	return []modules.SavedConnection{{Source: "media", Service: string(s.Provider), URL: s.URL, Credential: map[string]string{"token": s.Token}}}, nil
 }
+
+// connections adapts the integrations resolver to usecase.Connections; a
+// connection may be of either media server.
+type connections struct{ r modules.ConnectionResolver }
+
+// Settings implements usecase.Connections.
+func (c connections) Settings(ctx context.Context, id string) (domain.Settings, error) {
+	for _, p := range []domain.Provider{domain.ProviderJellyfin, domain.ProviderPlex} {
+		rc, err := c.r.ResolveConnection(ctx, string(p), id)
+		if errors.Is(err, modules.ErrNoConnection) {
+			continue
+		}
+		if err != nil {
+			return domain.Settings{}, err
+		}
+		return domain.NewSettings(string(p), rc.URL, rc.Credential["token"])
+	}
+	return domain.Settings{}, modules.ErrNoConnection
+}

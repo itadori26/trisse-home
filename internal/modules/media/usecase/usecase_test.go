@@ -53,7 +53,7 @@ func (c *movingClock) Now() time.Time { return c.now }
 func setup() (Media, *memRepo, *fakeServer, *fakeServer, *movingClock) {
 	repo, jf, plex := &memRepo{}, &fakeServer{}, &fakeServer{}
 	c := &movingClock{now: time.Unix(0, 0)}
-	uc := NewMedia(repo, map[domain.Provider]MediaServerProvider{domain.ProviderJellyfin: jf, domain.ProviderPlex: plex}, c)
+	uc := NewMedia(repo, map[domain.Provider]MediaServerProvider{domain.ProviderJellyfin: jf, domain.ProviderPlex: plex}, nil, c)
 	return uc, repo, jf, plex, c
 }
 
@@ -83,29 +83,29 @@ func TestSettings(t *testing.T) {
 func TestOverviewAndPoster(t *testing.T) {
 	ctx := context.Background()
 	uc, repo, jf, _, c := setup()
-	if _, err := uc.Overview(ctx); !errors.Is(err, domain.ErrNotConfigured) {
+	if _, err := uc.Overview(ctx, ""); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("not configured: %v", err)
 	}
 	repo.s = &domain.Settings{Provider: domain.ProviderJellyfin, URL: "http://jf", Token: "key"}
-	o, err := uc.Overview(ctx)
+	o, err := uc.Overview(ctx, "")
 	if err != nil || len(o.Recent) != domain.MaxRecent || o.ServerName != "Home" {
 		t.Fatalf("overview is capped: %d %v", len(o.Recent), err)
 	}
-	_, _ = uc.Overview(ctx)
+	_, _ = uc.Overview(ctx, "")
 	if jf.calls != 1 {
 		t.Fatalf("cached within the TTL, got %d calls", jf.calls)
 	}
 	c.now = c.now.Add(overviewTTL)
-	_, _ = uc.Overview(ctx)
+	_, _ = uc.Overview(ctx, "")
 	if jf.calls != 2 {
 		t.Fatalf("fetched again after the TTL, got %d calls", jf.calls)
 	}
 
-	if _, err := uc.Poster(ctx, "a"); err != nil || len(jf.posters) != 1 {
+	if _, err := uc.Poster(ctx, "", "a"); err != nil || len(jf.posters) != 1 {
 		t.Fatalf("poster of a recent item: %v", err)
 	}
 	for _, id := range []string{"zz", "../System/Info"} {
-		if _, err := uc.Poster(ctx, id); !errors.Is(err, domain.ErrPosterNotFound) {
+		if _, err := uc.Poster(ctx, "", id); !errors.Is(err, domain.ErrPosterNotFound) {
 			t.Errorf("%q: only IDs of the overview are proxied, got %v", id, err)
 		}
 	}
@@ -114,7 +114,41 @@ func TestOverviewAndPoster(t *testing.T) {
 	}
 	jf.err = errors.New("down")
 	c.now = c.now.Add(overviewTTL)
-	if _, err := uc.Overview(ctx); !errors.Is(err, kernel.ErrUnavailable) {
+	if _, err := uc.Overview(ctx, ""); !errors.Is(err, kernel.ErrUnavailable) {
 		t.Fatalf("unreachable: %v", err)
+	}
+}
+
+// conns resolves "living" to a Plex server; everything else fails, like a
+// missing copy or a connection of another service.
+type conns struct{}
+
+func (conns) Settings(_ context.Context, id string) (domain.Settings, error) {
+	if id == "living" {
+		return domain.NewSettings("plex", "http://plex:32400", "key")
+	}
+	return domain.Settings{}, errors.New("no usable connection")
+}
+
+func TestOverviewThroughConnection(t *testing.T) {
+	ctx := context.Background()
+	repo, jf, plex := &memRepo{s: &domain.Settings{Provider: domain.ProviderJellyfin, URL: "http://jf", Token: "key"}}, &fakeServer{}, &fakeServer{}
+	uc := NewMedia(repo, map[domain.Provider]MediaServerProvider{domain.ProviderJellyfin: jf, domain.ProviderPlex: plex}, conns{}, &movingClock{now: time.Unix(0, 0)})
+	for _, id := range []string{"living", "", "missing", "living"} {
+		if _, err := uc.Overview(ctx, id); err != nil {
+			t.Fatalf("%q: %v", id, err)
+		}
+	}
+	// "missing" falls back to the module settings on its own cache key; the
+	// second "living" comes from the cache.
+	if plex.calls != 1 || jf.calls != 2 {
+		t.Fatalf("plex %d, jellyfin %d calls", plex.calls, jf.calls)
+	}
+	if _, err := uc.Poster(ctx, "living", "a"); err != nil || len(plex.posters) != 1 {
+		t.Fatalf("the poster comes from the connection's server: %v", err)
+	}
+	repo.s = nil
+	if _, err := uc.Overview(ctx, "living"); err != nil {
+		t.Fatalf("a connection works without module settings: %v", err)
 	}
 }

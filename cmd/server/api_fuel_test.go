@@ -23,6 +23,10 @@ func init() {
 			t, c, up := e.t, e.c, e.up
 			_ = up
 			c.do(http.MethodGet, "/api/fuel/overview", nil, http.StatusNotFound)
+			// A Tankerkönig connection holds only the key; the place stays a
+			// module setting, so without it there is nothing to show (#610).
+			id := connectionE2E(c, "tankerkoenig", "", obj{"apiKey": "00000000-0000-0000-0000-000000000003"})
+			c.do(http.MethodGet, "/api/fuel/overview?connection="+id, nil, http.StatusNotFound)
 			c.json(http.MethodPut, "/api/fuel/settings", obj{"apiKey": "00000000-0000-0000-0000-000000000002", "lat": 52.5, "lon": 13.4,
 				"place": "Berlin", "radiusKm": 5, "fuel": "e10"}, http.StatusOK, nil)
 			var fuel obj
@@ -30,6 +34,8 @@ func init() {
 			if cheapest := fuel["cheapest"].([]any); len(cheapest) != 1 || cheapest[0].(obj)["price"] != 1.739 {
 				t.Fatalf("fuel: %v", fuel)
 			}
+			c.do(http.MethodGet, "/api/fuel/overview?connection="+id, nil, http.StatusOK)
+			c.do(http.MethodDelete, "/api/integrations/connections/"+id, nil, http.StatusNoContent)
 		},
 	})
 }

@@ -54,12 +54,12 @@ func TestFuel(t *testing.T) {
 	ctx := context.Background()
 	repo, p := &memRepo{}, &fakeProvider{}
 	c := &movingClock{now: time.Unix(0, 0)}
-	uc := NewFuel(repo, p, c)
+	uc := NewFuel(repo, p, nil, c)
 
 	if v, _ := uc.Settings(ctx); v.Configured || v.Fuel != "e10" || v.RadiusKm != 5 {
 		t.Fatalf("defaults: %+v", v)
 	}
-	if _, err := uc.Overview(ctx); !errors.Is(err, domain.ErrNotConfigured) {
+	if _, err := uc.Overview(ctx, ""); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("not configured: %v", err)
 	}
 	p.err = errors.New("apikey invalid")
@@ -77,7 +77,7 @@ func TestFuel(t *testing.T) {
 		t.Fatalf("an empty key and the favourites are kept: %+v %v", v, err)
 	}
 
-	o, err := uc.Overview(ctx)
+	o, err := uc.Overview(ctx, "")
 	if err != nil || o.Cheapest[0].Name != "Cheap" || len(o.Favourites) != 2 {
 		t.Fatalf("overview: %+v %v", o, err)
 	}
@@ -85,20 +85,66 @@ func TestFuel(t *testing.T) {
 		t.Fatalf("only favourites outside the radius are asked for: %+v %v", o.Favourites, p.asked)
 	}
 	calls := p.around
-	_, _ = uc.Overview(ctx)
+	_, _ = uc.Overview(ctx, "")
 	c.now = c.now.Add(4 * time.Minute)
-	_, _ = uc.Overview(ctx)
+	_, _ = uc.Overview(ctx, "")
 	if p.around != calls {
 		t.Fatal("at most one request every five minutes")
 	}
 	c.now = c.now.Add(time.Minute)
-	_, _ = uc.Overview(ctx)
+	_, _ = uc.Overview(ctx, "")
 	if p.around != calls+1 {
 		t.Fatal("refreshed after five minutes")
 	}
 	p.err = errors.New("down")
 	c.now = c.now.Add(cacheTTL)
-	if _, err := uc.Overview(ctx); !errors.Is(err, kernel.ErrUnavailable) {
+	if _, err := uc.Overview(ctx, ""); !errors.Is(err, kernel.ErrUnavailable) {
 		t.Fatalf("unreachable: %v", err)
+	}
+}
+
+// conns resolves "family" to another API key; everything else fails, like
+// a missing copy or a connection of another service.
+type conns struct{}
+
+func (conns) APIKey(_ context.Context, id string) (string, error) {
+	if id == "family" {
+		return "family-key", nil
+	}
+	return "", errors.New("no usable connection")
+}
+
+// keyProvider remembers the API keys it was asked with.
+type keyProvider struct {
+	fakeProvider
+	keys []string
+}
+
+func (k *keyProvider) Around(ctx context.Context, s domain.Settings) ([]domain.Station, error) {
+	k.keys = append(k.keys, s.APIKey)
+	return k.fakeProvider.Around(ctx, s)
+}
+
+func TestOverviewThroughConnection(t *testing.T) {
+	ctx := context.Background()
+	s, err := domain.NewSettings(key, 52.5, 13.4, "Home", 5, "e10")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo, p := &memRepo{}, &keyProvider{}
+	uc := NewFuel(repo, p, conns{}, &movingClock{now: time.Unix(0, 0)})
+	if _, err := uc.Overview(ctx, "family"); !errors.Is(err, domain.ErrNotConfigured) {
+		t.Fatalf("the place comes from the module settings: %v", err)
+	}
+	repo.s = &s
+	for _, id := range []string{"family", "", "missing", "family"} {
+		if o, err := uc.Overview(ctx, id); err != nil || o.Place != "Home" {
+			t.Fatalf("%q: %+v %v", id, o, err)
+		}
+	}
+	// "missing" uses the module's key, cached together with ""; the second
+	// "family" comes from the cache.
+	if want := []string{"family-key", key}; len(p.keys) != 2 || p.keys[0] != want[0] || p.keys[1] != want[1] {
+		t.Fatalf("keys %v, want %v", p.keys, want)
 	}
 }

@@ -20,9 +20,10 @@ example after a `SECRET_KEY` change), the module uses its own settings as
 before. Saving in a module's settings page still writes the module
 settings only.
 
-The background jobs of Nextcloud, Proxmox VE and Speedtest Tracker refresh
-the module settings only. A connection is read when a widget asks, at most
-as often as the job runs (5 minutes, 30 seconds and 10 minutes).
+The background jobs of Nextcloud, Proxmox VE, Speedtest Tracker and the
+FRITZ!Box refresh the module settings only. A connection is read when a
+widget asks, at most as often as the job runs (5 minutes, 30 seconds,
+10 minutes and 15 seconds).
 
 | Module | Read endpoints |
 | --- | --- |
@@ -31,6 +32,9 @@ as often as the job runs (5 minutes, 30 seconds and 10 minutes).
 | Nextcloud | `GET /api/nextcloud/status` |
 | Proxmox VE | `GET /api/proxmox/status`, `GET /api/proxmox/compact`, `POST /api/proxmox/guests/{id}/{action}` (acts on the same cluster) |
 | Speedtest Tracker | `GET /api/speedtest/results`, `GET /api/speedtest/compact` (the thresholds stay in the module settings) |
+| FRITZ!Box | `GET /api/fritzbox/status`, `GET /api/fritzbox/calls` |
+| Media server | `GET /api/media/overview`, `GET /api/media/posters/{id}` (a Jellyfin or a Plex connection) |
+| Fuel prices | `GET /api/fuel/overview` (only the API key; place, radius and favourites stay in the module settings) |
 | Grafana | `GET /api/grafana/alerts`, `GET /api/grafana/dashboards`, `GET /api/grafana/dashboards/{uid}/panels`, `GET /api/grafana/render/{uid}/{panel}`, `GET /api/grafana/data/{uid}/{panel}` |
 
 ## Copy of the module settings

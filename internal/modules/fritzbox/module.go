@@ -31,12 +31,13 @@ type Module struct {
 	repo usecase.SettingsRepository
 }
 
-// New builds the FRITZ!Box module; cipher encrypts the password and loc is
-// the time zone of the call list.
-func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock, loc *time.Location) *Module {
+// New builds the FRITZ!Box module; cipher encrypts the password, conns
+// resolves the named connection a widget chose (#610) and loc is the time
+// zone of the call list.
+func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, conns modules.ConnectionResolver, clock kernel.Clock, loc *time.Location) *Module {
 	box := gateway.NewBox(client, loc)
 	repo := gateway.NewSettingsRepository(db, cipher)
-	uc := usecase.NewFritzBox(repo, box, clock)
+	uc := usecase.NewFritzBox(repo, box, connections{conns}, clock)
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc), repo: repo, specs: connectionSpecs(box)}
 }
 
@@ -74,7 +75,7 @@ func (m *Module) Jobs() []modules.Job {
 
 // ConnectionStatus implements modules.StatusReporter (#599).
 func (m *Module) ConnectionStatus(ctx context.Context) modules.ConnectionStatus {
-	_, err := m.uc.Status(ctx)
+	_, err := m.uc.Status(ctx, "")
 	return modules.StatusOf(err, domain.ErrNotConfigured)
 }
 

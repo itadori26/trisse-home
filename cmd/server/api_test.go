@@ -651,6 +651,16 @@ func TestAPIEndToEnd(t *testing.T) {
 
 	// --- fritzbox: not configured until saved ---
 	c.do(http.MethodGet, "/api/fritzbox/status", nil, http.StatusNotFound)
+	// The fake has no FRITZ!Box: through a connection the widget gets the
+	// error in the status instead of "not configured" (#610).
+	fbID := connectionE2E(c, "fritzbox", up.URL, obj{})
+	var fbStatus obj
+	c.json(http.MethodGet, "/api/fritzbox/status?connection="+fbID, nil, http.StatusOK, &fbStatus)
+	if fbStatus["error"] == "" || fbStatus["error"] == nil {
+		t.Fatalf("fritzbox through a connection: %v", fbStatus)
+	}
+	c.do(http.MethodGet, "/api/fritzbox/status?connection=missing", nil, http.StatusNotFound)
+	c.do(http.MethodDelete, "/api/integrations/connections/"+fbID, nil, http.StatusNoContent)
 	var fb obj
 	c.json(http.MethodGet, "/api/fritzbox/settings", nil, http.StatusOK, &fb)
 	if fb["configured"] != false || fb["url"] != "http://192.168.178.1:49000" {

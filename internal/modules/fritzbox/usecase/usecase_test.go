@@ -48,7 +48,7 @@ func (c *clk) Now() time.Time { return c.t }
 func TestFritzBox(t *testing.T) {
 	ctx := context.Background()
 	repo, box, c := &memRepo{}, &fakeBox{}, &clk{t: time.Unix(1_800_000_000, 0)}
-	uc := NewFritzBox(repo, box, c)
+	uc := NewFritzBox(repo, box, nil, c)
 	if v, _ := uc.Settings(ctx); v.URL != domain.DefaultURL || v.Configured {
 		t.Fatalf("defaults %+v", v)
 	}
@@ -56,18 +56,18 @@ func TestFritzBox(t *testing.T) {
 		t.Fatalf("wrong login must not be saved: %v", err)
 	}
 	all, _ := domain.NewCallFilter("", 0)
-	if _, err := uc.Calls(ctx, all); !errors.Is(err, domain.ErrNotConfigured) {
+	if _, err := uc.Calls(ctx, "", all); !errors.Is(err, domain.ErrNotConfigured) {
 		t.Fatalf("calls without a box: %v", err)
 	}
 	// Without login: the status, and the calls widget explains why it is empty.
 	if _, err := uc.SaveSettings(ctx, SettingsInput{}); err != nil {
 		t.Fatal(err)
 	}
-	v, _ := uc.Status(ctx)
+	v, _ := uc.Status(ctx, "")
 	if !v.Status.WAN.Connected || v.Status.Model == "" {
 		t.Fatalf("no-login status %+v", v)
 	}
-	if cv, err := uc.Calls(ctx, all); err != nil || len(cv.Calls) != 0 || cv.Hint == "" {
+	if cv, err := uc.Calls(ctx, "", all); err != nil || len(cv.Calls) != 0 || cv.Hint == "" {
 		t.Fatalf("no-login calls %+v %v", cv, err)
 	}
 	// With login: the background job never fetches calls (#168) …
@@ -83,22 +83,22 @@ func TestFritzBox(t *testing.T) {
 	}
 	// … a calls widget does, and the list is reused for two minutes.
 	missed, _ := domain.NewCallFilter("missed", 5)
-	cv, err := uc.Calls(ctx, all)
+	cv, err := uc.Calls(ctx, "", all)
 	if err != nil || len(cv.Calls) != 2 || box.callRequests != before+1 || cv.UpdatedAt.IsZero() {
 		t.Fatalf("first fetch %+v %v (requests %d)", cv, err, box.callRequests)
 	}
-	if cv, _ := uc.Calls(ctx, missed); len(cv.Calls) != 1 || cv.Calls[0].Type != domain.CallMissed || box.callRequests != before+1 {
+	if cv, _ := uc.Calls(ctx, "", missed); len(cv.Calls) != 1 || cv.Calls[0].Type != domain.CallMissed || box.callRequests != before+1 {
 		t.Fatalf("filtered from the cache %+v (requests %d)", cv, box.callRequests)
 	}
 	c.t = c.t.Add(3 * time.Minute)
-	_, _ = uc.Calls(ctx, all)
+	_, _ = uc.Calls(ctx, "", all)
 	if box.callRequests != before+2 {
 		t.Fatal("calls not fetched again after two minutes")
 	}
 	// A failing box keeps the last list and says so.
 	box.callsErr = errors.New("timeout")
 	c.t = c.t.Add(3 * time.Minute)
-	if cv, err := uc.Calls(ctx, all); err != nil || len(cv.Calls) != 2 || cv.Error == "" {
+	if cv, err := uc.Calls(ctx, "", all); err != nil || len(cv.Calls) != 2 || cv.Error == "" {
 		t.Fatalf("stale calls on error %+v %v", cv, err)
 	}
 	box.callsErr = nil
@@ -113,7 +113,47 @@ func TestFritzBox(t *testing.T) {
 	}
 	box.wanErr = errors.New("down")
 	_ = uc.Refresh(ctx)
-	if v, _ := uc.Status(ctx); v.Error == "" {
+	if v, _ := uc.Status(ctx, ""); v.Error == "" {
 		t.Fatal("error not reported")
+	}
+}
+
+// conns resolves "office" to another box with a login; everything else
+// fails, like a missing copy or a connection of another service.
+type conns struct{}
+
+func (conns) Settings(_ context.Context, id string) (domain.Settings, error) {
+	if id == "office" {
+		return domain.NewSettings("http://office:49000", "home", "pw")
+	}
+	return domain.Settings{}, errors.New("no usable connection")
+}
+
+func TestThroughConnection(t *testing.T) {
+	ctx := context.Background()
+	box, c := &fakeBox{}, &clk{t: time.Unix(1_800_000_000, 0)}
+	repo := &memRepo{s: &domain.Settings{URL: "http://home:49000"}} // no login: no call list
+	uc := NewFritzBox(repo, box, conns{}, c)
+	all, _ := domain.NewCallFilter("", 0)
+	if cv, err := uc.Calls(ctx, "office", all); err != nil || len(cv.Calls) != 2 {
+		t.Fatalf("calls through the connection's login: %+v %v", cv, err)
+	}
+	if cv, err := uc.Calls(ctx, "missing", all); err != nil || cv.Hint == "" {
+		t.Fatalf("missing falls back to the module settings without login: %+v %v", cv, err)
+	}
+	if v, err := uc.Status(ctx, "office"); err != nil || v.Status.Model == "" {
+		t.Fatalf("status through the connection: %+v %v", v, err)
+	}
+	box.wanErr = errors.New("down")
+	if v, _ := uc.Status(ctx, "office"); v.Error != "" {
+		t.Fatal("a connection's status is cached")
+	}
+	c.t = c.t.Add(connectionTTL)
+	if v, _ := uc.Status(ctx, "office"); v.Error == "" || v.Status.Model == "" {
+		t.Fatalf("a failed read keeps the last status: %+v", v)
+	}
+	repo.s = nil
+	if _, err := uc.Calls(ctx, "office", all); err != nil {
+		t.Fatalf("a connection works without module settings: %v", err)
 	}
 }

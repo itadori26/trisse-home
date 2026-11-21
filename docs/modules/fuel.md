@@ -6,6 +6,8 @@
 
 Settings → Fuel prices: a free Tankerkönig API key (stored encrypted), the location, radius and fuel type. `FUEL_API_URL` changes the API (only for a mirror or tests).
 
+A widget can also use the API key of a named Tankerkönig connection of the [integrations](integrations.md) module (`?connection=<id>`); location, radius, fuel type and favourites still come from these settings.
+
 ## Outbound requests
 
 Only the Tankerkönig API, while a fuel widget is open, at most every 5 minutes. The API key is sent with each request.

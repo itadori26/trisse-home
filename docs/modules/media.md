@@ -6,6 +6,8 @@
 
 Settings → Media server: provider, URL and token (stored encrypted, never returned by the API).
 
+A widget can also read through a named Jellyfin or Plex connection of the [integrations](integrations.md) module (`?connection=<id>`); without one it uses these settings.
+
 ## Outbound requests
 
 The configured server only, while a media widget is open, at most every 15 seconds (sessions, recently added items and the posters of those items).
