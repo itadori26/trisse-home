@@ -20,6 +20,15 @@ const (
 // ErrInvalidStop is returned for malformed stop IDs.
 var ErrInvalidStop = kernel.NewValidationError("stopId", "Please choose a stop in the widget settings.")
 
+// ErrInvalidLocation is returned when stops near a place are asked for
+// without valid coordinates.
+var ErrInvalidLocation = kernel.NewValidationError("lat", "Please choose a place with valid coordinates.")
+
+// ValidLocation reports whether lat and lon are coordinates on Earth.
+func ValidLocation(lat, lon float64) bool {
+	return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
+}
+
 // ValidStopID reports whether id can be passed to the provider.
 func ValidStopID(id string) bool {
 	return id != "" && len(id) <= maxStopIDLen && !strings.ContainsFunc(id, unicode.IsControl)

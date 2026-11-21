@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '../i18n';
-  import { placeAt, type SavedPlace, type SavedPlaces } from './places';
+  import { browserLocation, placeAt, type SavedPlace, type SavedPlaces } from './places';
 
   /**
    * Props of the saved-place choice in widget settings (#591). It shows
@@ -24,7 +24,10 @@
   // False while the places module does not answer: nothing is offered.
   let available = $state(false);
   let saving = $state(false);
+  let locating = $state(false);
   let error = $state('');
+  const uid = $props.id();
+  const hintId = `${uid}-location-hint`;
 
   $effect(() => {
     places
@@ -45,6 +48,33 @@
   function change(e: Event) {
     const id = (e.currentTarget as HTMLSelectElement).value;
     onpick(list.find((p) => p.id === id) ?? null);
+  }
+
+  /**
+   * Saves the browser's rounded location as a place and picks it (#693).
+   * A place already saved at that spot is reused instead of duplicated.
+   */
+  async function useMyLocation() {
+    locating = true;
+    error = '';
+    try {
+      let at: { lat: number; lon: number };
+      try {
+        at = await browserLocation();
+      } catch {
+        error = t('places.picker_location_denied');
+        return;
+      }
+      const existing = placeAt(list, at.lat, at.lon);
+      const p =
+        existing ?? (await places.add({ name: t('places.picker_my_location_name'), label: '', ...at }));
+      if (!existing) list = [...list, p];
+      onpick(p);
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    } finally {
+      locating = false;
+    }
   }
 
   async function save() {
@@ -80,8 +110,26 @@
       </select>
     </label>
   {/if}
-  {#if !value && current && (current.name || current.label)}
-    <button class="btn" type="button" disabled={saving} onclick={save}>{t('places.save_as_place')}</button>
-  {/if}
+  <div class="actions">
+    <button class="btn" type="button" disabled={locating} aria-describedby={hintId} onclick={useMyLocation}
+      >{locating ? t('places.picker_locating') : t('places.picker_my_location')}</button
+    >
+    {#if !value && current && (current.name || current.label)}
+      <button class="btn" type="button" disabled={saving} onclick={save}>{t('places.save_as_place')}</button>
+    {/if}
+  </div>
+  <p class="muted hint" id={hintId}>{t('places.picker_location_hint')}</p>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 {/if}
+
+<style>
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .hint {
+    font-size: 0.85rem;
+    margin: var(--space-1) 0 var(--space-2);
+  }
+</style>

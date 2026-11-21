@@ -3,14 +3,18 @@
   import { errorMessage } from '../../../shared/api-client/http';
   import { parseTransitConfig, type Stop } from '../domain/transit';
   import type { TransitUseCases } from '../usecase/transitUseCases';
+  import PlacePicker from '../../../shared/places/PlacePicker.svelte';
+  import type { SavedPlace, SavedPlaces } from '../../../shared/places/places';
 
   /** Props of the transit widget settings. */
   interface Props {
     transit: TransitUseCases;
     config: Record<string, unknown>;
     onsave: (config: Record<string, unknown>) => Promise<void>;
+    /** Saved places whose nearby stops can be listed (#694); omitted where there are none. */
+    places?: SavedPlaces;
   }
-  let { transit, config, onsave }: Props = $props();
+  let { transit, config, onsave, places }: Props = $props();
 
   // svelte-ignore state_referenced_locally
   const initial = parseTransitConfig(config);
@@ -19,6 +23,21 @@
   let query = $state('');
   let results = $state<Stop[]>([]);
   let error = $state('');
+  // The place whose stops are listed; only a helper to find a stop, the
+  // widget keeps the stop alone.
+  let placeId = $state('');
+
+  async function near(p: SavedPlace | null) {
+    placeId = p?.id ?? '';
+    if (!p) return;
+    error = '';
+    try {
+      results = await transit.stopsNear(p);
+      if (results.length === 0) error = t('transit.no_stops_found');
+    } catch (err) {
+      error = errorMessage(err);
+    }
+  }
 
   async function find(e: SubmitEvent) {
     e.preventDefault();
@@ -40,6 +59,9 @@
   }
 </script>
 
+{#if places}
+  <PlacePicker {places} value={placeId} onpick={near} />
+{/if}
 <form onsubmit={find} class="search">
   <input
     class="input"

@@ -19,6 +19,11 @@ func (f *fakeProvider) SearchStops(context.Context, string) ([]domain.Stop, erro
 	return []domain.Stop{{ID: "s1", Name: "Hbf"}}, f.err
 }
 
+func (f *fakeProvider) StopsNear(_ context.Context, lat, _ float64) ([]domain.Stop, error) {
+	f.calls++
+	return []domain.Stop{{ID: "s2", Name: "Near", Lat: lat}}, f.err
+}
+
 func (f *fakeProvider) Departures(context.Context, string, int) ([]domain.Departure, error) {
 	f.calls++
 	base := time.Date(2026, 11, 11, 20, 0, 0, 0, time.UTC)
@@ -54,5 +59,21 @@ func TestTransit(t *testing.T) {
 	}
 	if _, err := uc.Departures(ctx, "other", 5); !errors.Is(err, kernel.ErrUnavailable) {
 		t.Fatalf("error without cache: %v", err)
+	}
+}
+
+func TestStopsNear(t *testing.T) {
+	ctx := context.Background()
+	p := &fakeProvider{}
+	uc := NewTransit(p, &clk{})
+	if _, err := uc.StopsNear(ctx, 91, 8); !errors.Is(err, kernel.ErrInvalid) || p.calls != 0 {
+		t.Fatalf("invalid coordinates reached the provider: %v", err)
+	}
+	if s, err := uc.StopsNear(ctx, 53.14, 8.22); err != nil || len(s) != 1 || s[0].ID != "s2" {
+		t.Fatalf("%+v %v", s, err)
+	}
+	p.err = errors.New("down")
+	if _, err := uc.StopsNear(ctx, 53.14, 8.22); !errors.Is(err, kernel.ErrUnavailable) {
+		t.Fatalf("provider error: %v", err)
 	}
 }

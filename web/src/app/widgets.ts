@@ -454,7 +454,7 @@ const legacyDefinitions: WidgetDefinition[] = [
     ),
     settings: lazy(
       () => import('../features/transit/ui/TransitWidgetSettings.svelte'),
-      (config, c) => ({ config, transit: c.transit }),
+      (config, c) => ({ config, transit: c.transit, places: c.places }),
     ),
   },
   {

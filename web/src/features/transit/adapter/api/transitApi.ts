@@ -13,6 +13,11 @@ export class TransitApi implements TransitGateway {
     );
   }
 
+  async stopsNear(lat: number, lon: number): Promise<Stop[]> {
+    const q = new URLSearchParams({ lat: String(lat), lon: String(lon) });
+    return (await this.http.get<StopDTO[]>(`/api/transit/stops/near?${q}`)).map((s) => ({ ...s }));
+  }
+
   async departures(stopId: string, count: number): Promise<Departure[]> {
     const q = new URLSearchParams({ stop: stopId, n: String(count) });
     const dtos = await this.http.get<DepartureDTO[]>(`/api/transit/departures?${q}`);

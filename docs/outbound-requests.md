@@ -57,7 +57,7 @@ These are contacted only when a module that needs them is in use.
 | --- | --- |
 | [Open-Meteo](https://open-meteo.com) | Weather for the places of your weather widgets. |
 | Deutscher Wetterdienst | Weather warnings, rain radar, pollen and UV index for places in Germany. The radar image is fetched by the server, so your browser never contacts the DWD. Pollen and UV only when a widget shows them, at most hourly. |
-| [Transitous](https://transitous.org) | Departures, cached for one minute per stop. Please respect its fair-use policy, or run your own MOTIS and set `TRANSIT_API_URL`. |
+| [Transitous](https://transitous.org) | Departures, cached for one minute per stop. The stop search while you type a name in the widget settings, and the stops near a saved place once when you pick that place there (the place's rounded coordinates are sent). Please respect its fair-use policy, or run your own MOTIS and set `TRANSIT_API_URL`. |
 | DHL tracking API | Hourly for parcels not yet delivered, with your API key. |
 | Tankerkönig | While a fuel widget is open, at most every five minutes. |
 | MusicBrainz and Cover Art Archive | Artist search when you use it; releases of followed artists every six hours, at most one request per second. |

@@ -42,6 +42,7 @@ func (m *Module) WidgetKinds() []string { return []string{"transit"} }
 // RegisterRoutes implements modules.Module.
 func (m *Module) RegisterRoutes(r modules.Router) {
 	r.Protected("GET /api/transit/stops", m.handlers.Stops)
+	r.Protected("GET /api/transit/stops/near", m.handlers.StopsNear)
 	r.Protected("GET /api/transit/departures", m.handlers.Departures)
 }
 

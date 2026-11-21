@@ -20,6 +20,10 @@ func (f *fakeTransit) SearchStops(_ context.Context, q string) ([]domain.Stop, e
 	return f.stops, nil
 }
 
+func (f *fakeTransit) StopsNear(context.Context, float64, float64) ([]domain.Stop, error) {
+	return f.stops, nil
+}
+
 func (f *fakeTransit) Departures(_ context.Context, stopID string, _ int) ([]domain.Departure, error) {
 	f.asked += "|" + stopID
 	return f.departures, nil

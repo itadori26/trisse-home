@@ -12,4 +12,6 @@ export const serverDe: Record<ServerMessageKey, string> = {
   srv_83a3bc209358c090: 'Die Abfahrtsinformationen sind gerade nicht verfügbar.',
   // Choose a stop for the departures.
   srv_21a0df256f4c1358: 'Wähle eine Haltestelle für die Abfahrten.',
+  // Please choose a place with valid coordinates.
+  srv_1307228afc94de09: 'Bitte wähle einen Ort mit gültigen Koordinaten.',
 };
