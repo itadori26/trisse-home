@@ -16,6 +16,7 @@ paths:
     get:
       tags: [fritzbox]
       summary: WAN state, external IP, throughput (bytes/s via UPnP) and link speed; refreshed every 15 s. The call list is a separate endpoint (#168)
+      parameters: [{ $ref: "#/components/parameters/connection" }]
       responses: { "200": { description: OK }, "404": { description: Not configured } }
   /api/fritzbox/calls:
     get:
@@ -24,6 +25,7 @@ paths:
       parameters:
         - { name: filter, in: query, schema: { type: string, enum: [all, missed, incoming, outgoing], default: all } }
         - { name: limit, in: query, schema: { type: integer, minimum: 5, maximum: 50, default: 10 } }
+        - $ref: "#/components/parameters/connection"
       responses:
         "200":
           description: OK; hint explains an empty list (no login), error is set when the box did not answer (the list is then the last known one)

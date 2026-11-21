@@ -44,6 +44,7 @@ paths:
     get:
       tags: [fuel]
       summary: Cheapest stations (top 10) and favourites with the price of the chosen fuel (cached for 5 minutes)
+      parameters: [{ $ref: "#/components/parameters/connection" }]
       responses:
         "200":
           description: OK

@@ -18,11 +18,11 @@ func (fakeMedia) Settings(context.Context) (usecase.SettingsView, error) {
 	return usecase.SettingsView{Configured: true, Provider: "plex", URL: "http://plex", HasToken: true}, nil
 }
 
-func (fakeMedia) Overview(context.Context) (domain.Overview, error) {
+func (fakeMedia) Overview(context.Context, string) (domain.Overview, error) {
 	return domain.Overview{Sessions: []domain.Session{{Title: "Film", Position: time.Minute, Duration: 3 * time.Minute}}}, nil
 }
 
-func (fakeMedia) Poster(_ context.Context, id string) (domain.Poster, error) {
+func (fakeMedia) Poster(_ context.Context, _, id string) (domain.Poster, error) {
 	if id != "42" {
 		return domain.Poster{}, domain.ErrPosterNotFound
 	}

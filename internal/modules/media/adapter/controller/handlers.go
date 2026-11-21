@@ -42,9 +42,9 @@ func (h *Handlers) SaveSettings(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Settings(res))
 }
 
-// Overview handles GET /api/media/overview.
+// Overview handles GET /api/media/overview[?connection=<id>].
 func (h *Handlers) Overview(w http.ResponseWriter, r *http.Request) {
-	res, err := h.uc.Overview(r.Context())
+	res, err := h.uc.Overview(r.Context(), r.URL.Query().Get("connection"))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return
@@ -52,10 +52,10 @@ func (h *Handlers) Overview(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, presenter.Overview(res))
 }
 
-// Poster handles GET /api/media/posters/{id}: the cover is proxied, so the
+// Poster handles GET /api/media/posters/{id}[?connection=<id>]: the cover is proxied, so the
 // browser never talks to the media server or sees its token.
 func (h *Handlers) Poster(w http.ResponseWriter, r *http.Request) {
-	p, err := h.uc.Poster(r.Context(), r.PathValue("id"))
+	p, err := h.uc.Poster(r.Context(), r.URL.Query().Get("connection"), r.PathValue("id"))
 	if err != nil {
 		httpapi.WriteDomainError(w, r, err)
 		return

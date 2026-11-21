@@ -46,3 +46,16 @@ func savedConnections(ctx context.Context, repo usecase.SettingsRepository, apiU
 	}
 	return []modules.SavedConnection{{Source: "fuel", Service: "tankerkoenig", URL: apiURL, Credential: map[string]string{"apiKey": s.APIKey}}}, nil
 }
+
+// connections adapts the integrations resolver to usecase.Connections. The
+// address of a Tankerkönig connection is fixed, so only the key is used.
+type connections struct{ r modules.ConnectionResolver }
+
+// APIKey implements usecase.Connections.
+func (c connections) APIKey(ctx context.Context, id string) (string, error) {
+	rc, err := c.r.ResolveConnection(ctx, "tankerkoenig", id)
+	if err != nil {
+		return "", err
+	}
+	return rc.Credential["apiKey"], nil
+}

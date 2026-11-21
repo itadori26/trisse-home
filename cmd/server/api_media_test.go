@@ -25,8 +25,12 @@ func init() {
 		},
 		Check: func(e e2eEnv) {
 			t, c, up := e.t, e.c, e.up
-			_ = up
 			c.do(http.MethodGet, "/api/media/overview", nil, http.StatusNotFound)
+			// A widget that chose a named connection reads through it (#610).
+			id := connectionE2E(c, "jellyfin", up.URL+"/jf", obj{"token": "jf-key"})
+			c.do(http.MethodGet, "/api/media/overview?connection="+id, nil, http.StatusOK)
+			c.do(http.MethodGet, "/api/media/overview?connection=missing", nil, http.StatusNotFound)
+			c.do(http.MethodDelete, "/api/integrations/connections/"+id, nil, http.StatusNoContent)
 			c.json(http.MethodPut, "/api/media/settings", obj{"provider": "jellyfin", "url": up.URL + "/jf", "token": "jf-key"}, http.StatusOK, nil)
 			if body := string(c.do(http.MethodGet, "/api/media/settings", nil, http.StatusOK)); strings.Contains(body, "jf-key") {
 				t.Fatal("media token leaked")

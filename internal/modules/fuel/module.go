@@ -24,14 +24,15 @@ type Module struct {
 	apiURL string
 }
 
-// New builds the fuel module (#53); apiURL is the Tankerkönig base URL.
-func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, apiURL string, clock kernel.Clock) *Module {
+// New builds the fuel module (#53); apiURL is the Tankerkönig base URL,
+// conns resolves the named connection a widget chose (#610).
+func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, apiURL string, conns modules.ConnectionResolver, clock kernel.Clock) *Module {
 	if apiURL == "" {
 		apiURL = gateway.DefaultTankerkoenigURL
 	}
 	provider := gateway.NewTankerkoenig(client, apiURL)
 	repo := gateway.NewSettingsRepository(db, cipher)
-	uc := usecase.NewFuel(repo, provider, clock)
+	uc := usecase.NewFuel(repo, provider, connections{conns}, clock)
 	return &Module{handlers: controller.NewHandlers(uc), repo: repo, apiURL: apiURL, specs: connectionSpecs(provider, apiURL)}
 }
 

@@ -25,14 +25,15 @@ type Module struct {
 	repo usecase.SettingsRepository
 }
 
-// New builds the media module (#61); cipher encrypts the stored token.
-func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, clock kernel.Clock) *Module {
+// New builds the media module (#61); cipher encrypts the stored token,
+// conns resolves the named connection a widget chose (#610).
+func New(db *sql.DB, cipher gateway.Cipher, client *http.Client, conns modules.ConnectionResolver, clock kernel.Clock) *Module {
 	providers := map[domain.Provider]usecase.MediaServerProvider{
 		domain.ProviderJellyfin: gateway.NewJellyfin(client),
 		domain.ProviderPlex:     gateway.NewPlex(client),
 	}
 	repo := gateway.NewSettingsRepository(db, cipher)
-	uc := usecase.NewMedia(repo, providers, clock)
+	uc := usecase.NewMedia(repo, providers, connections{conns}, clock)
 	return &Module{uc: uc, handlers: controller.NewHandlers(uc), repo: repo, specs: connectionSpecs(providers)}
 }
 
@@ -59,7 +60,7 @@ func (m *Module) RegisterRoutes(r modules.Router) {
 // ConnectionStatus implements modules.StatusReporter (#592): the overview
 // the widget shows tells whether the media server answers; it is cached.
 func (m *Module) ConnectionStatus(ctx context.Context) modules.ConnectionStatus {
-	_, err := m.uc.Overview(ctx)
+	_, err := m.uc.Overview(ctx, "")
 	return modules.StatusOf(err, domain.ErrNotConfigured)
 }
 

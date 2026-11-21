@@ -40,7 +40,18 @@ type Fuel interface {
 	Settings(ctx context.Context) (SettingsView, error)
 	SaveSettings(ctx context.Context, in SettingsInput) (SettingsView, error)
 	SetFavourites(ctx context.Context, list []domain.Favourite) (SettingsView, error)
-	Overview(ctx context.Context) (domain.Overview, error)
+	// Overview uses the API key of the named connection the widget chose
+	// (#610), or the module's key when connectionID is empty or the
+	// connection is not usable. Place, radius and favourites always come
+	// from the module settings.
+	Overview(ctx context.Context, connectionID string) (domain.Overview, error)
+}
+
+// Connections resolves a named Tankerkönig connection of the integrations
+// module to its API key (output port, #610). Any error means the module's
+// key is used instead.
+type Connections interface {
+	APIKey(ctx context.Context, id string) (string, error)
 }
 
 // SettingsRepository persists the settings (output port).
@@ -57,18 +68,25 @@ type FuelPriceProvider interface {
 	Prices(ctx context.Context, apiKey string, ids []string) (map[string]domain.Prices, error)
 }
 
-type fuel struct {
-	repo     SettingsRepository
-	provider FuelPriceProvider
-	clock    kernel.Clock
-	mu       sync.Mutex
-	cached   *domain.Overview
+type cachedOverview struct {
+	overview domain.Overview
 	fetched  time.Time
 }
 
-// NewFuel returns the use cases.
-func NewFuel(repo SettingsRepository, provider FuelPriceProvider, clock kernel.Clock) Fuel {
-	return &fuel{repo: repo, provider: provider, clock: clock}
+type fuel struct {
+	repo     SettingsRepository
+	provider FuelPriceProvider
+	conns    Connections
+	clock    kernel.Clock
+	mu       sync.Mutex
+	// cache holds one overview per connection ID; "" is the module's key.
+	cache map[string]cachedOverview
+}
+
+// NewFuel returns the use cases; conns (may be nil) resolves named
+// connections.
+func NewFuel(repo SettingsRepository, provider FuelPriceProvider, conns Connections, clock kernel.Clock) Fuel {
+	return &fuel{repo: repo, provider: provider, conns: conns, clock: clock, cache: map[string]cachedOverview{}}
 }
 
 // Settings implements Fuel.
@@ -123,23 +141,29 @@ func (uc *fuel) save(ctx context.Context, s domain.Settings) (SettingsView, erro
 		return SettingsView{}, fmt.Errorf("save settings: %w", err)
 	}
 	uc.mu.Lock()
-	uc.cached = nil
+	clear(uc.cache)
 	uc.mu.Unlock()
 	return view(s), nil
 }
 
 // Overview implements Fuel. A failed favourites request keeps the
 // cheapest list; the provider's errors never hide everything.
-func (uc *fuel) Overview(ctx context.Context) (domain.Overview, error) {
+func (uc *fuel) Overview(ctx context.Context, connectionID string) (domain.Overview, error) {
 	s, err := uc.repo.Load(ctx)
 	if err != nil {
 		return domain.Overview{}, err
 	}
+	key := ""
+	if connectionID != "" && uc.conns != nil {
+		if k, err := uc.conns.APIKey(ctx, connectionID); err == nil {
+			s.APIKey, key = k, connectionID
+		}
+	}
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	now := uc.clock.Now()
-	if uc.cached != nil && now.Sub(uc.fetched) < cacheTTL {
-		return *uc.cached, nil
+	if c, ok := uc.cache[key]; ok && now.Sub(c.fetched) < cacheTTL {
+		return c.overview, nil
 	}
 	around, err := uc.provider.Around(ctx, s)
 	if err != nil {
@@ -148,7 +172,7 @@ func (uc *fuel) Overview(ctx context.Context) (domain.Overview, error) {
 	domain.SortCheapest(around)
 	o := domain.Overview{Fuel: s.Fuel, Place: s.Place, Cheapest: around[:min(len(around), domain.MaxCheapest)]}
 	o.Favourites = uc.favourites(ctx, s, around)
-	uc.cached, uc.fetched = &o, now
+	uc.cache[key] = cachedOverview{overview: o, fetched: now}
 	return o, nil
 }
 

@@ -25,7 +25,7 @@ func (f *fakeFuel) SetFavourites(_ context.Context, list []domain.Favourite) (us
 	return usecase.SettingsView{Configured: true, Favourites: list}, nil
 }
 
-func (f *fakeFuel) Overview(context.Context) (domain.Overview, error) {
+func (f *fakeFuel) Overview(context.Context, string) (domain.Overview, error) {
 	return domain.Overview{Fuel: domain.FuelE5, Cheapest: []domain.Station{{ID: "a", Price: 1.799, DistanceKm: 1.26}, {ID: "b"}}}, nil
 }
 
