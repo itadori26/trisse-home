@@ -3,7 +3,7 @@ export const en = {
   'settings.section.connections': 'Places',
   'places.title': 'Places',
   'places.intro':
-    'Enter a place once and choose it in every widget that needs a location: weather, rain radar and fuel prices.',
+    'Enter a place once and choose it in every widget that needs a location: weather, rain radar, fuel prices and nearby stops.',
   'places.empty': 'No places saved yet.',
   'places.used_by': 'Used by {list}',
   'places.unused': 'Not used by any widget',

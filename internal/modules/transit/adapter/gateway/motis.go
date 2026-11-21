@@ -58,17 +58,35 @@ func (m *MOTIS) get(ctx context.Context, path string, q url.Values, v any) error
 	return nil
 }
 
+// match is a geocoding result of MOTIS.
+type match struct {
+	ID   string  `json:"id"`
+	Name string  `json:"name"`
+	Lat  float64 `json:"lat"`
+	Lon  float64 `json:"lon"`
+}
+
 // SearchStops implements usecase.Provider.
 func (m *MOTIS) SearchStops(ctx context.Context, query string) ([]domain.Stop, error) {
-	var matches []struct {
-		ID   string  `json:"id"`
-		Name string  `json:"name"`
-		Lat  float64 `json:"lat"`
-		Lon  float64 `json:"lon"`
-	}
+	var matches []match
 	if err := m.get(ctx, "/api/v1/geocode", url.Values{"text": {query}, "type": {"STOP"}}, &matches); err != nil {
 		return nil, err
 	}
+	return toStops(matches), nil
+}
+
+// StopsNear implements usecase.Provider with reverse geocoding restricted to
+// stops; MOTIS returns them nearest first.
+func (m *MOTIS) StopsNear(ctx context.Context, lat, lon float64) ([]domain.Stop, error) {
+	place := strconv.FormatFloat(lat, 'f', -1, 64) + "," + strconv.FormatFloat(lon, 'f', -1, 64)
+	var matches []match
+	if err := m.get(ctx, "/api/v1/reverse-geocode", url.Values{"place": {place}, "type": {"STOP"}}, &matches); err != nil {
+		return nil, err
+	}
+	return toStops(matches), nil
+}
+
+func toStops(matches []match) []domain.Stop {
 	out := make([]domain.Stop, 0, min(len(matches), maxStops))
 	for _, s := range matches {
 		if domain.ValidStopID(s.ID) {
@@ -78,7 +96,7 @@ func (m *MOTIS) SearchStops(ctx context.Context, query string) ([]domain.Stop, e
 			break
 		}
 	}
-	return out, nil
+	return out
 }
 
 // Departures implements usecase.Provider.

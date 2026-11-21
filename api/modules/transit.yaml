@@ -8,6 +8,14 @@ paths:
       summary: Search stops (MOTIS geocoding, default Transitous)
       parameters: [{ name: q, in: query, required: true, schema: { type: string, minLength: 2 } }]
       responses: { "200": { description: OK }, "503": { description: Provider not reachable } }
+  /api/transit/stops/near:
+    get:
+      tags: [transit]
+      summary: Stops nearest to a place (MOTIS reverse geocoding); only called when a place is picked in the widget settings
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number, minimum: -90, maximum: 90 } }
+        - { name: lon, in: query, required: true, schema: { type: number, minimum: -180, maximum: 180 } }
+      responses: { "200": { description: OK }, "422": { description: Invalid coordinates }, "503": { description: Provider not reachable } }
   /api/transit/departures:
     get:
       tags: [transit]

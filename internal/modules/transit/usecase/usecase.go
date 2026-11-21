@@ -17,12 +17,15 @@ const cacheTTL = time.Minute
 // Transit is the input port of the module.
 type Transit interface {
 	SearchStops(ctx context.Context, query string) ([]domain.Stop, error)
+	// StopsNear lists the stops closest to a place (#694).
+	StopsNear(ctx context.Context, lat, lon float64) ([]domain.Stop, error)
 	Departures(ctx context.Context, stopID string, n int) ([]domain.Departure, error)
 }
 
 // Provider queries a journey planner (output port).
 type Provider interface {
 	SearchStops(ctx context.Context, query string) ([]domain.Stop, error)
+	StopsNear(ctx context.Context, lat, lon float64) ([]domain.Stop, error)
 	Departures(ctx context.Context, stopID string, n int) ([]domain.Departure, error)
 }
 
@@ -54,6 +57,19 @@ func (uc *transit) SearchStops(ctx context.Context, query string) ([]domain.Stop
 		return []domain.Stop{}, nil
 	}
 	stops, err := uc.provider.SearchStops(ctx, query)
+	if err != nil {
+		return nil, unavailable()
+	}
+	return stops, nil
+}
+
+// StopsNear implements Transit. It runs only when the person picks a place
+// in the widget settings, so it is not cached.
+func (uc *transit) StopsNear(ctx context.Context, lat, lon float64) ([]domain.Stop, error) {
+	if !domain.ValidLocation(lat, lon) {
+		return nil, domain.ErrInvalidLocation
+	}
+	stops, err := uc.provider.StopsNear(ctx, lat, lon)
 	if err != nil {
 		return nil, unavailable()
 	}

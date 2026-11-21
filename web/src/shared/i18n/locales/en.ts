@@ -825,6 +825,12 @@ export const en = {
   'places.other_location': 'Another location…',
   'places.save_as_place': 'Save as a place',
   'places.advanced': 'Advanced',
+  'places.picker_my_location': 'Use my location',
+  'places.picker_locating': 'Finding your location…',
+  'places.picker_location_hint':
+    'Your browser asks for permission. The position is rounded to about 100 m and saved as a place on this server only.',
+  'places.picker_location_denied': 'The browser did not share the location.',
+  'places.picker_my_location_name': 'My location',
   'parcels.confirm_stop': 'Stop tracking “{name}”?',
   'dashboard.confirm_remove_widget': 'Remove the widget “{name}”?',
   'dashboard.confirm_delete_tab': 'Delete the tab “{name}” and all its widgets?',

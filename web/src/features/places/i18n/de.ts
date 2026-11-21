@@ -5,7 +5,7 @@ export const de: Record<keyof typeof en, string> = {
   'settings.section.connections': 'Orte',
   'places.title': 'Orte',
   'places.intro':
-    'Gib einen Ort einmal ein und wähle ihn in jedem Widget, das einen Standort braucht: Wetter, Regenradar und Spritpreise.',
+    'Gib einen Ort einmal ein und wähle ihn in jedem Widget, das einen Standort braucht: Wetter, Regenradar, Spritpreise und Haltestellen in der Nähe.',
   'places.empty': 'Noch keine Orte gespeichert.',
   'places.used_by': 'Verwendet von {list}',
   'places.unused': 'Von keinem Widget verwendet',

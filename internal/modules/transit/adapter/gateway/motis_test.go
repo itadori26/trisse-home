@@ -16,6 +16,12 @@ func TestMOTIS(t *testing.T) {
 		}
 		_, _ = io.WriteString(w, `[{"type":"STOP","id":"de-DELFI_de:03403:16750","name":"Oldenburg Hbf","lat":53.14,"lon":8.22}]`)
 	})
+	mux.HandleFunc("GET /api/v1/reverse-geocode", func(w http.ResponseWriter, r *http.Request) {
+		if q := r.URL.Query(); q.Get("type") != "STOP" || q.Get("place") != "53.14,8.22" {
+			t.Errorf("query %v", q)
+		}
+		_, _ = io.WriteString(w, `[{"type":"STOP","id":"de-DELFI_de:03403:16750","name":"Oldenburg Hbf","lat":53.14,"lon":8.22},{"type":"STOP","id":"","name":"No id"}]`)
+	})
 	mux.HandleFunc("GET /api/v1/stoptimes", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `{"stopTimes":[
 			{"place":{"departure":"2026-11-11T20:17:00Z","scheduledDeparture":"2026-11-11T20:09:00Z","track":"A"},"mode":"BUS","realTime":true,"headsign":"Bümmerstede","routeShortName":"304","cancelled":false},
@@ -27,6 +33,10 @@ func TestMOTIS(t *testing.T) {
 	stops, err := m.SearchStops(context.Background(), "Oldenburg")
 	if err != nil || len(stops) != 1 || stops[0].Name != "Oldenburg Hbf" {
 		t.Fatalf("%+v %v", stops, err)
+	}
+	near, err := m.StopsNear(context.Background(), 53.14, 8.22)
+	if err != nil || len(near) != 1 || near[0].ID != stops[0].ID {
+		t.Fatalf("near: %+v %v", near, err)
 	}
 	ds, err := m.Departures(context.Background(), stops[0].ID, 20)
 	if err != nil || len(ds) != 1 || ds[0].DelayMinutes() != 8 || ds[0].Mode != "bus" || ds[0].Track != "A" {

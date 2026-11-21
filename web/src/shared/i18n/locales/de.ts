@@ -843,6 +843,12 @@ export const de: Record<BaseMessageKey, string> = {
   'places.other_location': 'Anderer Ort …',
   'places.save_as_place': 'Als Ort speichern',
   'places.advanced': 'Erweitert',
+  'places.picker_my_location': 'Meinen Standort verwenden',
+  'places.picker_locating': 'Standort wird ermittelt…',
+  'places.picker_location_hint':
+    'Dein Browser fragt nach der Erlaubnis. Die Position wird auf etwa 100 m gerundet und nur auf diesem Server als Ort gespeichert.',
+  'places.picker_location_denied': 'Der Browser hat den Standort nicht freigegeben.',
+  'places.picker_my_location_name': 'Mein Standort',
   'parcels.confirm_stop': '„{name}“ nicht mehr verfolgen?',
   'dashboard.confirm_remove_widget': 'Widget „{name}“ entfernen?',
   'dashboard.confirm_delete_tab': 'Tab „{name}“ samt allen Widgets löschen?',

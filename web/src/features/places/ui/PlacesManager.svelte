@@ -213,9 +213,14 @@
       </ul>
     {/if}
   {/if}
-  <button class="btn" type="button" disabled={locating} onclick={locate}
-    >{locating ? t('places.locating') : t('places.my_location')}</button
+  <button
+    class="btn"
+    type="button"
+    disabled={locating}
+    aria-describedby="places-location-hint"
+    onclick={locate}>{locating ? t('places.locating') : t('places.my_location')}</button
   >
+  <p class="muted small" id="places-location-hint">{t('places.picker_location_hint')}</p>
 {/if}
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 
