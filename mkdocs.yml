@@ -92,6 +92,7 @@ nav:
           - Jellyfin and Plex: modules/media.md
           - Mail: modules/mail.md
           - Markets: modules/markets.md
+          - Meal plan: modules/meals.md
           - Music releases: modules/releases.md
           - Parcels from e-mails: parcels-mail.md
           - Photo frame: modules/photos.md

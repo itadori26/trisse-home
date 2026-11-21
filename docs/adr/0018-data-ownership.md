@@ -79,7 +79,7 @@ managed by admins.
 
 | Kind | Owner | Modules (today) |
 |---|---|---|
-| **Personal content** | the account that created it; visibility per record | notes, todos, bookmarks, habits, countdown, focus, readlater, drop, birthdays, photos, study, shopping, rss (subscriptions), releases, gamedeals, markets (watchlists), parcels |
+| **Personal content** | the account that created it; visibility per record | notes, todos, bookmarks, habits, countdown, focus, readlater, drop, birthdays, photos, study, shopping, rss (subscriptions), releases, gamedeals, markets (watchlists), parcels, meals |
 | **Personal settings and connections** | one row per account | appearance (theme, language, greeting), search (shortcuts, prefixes), briefing, onboarding (tour state), calendar (CalDAV, ICS, Google/Microsoft accounts), mail (IMAP accounts), todos sources (#169–#171) |
 | **Instance** | the instance; admins manage it, others read it as their role allows | services, docker, adguard, proxmox, smarthome, system, phonelist, diskhealth, wireguard, speedtest, fritzbox, backup, backupmonitor, timeline, notifications (channels), transfer, device, summary (Ollama), waste, holidays, weather, transit, electricity, fuel, space, media, arr, immich, nextcloud, sports, apiwidget, auth, dashboard templates |
 

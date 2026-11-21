@@ -6,6 +6,8 @@ import type { ServerMessageKey } from '../../../api-client/generated/server-mess
  * compile error. The English original is shown as a comment above each entry.
  */
 export const serverDe: Record<ServerMessageKey, string> = {
+  // Enter a date like 2026-12-24.
+  srv_22fc413ef29251fa: 'Bitte ein Datum wie 2026-12-24 eingeben.',
   // Nothing answers at this address. Is the service running?
   srv_8a17d4cf0faa9d18: 'Unter dieser Adresse antwortet nichts. Läuft der Dienst?',
   // The certificate is not trusted. Use the http:// address in your home network, or give the service a certificate this server trusts.

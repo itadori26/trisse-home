@@ -2,7 +2,6 @@
 
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
-  srv_22fc413ef29251fa: "Enter a date like 2026-12-24.",
   srv_1532da22068d27c4: "The countdown does not exist.",
   srv_28a208881a6ef97d: "The title must be between 1 and 120 characters long.",
   srv_1bef734e6f2cdc94: "graceDays must be a number.",

@@ -3,6 +3,7 @@
 /** English backend messages by kernel.MessageKey; translations live in i18n/locales/server-de/. */
 export const serverMessages = {
   srv_607f6c84226cd658: "Connections to this address are not allowed.",
+  srv_22fc413ef29251fa: "Enter a date like 2026-12-24.",
   srv_45cc329a438ca49f: "Enter a time like 07:00.",
   srv_c551eccad97486f8: "Enter an http(s) address with a host, e.g. https://nas.local:8443.",
   srv_871c0989570954df: "Enter only the server address, without a path.",

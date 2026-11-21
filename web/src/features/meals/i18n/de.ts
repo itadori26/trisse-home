@@ -1,0 +1,33 @@
+import type { en } from './en';
+
+/** German UI texts of the meal plan feature; the type makes every key mandatory. */
+export const de: Record<keyof typeof en, string> = {
+  'widget.meals.title': 'Essensplan',
+  'widget.meals.description': 'Gerichte der Woche mit Rezeptlinks und Zutaten für die Einkaufsliste.',
+  'compact.example.meals': 'Heute: Lasagne',
+  'meals.new': 'Gericht planen',
+  'meals.edit': 'Gericht ändern',
+  'meals.dish': 'Gericht',
+  'meals.date': 'Tag',
+  'meals.meal': 'Mahlzeit',
+  'meals.meal.any': 'Beliebig',
+  'meals.meal.breakfast': 'Frühstück',
+  'meals.meal.lunch': 'Mittagessen',
+  'meals.meal.dinner': 'Abendessen',
+  'meals.link': 'Rezeptlink',
+  'meals.ingredients': 'Zutaten',
+  'meals.ingredients_hint': 'Eine pro Zeile; sie lassen sich auf die Einkaufsliste setzen.',
+  'meals.previous_week': 'Vorige Woche',
+  'meals.next_week': 'Nächste Woche',
+  'meals.this_week': 'Diese Woche',
+  'meals.add_on': 'Gericht für {day} planen',
+  'meals.edit_named': '{dish} ändern',
+  'meals.remove': '{dish} entfernen',
+  'meals.add_to_shopping': 'Zutaten von {dish} auf die Einkaufsliste setzen',
+  'meals.shopping_added': '{n} Zutaten auf die Einkaufsliste gesetzt.',
+  'meals.shopping_none': 'Alle Zutaten stehen schon auf der Einkaufsliste.',
+  'meals.error.dish': 'Bitte ein Gericht mit bis zu 120 Zeichen eingeben.',
+  'meals.error.date': 'Bitte einen Tag wählen.',
+  'meals.error.link': 'Der Link muss mit http:// oder https:// beginnen.',
+  'meals.error.ingredients': 'Ein Gericht darf höchstens 40 Zutaten haben.',
+};

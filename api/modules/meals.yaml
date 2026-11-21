@@ -1,0 +1,74 @@
+# OpenAPI fragment of the meal plan module (#682). `make openapi` merges it
+# with api/openapi.base.yaml and checks it.
+tags:
+  - name: meals
+
+paths:
+  /api/meals:
+    get:
+      tags: [meals]
+      summary: List the dishes of a range of days
+      parameters:
+        - { name: from, in: query, description: "First day (YYYY-MM-DD); today when empty", schema: { type: string, format: date } }
+        - { name: days, in: query, description: "Number of days, 1 to 42 (default 7)", schema: { type: integer, minimum: 1, maximum: 42 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/MealsEntry" } } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+    post:
+      tags: [meals]
+      summary: Plan a dish
+      security: [{ session: [], csrf: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MealsEntryInput" } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/MealsEntry" } } } }
+        "422": { $ref: "#/components/responses/Invalid" }
+  /api/meals/{id}:
+    put:
+      tags: [meals]
+      summary: Change a dish (creator only)
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/MealsEntryInput" } } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MealsEntry" } } } }
+        "403": { description: Not the creator, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/Invalid" }
+    delete:
+      tags: [meals]
+      summary: Remove a dish (creator only)
+      security: [{ session: [], csrf: [] }]
+      parameters: [{ $ref: "#/components/parameters/id" }]
+      responses:
+        "204": { description: Deleted }
+        "403": { description: Not the creator, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorBody" } } } }
+  /api/meals/compact:
+    get:
+      tags: [meals]
+      summary: Compact state, what is planned for today
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CompactState" } } } }
+
+schemas:
+  MealsEntryInput:
+    type: object
+    required: [date, dish]
+    properties:
+      date: { type: string, format: date }
+      meal: { type: string, enum: ["", breakfast, lunch, dinner] }
+      dish: { type: string, maxLength: 120 }
+      link: { type: string, description: "http or https URL" }
+      ingredients: { type: array, maxItems: 40, items: { type: string, maxLength: 100 } }
+      visibility: { type: string, description: "private, everyone or group:<id>; empty shares a new dish with everyone" }
+  MealsEntry:
+    type: object
+    properties:
+      id: { type: string }
+      date: { type: string, format: date }
+      meal: { type: string }
+      dish: { type: string }
+      link: { type: string }
+      ingredients: { type: array, items: { type: string } }
+      visibility: { type: string }
+      mine: { type: boolean }
+      createdAt: { type: string, format: date-time }
