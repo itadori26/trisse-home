@@ -35,6 +35,8 @@ export interface Tab {
   mine: boolean;
   /** Laid out in zones instead of the free grid (#619). */
   zoned: boolean;
+  /** An example tab of the setup that the template choice replaces (#670). */
+  sample?: boolean;
 }
 
 /**
@@ -111,6 +113,8 @@ export function initialTabId(
 export interface Dashboard {
   tabs: Tab[];
   defaultTabId: string;
+  /** The client's private network (CIDR) for an "in this network" rule; server only (#673). */
+  clientNetwork?: string;
 }
 
 /** A saved tab layout new tabs can be created from. */

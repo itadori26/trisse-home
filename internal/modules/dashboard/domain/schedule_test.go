@@ -88,3 +88,25 @@ func TestDefaultTabID(t *testing.T) {
 		t.Fatalf("no rule must keep the last tab, got %q", got)
 	}
 }
+
+func TestClientNetwork(t *testing.T) {
+	cases := map[string]string{
+		"192.168.178.23":       "192.168.178.0/24",
+		"::ffff:10.13.13.7":    "10.13.13.0/24",
+		"fd12:3456:789a:1::42": "fd12:3456:789a:1::/64",
+		"203.0.113.9":          "",
+		"127.0.0.1":            "",
+	}
+	for in, want := range cases {
+		got := ""
+		if p, ok := ClientNetwork(netip.MustParseAddr(in)); ok {
+			got = p.String()
+		}
+		if got != want {
+			t.Errorf("ClientNetwork(%s) = %q, want %q", in, got, want)
+		}
+	}
+	if _, ok := ClientNetwork(netip.Addr{}); ok {
+		t.Error("an unknown address has no network")
+	}
+}

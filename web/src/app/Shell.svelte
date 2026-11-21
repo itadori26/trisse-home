@@ -91,6 +91,7 @@
     openWidgetSettings: (tabId: string, widgetId: string) => void;
     openAddWidget: (query?: string) => void;
     addTab: (tab: Tab) => void;
+    reload: (selectId?: string) => Promise<void> | undefined;
     undo: () => void;
     redo: () => void;
   }>();
@@ -435,8 +436,11 @@
       ) {
         // A fresh dashboard first offers the templates (#589); the tour
         // follows once one is chosen or skipped.
-        if (!container.localMode && (await freshDashboard())) choosingTemplate = true;
-        else setTimeout(startTour, 600);
+        const fresh = container.localMode ? 'no' : await freshDashboard();
+        if (fresh !== 'no') {
+          sampleDashboard = fresh === 'sample';
+          choosingTemplate = true;
+        } else setTimeout(startTour, 600);
       }
     } catch (err) {
       error = errorMessage(err);
@@ -444,18 +448,22 @@
   }
 
   let choosingTemplate = $state(false);
+  /** Whether the template choice replaces the example tabs of the setup (#670). */
+  let sampleDashboard = $state(false);
 
   /**
    * Whether the dashboard is still as setup left it: one tab with at most
-   * the default widget. Sample data or an applied waylight.yaml count as
-   * already set up.
+   * the default widget ('empty'), or only the untouched example tabs of the
+   * sample data ('sample', #670). An applied waylight.yaml or a dashboard
+   * someone arranged counts as set up ('no').
    */
-  async function freshDashboard(): Promise<boolean> {
+  async function freshDashboard(): Promise<'empty' | 'sample' | 'no'> {
     try {
       const tabs = await container.dashboard.load();
-      return tabs.length <= 1 && tabs.every((tab) => tab.widgets.length <= 1);
+      if (tabs.length > 0 && tabs.every((tab) => tab.sample)) return 'sample';
+      return tabs.length <= 1 && tabs.every((tab) => tab.widgets.length <= 1) ? 'empty' : 'no';
     } catch {
-      return false;
+      return 'no';
     }
   }
 
@@ -739,7 +747,9 @@
               lon: p.lon,
             }))
         : undefined}
-      oncreated={(tab) => dashboard?.addTab(tab)}
+      sample={sampleDashboard}
+      oncreated={(tab) => (sampleDashboard ? dashboard?.reload(tab.id) : dashboard?.addTab(tab))}
+      onemptied={() => dashboard?.reload()}
       onclose={templateChosen}
     />
   {/await}

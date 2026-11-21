@@ -59,10 +59,20 @@ func SampleLayout(weatherConfig string) []SampleTab {
 type seedSampleData struct {
 	deps Deps
 	tabs []SampleTab
+	// mark flags the tabs as example tabs, which the template choice on
+	// first start may replace (#670).
+	mark bool
 }
 
-// NewSeedSampleData returns the SeedSampleData use case for the given layout.
+// NewSeedSampleData returns the SeedSampleData use case for the given
+// layout. Its tabs are marked as example tabs.
 func NewSeedSampleData(deps Deps, tabs []SampleTab) SeedSampleData {
+	return &seedSampleData{deps: deps, tabs: tabs, mark: true}
+}
+
+// NewSeedShowcase returns the SeedSampleData use case for the demo
+// showcase, whose tabs are the demo itself and are never replaced.
+func NewSeedShowcase(deps Deps, tabs []SampleTab) SeedSampleData {
 	return &seedSampleData{deps: deps, tabs: tabs}
 }
 
@@ -84,7 +94,7 @@ func (uc *seedSampleData) Execute(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if err := uc.deps.Tabs.CreateTab(ctx, tab); err != nil {
+		if err := uc.deps.Tabs.CreateTab(ctx, tab.WithSample(uc.mark)); err != nil {
 			return fmt.Errorf("create tab: %w", err)
 		}
 		for _, sw := range st.Widgets {
@@ -102,6 +112,75 @@ func (uc *seedSampleData) Execute(ctx context.Context) error {
 			if err := uc.deps.Widgets.CreateWidget(ctx, w); err != nil {
 				return fmt.Errorf("create widget: %w", err)
 			}
+		}
+	}
+	return nil
+}
+
+// SampleTabs settles the example tabs once the template choice on first
+// start is made (#670): replaced by a template or "start empty", they are
+// removed; kept, they become ordinary tabs (input port).
+type SampleTabs interface {
+	// Discard removes the account's example tabs and closes the gaps in the
+	// tab order. Without other tabs the next load creates the default tab.
+	Discard(ctx context.Context) error
+	// Keep turns the account's example tabs into ordinary tabs.
+	Keep(ctx context.Context) error
+}
+
+type sampleTabs struct{ deps Deps }
+
+// NewSampleTabs returns the SampleTabs use case.
+func NewSampleTabs(deps Deps) SampleTabs { return &sampleTabs{deps: deps} }
+
+// ownSample splits the tabs the principal may change into example tabs and
+// the rest. Team tabs others shared are left alone either way.
+func (uc *sampleTabs) ownSample(ctx context.Context) (sample, rest []domain.Tab, err error) {
+	tabs, err := uc.deps.Tabs.ListTabs(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list tabs: %w", err)
+	}
+	p := kernel.PrincipalFrom(ctx)
+	for _, t := range tabs {
+		mine := t.Access().Owner == "" || t.Access().Mine(p)
+		if mine && t.Sample() {
+			sample = append(sample, t)
+		} else {
+			rest = append(rest, t)
+		}
+	}
+	return sample, rest, nil
+}
+
+// Discard implements SampleTabs.
+func (uc *sampleTabs) Discard(ctx context.Context) error {
+	sample, rest, err := uc.ownSample(ctx)
+	if err != nil || len(sample) == 0 {
+		return err
+	}
+	for _, t := range sample {
+		if err := uc.deps.Tabs.DeleteTab(ctx, t.ID()); err != nil {
+			return fmt.Errorf("delete tab: %w", err)
+		}
+	}
+	for i := range rest {
+		rest[i].MoveTo(i)
+	}
+	if err := uc.deps.Tabs.SaveTabOrder(ctx, rest); err != nil {
+		return fmt.Errorf("save tab order: %w", err)
+	}
+	return nil
+}
+
+// Keep implements SampleTabs.
+func (uc *sampleTabs) Keep(ctx context.Context) error {
+	sample, _, err := uc.ownSample(ctx)
+	if err != nil {
+		return err
+	}
+	for _, t := range sample {
+		if err := uc.deps.Tabs.UpdateTab(ctx, t.WithSample(false)); err != nil {
+			return fmt.Errorf("update tab: %w", err)
 		}
 	}
 	return nil

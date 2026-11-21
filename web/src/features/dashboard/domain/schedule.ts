@@ -36,3 +36,26 @@ export function ruleMatches(rule: TabRule, now: Date): boolean {
 export function defaultTabId(tabs: readonly Tab[], now: Date): string {
   return tabs.find((t) => t.rules.some((r) => ruleMatches(r, now)))?.id ?? '';
 }
+
+/** Ready-made rules offered when a tab is created (#673). */
+export type RulePreset = 'mornings' | 'workdays' | 'network';
+
+/**
+ * The presets that can be offered. "In this network" needs the client's
+ * private network, which only the server knows; elsewhere it is left out.
+ */
+export function rulePresets(clientNetwork = ''): RulePreset[] {
+  return clientNetwork ? ['mornings', 'workdays', 'network'] : ['mornings', 'workdays'];
+}
+
+/** The plain tab rule a preset stands for, editable like any other rule. */
+export function presetRule(preset: RulePreset, clientNetwork = ''): TabRule {
+  switch (preset) {
+    case 'mornings':
+      return { days: [], from: '06:00', to: '10:00', networks: [] };
+    case 'workdays':
+      return { days: [1, 2, 3, 4, 5], from: '08:00', to: '17:00', networks: [] };
+    case 'network':
+      return { days: [], from: '', to: '', networks: [clientNetwork] };
+  }
+}

@@ -22,10 +22,17 @@
     widgetName: (kind: string) => string;
     /** Place search (the weather geocoder); omitted when it is off. */
     searchPlaces?: (query: string) => Promise<FoundPlace[]>;
+    /**
+     * The dashboard holds only the example tabs of the setup (#670): a
+     * template or "start empty" replaces them, closing the dialog keeps them.
+     */
+    sample?: boolean;
     oncreated: (tab: Tab) => void;
+    /** The example tabs were removed for an empty start (#670). */
+    onemptied?: () => void;
     onclose: () => void;
   }
-  let { uc, widgetName, searchPlaces, oncreated, onclose }: Props = $props();
+  let { uc, widgetName, searchPlaces, sample = false, oncreated, onemptied, onclose }: Props = $props();
 
   let list = $state<BuiltinTemplate[]>([]);
   let chosen = $state('');
@@ -57,6 +64,7 @@
     error = '';
     try {
       const tab = await uc.createTabFromBuiltin(current.id, titleOf(current), location);
+      if (sample) await uc.discardSample();
       oncreated(tab);
       onclose();
     } catch (err) {
@@ -64,6 +72,36 @@
     } finally {
       busy = false;
     }
+  }
+
+  /** Settles the example tabs, then closes: removed for an empty start, else kept. */
+  async function settle(discard: boolean) {
+    busy = true;
+    error = '';
+    try {
+      if (discard) {
+        await uc.discardSample();
+        onemptied?.();
+      } else {
+        await uc.keepSample();
+      }
+      onclose();
+    } catch (err) {
+      error = errorMessage(err);
+    } finally {
+      busy = false;
+    }
+  }
+
+  function startEmpty() {
+    if (sample) void settle(true);
+    else onclose();
+  }
+
+  // Closing the dialog (Escape, close button) never removes anything.
+  function dismiss() {
+    if (sample) void settle(false);
+    else onclose();
   }
 
   function next() {
@@ -94,9 +132,13 @@
   }
 </script>
 
-<Modal title={step === 'choose' ? t('templates.title') : t('templates.location_title')} size="wide" {onclose}>
+<Modal
+  title={step === 'choose' ? t('templates.title') : t('templates.location_title')}
+  size="wide"
+  onclose={dismiss}
+>
   {#if step === 'choose'}
-    <p class="muted">{t('templates.intro')}</p>
+    <p class="muted">{t(sample ? 'templates.intro_sample' : 'templates.intro')}</p>
     <div class="cards" role="radiogroup" aria-label={t('templates.title')}>
       {#each list as tpl (tpl.id)}
         <label class="card" class:chosen={chosen === tpl.id}>
@@ -119,7 +161,12 @@
     </div>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <div class="actions">
-      <button class="btn" type="button" onclick={onclose}>{t('templates.empty')}</button>
+      {#if sample}
+        <button class="btn" type="button" disabled={busy} onclick={() => settle(false)}
+          >{t('templates.keep_sample')}</button
+        >
+      {/if}
+      <button class="btn" type="button" disabled={busy} onclick={startEmpty}>{t('templates.empty')}</button>
       <button class="btn btn-primary" type="button" disabled={!current || busy} onclick={next}
         >{t('templates.use')}</button
       >

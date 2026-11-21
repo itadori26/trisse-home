@@ -226,6 +226,9 @@ export const en = {
   // Built-in tab templates (#589).
   'templates.title': 'What do you use Waylight for?',
   'templates.intro': 'Pick a start; you can change every widget later.',
+  'templates.intro_sample':
+    'Pick a start; it replaces the example dashboard. Your example to-dos, notes and bookmarks stay, and you can change every widget later.',
+  'templates.keep_sample': 'Keep the example dashboard',
   'templates.family': 'Family',
   'templates.homelab': 'Homelab',
   'templates.work': 'Work',
@@ -1604,6 +1607,15 @@ export const en = {
   'dashboard.rule_invalid_time': 'Enter times like 07:30.',
   'dashboard.rule_too_many_networks': 'At most {max} networks per rule.',
   'dashboard.rule_invalid_network': '“{network}” is not a network like 192.168.178.0/24.',
+  'dashboard.offer_question': 'Open “{name}” automatically?',
+  'dashboard.offer_preset_mornings': 'Mornings (6–10)',
+  'dashboard.offer_preset_workdays': 'Weekdays, 8–17',
+  'dashboard.offer_preset_network': 'In this network ({network})',
+  'dashboard.offer_no': 'No, thanks',
+  'dashboard.offer_saved':
+    '“{name}” now opens automatically. Change it in the tab menu under “Open by default”.',
+  'dashboard.offer_edit': 'Edit rules',
+  'dashboard.offer_close': 'Got it',
   'shortcuts.undo': 'Undo the last change (edit mode)',
   'shortcuts.redo': 'Redo (edit mode)',
   'shortcuts.ctrl_z': 'Ctrl+Z',

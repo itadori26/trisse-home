@@ -46,4 +46,8 @@ export interface DashboardGateway {
   /** Built-in templates (#589); absent where there is no server. */
   listBuiltinTemplates?(): Promise<BuiltinTemplate[]>;
   createTabFromBuiltin?(id: string, name: string, location?: TemplateLocation): Promise<Tab>;
+  /** Removes the example tabs of the setup (#670); absent where there is no server. */
+  discardSample?(): Promise<void>;
+  /** Keeps the example tabs of the setup as ordinary tabs (#670). */
+  keepSample?(): Promise<void>;
 }

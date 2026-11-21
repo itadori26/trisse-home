@@ -17,17 +17,18 @@ func mergeForTest(config string, values map[string]any) (string, error) {
 }
 
 var familyTemplate = BuiltinTemplate{ID: "family", Title: "Family", Needs: []string{"location"}, Tab: ConfigTab{
-	Name: "Family",
+	Name:  "Family",
+	Zones: true,
 	Widgets: []ConfigWidget{
-		{Kind: "calendar", Rect: domain.Rect{X: 0, Y: 0, W: 5, H: 6}, Config: `{"view":"agenda"}`, Phone: &ConfigPhone{Order: 2, Rows: 5}},
-		{Kind: "weather", Rect: domain.Rect{X: 5, Y: 0, W: 4, H: 4}, Config: `{"days":3}`, Phone: &ConfigPhone{Order: 1, Rows: 3}},
+		{Kind: "calendar", Rect: domain.Rect{X: 0, Y: 0, W: 6, H: 1}, Config: `{"view":"agenda"}`, Size: "strip", Zone: "today", Phone: &ConfigPhone{Order: 2, Rows: 5}},
+		{Kind: "weather", Rect: domain.Rect{X: 6, Y: 0, W: 3, H: 2}, Config: `{"days":3}`, Size: "small", Zone: "mine", Phone: &ConfigPhone{Order: 1, Rows: 3}},
 		{Kind: "waste", Rect: domain.Rect{X: 9, Y: 0, W: 3, H: 2}, Config: `{}`, Phone: &ConfigPhone{Order: 3, Rows: 2}},
 	},
 }}
 
 // TestBuiltinCreateTab: a template becomes a tab with its widgets and phone
-// layout; widgets of disabled modules are left out and the weather widget
-// gets the location (#589).
+// layout, zones and sizes (#670); widgets of disabled modules are left out
+// and the weather widget gets the location (#589).
 func TestBuiltinCreateTab(t *testing.T) {
 	deps, repo := newDeps("calendar", "weather")
 	uc := NewBuiltinTemplates(deps, []BuiltinTemplate{familyTemplate}, mergeForTest)
@@ -50,6 +51,14 @@ func TestBuiltinCreateTab(t *testing.T) {
 		}
 	}
 	tab, _ := repo.GetTab(ctx, res.ID)
+	if !tab.Zoned() || tab.Sample() {
+		t.Fatalf("zoned %v, sample %v", tab.Zoned(), tab.Sample())
+	}
+	for _, w := range repo.widgets {
+		if w.Kind() == "weather" && (w.Size() != domain.SizeSmall || w.Zone() != domain.ZoneMine) {
+			t.Fatalf("weather size %q zone %q", w.Size(), w.Zone())
+		}
+	}
 	m := tab.Mobile()
 	if m == nil || len(m) != 2 {
 		t.Fatalf("phone layout %+v", m)

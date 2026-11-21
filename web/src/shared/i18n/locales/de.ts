@@ -232,6 +232,9 @@ export const de: Record<BaseMessageKey, string> = {
   // Mitgelieferte Tab-Vorlagen (#589).
   'templates.title': 'Wofür nutzt du Waylight?',
   'templates.intro': 'Wähle einen Start; jedes Widget lässt sich später ändern.',
+  'templates.intro_sample':
+    'Wähle einen Start; er ersetzt das Beispiel-Dashboard. Die Beispiel-To-dos, -Notizen und -Lesezeichen bleiben, und jedes Widget lässt sich später ändern.',
+  'templates.keep_sample': 'Beispiel-Dashboard behalten',
   'templates.family': 'Familie',
   'templates.homelab': 'Homelab',
   'templates.work': 'Arbeit',
@@ -1640,6 +1643,15 @@ export const de: Record<BaseMessageKey, string> = {
   'dashboard.rule_invalid_time': 'Bitte Uhrzeiten wie 07:30 eingeben.',
   'dashboard.rule_too_many_networks': 'Höchstens {max} Netze pro Regel.',
   'dashboard.rule_invalid_network': '„{network}“ ist kein Netz wie 192.168.178.0/24.',
+  'dashboard.offer_question': '„{name}“ automatisch öffnen?',
+  'dashboard.offer_preset_mornings': 'Morgens (6–10 Uhr)',
+  'dashboard.offer_preset_workdays': 'Werktags, 8–17 Uhr',
+  'dashboard.offer_preset_network': 'In diesem Netz ({network})',
+  'dashboard.offer_no': 'Nein, danke',
+  'dashboard.offer_saved':
+    '„{name}“ öffnet sich jetzt automatisch. Ändern lässt sich das im Tab-Menü unter „Automatisch öffnen“.',
+  'dashboard.offer_edit': 'Regeln bearbeiten',
+  'dashboard.offer_close': 'Alles klar',
   'shortcuts.undo': 'Letzte Änderung rückgängig machen (Bearbeitungsmodus)',
   'shortcuts.redo': 'Wiederholen (Bearbeitungsmodus)',
   'shortcuts.ctrl_z': 'Strg+Z',
