@@ -5,6 +5,9 @@ type DashboardResponse struct {
 	Tabs []TabResponse
 	// DefaultTabID is the tab whose rules match now ("" = last used, #71).
 	DefaultTabID string
+	// ClientNetwork is the private network of the client as CIDR, offered
+	// for an "in this network" rule (#673); "" when it has none.
+	ClientNetwork string
 }
 
 // RuleView is a default-tab rule at the use case boundary.
@@ -32,6 +35,8 @@ type TabResponse struct {
 	Visibility string
 	// Zoned lays the tab out in zones instead of the free grid (#619).
 	Zoned bool
+	// Sample marks an example tab from the setup (#670).
+	Sample bool
 }
 
 // MobileView is one widget of the phone layout.

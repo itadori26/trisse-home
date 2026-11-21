@@ -177,6 +177,18 @@ paths:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Tab" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
         "422": { $ref: "#/components/responses/Invalid" }
+  /api/dashboard/sample:
+    delete:
+      tags: [dashboard]
+      summary: "Remove the account's example tabs from the setup (#670), e.g. when the template choice on first start replaces them or the user starts empty; with no tab left the next load creates the default tab"
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Removed } }
+  /api/dashboard/sample/keep:
+    post:
+      tags: [dashboard]
+      summary: "Keep the account's example tabs from the setup as ordinary tabs (#670)"
+      security: [{ session: [], csrf: [] }]
+      responses: { "204": { description: Kept } }
   /api/dashboard/templates/{id}:
     parameters: [{ $ref: "#/components/parameters/id" }]
     delete:
@@ -219,6 +231,7 @@ schemas:
     properties:
       tabs: { type: array, items: { $ref: "#/components/schemas/Tab" } }
       defaultTabId: { type: string, description: 'Tab whose rules match the server time and the client address; "" = keep the last used tab' }
+      clientNetwork: { type: string, description: 'Private network of the client (CIDR, /24 or /64) for an "in this network" rule; absent for public or unknown addresses' }
   MobileItem:
     type: object
     required: [id, hidden, rows]
@@ -248,6 +261,7 @@ schemas:
       mobile: { type: array, items: { $ref: "#/components/schemas/MobileItem" }, description: Phone layout in display order (derived from the desktop grid until edited) }
       mobileCustom: { type: boolean, description: "false = the phone layout follows the desktop grid" }
       zoned: { type: boolean, description: "true = the tab is laid out in zones instead of the free grid" }
+      sample: { type: boolean, description: "true = an example tab from the setup that the template choice on first start replaces (#670); omitted otherwise" }
   Widget:
     allOf:
       - $ref: "#/components/schemas/Rect"

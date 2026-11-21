@@ -1,21 +1,49 @@
-# Homelab: the state of a home server at a glance (#589).
+# Homelab: the state of a home server at a glance (#589). The tab is zoned
+# (#619); the status widgets sit in the System zone as compact tiles (#595)
+# and feed the attention line (#593).
 id: homelab
 title: Homelab
 tab:
   name: Homelab
+  zones: true
   widgets:
-    - kind: services
-      at: { x: 0, y: 0, w: 6, h: 5 }
-      phone: { order: 1, rows: 5 }
-    - kind: docker
-      at: { x: 6, y: 0, w: 6, h: 5 }
-      phone: { order: 2, rows: 5 }
-    - kind: backup-status
-      at: { x: 0, y: 5, w: 4, h: 3 }
-      phone: { order: 3, rows: 3 }
-    - kind: diskhealth
-      at: { x: 4, y: 5, w: 4, h: 3 }
-      phone: { order: 4, rows: 3 }
+    - kind: clock
+      at: { x: 0, y: 0, w: 3, h: 2 }
+      size: small
+      zone: today
+      phone: { order: 1, rows: 2, size: small }
+      config: { showDate: true, showSeconds: false }
+    - kind: todos
+      at: { x: 3, y: 0, w: 3, h: 2 }
+      size: small
+      zone: today
+      phone: { order: 2, rows: 2, size: small }
     - kind: bookmarks
-      at: { x: 8, y: 5, w: 4, h: 3 }
-      phone: { order: 5, rows: 3 }
+      at: { x: 6, y: 0, w: 6, h: 4 }
+      zone: mine
+      phone: { order: 3, rows: 4 }
+    - kind: services
+      at: { x: 0, y: 4, w: 6, h: 1 }
+      size: strip
+      zone: system
+      phone: { order: 4, rows: 1, size: strip }
+    - kind: docker
+      at: { x: 6, y: 4, w: 3, h: 2 }
+      size: small
+      zone: system
+      phone: { order: 5, rows: 2, size: small }
+    - kind: backup-status
+      at: { x: 9, y: 4, w: 3, h: 2 }
+      size: small
+      zone: system
+      phone: { order: 6, rows: 2, size: small }
+    - kind: diskhealth
+      at: { x: 0, y: 5, w: 3, h: 2 }
+      size: small
+      zone: system
+      phone: { order: 7, rows: 2, size: small }
+    - kind: system
+      at: { x: 0, y: 7, w: 4, h: 4 }
+      size: medium
+      zone: system
+      phone: { order: 8, rows: 4 }

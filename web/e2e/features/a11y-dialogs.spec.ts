@@ -18,6 +18,15 @@ test('tab, widget and background dialogs pass automated WCAG 2.2 AA checks (#113
   await page.getByRole('textbox', { name: 'Name' }).fill('A11y');
   await page.getByRole('button', { name: 'Create' }).click();
 
+  // A new tab offers rule presets once (#673); the choice is a plain rule.
+  const offer = page.getByTestId('tab-rule-offer');
+  await expect(offer).toContainText('Open “A11y” automatically?');
+  await expectAccessible(page, 'tab rule offer', '[data-testid="tab-rule-offer"]');
+  await offer.getByRole('button', { name: 'Weekdays, 8–17' }).click();
+  await expect(offer.getByRole('status')).toContainText('now opens automatically');
+  await offer.getByRole('button', { name: 'Got it' }).click();
+  await expect(offer).toHaveCount(0);
+
   await page.getByRole('button', { name: '+ Add widget' }).click();
   await page.getByRole('button', { name: /^Clock/ }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -32,6 +41,7 @@ test('tab, widget and background dialogs pass automated WCAG 2.2 AA checks (#113
   await tabMenu();
   await expectAccessible(page, 'tab menu', '[role="menu"]');
   await page.getByRole('menuitem', { name: 'Open by default' }).click();
+  await expect(page.getByRole('dialog').getByLabel('from')).toHaveValue('08:00');
   await expectAccessible(page, 'tab rules dialog', 'dialog[open]');
   await page.keyboard.press('Escape');
 

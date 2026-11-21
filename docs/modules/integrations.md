@@ -7,9 +7,10 @@ example two Proxmox clusters.
 
 ## Status
 
-This is the store and its API. Widgets and the settings pages of the
-integrations do not use it yet; their own settings stay as they are until
-they move to connections (#610).
+Every integration module reads through the connection a widget names and
+falls back to its own settings (see below). The settings pages of the
+integrations still write their own settings; choosing a connection in a
+widget follows (#610).
 
 ## Reading through a connection
 
@@ -73,16 +74,7 @@ credential fields they need. `GET /api/integrations/services` lists them:
 | --- | --- | --- |
 | `adguard` | AdGuard Home | `username`, **`password`** |
 | `fritzbox` | FRITZ!Box | *`username`*, ***`password`*** |
-| `grafana` | Home Assistant | `GET /api/smarthome/entities`, `GET /api/smarthome/states`, `GET /api/smarthome/compact`, `POST /api/smarthome/entities/{id}/action` (acts on the same server) |
-| Nextcloud | `GET /api/nextcloud/status` |
-| Proxmox VE | `GET /api/proxmox/status`, `GET /api/proxmox/compact`, `POST /api/proxmox/guests/{id}/{action}` (acts on the same cluster) |
-| Speedtest Tracker | `GET /api/speedtest/results`, `GET /api/speedtest/compact` (the thresholds stay in the module settings) |
-| FRITZ!Box | `GET /api/fritzbox/status`, `GET /api/fritzbox/calls` |
-| Media server | `GET /api/media/overview`, `GET /api/media/posters/{id}` (a Jellyfin or a Plex connection) |
-| Fuel prices | `GET /api/fuel/overview` (only the API key; place, radius and favourites stay in the module settings) |
-| AdGuard Home / Pi-hole | `GET /api/adguard/stats`, `GET /api/adguard/compact`, `POST /api/adguard/pause` (a connection of the provider asked for; acts on the same server) |
-| Sonarr / Radarr / Prowlarr | `GET /api/arr/overview` (`connection` repeated; merges the usable connections, or every instance of the module when none is usable) |
-| Grafana | **`token`** |
+| `grafana` | Grafana | **`token`** |
 | `homeassistant` | Home Assistant | **`token`** |
 | `immich` | Immich | **`apiKey`** |
 | `jellyfin`, `plex` | Jellyfin, Plex | **`token`** |

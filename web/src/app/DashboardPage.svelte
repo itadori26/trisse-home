@@ -56,6 +56,7 @@
     openWidgetSettings: (tabId: string, widgetId: string) => void;
     openAddWidget: (query?: string) => void;
     addTab: (tab: Tab) => void;
+    reload: (selectId?: string) => Promise<void>;
   }>();
   // The picker is loaded only when someone opens it (#116).
   let pickerTab = $state<Tab | null>(null);
@@ -90,6 +91,10 @@
   /** Shows a tab created from a template on first start (#589). */
   export function addTab(tab: Tab) {
     view?.addTab(tab);
+  }
+  /** Loads the tabs again after the template choice replaced the example tabs (#670). */
+  export function reload(selectId?: string) {
+    return view?.reload(selectId);
   }
   export function openAddWidget(query = '') {
     view?.openAddWidget(query);

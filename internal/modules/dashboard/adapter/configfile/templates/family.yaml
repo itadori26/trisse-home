@@ -1,24 +1,52 @@
 # Family: what a household shares. The weather takes the location asked for
-# when the template is applied (#589).
+# when the template is applied (#589). The tab is zoned (#619): Today, My
+# things and, for admins, System. Widgets with a compact view are small or a
+# strip (#595); the services strip feeds the attention line (#593).
 id: family
 title: Family
 needs: [location]
 tab:
   name: Family
+  zones: true
   widgets:
-    - kind: calendar
-      at: { x: 0, y: 0, w: 5, h: 6 }
-      phone: { order: 1, rows: 5 }
-      config: { view: agenda, days: 7 }
     - kind: weather
-      at: { x: 5, y: 0, w: 4, h: 4 }
-      phone: { order: 2, rows: 3, size: medium }
-    - kind: shopping
-      at: { x: 9, y: 0, w: 3, h: 6 }
-      phone: { order: 3, rows: 4 }
+      at: { x: 0, y: 0, w: 3, h: 2 }
+      size: small
+      zone: today
+      phone: { order: 1, rows: 2, size: small }
+    - kind: todos
+      at: { x: 3, y: 0, w: 3, h: 2 }
+      size: small
+      zone: today
+      phone: { order: 2, rows: 2, size: small }
+    - kind: calendar
+      at: { x: 6, y: 0, w: 6, h: 1 }
+      size: strip
+      zone: today
+      phone: { order: 3, rows: 1, size: strip }
+      config: { view: agenda, days: 7 }
     - kind: waste
-      at: { x: 5, y: 4, w: 4, h: 2 }
+      at: { x: 6, y: 1, w: 6, h: 2 }
+      zone: today
       phone: { order: 4, rows: 2, size: medium }
+    - kind: shopping
+      at: { x: 0, y: 3, w: 4, h: 4 }
+      size: medium
+      zone: mine
+      phone: { order: 5, rows: 4 }
     - kind: birthdays
-      at: { x: 0, y: 6, w: 5, h: 3 }
-      phone: { order: 5, rows: 3 }
+      at: { x: 4, y: 3, w: 4, h: 4 }
+      size: medium
+      zone: mine
+      phone: { order: 6, rows: 3 }
+    - kind: notes
+      at: { x: 8, y: 3, w: 4, h: 4 }
+      size: medium
+      zone: mine
+      phone: { order: 7, rows: 4 }
+      config: { scope: pinned }
+    - kind: services
+      at: { x: 0, y: 7, w: 6, h: 1 }
+      size: strip
+      zone: system
+      phone: { order: 8, rows: 1, size: strip }

@@ -14,7 +14,7 @@ func toWidgetResponse(w domain.Widget) WidgetResponse {
 }
 
 func toTabResponse(ctx context.Context, t domain.Tab, widgets []domain.Widget) TabResponse {
-	res := TabResponse{ID: t.ID(), Name: t.Name(), Position: t.Position(), Background: t.Background(), Zoned: t.Zoned(), Widgets: []WidgetResponse{}, Rules: []RuleView{},
+	res := TabResponse{ID: t.ID(), Name: t.Name(), Position: t.Position(), Background: t.Background(), Zoned: t.Zoned(), Sample: t.Sample(), Widgets: []WidgetResponse{}, Rules: []RuleView{},
 		Mine: t.Access().Owner == "" || t.Access().Mine(kernel.PrincipalFrom(ctx)), Visibility: string(t.Access().Visibility)}
 	for _, r := range t.Rules() {
 		from, to := r.Range()

@@ -13,7 +13,14 @@ test('setup, logout and login lead to the dashboard', async ({ page }) => {
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByTestId('dashboard')).toBeVisible();
 
-  // The guided tour starts automatically after the first login.
+  // With sample data the template choice comes first (#670). The other
+  // specs build on the example dashboard, so it is kept here;
+  // first-start.spec.ts chooses a template on a server of its own.
+  const picker = page.getByRole('dialog', { name: 'What do you use Waylight for?' });
+  await expect(picker).toBeVisible();
+  await picker.getByRole('button', { name: 'Keep the example dashboard' }).click();
+
+  // The guided tour follows the template choice.
   const tour = page.getByRole('dialog', { name: 'Welcome to Waylight 👋' });
   await expect(tour).toBeVisible();
   for (const title of ['Tabs', 'Search', 'Edit mode', 'Settings', 'Server overview']) {

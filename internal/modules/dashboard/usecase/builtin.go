@@ -77,6 +77,7 @@ func (uc *builtinTemplates) CreateTab(ctx context.Context, id, name string, loc 
 	if err != nil {
 		return TabResponse{}, err
 	}
+	tab = tab.WithZones(t.Zones)
 	type placed struct {
 		order int
 		entry domain.MobileEntry
@@ -96,6 +97,9 @@ func (uc *builtinTemplates) CreateTab(ctx context.Context, id, name string, loc 
 			return TabResponse{}, err
 		}
 		if err := w.Resize(domain.Size(cw.Size)); err != nil {
+			return TabResponse{}, err
+		}
+		if err := w.MoveToZone(domain.Zone(cw.Zone)); err != nil {
 			return TabResponse{}, err
 		}
 		widgets = append(widgets, w)
@@ -118,8 +122,9 @@ func (uc *builtinTemplates) CreateTab(ctx context.Context, id, name string, loc 
 	if err := uc.deps.Templates.CreateTabWithWidgets(ctx, tab, widgets); err != nil {
 		return TabResponse{}, fmt.Errorf("create tab: %w", err)
 	}
-	// The new tab's row does not take the phone layout; store it next.
-	if tab.Mobile() != nil {
+	// The new tab's row takes neither the phone layout nor the zones; store
+	// them next.
+	if tab.Mobile() != nil || tab.Zoned() {
 		if err := uc.deps.Tabs.UpdateTab(ctx, tab); err != nil {
 			return TabResponse{}, fmt.Errorf("save phone layout: %w", err)
 		}
